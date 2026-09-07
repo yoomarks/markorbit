@@ -154,6 +154,7 @@
     "0097_markreg_production_fee_facts": "@markorbit/markreg-service",
     "0098_lite_trading_studio_runs": "@markorbit/lite-service",
     "0099_lite_trading_direction_sets": "@markorbit/lite-service",
-    "0100_lite_trading_direction_selections": "@markorbit/lite-service"
+    "0100_lite_trading_direction_selections": "@markorbit/lite-service",
+    "0101_lite_trading_direction_selection_heads": "@markorbit/lite-service"
   }
 }

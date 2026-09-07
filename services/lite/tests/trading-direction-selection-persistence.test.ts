@@ -116,6 +116,8 @@ function repository() {
       savedFingerprint = String(values?.[9]);
       return Promise.resolve({ rows: [] });
     }
+    if (sql.includes('INSERT INTO lite_trading_direction_selection_heads'))
+      return Promise.resolve({ rows: [] });
     if (sql.includes('JOIN lite_trading_direction_set_versions'))
       return Promise.resolve({
         rows: saved ? [{ selection_json: saved, direction_set_json: set }] : []
@@ -140,6 +142,9 @@ describe('Lite Trading explicit Direction Selection persistence', () => {
     expect(await store.save(command)).toEqual(value);
     expect(await store.save(command)).toEqual(value);
     expect(await store.getLatest(workspaceId, value.directionSelectionId)).toEqual(value);
+    expect(await store.getCurrentForDirectionSet(workspaceId, value.directionSet.id)).toEqual(
+      value
+    );
     expect(value.authorityConsequences.deepBuildStarted).toBe(false);
   });
 

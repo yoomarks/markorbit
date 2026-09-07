@@ -184,6 +184,29 @@ export class PostgresTradingDirectionSelectionStore {
             new Date(this.now()).toISOString()
           ]
         );
+        if (selection.status === 'CURRENT')
+          await client.query(
+            `INSERT INTO lite_trading_direction_selection_heads(
+               workspace_id,direction_set_id,direction_selection_id,direction_selection_version,updated_at
+             ) VALUES($1,$2,$3,$4,$5)
+             ON CONFLICT (workspace_id,direction_set_id) DO UPDATE SET
+               direction_selection_id=EXCLUDED.direction_selection_id,
+               direction_selection_version=EXCLUDED.direction_selection_version,
+               updated_at=EXCLUDED.updated_at`,
+            [
+              workspace,
+              selection.directionSet.id,
+              id,
+              selection.version,
+              new Date(this.now()).toISOString()
+            ]
+          );
+        else
+          await client.query(
+            `DELETE FROM lite_trading_direction_selection_heads
+              WHERE workspace_id=$1 AND direction_set_id=$2 AND direction_selection_id=$3`,
+            [workspace, selection.directionSet.id, id]
+          );
         return clone(selection);
       });
     } catch (error) {
@@ -240,6 +263,50 @@ export class PostgresTradingDirectionSelectionStore {
         {
           cause: error instanceof Error ? error : undefined
         }
+      );
+    }
+  }
+
+  async getCurrentForDirectionSet(
+    workspaceIdValue: string,
+    directionSetId: string
+  ): Promise<TradingDirectionSelectionV1 | undefined> {
+    const workspace = workspaceId(workspaceIdValue);
+    try {
+      const result = await this.query.query(
+        `SELECT selection.document_json AS selection_json,direction_set.document_json AS direction_set_json
+           FROM lite_trading_direction_selection_heads head
+           JOIN lite_trading_direction_selection_versions selection
+             ON selection.workspace_id=head.workspace_id
+            AND selection.direction_selection_id=head.direction_selection_id
+            AND selection.version=head.direction_selection_version
+           JOIN lite_trading_direction_set_versions direction_set
+             ON direction_set.workspace_id=selection.workspace_id
+            AND direction_set.direction_set_id=selection.direction_set_id
+            AND direction_set.version=selection.direction_set_version
+          WHERE head.workspace_id=$1 AND head.direction_set_id=$2`,
+        [workspace, directionSetId]
+      );
+      const row = result.rows[0] as Row | undefined;
+      if (!row) return undefined;
+      const selection = clone(row.selection_json as TradingDirectionSelectionV1);
+      const directionSet = clone(row.direction_set_json as TradingCommercialDirectionSetV1);
+      assertTradingCommercialDirectionSetV1(directionSet);
+      assertTradingDirectionSelectionV1(selection, directionSet);
+      if (selection.status !== 'CURRENT')
+        throw new TradingDirectionSelectionPersistenceError(
+          'VERSION_CONFLICT',
+          'Direction Selection head does not reference a current selection.'
+        );
+      return selection;
+    } catch (error) {
+      if (error instanceof TradingDirectionSelectionPersistenceError) throw error;
+      throw new TradingDirectionSelectionPersistenceError(
+        'PERSISTENCE_UNAVAILABLE',
+        'Direction Selection persistence is unavailable.',
+        503,
+        true,
+        { cause: error instanceof Error ? error : undefined }
       );
     }
   }

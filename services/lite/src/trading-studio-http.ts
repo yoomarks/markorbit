@@ -11,11 +11,16 @@ import {
   TradingDirectionSetPersistenceError,
   type PostgresTradingDirectionSetStore
 } from './trading-direction-set.js';
+import {
+  TradingDirectionSelectionPersistenceError,
+  type PostgresTradingDirectionSelectionStore
+} from './trading-direction-selection.js';
 
 export interface TradingStudioReadRouteOptions {
   internalServiceSecret: string;
   runs: Pick<PostgresTradingStudioRunStore, 'getLatest'>;
   directionSets: Pick<PostgresTradingDirectionSetStore, 'getExact'>;
+  selections: Pick<PostgresTradingDirectionSelectionStore, 'getCurrentForDirectionSet'>;
 }
 
 function trusted(configured: string, supplied: string | undefined): boolean {
@@ -99,6 +104,30 @@ export function createTradingStudioReadRoutes(options: TradingStudioReadRouteOpt
           return json(200, { directionSet });
         } catch (error) {
           if (error instanceof TradingDirectionSetPersistenceError)
+            throw new HttpError(error.status, error.code, error.message, error.retryable);
+          throw error;
+        }
+      }
+    },
+    {
+      method: 'GET',
+      path: '/v1/trading/direction-sets/:directionSetId/selection',
+      handle: async (request) => {
+        const principal = principalOf(request, options.internalServiceSecret);
+        if (request.body !== undefined || Object.keys(request.query).length)
+          throw new HttpError(
+            400,
+            'INVALID_REQUEST',
+            'Selection read accepts only its path identifier.'
+          );
+        try {
+          const selection = await options.selections.getCurrentForDirectionSet(
+            principal.workspaceId,
+            request.params.directionSetId!
+          );
+          return json(200, { selection: selection ?? null });
+        } catch (error) {
+          if (error instanceof TradingDirectionSelectionPersistenceError)
             throw new HttpError(error.status, error.code, error.message, error.retryable);
           throw error;
         }
