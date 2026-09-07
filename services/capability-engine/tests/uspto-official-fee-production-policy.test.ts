@@ -41,6 +41,6 @@ describe('USPTO official-fee source-admission policy v2', () => {
         entry.policyId.startsWith('source-admission-policy.uspto-official-fee-resolver.')
       )
     ).toEqual([usptoOfficialFeeSourceAdmissionPolicyV2]);
-    expect(promotedCapabilitySourceAdmissionPoliciesV2).toHaveLength(4);
+    expect(promotedCapabilitySourceAdmissionPoliciesV2).toHaveLength(5);
   });
 });

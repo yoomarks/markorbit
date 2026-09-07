@@ -339,8 +339,8 @@ describe('Capability production source-use evidence V3', () => {
     ).rejects.toMatchObject({ code: 'SOURCE_USE_CONTEXT_UNAVAILABLE' });
   });
 
-  it('keeps the three CN Phase 4 policies PILOT while governed USPTO v2 is production-admissible', () => {
-    expect(currentCapabilitySourceAdmissionPoliciesV1).toHaveLength(4);
+  it('keeps the three CN Phase 4 policies PILOT while both governed US families are production-admissible', () => {
+    expect(currentCapabilitySourceAdmissionPoliciesV1).toHaveLength(5);
     expect(
       currentCapabilitySourceAdmissionPoliciesV1.filter((entry) => entry.maturityClass === 'PILOT')
     ).toHaveLength(3);
@@ -352,6 +352,11 @@ describe('Capability production source-use evidence V3', () => {
       expect.objectContaining({
         policyId: 'source-admission-policy.uspto-official-fee-resolver.v2',
         policyVersion: 2,
+        maturityClass: 'PRODUCTION_ADMISSIBLE'
+      }),
+      expect.objectContaining({
+        policyId: 'source-admission-policy.us-trademark-mark-representation-strategy.v1',
+        policyVersion: 1,
         maturityClass: 'PRODUCTION_ADMISSIBLE'
       })
     ]);

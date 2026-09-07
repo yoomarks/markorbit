@@ -125,8 +125,8 @@ describe('bounded Capability cognitive read projection', () => {
       implementationProfileCount: 2,
       approvedImplementationProfileCount: 1,
       retiredImplementationProfileCount: 1,
-      sourceAdmissionPolicyCount: 4,
-      productionAdmissibleSourcePolicyCount: 1,
+      sourceAdmissionPolicyCount: 5,
+      productionAdmissibleSourcePolicyCount: 2,
       pilotSourcePolicyCount: 3,
       fixtureTestSourcePolicyCount: 0,
       unsupportedSourcePolicyCount: 0
@@ -153,6 +153,7 @@ describe('bounded Capability cognitive read projection', () => {
       'source-admission-policy.cn-duration-analytical.v1',
       'source-admission-policy.cn-duration-band-classification.v1',
       'source-admission-policy.cn-preliminary-publication-discovery.v1',
+      'source-admission-policy.us-trademark-mark-representation-strategy.v1',
       'source-admission-policy.uspto-official-fee-resolver.v2'
     ]);
     expect(

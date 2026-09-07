@@ -109,12 +109,13 @@ function expectCatalogError(
 }
 
 describe('Capability source-admission policy catalog V1', () => {
-  it('keeps the three CN Phase 4 families PILOT and promotes only exact USPTO to current v2', () => {
-    expect(currentCapabilitySourceAdmissionPoliciesV1).toHaveLength(4);
+  it('keeps the three CN Phase 4 families PILOT and admits the two exact production families', () => {
+    expect(currentCapabilitySourceAdmissionPoliciesV1).toHaveLength(5);
     expect(currentCapabilitySourceAdmissionPoliciesV1.map((entry) => entry.maturityClass)).toEqual([
       'PILOT',
       'PILOT',
       'PILOT',
+      'PRODUCTION_ADMISSIBLE',
       'PRODUCTION_ADMISSIBLE'
     ]);
 
