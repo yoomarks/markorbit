@@ -87,6 +87,11 @@ export * from './order-matter-conversion.js';
 export * from './order-http.js';
 export * from './customer-relationship.js';
 export * from './customer-relationship-http.js';
+export * from './production-intake.js';
+export * from './production-intake-http.js';
+export * from './recommendation-source.js';
+export * from './production-recommendation.js';
+export * from './production-recommendation-http.js';
 export const serviceManifest = Object.freeze({
   name: 'markreg',
   port: Number(process.env.PORT ?? '4105'),
@@ -246,8 +251,8 @@ function fixtureQuote(
       }
     ],
     limitations: [
-      'Estimate only — official fees, professional fees and disbursements require review before filing.',
-      'Demonstration only — not legal advice or an official filing recommendation.'
+      'Estimate only 鈥?official fees, professional fees and disbursements require review before filing.',
+      'Demonstration only 鈥?not legal advice or an official filing recommendation.'
     ],
     validUntil: new Date(Date.parse(timestamp) + 14 * 86400000).toISOString(),
     fixtureOnly: true,
