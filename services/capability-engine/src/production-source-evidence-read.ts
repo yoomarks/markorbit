@@ -1,6 +1,9 @@
+import { isDeepStrictEqual } from 'node:util';
+
 import type { CapabilityRequestV2Command } from '@markorbit/contracts/capability-runtime';
 
 import type { CapabilityRuntimeExecution } from './capability-runtime.js';
+import { canonicalJsonSha256V1 } from './capability-source-output-identity.js';
 import {
   CapabilityRuntimeReplayStoreError,
   type CapabilityRuntimeReplayStoreV1
@@ -22,6 +25,21 @@ import {
   projectCapabilityProductionSourceExplainabilityV1,
   type CapabilityProductionSourceExplainabilityV1
 } from './production-source-explainability.js';
+import {
+  USPTO_OFFICIAL_FEE_RESOLVER_CAPABILITY_DEFINITION,
+  USPTO_OFFICIAL_FEE_RESOLVER_CAPABILITY_ID,
+  USPTO_OFFICIAL_FEE_RESOLVER_CAPABILITY_VERSION,
+  USPTO_OFFICIAL_FEE_RESOLVER_IMPLEMENTATION_PROFILE,
+  USPTO_OFFICIAL_FEE_RESOLVER_INPUT_SCHEMA,
+  USPTO_OFFICIAL_FEE_RESOLVER_OUTPUT_SCHEMA,
+  parseUsptoOfficialFeeResolverInputV1,
+  validateUsptoOfficialFeeResolverOutputV1,
+  type UsptoOfficialFeeResolverOutputV1
+} from './uspto-official-fee-resolver-pilot.js';
+import {
+  USPTO_OFFICIAL_FEE_SOURCE_USE_POLICY_ID,
+  USPTO_OFFICIAL_FEE_SOURCE_USE_POLICY_VERSION
+} from './uspto-official-fee-source-use.js';
 
 const SHA256 = /^[a-f0-9]{64}$/u;
 
@@ -87,6 +105,72 @@ export interface CapabilityRecommendationSourceMaterialV1 {
   readonly authorityConsequences: Readonly<Record<string, false>>;
 }
 
+export const capabilityOfficialFeeMaterialNoAuthorityConsequencesV1 = Object.freeze({
+  quoteCreated: false,
+  productOrPriceCatalogAuthorityGranted: false,
+  paymentAuthorized: false,
+  invoiceCreated: false,
+  orderCreated: false,
+  legalConclusionCreated: false,
+  filingInstructionCreated: false,
+  filingAuthorizationGranted: false,
+  protectedActionAuthorized: false,
+  officialTruthCreated: false
+} as const);
+
+export interface CapabilityOfficialFeeSourceMaterialV1 {
+  readonly materialFamilyId: 'uspto-official-fee-base-application-per-class';
+  readonly materialFamilyVersion: 1;
+  readonly analyzedInputFingerprintSha256: string;
+  readonly filingBasis: 'SECTION_1' | 'SECTION_44';
+  readonly classCount: number;
+  readonly fee: Readonly<{ amountMinor: number; currency: string; unit: 'PER_CLASS' }>;
+  readonly reference: Readonly<{
+    referenceId: string;
+    version: string | number;
+    effectiveFrom: string;
+    sourceIdentityFingerprintSha256: string;
+    replayIdentityFingerprintSha256: string;
+    materializationFingerprintSha256: string;
+    packageId: string;
+    methodId: string;
+    methodVersionId: string;
+  }>;
+  readonly lineage: Readonly<{
+    capabilityId: string;
+    capabilityVersion: string;
+    runtimeCapabilityDefinitionId: string;
+    runtimeCapabilityDefinitionVersion: number;
+    implementationProfileId: string;
+    implementationProfileVersion: number;
+    implementationKey: string;
+    inputSchemaId: string;
+    outputSchemaId: string;
+    outputFingerprintSha256: string;
+    productionEvidenceId: string;
+    productionEvidenceFingerprintSha256: string;
+    admissionPolicy: Readonly<{
+      policyId: string;
+      policyVersion: number;
+      policyFingerprintSha256: string;
+    }>;
+    method: Readonly<{
+      methodId: string;
+      methodVersionId: string;
+      packageId: string;
+      packageVersion: string;
+      activationId: string;
+      evaluationId: string;
+    }>;
+  }>;
+  readonly currentness: Readonly<{ status: 'CURRENT'; checkedAt: string; analyzedAsOf: string }>;
+  readonly assumptions: readonly string[];
+  readonly limitations: readonly string[];
+  readonly authorityConsequences: Readonly<
+    typeof capabilityOfficialFeeMaterialNoAuthorityConsequencesV1
+  >;
+}
+
 export type CapabilityProductionSourceEvidenceReadResultV1 =
   | Readonly<{
       schemaVersion: 1;
@@ -95,6 +179,7 @@ export type CapabilityProductionSourceEvidenceReadResultV1 =
       historical: Readonly<CapabilityProductionSourceHistoricalExecutionV1>;
       source: Readonly<CapabilityProductionSourceExplainabilityV1>;
       recommendationMaterial?: Readonly<CapabilityRecommendationSourceMaterialV1>;
+      officialFeeMaterial?: Readonly<CapabilityOfficialFeeSourceMaterialV1>;
       authority: Readonly<typeof capabilitySourceAdmissionNoAuthorityConsequences>;
     }>
   | Readonly<{
@@ -205,6 +290,123 @@ function recommendationMaterial(
     assumptions: value.assumptions,
     limitations: value.limitations,
     authorityConsequences: authority as Record<string, false>
+  });
+}
+
+function officialFeeMaterialFamily(execution: Readonly<CapabilityRuntimeExecution>): boolean {
+  return (
+    execution.request.capabilityId === USPTO_OFFICIAL_FEE_RESOLVER_CAPABILITY_ID &&
+    execution.request.capabilityVersion === USPTO_OFFICIAL_FEE_RESOLVER_CAPABILITY_VERSION &&
+    execution.request.inputSchemaId === USPTO_OFFICIAL_FEE_RESOLVER_INPUT_SCHEMA &&
+    execution.request.outputSchemaId === USPTO_OFFICIAL_FEE_RESOLVER_OUTPUT_SCHEMA &&
+    execution.request.caller.callerProduct === 'MARKREG' &&
+    execution.request.riskClass === 'LOW'
+  );
+}
+
+function officialFeeMaterial(
+  execution: Readonly<CapabilityRuntimeExecution>,
+  source: Readonly<CapabilityProductionSourceExplainabilityV1>
+): Readonly<CapabilityOfficialFeeSourceMaterialV1> | undefined {
+  if (!officialFeeMaterialFamily(execution)) return undefined;
+
+  let input;
+  try {
+    input = parseUsptoOfficialFeeResolverInputV1(execution.request.input);
+  } catch {
+    return undefined;
+  }
+
+  const returned = execution.returnValue.output;
+  const outcome = execution.outcome.output;
+  if (
+    !validateUsptoOfficialFeeResolverOutputV1(returned) ||
+    !validateUsptoOfficialFeeResolverOutputV1(outcome) ||
+    !isDeepStrictEqual(returned, outcome)
+  ) {
+    return undefined;
+  }
+  const output = returned as UsptoOfficialFeeResolverOutputV1;
+  if (input.filingBasis !== output.filingBasis || input.classCount !== output.classCount) {
+    return undefined;
+  }
+
+  const method = source.methodSource;
+  const reference = source.referenceSources[0];
+  const capability = source.current.capability;
+  const implementation = source.current.implementation;
+  if (
+    !method ||
+    source.referenceSources.length !== 1 ||
+    !reference ||
+    capability.runtimeCapabilityDefinitionId !==
+      USPTO_OFFICIAL_FEE_RESOLVER_CAPABILITY_DEFINITION.runtimeCapabilityDefinitionId ||
+    capability.version !== USPTO_OFFICIAL_FEE_RESOLVER_CAPABILITY_DEFINITION.version ||
+    capability.capabilityId !== USPTO_OFFICIAL_FEE_RESOLVER_CAPABILITY_ID ||
+    capability.capabilityVersion !== USPTO_OFFICIAL_FEE_RESOLVER_CAPABILITY_VERSION ||
+    implementation.implementationProfileId !==
+      USPTO_OFFICIAL_FEE_RESOLVER_IMPLEMENTATION_PROFILE.implementationProfileId ||
+    implementation.version !== USPTO_OFFICIAL_FEE_RESOLVER_IMPLEMENTATION_PROFILE.version ||
+    implementation.implementationKey !==
+      USPTO_OFFICIAL_FEE_RESOLVER_IMPLEMENTATION_PROFILE.implementationKey ||
+    method.methodId !== output.reference.methodId ||
+    method.methodVersionId !== output.reference.methodVersionId ||
+    reference.sourceId !== output.reference.referenceId ||
+    reference.sourceFingerprintSha256 !== output.reference.materializationFingerprintSha256 ||
+    source.sourceUse.currentness !== 'CURRENT' ||
+    source.sourceUse.policy.policyId !== USPTO_OFFICIAL_FEE_SOURCE_USE_POLICY_ID ||
+    source.sourceUse.policy.policyVersion !== USPTO_OFFICIAL_FEE_SOURCE_USE_POLICY_VERSION ||
+    Object.values(source.authority).some((value) => value !== false)
+  ) {
+    return undefined;
+  }
+
+  return Object.freeze({
+    materialFamilyId: 'uspto-official-fee-base-application-per-class',
+    materialFamilyVersion: 1,
+    analyzedInputFingerprintSha256: canonicalJsonSha256V1(input),
+    filingBasis: input.filingBasis,
+    classCount: input.classCount,
+    fee: {
+      amountMinor: output.reference.amountMinor,
+      currency: output.reference.currency,
+      unit: output.reference.unit
+    },
+    reference: {
+      referenceId: output.reference.referenceId,
+      version: reference.sourceVersion,
+      effectiveFrom: output.reference.effectiveFrom,
+      sourceIdentityFingerprintSha256: output.reference.sourceIdentityFingerprintSha256,
+      replayIdentityFingerprintSha256: output.reference.replayIdentityFingerprintSha256,
+      materializationFingerprintSha256: output.reference.materializationFingerprintSha256,
+      packageId: output.reference.packageId,
+      methodId: output.reference.methodId,
+      methodVersionId: output.reference.methodVersionId
+    },
+    lineage: {
+      capabilityId: execution.request.capabilityId,
+      capabilityVersion: execution.request.capabilityVersion,
+      runtimeCapabilityDefinitionId: capability.runtimeCapabilityDefinitionId,
+      runtimeCapabilityDefinitionVersion: capability.version,
+      implementationProfileId: implementation.implementationProfileId,
+      implementationProfileVersion: implementation.version,
+      implementationKey: implementation.implementationKey,
+      inputSchemaId: execution.request.inputSchemaId,
+      outputSchemaId: execution.request.outputSchemaId,
+      outputFingerprintSha256: source.sourceOutput.outputFingerprintSha256,
+      productionEvidenceId: source.evidence.evidenceId,
+      productionEvidenceFingerprintSha256: source.evidence.evidenceFingerprintSha256,
+      admissionPolicy: structuredClone(source.admissionPolicy),
+      method: structuredClone(method)
+    },
+    currentness: {
+      status: 'CURRENT' as const,
+      checkedAt: source.sourceUse.currentnessCheckedAt,
+      analyzedAsOf: input.asOf
+    },
+    assumptions: [...source.sourceUse.assumptions],
+    limitations: [...source.sourceUse.limitations],
+    authorityConsequences: structuredClone(capabilityOfficialFeeMaterialNoAuthorityConsequencesV1)
   });
 }
 
@@ -527,6 +729,21 @@ export class CapabilityProductionSourceEvidenceReadServiceV1 {
     }
 
     const material = recommendationMaterial(replay.execution);
+    const feeMaterial = officialFeeMaterial(replay.execution, source);
+    if (officialFeeMaterialFamily(replay.execution) && !feeMaterial) {
+      return {
+        schemaVersion: 1,
+        status: 'UNAVAILABLE',
+        reference,
+        retryable: false,
+        denial: {
+          code: 'OFFICIAL_FEE_MATERIAL_INTEGRITY_FAILURE',
+          reason:
+            'Current governed official-fee source could not be bound to exact consumer material.'
+        },
+        authority: capabilitySourceAdmissionNoAuthorityConsequences
+      };
+    }
     return Object.freeze({
       schemaVersion: 1,
       status: 'PRODUCTION_ADMISSIBLE',
@@ -534,6 +751,7 @@ export class CapabilityProductionSourceEvidenceReadServiceV1 {
       historical: historical(replay.execution),
       source,
       ...(material ? { recommendationMaterial: material } : {}),
+      ...(feeMaterial ? { officialFeeMaterial: feeMaterial } : {}),
       authority: capabilitySourceAdmissionNoAuthorityConsequences
     });
   }

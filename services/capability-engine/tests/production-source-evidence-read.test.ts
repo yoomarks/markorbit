@@ -4,6 +4,7 @@ import { compileUsptoOfficialFeeMethodPackageV1 } from '@markorbit/contracts/bra
 import type { CapabilityRequestV2Command } from '@markorbit/contracts/capability-runtime';
 
 import { GovernedCapabilityRuntime } from '../src/capability-runtime.js';
+import { canonicalJsonSha256V1 } from '../src/capability-source-output-identity.js';
 import {
   CapabilityRuntimeReplayStoreError,
   InMemoryCapabilityRuntimeReplayStoreV1,
@@ -23,6 +24,7 @@ import { createUsptoOfficialFeeProductionSourceEvidenceAuthorityV1 } from '../sr
 import {
   USPTO_OFFICIAL_FEE_RESOLVER_ACCEPTED_MATERIALIZATION_SHA256,
   USPTO_OFFICIAL_FEE_RESOLVER_ACCEPTED_REFERENCE_ID,
+  USPTO_OFFICIAL_FEE_RESOLVER_ACCEPTED_REPLAY_IDENTITY_SHA256,
   USPTO_OFFICIAL_FEE_RESOLVER_ACCEPTED_SOURCE_IDENTITY_SHA256,
   USPTO_OFFICIAL_FEE_RESOLVER_CAPABILITY_DEFINITION,
   USPTO_OFFICIAL_FEE_RESOLVER_CAPABILITY_ID,
@@ -207,9 +209,92 @@ describe('trusted production source evidence read V1', () => {
     expect(first.source.methodSource?.activationId).toBe(
       materializeApprovedUsptoOfficialFeeGovernedActivationV1().decision.decisionId
     );
+    expect(first.officialFeeMaterial).toMatchObject({
+      materialFamilyId: 'uspto-official-fee-base-application-per-class',
+      materialFamilyVersion: 1,
+      analyzedInputFingerprintSha256: canonicalJsonSha256V1(command().input),
+      filingBasis: 'SECTION_1',
+      classCount: 2,
+      fee: { amountMinor: 35000, currency: 'USD', unit: 'PER_CLASS' },
+      reference: {
+        referenceId: USPTO_OFFICIAL_FEE_RESOLVER_ACCEPTED_REFERENCE_ID,
+        version: MATERIALIZED_AT,
+        effectiveFrom: EFFECTIVE_FROM,
+        sourceIdentityFingerprintSha256:
+          USPTO_OFFICIAL_FEE_RESOLVER_ACCEPTED_SOURCE_IDENTITY_SHA256,
+        replayIdentityFingerprintSha256:
+          USPTO_OFFICIAL_FEE_RESOLVER_ACCEPTED_REPLAY_IDENTITY_SHA256,
+        materializationFingerprintSha256:
+          USPTO_OFFICIAL_FEE_RESOLVER_ACCEPTED_MATERIALIZATION_SHA256
+      },
+      lineage: {
+        capabilityId: USPTO_OFFICIAL_FEE_RESOLVER_CAPABILITY_ID,
+        capabilityVersion: USPTO_OFFICIAL_FEE_RESOLVER_CAPABILITY_VERSION,
+        runtimeCapabilityDefinitionId:
+          USPTO_OFFICIAL_FEE_RESOLVER_CAPABILITY_DEFINITION.runtimeCapabilityDefinitionId,
+        implementationProfileId:
+          USPTO_OFFICIAL_FEE_RESOLVER_IMPLEMENTATION_PROFILE.implementationProfileId,
+        inputSchemaId: USPTO_OFFICIAL_FEE_RESOLVER_INPUT_SCHEMA,
+        outputSchemaId: USPTO_OFFICIAL_FEE_RESOLVER_OUTPUT_SCHEMA,
+        outputFingerprintSha256: first.source.sourceOutput.outputFingerprintSha256,
+        productionEvidenceId: first.source.evidence.evidenceId,
+        productionEvidenceFingerprintSha256: first.source.evidence.evidenceFingerprintSha256,
+        admissionPolicy: first.source.admissionPolicy
+      },
+      currentness: {
+        status: 'CURRENT',
+        checkedAt: EVALUATED_AT,
+        analyzedAsOf: '2026-08-28T00:00:00.000Z'
+      }
+    });
+    expect(first.officialFeeMaterial?.limitations.join(' ')).toContain('not a Quote');
+    expect(first.officialFeeMaterial?.authorityConsequences).toMatchObject({
+      quoteCreated: false,
+      productOrPriceCatalogAuthorityGranted: false,
+      paymentAuthorized: false,
+      invoiceCreated: false,
+      orderCreated: false,
+      legalConclusionCreated: false,
+      filingInstructionCreated: false,
+      filingAuthorizationGranted: false,
+      protectedActionAuthorized: false,
+      officialTruthCreated: false
+    });
+    expect(
+      Object.values(first.officialFeeMaterial?.authorityConsequences ?? {}).every(
+        (value) => value === false
+      )
+    ).toBe(true);
     expect(Object.values(first.authority).every((value) => value === false)).toBe(true);
     expect(Object.values(first.source.authority).every((value) => value === false)).toBe(true);
     expect('recommendationMaterial' in first).toBe(false);
+  });
+
+  it('fails closed when persisted fee input no longer binds to the governed output', async () => {
+    const execution = await baseRuntime().invoke(command('uspto-fee-material-input-drift'));
+    const drifted = {
+      ...execution,
+      request: {
+        ...execution.request,
+        input: { ...(execution.request.input as Record<string, unknown>), classCount: 3 }
+      }
+    };
+    const store = new InMemoryCapabilityRuntimeReplayStoreV1();
+    const reference = capabilityProductionSourceExecutionReferenceV1(drifted);
+    const claim = {
+      idempotencyKey: reference.idempotencyKey,
+      requestFingerprintSha256: reference.requestFingerprintSha256,
+      ownerToken: 'owner_uspto_fee_material_input_drift',
+      now: EXECUTED_AT
+    };
+    await store.claim(claim);
+    await store.complete({ ...claim, execution: drifted });
+
+    await expect(reader(store).read(reference)).resolves.toMatchObject({
+      status: 'UNAVAILABLE',
+      retryable: false,
+      denial: { code: 'OFFICIAL_FEE_MATERIAL_INTEGRITY_FAILURE' }
+    });
   });
 
   it('fails closed for missing, conflicting, mismatched and in-progress replay identities', async () => {
@@ -250,6 +335,35 @@ describe('trusted production source evidence read V1', () => {
       status: 'UNAVAILABLE',
       retryable: true,
       denial: { code: 'EXECUTION_IN_PROGRESS' }
+    });
+  });
+
+  it('denies persisted fee amount drift against the current controlled Reference', async () => {
+    const execution = await baseRuntime().invoke(command('uspto-fee-material-amount-drift'));
+    const returned = execution.returnValue.output as { reference: Record<string, unknown> };
+    const tamperedOutput = {
+      ...(execution.returnValue.output as Record<string, unknown>),
+      reference: { ...returned.reference, amountMinor: 36000 }
+    };
+    const drifted = {
+      ...execution,
+      outcome: { ...execution.outcome, output: tamperedOutput },
+      returnValue: { ...execution.returnValue, output: tamperedOutput }
+    };
+    const store = new InMemoryCapabilityRuntimeReplayStoreV1();
+    const reference = capabilityProductionSourceExecutionReferenceV1(drifted);
+    const claim = {
+      idempotencyKey: reference.idempotencyKey,
+      requestFingerprintSha256: reference.requestFingerprintSha256,
+      ownerToken: 'owner_uspto_fee_material_amount_drift',
+      now: EXECUTED_AT
+    };
+    await store.claim(claim);
+    await store.complete({ ...claim, execution: drifted });
+
+    await expect(reader(store).read(reference)).resolves.toMatchObject({
+      status: 'DENIED',
+      denial: { code: 'SOURCE_REFERENCE_NOT_CURRENT' }
     });
   });
 
