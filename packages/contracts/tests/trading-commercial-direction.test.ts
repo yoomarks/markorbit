@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   assertTradingCommercialDirectionSetV1,
+  assertTradingCommercialDirectionRefinementV1,
   noTradingDirectionAuthorityConsequencesV1,
   type TradingCommercialDirectionRole,
   type TradingCommercialDirectionSetV1,
@@ -155,5 +156,72 @@ describe('Lite Trading CommercialDirection V1 contract', () => {
       listingCreated: false,
       trademarkTruthMutated: false
     });
+  });
+
+  it('refines only one exact candidate into the next immutable set version', () => {
+    const before = directionSet();
+    const target = before.directions[0];
+    const after: TradingCommercialDirectionSetV1 = {
+      ...before,
+      version: 2,
+      directions: [
+        {
+          ...target,
+          version: 2,
+          previousVersion: { id: target.commercialDirectionId, version: 1 },
+          summary: 'A refined Best Fit direction.',
+          provenance: {
+            ...target.provenance,
+            derivedObject: { id: target.commercialDirectionId, version: 2 }
+          }
+        },
+        before.directions[1],
+        before.directions[2]
+      ],
+      createdAt: '2026-09-07T12:03:00.000Z'
+    };
+    const command = {
+      schemaVersion: 1 as const,
+      directionSetId: before.commercialDirectionSetId,
+      expectedDirectionSetVersion: 1,
+      commercialDirectionId: target.commercialDirectionId,
+      expectedDirectionVersion: 1,
+      refinementBrief: 'Make the positioning more restrained.',
+      idempotencyKey: 'refine-best-fit-1',
+      correlationId: 'correlation_refine-best-fit-1' as const
+    };
+    expect(() =>
+      assertTradingCommercialDirectionRefinementV1(command, before, after)
+    ).not.toThrow();
+    expect(() =>
+      assertTradingCommercialDirectionRefinementV1(command, before, {
+        ...after,
+        directions: [
+          after.directions[0],
+          { ...after.directions[1], summary: 'also changed' },
+          after.directions[2]
+        ]
+      })
+    ).toThrow(/only the explicitly targeted candidate/u);
+  });
+
+  it('fails closed on stale refinement versions', () => {
+    const before = directionSet();
+    expect(() =>
+      assertTradingCommercialDirectionRefinementV1(
+        {
+          schemaVersion: 1,
+          directionSetId: before.commercialDirectionSetId,
+          expectedDirectionSetVersion: 2,
+          commercialDirectionId: before.directions[0].commercialDirectionId,
+          expectedDirectionVersion: 1,
+          refinementBrief: 'Refine it.',
+          idempotencyKey: 'stale-refinement',
+          correlationId: 'correlation_stale-refinement'
+        },
+        before,
+        { ...before, version: 2 }
+      )
+    ).toThrow(/exact current DirectionSet version/u);
   });
 });
