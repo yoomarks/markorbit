@@ -130,6 +130,9 @@ describe('Lite Trading Direction Set persistence', () => {
     expect(await repository.save(command)).toEqual(value);
     expect(await repository.save(command)).toEqual(value);
     expect(await repository.getLatest(workspaceId, value.commercialDirectionSetId)).toEqual(value);
+    expect(
+      await repository.getExact(workspaceId, value.commercialDirectionSetId, value.version)
+    ).toEqual(value);
   });
 
   it('fails closed when the current Trademark Asset version changed', async () => {

@@ -1,15 +1,21 @@
 import { timingSafeEqual } from 'node:crypto';
 import { parseInternalWorkspacePrincipal, type WorkspacePrincipal } from '@markorbit/contracts';
 import type { TradingStandardStudioRunId } from '@markorbit/contracts/trading-studio-usage';
+import type { TradingCommercialDirectionSetId } from '@markorbit/contracts/trading-commercial-direction';
 import { HttpError, json, type JsonRequest, type JsonRoute } from '@markorbit/service-kit';
 import {
   TradingStudioRunPersistenceError,
   type PostgresTradingStudioRunStore
 } from './trading-studio-run.js';
+import {
+  TradingDirectionSetPersistenceError,
+  type PostgresTradingDirectionSetStore
+} from './trading-direction-set.js';
 
 export interface TradingStudioReadRouteOptions {
   internalServiceSecret: string;
   runs: Pick<PostgresTradingStudioRunStore, 'getLatest'>;
+  directionSets: Pick<PostgresTradingDirectionSetStore, 'getExact'>;
 }
 
 function trusted(configured: string, supplied: string | undefined): boolean {
@@ -67,6 +73,32 @@ export function createTradingStudioReadRoutes(options: TradingStudioReadRouteOpt
           return json(200, { run });
         } catch (error) {
           if (error instanceof TradingStudioRunPersistenceError)
+            throw new HttpError(error.status, error.code, error.message, error.retryable);
+          throw error;
+        }
+      }
+    },
+    {
+      method: 'GET',
+      path: '/v1/trading/direction-sets/:directionSetId/versions/:version',
+      handle: async (request) => {
+        const principal = principalOf(request, options.internalServiceSecret);
+        if (request.body !== undefined || Object.keys(request.query).length)
+          throw new HttpError(
+            400,
+            'INVALID_REQUEST',
+            'Direction Set read accepts only path fields.'
+          );
+        const version = Number(request.params.version);
+        try {
+          const directionSet = await options.directionSets.getExact(
+            principal.workspaceId,
+            request.params.directionSetId! as TradingCommercialDirectionSetId,
+            version
+          );
+          return json(200, { directionSet });
+        } catch (error) {
+          if (error instanceof TradingDirectionSetPersistenceError)
             throw new HttpError(error.status, error.code, error.message, error.retryable);
           throw error;
         }

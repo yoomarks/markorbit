@@ -44,6 +44,7 @@ import {
 import { createTrademarkAssetReadRoutes } from './trademark-asset-http.js';
 import { createTradingStudioReadRoutes } from './trading-studio-http.js';
 import { PostgresTradingStudioRunStore } from './trading-studio-run.js';
+import { PostgresTradingDirectionSetStore } from './trading-direction-set.js';
 import { TrademarkAssetAiGuidePreparer } from './trademark-asset-ai-guide.js';
 import { PostgresTrademarkAssetCommerceStore } from './trademark-asset-commerce.js';
 import { PostgresTrademarkAssetManagementDispositionStore } from './trademark-asset-management-disposition.js';
@@ -298,7 +299,8 @@ const runtime = createServiceRuntime(serviceManifest, {
   routes: [
     ...createTradingStudioReadRoutes({
       internalServiceSecret,
-      runs: new PostgresTradingStudioRunStore(database, pool)
+      runs: new PostgresTradingStudioRunStore(database, pool),
+      directionSets: new PostgresTradingDirectionSetStore(database, pool)
     }),
     ...createContentStudioRoutes({
       internalServiceSecret,
