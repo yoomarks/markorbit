@@ -4,7 +4,10 @@ import {
   type TradingCommercialDirectionSetV1
 } from '@markorbit/contracts/trading-commercial-direction';
 import {
+  assertCreateTradingDirectionSelectionCommandV1,
   assertTradingDirectionSelectionV1,
+  tradingDirectionSelectionAuthorityConsequencesV1,
+  type CreateTradingDirectionSelectionCommandV1,
   type TradingDirectionSelectionId,
   type TradingDirectionSelectionV1
 } from '@markorbit/contracts/trading-direction-selection';
@@ -81,6 +84,68 @@ export class PostgresTradingDirectionSelectionStore {
     private readonly query: QueryClient,
     private readonly now: () => string = () => new Date().toISOString()
   ) {}
+
+  async recordExplicit(
+    workspaceIdValue: string,
+    command: Readonly<CreateTradingDirectionSelectionCommandV1>
+  ): Promise<TradingDirectionSelectionV1> {
+    try {
+      assertCreateTradingDirectionSelectionCommandV1(command);
+    } catch (error) {
+      throw new TradingDirectionSelectionPersistenceError(
+        'INVALID_INPUT',
+        'Direction Selection command validation failed.',
+        400,
+        false,
+        { cause: error instanceof Error ? error : undefined }
+      );
+    }
+    const workspace = workspaceId(workspaceIdValue);
+    const replay = await this.getByIdempotencyKey(workspace, command.idempotencyKey);
+    if (replay) {
+      if (
+        replay.directionSet.id !== command.directionSetId ||
+        replay.directionSet.version !== command.expectedDirectionSetVersion ||
+        replay.selectedDirection.id !== command.selectedDirectionId ||
+        replay.selectedDirection.version !== command.expectedDirectionVersion ||
+        replay.correlationId !== command.correlationId
+      )
+        throw new TradingDirectionSelectionPersistenceError(
+          'IDEMPOTENCY_CONFLICT',
+          'Idempotency key was reused.'
+        );
+      return replay;
+    }
+
+    const current = await this.getCurrentForDirectionSet(workspace, command.directionSetId);
+    const expectedVersion = current?.version ?? 0;
+    const directionSelectionId =
+      current?.directionSelectionId ??
+      (`trading-direction-selection_${command.directionSetId.slice('commercial-direction-set_'.length)}` as const);
+    return this.save({
+      expectedVersion,
+      idempotencyKey: command.idempotencyKey,
+      selection: {
+        schemaVersion: 1,
+        directionSelectionId,
+        workspaceId: workspace,
+        version: expectedVersion + 1,
+        status: 'CURRENT',
+        directionSet: {
+          id: command.directionSetId,
+          version: command.expectedDirectionSetVersion
+        },
+        selectedDirection: {
+          id: command.selectedDirectionId,
+          version: command.expectedDirectionVersion
+        },
+        selectionMethod: 'EXPLICIT_HUMAN_ACTION',
+        selectedAt: new Date(this.now()).toISOString(),
+        correlationId: command.correlationId,
+        authorityConsequences: tradingDirectionSelectionAuthorityConsequencesV1
+      }
+    });
+  }
 
   async save(
     command: Readonly<SaveTradingDirectionSelectionCommand>
@@ -298,6 +363,41 @@ export class PostgresTradingDirectionSelectionStore {
           'VERSION_CONFLICT',
           'Direction Selection head does not reference a current selection.'
         );
+      return selection;
+    } catch (error) {
+      if (error instanceof TradingDirectionSelectionPersistenceError) throw error;
+      throw new TradingDirectionSelectionPersistenceError(
+        'PERSISTENCE_UNAVAILABLE',
+        'Direction Selection persistence is unavailable.',
+        503,
+        true,
+        { cause: error instanceof Error ? error : undefined }
+      );
+    }
+  }
+
+  private async getByIdempotencyKey(
+    workspace: string,
+    idempotencyKeyValue: string
+  ): Promise<TradingDirectionSelectionV1 | undefined> {
+    const idempotencyKey = key(idempotencyKeyValue);
+    try {
+      const result = await this.query.query(
+        `SELECT selection.document_json AS selection_json,direction_set.document_json AS direction_set_json
+           FROM lite_trading_direction_selection_versions selection
+           JOIN lite_trading_direction_set_versions direction_set
+             ON direction_set.workspace_id=selection.workspace_id
+            AND direction_set.direction_set_id=selection.direction_set_id
+            AND direction_set.version=selection.direction_set_version
+          WHERE selection.workspace_id=$1 AND selection.idempotency_key=$2`,
+        [workspace, idempotencyKey]
+      );
+      const row = result.rows[0] as Row | undefined;
+      if (!row) return undefined;
+      const selection = clone(row.selection_json as TradingDirectionSelectionV1);
+      const directionSet = clone(row.direction_set_json as TradingCommercialDirectionSetV1);
+      assertTradingCommercialDirectionSetV1(directionSet);
+      assertTradingDirectionSelectionV1(selection, directionSet);
       return selection;
     } catch (error) {
       if (error instanceof TradingDirectionSelectionPersistenceError) throw error;
