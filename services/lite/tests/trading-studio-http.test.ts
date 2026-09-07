@@ -56,7 +56,8 @@ function route() {
   const found = createTradingStudioReadRoutes({
     internalServiceSecret: secret,
     runs: { getLatest: () => Promise.resolve(run) },
-    directionSets: { getExact: () => Promise.resolve({} as TradingCommercialDirectionSetV1) }
+    directionSets: { getExact: () => Promise.resolve({} as TradingCommercialDirectionSetV1) },
+    selections: { getCurrentForDirectionSet: () => Promise.resolve(undefined) }
   })[0];
   if (!found) throw new Error('Trading Studio read route missing.');
   return found;
@@ -67,6 +68,7 @@ function directionRoute() {
   const found = createTradingStudioReadRoutes({
     internalServiceSecret: secret,
     runs: { getLatest: () => Promise.resolve(run) },
+    selections: { getCurrentForDirectionSet: () => Promise.resolve(undefined) },
     directionSets: {
       getExact: (actualWorkspace, id, version) => {
         expect([actualWorkspace, id, version]).toEqual([
@@ -109,5 +111,22 @@ describe('Lite Trading Studio read HTTP boundary', () => {
       params: { directionSetId: 'commercial-direction-set_1', version: '2' }
     });
     expect(response.body).toEqual({ directionSet });
+  });
+
+  it('restores the current explicit Selection for a Direction Set', async () => {
+    const selection = { directionSelectionId: 'trading-direction-selection_1' };
+    const found = createTradingStudioReadRoutes({
+      internalServiceSecret: secret,
+      runs: { getLatest: () => Promise.resolve(run) },
+      directionSets: { getExact: () => Promise.resolve({} as TradingCommercialDirectionSetV1) },
+      selections: { getCurrentForDirectionSet: () => Promise.resolve(selection as never) }
+    })[2];
+    if (!found) throw new Error('Current Selection route missing.');
+    const response = await found.handle({
+      ...request(),
+      path: '/v1/trading/direction-sets/commercial-direction-set_1/selection',
+      params: { directionSetId: 'commercial-direction-set_1' }
+    });
+    expect(response.body).toEqual({ selection });
   });
 });
