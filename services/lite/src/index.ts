@@ -18,6 +18,7 @@ export * from './trademark-asset-refresh.js';
 export * from './trading-studio-run.js';
 export * from './trading-direction-set.js';
 export * from './trading-direction-selection.js';
+export * from './trading-studio-http.js';
 export * from './trademark-asset-management-signal.js';
 export * from './trademark-asset-management-recommendation.js';
 export * from './trademark-asset-management-handoff.js';
