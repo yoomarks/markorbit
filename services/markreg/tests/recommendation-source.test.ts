@@ -120,6 +120,103 @@ function productionRead() {
   };
 }
 
+function strategyProductionRead() {
+  const value = productionRead();
+  value.source.current.capability = {
+    runtimeCapabilityDefinitionId:
+      'runtime-capability_us-trademark-mark-representation-strategy-source-v1',
+    version: 1,
+    capabilityId: 'markreg.us-trademark-mark-representation-strategy-source',
+    capabilityVersion: '1.0.0'
+  };
+  value.source.current.implementation = {
+    implementationProfileId:
+      'implementation-profile_us-trademark-mark-representation-strategy-source-v1',
+    version: 1,
+    implementationKey: 'brain-method-package-runtime.us-trademark-mark-representation-strategy.v1',
+    status: 'APPROVED'
+  };
+  value.source.sourceOutput = {
+    schemaVersion: 1,
+    outputSchemaId: 'brain.us-trademark-mark-representation-strategy.v1',
+    outputFingerprintSha256: 'f'.repeat(64)
+  };
+  value.source.sourceUse = {
+    currentness: 'CURRENT',
+    currentnessCheckedAt: '2026-09-07T05:00:00.000Z',
+    policy: {
+      policyId: 'source-use-policy.us-trademark-mark-representation-strategy.markreg.v1',
+      policyVersion: 1
+    },
+    provenanceRefs: ['producer:strategy:provenance'],
+    assumptions: [
+      'Trademark type and representation text are customer-supplied intake classifications, not USPTO drawing determinations.'
+    ],
+    limitations: [
+      'Only US mark-representation strategy is in scope; non-US targets are NOT_APPLICABLE.'
+    ]
+  };
+  const recommendationMaterial = {
+    outputFamilyId: 'us-trademark-mark-representation-strategy',
+    outputFamilyVersion: 1,
+    analyzedInputFingerprintSha256: '9'.repeat(64),
+    applicability: {
+      status: 'APPLICABLE',
+      reasonCode: 'BOUNDED_MARK_REPRESENTATION_DIMENSIONS',
+      candidates: [
+        {
+          dimension: 'WORDING_STANDARD_CHARACTER',
+          support: 'SUPPORTED_FOR_HUMAN_REVIEW',
+          rationaleCode: 'CUSTOMER_SUPPLIED_WORDING_DIMENSION',
+          evidenceRoles: [
+            'DECISION_FACTORS',
+            'DRAWING_TYPE_DEFINITIONS',
+            'PROTECTION_SCOPE_AND_SPECIAL_FORM_REQUIRED'
+          ]
+        }
+      ],
+      assumptions: [
+        'Trademark type and representation text are customer-supplied intake classifications, not USPTO drawing determinations.'
+      ],
+      limitations: [
+        'Only US mark-representation strategy is in scope; non-US targets are NOT_APPLICABLE.'
+      ],
+      provenanceRefs: ['knowledge-reference:uspto-mark-drawing-strategy'],
+      unsupportedConclusions: {
+        filingBasis: 'NOT_ESTABLISHED',
+        useClaim: 'NOT_ESTABLISHED',
+        registrability: 'NOT_ESTABLISHED',
+        clearance: 'NOT_ESTABLISHED',
+        classes: 'NOT_ESTABLISHED',
+        deadlines: 'NOT_ESTABLISHED',
+        legalEligibility: 'NOT_ESTABLISHED',
+        officeStatus: 'NOT_ESTABLISHED'
+      },
+      authorityConsequences: noRecommendationSourceAuthorityConsequences
+    },
+    method: {
+      methodId: 'brain-method_us-trademark-mark-representation-strategy',
+      methodVersionId: 'brain-method-version_us-trademark-mark-representation-strategy-20260906',
+      packageId: 'executable-method-package_us-trademark-mark-representation-strategy-20260906',
+      packageVersion: 2,
+      inputSchemaId: 'brain-input.us-trademark-mark-representation-strategy.v1',
+      outputSchemaId: 'brain.us-trademark-mark-representation-strategy.v1'
+    },
+    reference: {
+      documentContentSha256: '8'.repeat(64),
+      canonicalUri: 'https://www.uspto.gov/trademarks/basics/drawings-trademarks'
+    },
+    assumptions: [
+      'Trademark type and representation text are customer-supplied intake classifications, not USPTO drawing determinations.'
+    ],
+    limitations: [
+      'Only US mark-representation strategy is in scope; non-US targets are NOT_APPLICABLE.'
+    ],
+    authorityConsequences: noRecommendationSourceAuthorityConsequences
+  };
+  return { ...value, recommendationMaterial };
+}
+
 describe('MarkReg production Recommendation source boundary', () => {
   it('projects one valid Capability producer proof into the existing #385 source vocabulary', () => {
     const result = projectRecommendationSourceReferenceV1(productionRead());
@@ -272,6 +369,53 @@ describe('MarkReg production Recommendation source boundary', () => {
     await expect(malformed.read(productionReference(), principal)).resolves.toMatchObject({
       status: 'INVALID_PRODUCER_RESPONSE',
       code: 'INVALID_CAPABILITY_SOURCE_JSON'
+    });
+  });
+  it('retains Recommendation material only for the exact allowlisted strategy producer', () => {
+    const result = projectRecommendationSourceReferenceV1(strategyProductionRead());
+    expect(result).toMatchObject({
+      status: 'PRODUCTION_ADMISSIBLE',
+      source: {
+        sourceId: 'markreg.us-trademark-mark-representation-strategy-source',
+        admissionClass: 'PRODUCTION_ADMISSIBLE',
+        currentness: 'CURRENT'
+      },
+      recommendationMaterial: {
+        outputFamilyId: 'us-trademark-mark-representation-strategy',
+        outputFamilyVersion: 1,
+        analyzedInputFingerprintSha256: '9'.repeat(64),
+        candidates: [
+          {
+            dimension: 'WORDING_STANDARD_CHARACTER',
+            support: 'SUPPORTED_FOR_HUMAN_REVIEW'
+          }
+        ]
+      }
+    });
+    if (result.status !== 'PRODUCTION_ADMISSIBLE') throw new Error('expected strategy source');
+    expect(result.recommendationMaterial?.provenanceRefs).toEqual([
+      'knowledge-reference:uspto-mark-drawing-strategy'
+    ]);
+    expect(
+      Object.values(result.recommendationMaterial?.authorityConsequences ?? {}).every(
+        (value) => value === false
+      )
+    ).toBe(true);
+  });
+
+  it('rejects drifted or injected Recommendation material instead of widening the consumer allowlist', () => {
+    const wrongMethod = strategyProductionRead();
+    wrongMethod.recommendationMaterial.method.packageVersion = 3;
+    expect(projectRecommendationSourceReferenceV1(wrongMethod)).toMatchObject({
+      status: 'INVALID_PRODUCER_RESPONSE'
+    });
+
+    const feeWithInjectedMaterial = {
+      ...productionRead(),
+      recommendationMaterial: strategyProductionRead().recommendationMaterial
+    };
+    expect(projectRecommendationSourceReferenceV1(feeWithInjectedMaterial)).toMatchObject({
+      status: 'INVALID_PRODUCER_RESPONSE'
     });
   });
 });

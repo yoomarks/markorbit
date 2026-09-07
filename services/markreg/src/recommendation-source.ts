@@ -1,6 +1,7 @@
 import { encodeInternalWorkspacePrincipal, type WorkspacePrincipal } from '@markorbit/contracts';
 import {
   noRecommendationSourceAuthorityConsequences,
+  type RecommendationSourceAuthorityConsequencesV1,
   type RecommendationSourceReferenceV1
 } from '@markorbit/contracts/markreg-early-funnel';
 
@@ -14,11 +15,38 @@ export interface CapabilityProductionSourceExecutionReferenceTransportV1 {
   readonly sessionReceiptId: string;
 }
 
+export const MARKREG_RECOMMENDATION_CAPABLE_SOURCE_ID =
+  'markreg.us-trademark-mark-representation-strategy-source' as const;
+export const MARKREG_RECOMMENDATION_CAPABLE_OUTPUT_FAMILY_ID =
+  'us-trademark-mark-representation-strategy' as const;
+export const MARKREG_RECOMMENDATION_CAPABLE_OUTPUT_SCHEMA_ID =
+  'brain.us-trademark-mark-representation-strategy.v1' as const;
+
+export interface RecommendationMaterialCandidateV1 {
+  readonly dimension: 'WORDING_STANDARD_CHARACTER' | 'DESIGN_STYLIZATION_SPECIAL_FORM';
+  readonly support: 'SUPPORTED_FOR_HUMAN_REVIEW';
+  readonly rationaleCode:
+    'CUSTOMER_SUPPLIED_WORDING_DIMENSION' | 'CUSTOMER_SUPPLIED_DESIGN_OR_STYLIZATION_DIMENSION';
+  readonly evidenceRoles: readonly string[];
+}
+
+export interface RecommendationCapableSourceMaterialV1 {
+  readonly outputFamilyId: typeof MARKREG_RECOMMENDATION_CAPABLE_OUTPUT_FAMILY_ID;
+  readonly outputFamilyVersion: 1;
+  readonly analyzedInputFingerprintSha256: string;
+  readonly candidates: readonly RecommendationMaterialCandidateV1[];
+  readonly assumptions: readonly string[];
+  readonly limitations: readonly string[];
+  readonly provenanceRefs: readonly string[];
+  readonly authorityConsequences: Readonly<RecommendationSourceAuthorityConsequencesV1>;
+}
+
 export type RecommendationSourceReadResultV1 =
   | Readonly<{
       status: 'PRODUCTION_ADMISSIBLE';
       source: Readonly<RecommendationSourceReferenceV1>;
       producerReference: Readonly<CapabilityProductionSourceExecutionReferenceTransportV1>;
+      recommendationMaterial?: Readonly<RecommendationCapableSourceMaterialV1>;
     }>
   | Readonly<{
       status: 'DENIED' | 'NOT_FOUND' | 'CONFLICT' | 'UNAVAILABLE' | 'INVALID_PRODUCER_RESPONSE';
@@ -182,6 +210,167 @@ function referenceProvenance(value: unknown): readonly string[] {
   });
 }
 
+function parseRecommendationMaterial(
+  value: unknown
+): Readonly<RecommendationCapableSourceMaterialV1> {
+  const material = record(value, 'producer.recommendationMaterial');
+  if (
+    material.outputFamilyId !== MARKREG_RECOMMENDATION_CAPABLE_OUTPUT_FAMILY_ID ||
+    material.outputFamilyVersion !== 1
+  ) {
+    throw new TypeError('Recommendation material output family is not consumer-allowlisted.');
+  }
+  const analyzedInputFingerprintSha256 = sha256(
+    material.analyzedInputFingerprintSha256,
+    'producer.recommendationMaterial.analyzedInputFingerprintSha256'
+  );
+  const applicability = record(
+    material.applicability,
+    'producer.recommendationMaterial.applicability'
+  );
+  if (
+    applicability.status !== 'APPLICABLE' ||
+    applicability.reasonCode !== 'BOUNDED_MARK_REPRESENTATION_DIMENSIONS'
+  ) {
+    throw new TypeError('Recommendation material must be explicitly APPLICABLE.');
+  }
+  allFalse(
+    applicability.authorityConsequences,
+    'producer.recommendationMaterial.applicability.authorityConsequences'
+  );
+  const candidatesValue = applicability.candidates;
+  if (!Array.isArray(candidatesValue) || candidatesValue.length < 1 || candidatesValue.length > 2) {
+    throw new TypeError('Recommendation material must contain one or two bounded candidates.');
+  }
+  const candidates = candidatesValue.map((item, index) => {
+    const candidate = record(
+      item,
+      `producer.recommendationMaterial.applicability.candidates[${index}]`
+    );
+    const dimension = candidate.dimension;
+    if (
+      dimension !== 'WORDING_STANDARD_CHARACTER' &&
+      dimension !== 'DESIGN_STYLIZATION_SPECIAL_FORM'
+    ) {
+      throw new TypeError('Recommendation material contains an unsupported strategy dimension.');
+    }
+    if (candidate.support !== 'SUPPORTED_FOR_HUMAN_REVIEW') {
+      throw new TypeError('Recommendation material candidate is not bounded to human review.');
+    }
+    const expectedRationale =
+      dimension === 'WORDING_STANDARD_CHARACTER'
+        ? 'CUSTOMER_SUPPLIED_WORDING_DIMENSION'
+        : 'CUSTOMER_SUPPLIED_DESIGN_OR_STYLIZATION_DIMENSION';
+    if (candidate.rationaleCode !== expectedRationale) {
+      throw new TypeError(
+        'Recommendation material candidate rationale does not match its dimension.'
+      );
+    }
+    const evidenceRoles = stringList(
+      candidate.evidenceRoles,
+      `producer.recommendationMaterial.applicability.candidates[${index}].evidenceRoles`,
+      8
+    );
+    if (
+      evidenceRoles.join('|') !==
+      'DECISION_FACTORS|DRAWING_TYPE_DEFINITIONS|PROTECTION_SCOPE_AND_SPECIAL_FORM_REQUIRED'
+    ) {
+      throw new TypeError(
+        'Recommendation material candidate evidence roles are not the governed V1 set.'
+      );
+    }
+    return Object.freeze({
+      dimension,
+      support: 'SUPPORTED_FOR_HUMAN_REVIEW' as const,
+      rationaleCode: expectedRationale,
+      evidenceRoles
+    });
+  });
+  if (new Set(candidates.map((candidate) => candidate.dimension)).size !== candidates.length) {
+    throw new TypeError('Recommendation material contains duplicate strategy dimensions.');
+  }
+  const unsupported = record(
+    applicability.unsupportedConclusions,
+    'producer.recommendationMaterial.applicability.unsupportedConclusions'
+  );
+  for (const field of [
+    'filingBasis',
+    'useClaim',
+    'registrability',
+    'clearance',
+    'classes',
+    'deadlines',
+    'legalEligibility',
+    'officeStatus'
+  ]) {
+    if (unsupported[field] !== 'NOT_ESTABLISHED') {
+      throw new TypeError(`Recommendation material unsupported conclusion ${field} drifted.`);
+    }
+  }
+  const method = record(material.method, 'producer.recommendationMaterial.method');
+  if (
+    method.methodId !== 'brain-method_us-trademark-mark-representation-strategy' ||
+    method.methodVersionId !==
+      'brain-method-version_us-trademark-mark-representation-strategy-20260906' ||
+    method.packageId !==
+      'executable-method-package_us-trademark-mark-representation-strategy-20260906' ||
+    method.packageVersion !== 2 ||
+    method.outputSchemaId !== MARKREG_RECOMMENDATION_CAPABLE_OUTPUT_SCHEMA_ID
+  ) {
+    throw new TypeError(
+      'Recommendation material Method identity is not the governed #903 V1 package.'
+    );
+  }
+  const reference = record(material.reference, 'producer.recommendationMaterial.reference');
+  sha256(
+    reference.documentContentSha256,
+    'producer.recommendationMaterial.reference.documentContentSha256'
+  );
+  exactText(reference.canonicalUri, 'producer.recommendationMaterial.reference.canonicalUri', 2000);
+  allFalse(material.authorityConsequences, 'producer.recommendationMaterial.authorityConsequences');
+  const assumptions = stringList(
+    material.assumptions,
+    'producer.recommendationMaterial.assumptions',
+    32
+  );
+  const limitations = stringList(
+    material.limitations,
+    'producer.recommendationMaterial.limitations',
+    32
+  );
+  const applicabilityAssumptions = stringList(
+    applicability.assumptions,
+    'producer.recommendationMaterial.applicability.assumptions',
+    32
+  );
+  const applicabilityLimitations = stringList(
+    applicability.limitations,
+    'producer.recommendationMaterial.applicability.limitations',
+    32
+  );
+  if (
+    assumptions.join('\n') !== applicabilityAssumptions.join('\n') ||
+    limitations.join('\n') !== applicabilityLimitations.join('\n')
+  ) {
+    throw new TypeError('Recommendation material applicability assumptions/limitations drifted.');
+  }
+  return Object.freeze({
+    outputFamilyId: MARKREG_RECOMMENDATION_CAPABLE_OUTPUT_FAMILY_ID,
+    outputFamilyVersion: 1,
+    analyzedInputFingerprintSha256,
+    candidates: Object.freeze(candidates),
+    assumptions,
+    limitations,
+    provenanceRefs: stringList(
+      applicability.provenanceRefs,
+      'producer.recommendationMaterial.applicability.provenanceRefs',
+      64
+    ),
+    authorityConsequences: Object.freeze(
+      structuredClone(material.authorityConsequences) as RecommendationSourceAuthorityConsequencesV1
+    )
+  });
+}
 /**
  * Consumer projection only. Capability remains the admission/currentness authority; this function
  * verifies the bounded producer read shape and pins it into the already-governed #385 source
@@ -320,6 +509,14 @@ export function projectRecommendationSourceReferenceV1(
       ...referenceProvenance(source.referenceSources)
     ];
 
+    let recommendationMaterial: Readonly<RecommendationCapableSourceMaterialV1> | undefined;
+    if (capabilityId === MARKREG_RECOMMENDATION_CAPABLE_SOURCE_ID) {
+      recommendationMaterial = parseRecommendationMaterial(result.recommendationMaterial);
+    } else if (result.recommendationMaterial !== undefined) {
+      throw new TypeError(
+        'Only the explicit Recommendation-capable source family may expose recommendation material.'
+      );
+    }
     const projected: RecommendationSourceReferenceV1 = {
       sourceKind: 'CAPABILITY_RESULT',
       sourceId: capabilityId,
@@ -336,7 +533,8 @@ export function projectRecommendationSourceReferenceV1(
     return Object.freeze({
       status: 'PRODUCTION_ADMISSIBLE',
       source: Object.freeze(projected),
-      producerReference
+      producerReference,
+      ...(recommendationMaterial ? { recommendationMaterial } : {})
     });
   } catch (error) {
     return {

@@ -73,6 +73,9 @@ import { PostgresDurablePreparationLockService } from './durable-preparation-loc
 import { createDurablePreparationLockRoutes } from './durable-preparation-lock-http.js';
 import { PostgresProductionIntakeService } from './production-intake.js';
 import { createProductionIntakeRoutes } from './production-intake-http.js';
+import { HttpCapabilityRecommendationSourceReaderV1 } from './recommendation-source.js';
+import { PostgresProductionRecommendationService } from './production-recommendation.js';
+import { createProductionRecommendationRoutes } from './production-recommendation-http.js';
 import { PostgresCustomerRelationshipStore } from './customer-relationship.js';
 import { createCustomerRelationshipRoutes } from './customer-relationship-http.js';
 import {
@@ -258,6 +261,15 @@ if (fixtureRuntime) {
     internalServiceSecret,
     service: productionIntakeService
   });
+  const productionRecommendationService = new PostgresProductionRecommendationService(
+    database,
+    pool,
+    new HttpCapabilityRecommendationSourceReaderV1(capabilityUrl, internalServiceSecret)
+  );
+  const productionRecommendationRoutes = createProductionRecommendationRoutes({
+    internalServiceSecret,
+    service: productionRecommendationService
+  });
   const customerRelationshipRoutes = createCustomerRelationshipRoutes({
     internalServiceSecret,
     store: new PostgresCustomerRelationshipStore(database, pool)
@@ -339,6 +351,7 @@ if (fixtureRuntime) {
     extraRoutes: [
       ...durableMilestoneSnapshotRoutes,
       ...productionIntakeRoutes,
+      ...productionRecommendationRoutes,
       ...customerRelationshipRoutes,
       ...durablePreparationLockRoutes,
       ...commercialCheckoutRoutes,
