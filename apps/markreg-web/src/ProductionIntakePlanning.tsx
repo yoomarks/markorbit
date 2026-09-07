@@ -25,6 +25,7 @@ import {
   createProductionIntakeClient,
   type ProductionIntakeClient
 } from './api/production-intake.js';
+import { ProductionFeeFactsPanel } from './ProductionFeeFactsPanel.js';
 import './production-intake.css';
 
 export interface ProductionIntakeDraft {
@@ -666,6 +667,7 @@ function ReceivedIntake({
         Production Recommendation remains gated on a production-admissible source under #388. This
         Intake receipt does not fabricate options or advance the commercial or filing lifecycle.
       </Alert>
+      <ProductionFeeFactsPanel intake={record} />
       <Button variant="secondary" onClick={onStartAnother}>
         Start another Intake
       </Button>

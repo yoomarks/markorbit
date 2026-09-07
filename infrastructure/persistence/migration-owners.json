@@ -68,7 +68,8 @@
     "core_brain_registry": "@markorbit/core-service",
     "core_brain_gap_registry": "@markorbit/core-service",
     "core_official_fee_reference": "@markorbit/core-service",
-    "markreg_matter_intelligence_commands": "@markorbit/markreg-service"
+    "markreg_matter_intelligence_commands": "@markorbit/markreg-service",
+    "markreg_production_fee_facts": "@markorbit/markreg-service"
   },
   "migrations": {
     "0018_identity_workspace_membership": "@markorbit/core-service",
@@ -149,6 +150,7 @@
     "0093_mgsn_allocation_admission_lineage_integrity": "@markorbit/mgsn-service",
     "0094_mgsn_allocation_admission_lineage_replay_audit_integrity": "@markorbit/mgsn-service",
     "0095_core_governed_human_action_receipts": "@markorbit/core-service",
-    "0096_markreg_customer_relationships": "@markorbit/markreg-service"
+    "0096_markreg_customer_relationships": "@markorbit/markreg-service",
+    "0097_markreg_production_fee_facts": "@markorbit/markreg-service"
   }
 }

@@ -7,7 +7,10 @@ import {
   parseQuoteCreateCommand,
   type WorkspacePrincipal
 } from '@markorbit/contracts';
-import { parseCreateProductionIntakeCommandV1 } from '@markorbit/contracts/markreg-early-funnel';
+import {
+  parseCreateProductionFeeFactsCommandV1,
+  parseCreateProductionIntakeCommandV1
+} from '@markorbit/contracts/markreg-early-funnel';
 import { HttpError, json, type JsonRequest, type JsonRoute } from '@markorbit/service-kit';
 import { randomUUID } from 'node:crypto';
 import {
@@ -36,6 +39,16 @@ const topLevelAuthorityFields = [
   'subjectUserId'
 ] as const;
 const productionIntakeAuthorityFields = ['actor', ...topLevelAuthorityFields] as const;
+const productionFeeFactsForbiddenFields = [
+  'actor',
+  'intakeId',
+  'classCount',
+  'filingBasisSourceClass',
+  'classSelectionSourceClass',
+  'filingBasisProvenance',
+  'classSelectionProvenance',
+  ...topLevelAuthorityFields
+] as const;
 const matterIntelligenceQueryFields = ['page', 'pageSize', 'reviewHistoryLimit'] as const;
 
 function bodyRecord(request: JsonRequest): Record<string, unknown> {
@@ -91,6 +104,18 @@ function rejectProductionIntakeAuthoritySpoof(body: Readonly<Record<string, unkn
       400,
       'ACTOR_SPOOF_REJECTED',
       `${field} is trusted authority context and must not be supplied by the browser.`
+    );
+}
+
+function rejectProductionFeeFactsSpoof(body: Readonly<Record<string, unknown>>): void {
+  const field = productionFeeFactsForbiddenFields.find((candidate) =>
+    Object.prototype.hasOwnProperty.call(body, candidate)
+  );
+  if (field)
+    throw new HttpError(
+      400,
+      'INVALID_PRODUCTION_FEE_FACTS_REQUEST',
+      `${field} is trusted, path-bound, or server-derived and must not be supplied by the browser.`
     );
 }
 
@@ -318,6 +343,46 @@ export function createGatewayMarkRegEarlyFunnelRoutes(
     }
   };
 
+  const forwardProductionFeeFactsRead = async (
+    request: JsonRequest,
+    principal: WorkspacePrincipal
+  ) => {
+    if (!options.internalServiceSecret)
+      throw new HttpError(503, 'DOWNSTREAM_UNAVAILABLE', 'MarkReg service authentication is unavailable.', true);
+    const intakeId = encodeURIComponent(request.params.intakeId ?? '');
+    const expected = request.query.expectedIntakeVersion;
+    if (!expected || !/^\d+$/.test(expected))
+      throw new HttpError(
+        400,
+        'INVALID_PRODUCTION_FEE_FACTS_REQUEST',
+        'expectedIntakeVersion is required for exact fee-facts readback.'
+      );
+    try {
+      const response = await fetch(
+        `${options.markRegUrl}/internal/v1/production-intakes/${intakeId}/fee-facts/current?expectedIntakeVersion=${encodeURIComponent(expected)}`,
+        {
+          method: 'GET',
+          headers: {
+            'content-type': 'application/json',
+            'x-markorbit-internal-authorization': options.internalServiceSecret,
+            'x-markorbit-principal': encodeInternalWorkspacePrincipal(principal),
+            'x-markorbit-workspace-id': principal.workspaceId,
+            ...(request.headers['x-correlation-id']
+              ? { 'x-correlation-id': request.headers['x-correlation-id'] }
+              : {}),
+            ...(request.headers['x-request-id']
+              ? { 'x-request-id': request.headers['x-request-id'] }
+              : {})
+          }
+        }
+      );
+      return json(response.status, await response.json());
+    } catch (error) {
+      if (error instanceof HttpError) throw error;
+      throw new HttpError(503, 'DOWNSTREAM_UNAVAILABLE', 'MarkReg service is unavailable.', true);
+    }
+  };
+
   const forwardFormalMatterRead = async (
     request: JsonRequest,
     principal: WorkspacePrincipal,
@@ -476,6 +541,55 @@ export function createGatewayMarkRegEarlyFunnelRoutes(
     handle: async (request) => {
       const principal = await authenticateRead(request);
       return forwardProductionIntakeRead(request, principal);
+    }
+  };
+
+  const productionFeeFactsRoute: JsonRoute = {
+    method: 'POST',
+    path: '/api/markreg/production-intakes/:intakeId/fee-facts',
+    handle: async (request) => {
+      const body = bodyRecord(request);
+      rejectProductionFeeFactsSpoof(body);
+      const key = idempotency(request, body);
+      const correlation = correlationId(request);
+      const principal = await authenticate(request);
+      let command;
+      try {
+        command = parseCreateProductionFeeFactsCommandV1({
+          schemaVersion: body.schemaVersion,
+          intakeId: request.params.intakeId,
+          expectedIntakeVersion: body.expectedIntakeVersion,
+          filingBasis: body.filingBasis,
+          niceClasses: body.niceClasses,
+          filingBasisSourceClass: 'CUSTOMER_SUPPLIED',
+          classSelectionSourceClass: 'CUSTOMER_SUPPLIED',
+          idempotencyKey: key,
+          correlationId: correlation
+        });
+      } catch (error) {
+        throw new HttpError(
+          400,
+          'INVALID_PRODUCTION_FEE_FACTS_REQUEST',
+          error instanceof Error ? error.message : 'Production fee facts are invalid.'
+        );
+      }
+      return forward(
+        request,
+        principal,
+        '/internal/v1/production-fee-facts',
+        command,
+        key,
+        correlation
+      );
+    }
+  };
+
+  const productionFeeFactsReadRoute: JsonRoute = {
+    method: 'GET',
+    path: '/api/markreg/production-intakes/:intakeId/fee-facts/current',
+    handle: async (request) => {
+      const principal = await authenticateRead(request);
+      return forwardProductionFeeFactsRead(request, principal);
     }
   };
 
@@ -704,6 +818,8 @@ const matterDraftRoute: JsonRoute = {
   return [
     productionIntakeRoute,
     productionIntakeReadRoute,
+    productionFeeFactsRoute,
+    productionFeeFactsReadRoute,
     intakeRoute,
     quoteRoute,
     confirmationRoute,

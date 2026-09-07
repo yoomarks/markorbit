@@ -4,9 +4,11 @@ import {
   assertRecommendationEligibleForQuoteV1,
   noEarlyFunnelAuthorityConsequences,
   noRecommendationSourceAuthorityConsequences,
+  parseCreateProductionFeeFactsCommandV1,
   parseCreateProductionIntakeCommandV1,
   parseCreateProductionQuoteCommandV1,
   parseCreateUserSelectionCommandV1,
+  parseProductionFeeFactsV1,
   parseProductionQuoteV1,
   parseProductionRecommendationV1,
   parseQuoteArtifactV1,
@@ -268,6 +270,67 @@ describe('MarkReg early-funnel production contract V1', () => {
     expect(() =>
       parseCreateUserSelectionCommandV1({ ...command, selectedOptionCode: 'D' })
     ).toThrow(/A, B, or C/);
+  });
+
+  it('keeps production fee facts explicit, exact and mechanically counted', () => {
+    const command = {
+      schemaVersion: 1,
+      intakeId: 'intake_production-1',
+      expectedIntakeVersion: 3,
+      filingBasis: 'SECTION_1',
+      niceClasses: [9, 42],
+      filingBasisSourceClass: 'CUSTOMER_SUPPLIED',
+      classSelectionSourceClass: 'CUSTOMER_SUPPLIED',
+      idempotencyKey: 'fee-facts-1',
+      correlationId: 'correlation_fee-facts-1'
+    } as const;
+    expect(parseCreateProductionFeeFactsCommandV1(command)).toEqual(command);
+    expect(() =>
+      parseCreateProductionFeeFactsCommandV1({ ...command, niceClasses: [42, 9] })
+    ).toThrow(/strictly ascending/);
+    expect(() =>
+      parseCreateProductionFeeFactsCommandV1({ ...command, niceClasses: [9, 9] })
+    ).toThrow(/duplicate/);
+    expect(() => parseCreateProductionFeeFactsCommandV1({ ...command, classCount: 2 })).toThrow(
+      /server-derived/
+    );
+    expect(() =>
+      parseCreateProductionFeeFactsCommandV1({ ...command, workspaceId: 'attacker' })
+    ).toThrow(/trusted authority context/);
+
+    const feeFacts = {
+      schemaVersion: 1,
+      feeFactsId: 'fee-facts_production-1',
+      workspaceId: 'workspace-385',
+      version: 1,
+      currentness: 'CURRENT',
+      intake: { id: command.intakeId, version: 3, fingerprintSha256: fingerprintA },
+      filingBasis: command.filingBasis,
+      niceClasses: command.niceClasses,
+      classCount: 2,
+      filingBasisProvenance: {
+        sourceClass: 'CUSTOMER_SUPPLIED',
+        actorId: 'user-1',
+        membershipId: 'membership-1',
+        establishedAt: now
+      },
+      classSelectionProvenance: {
+        sourceClass: 'CUSTOMER_SUPPLIED',
+        actorId: 'user-1',
+        membershipId: 'membership-1',
+        establishedAt: now
+      },
+      recordedAt: now,
+      fingerprintSha256: fingerprintB,
+      authorityConsequences: noEarlyFunnelAuthorityConsequences
+    } as const;
+    expect(parseProductionFeeFactsV1(feeFacts)).toMatchObject({
+      filingBasis: 'SECTION_1',
+      niceClasses: [9, 42],
+      classCount: 2,
+      currentness: 'CURRENT'
+    });
+    expect(() => parseProductionFeeFactsV1({ ...feeFacts, classCount: 3 })).toThrow(/must equal/);
   });
 
   it('represents fixture/test Quote truth without admitting it as production', () => {
