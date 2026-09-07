@@ -9,9 +9,15 @@ import {
 describe('M10 WP05 Trademark Asset Commerce Profile contract', () => {
   it('keeps sale configuration separate from Marketplace publication and official trademark truth', () => {
     expect(trademarkAssetSaleIntents).toEqual(['NOT_FOR_SALE', 'FOR_SALE']);
-    expect(trademarkAssetSellerRoles).toEqual(['OWNER', 'AUTHORIZED_REPRESENTATIVE']);
+    expect(trademarkAssetSellerRoles).toEqual([
+      'OWNER',
+      'AUTHORIZED_REPRESENTATIVE',
+      'BROKER_REPRESENTATIVE',
+      'OTHER'
+    ]);
     expect(trademarkAssetCommerceAuthority).toMatchObject({
       mayConfigureSaleIntent: true,
+      mayDeclareWorkspaceSellerRelationship: true,
       mayConfigureWorkspaceAskingPrice: true,
       mayApplyCommerceAiTags: true,
       mayCreateMarketplaceListingAutomatically: false,
@@ -23,6 +29,36 @@ describe('M10 WP05 Trademark Asset Commerce Profile contract', () => {
       mayCompleteSaleOrTransfer: false
     });
   });
+
+  it.each(trademarkAssetSellerRoles)(
+    'keeps %s as a declared relationship rather than verified owner truth',
+    (sellerRole) => {
+      const profile: TrademarkAssetCommerceProfile = {
+        schemaVersion: 1,
+        commerceProfileId: 'trademark-asset-commerce_relationship',
+        workspaceId: '85858585-8585-4858-8858-858585858585',
+        trademarkAssetId: 'trademark-asset_relationship',
+        trademarkAssetVersion: 2,
+        version: 1,
+        saleIntent: 'FOR_SALE',
+        negotiable: false,
+        saleTerritories: [],
+        sellerRole,
+        sellingPoints: [],
+        aiTags: [],
+        mediaAssetReferences: [],
+        marketplaceListingCreatedByLite: false,
+        sourceTrademarkFactsMutatedByLite: false,
+        createdAt: '2026-09-07T02:00:00.000Z',
+        updatedAt: '2026-09-07T02:00:00.000Z'
+      };
+
+      expect(profile.sellerRole).toBe(sellerRole);
+      expect(trademarkAssetCommerceAuthority.mayVerifyOwnershipOrRepresentationAuthority).toBe(
+        false
+      );
+    }
+  );
 
   it('represents display and sales metadata without claiming Marketplace publication', () => {
     const profile: TrademarkAssetCommerceProfile = {

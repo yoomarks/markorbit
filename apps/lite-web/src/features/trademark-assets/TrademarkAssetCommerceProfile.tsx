@@ -51,6 +51,13 @@ const values = (value: string) =>
     .map((item) => item.trim())
     .filter(Boolean);
 
+const sellerRelationshipLabels: Readonly<Record<TrademarkAssetSellerRole, string>> = {
+  OWNER: 'Owner',
+  AUTHORIZED_REPRESENTATIVE: 'Authorized agent',
+  BROKER_REPRESENTATIVE: 'Broker / representative',
+  OTHER: 'Other relationship'
+};
+
 function formState(profile?: Readonly<TrademarkAssetCommerceProfile>): FormState {
   return {
     saleIntent: profile?.saleIntent ?? 'NOT_FOR_SALE',
@@ -213,8 +220,9 @@ export function TrademarkAssetCommerceProfileSection({
               </dd>
             </div>
             <div>
-              <dt>Seller role</dt>
-              <dd>{current.sellerRole === 'OWNER' ? 'Owner' : 'Authorized representative'}</dd>
+              <dt>Seller relationship</dt>
+              <dd>{sellerRelationshipLabels[current.sellerRole]}</dd>
+              <small>Workspace-declared context; not ownership or authority verification.</small>
             </div>
             <div>
               <dt>Seller-provided asking price</dt>
@@ -273,14 +281,16 @@ export function TrademarkAssetCommerceProfileSection({
               <option value="FOR_SALE">Prepare for sale</option>
             </Select>
             <Select
-              label="Seller role"
+              label="Seller relationship"
               value={draft.sellerRole}
               onChange={(event) =>
                 setDraft({ ...draft, sellerRole: event.target.value as TrademarkAssetSellerRole })
               }
             >
               <option value="OWNER">Owner</option>
-              <option value="AUTHORIZED_REPRESENTATIVE">Authorized representative</option>
+              <option value="AUTHORIZED_REPRESENTATIVE">Authorized agent</option>
+              <option value="BROKER_REPRESENTATIVE">Broker / representative</option>
+              <option value="OTHER">Other relationship</option>
             </Select>
             <TextInput
               label="Asking price amount (minor units)"

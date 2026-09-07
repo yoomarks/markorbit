@@ -148,7 +148,7 @@ describe('TrademarkAssetPortfolio', () => {
     await user.click(await screen.findByRole('button', { name: 'View asset details' }));
 
     expect(await screen.findByText('Durably reloaded sale context')).toBeInTheDocument();
-    expect(screen.getByText('Authorized representative')).toBeInTheDocument();
+    expect(screen.getByText('Authorized agent')).toBeInTheDocument();
   });
 
   it('preserves loaded Asset and Commerce Profile truth when AI Guide preparation is stale', async () => {

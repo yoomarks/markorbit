@@ -65,6 +65,24 @@ describe('authenticated Trademark Asset Commerce HTTP boundary', () => {
     });
   });
 
+  it.each(['BROKER_REPRESENTATIVE', 'OTHER'] as const)(
+    'forwards the declared %s relationship without accepting browser authority',
+    async (sellerRole) => {
+      const { commerce, write, request } = setup();
+      await write.handle({
+        ...request,
+        body: { ...(request.body as object), sellerRole }
+      });
+      expect(commerce.upsert).toHaveBeenCalledWith(
+        expect.objectContaining({
+          workspaceId,
+          trademarkAssetId: assetId,
+          sellerRole
+        })
+      );
+    }
+  );
+
   it.each([
     ['x-markorbit-internal-authorization', 'wrong', 401],
     ['x-markorbit-principal', 'invalid', 401],

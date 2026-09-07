@@ -301,7 +301,7 @@ suite('PostgreSQL M10-WP-05 Trademark Asset Commerce Profile', () => {
       askingPrice: { amountMinor: 280000, currency: 'usd' },
       negotiable: true,
       saleTerritories: ['us', 'gb'],
-      sellerRole: 'AUTHORIZED_REPRESENTATIVE',
+      sellerRole: 'BROKER_REPRESENTATIVE',
       headline: 'Short ecommerce-ready mark',
       sellingPoints: ['Short name', 'Easy pronunciation'],
       aiTags: ['ecommerce', 'short-name'],
@@ -313,6 +313,7 @@ suite('PostgreSQL M10-WP-05 Trademark Asset Commerce Profile', () => {
     expect(created).toMatchObject({
       version: 1,
       saleIntent: 'FOR_SALE',
+      sellerRole: 'BROKER_REPRESENTATIVE',
       askingPrice: { amountMinor: 280000, currency: 'USD' },
       marketplaceListingCreatedByLite: false,
       sourceTrademarkFactsMutatedByLite: false
@@ -327,7 +328,7 @@ suite('PostgreSQL M10-WP-05 Trademark Asset Commerce Profile', () => {
       askingPrice: { amountMinor: 280000, currency: 'usd' },
       negotiable: true,
       saleTerritories: ['us', 'gb'],
-      sellerRole: 'AUTHORIZED_REPRESENTATIVE',
+      sellerRole: 'BROKER_REPRESENTATIVE',
       headline: 'Short ecommerce-ready mark',
       sellingPoints: ['Short name', 'Easy pronunciation'],
       aiTags: ['ecommerce', 'short-name'],
