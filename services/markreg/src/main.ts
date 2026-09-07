@@ -76,6 +76,11 @@ import { createProductionIntakeRoutes } from './production-intake-http.js';
 import { HttpCapabilityRecommendationSourceReaderV1 } from './recommendation-source.js';
 import { PostgresProductionRecommendationService } from './production-recommendation.js';
 import { createProductionRecommendationRoutes } from './production-recommendation-http.js';
+import {
+  HttpProductionRecommendationSourceInvokerV1,
+  ProductionRecommendationOrchestrationServiceV1
+} from './production-recommendation-orchestration.js';
+import { createProductionRecommendationOrchestrationRoutesV1 } from './production-recommendation-orchestration-http.js';
 import { PostgresProductionUserSelectionService } from './production-user-selection.js';
 import { createProductionUserSelectionRoutes } from './production-user-selection-http.js';
 import { ProductionServicePricingSourceService } from './production-service-pricing-source.js';
@@ -274,6 +279,18 @@ if (fixtureRuntime) {
     internalServiceSecret,
     service: productionRecommendationService
   });
+  const productionRecommendationOrchestrationRoutes =
+    createProductionRecommendationOrchestrationRoutesV1({
+      internalServiceSecret,
+      service: new ProductionRecommendationOrchestrationServiceV1({
+        intakes: productionIntakeService,
+        recommendations: productionRecommendationService,
+        source: new HttpProductionRecommendationSourceInvokerV1(
+          capabilityUrl,
+          internalServiceSecret
+        )
+      })
+    });
   const productionUserSelectionService = new PostgresProductionUserSelectionService(database, pool);
   const productionUserSelectionRoutes = createProductionUserSelectionRoutes({
     internalServiceSecret,
@@ -368,6 +385,7 @@ if (fixtureRuntime) {
       ...durableMilestoneSnapshotRoutes,
       ...productionIntakeRoutes,
       ...productionRecommendationRoutes,
+      ...productionRecommendationOrchestrationRoutes,
       ...productionUserSelectionRoutes,
       ...productionServicePricingSourceRoutes,
       ...customerRelationshipRoutes,
