@@ -99,6 +99,13 @@ function repository() {
   let savedFingerprint: string | undefined;
   const query = (sql: string, values?: readonly unknown[]) => {
     if (sql.includes('pg_advisory_xact_lock')) return Promise.resolve({ rows: [] });
+    if (sql.includes('AS selection_json') && sql.includes('selection.idempotency_key=$2'))
+      return Promise.resolve({
+        rows:
+          saved && values?.[1] === savedKey
+            ? [{ selection_json: saved, direction_set_json: set }]
+            : []
+      });
     if (sql.includes('idempotency_key=$2'))
       return Promise.resolve({
         rows:
@@ -135,6 +142,36 @@ function repository() {
 }
 
 describe('Lite Trading explicit Direction Selection persistence', () => {
+  it('records and idempotently replays a server-authored explicit human choice', async () => {
+    const store = repository();
+    const command = {
+      schemaVersion: 1 as const,
+      directionSetId: directionSet().commercialDirectionSetId,
+      expectedDirectionSetVersion: 1,
+      selectedDirectionId: directionSet().directions[0].commercialDirectionId,
+      expectedDirectionVersion: 1,
+      idempotencyKey: 'record-explicit-direction',
+      correlationId: 'correlation_record-explicit-direction' as const
+    };
+
+    const recorded = await store.recordExplicit(workspaceId, command);
+    expect(recorded).toMatchObject({
+      directionSelectionId: 'trading-direction-selection_1',
+      version: 1,
+      selectionMethod: 'EXPLICIT_HUMAN_ACTION',
+      directionSet: { id: command.directionSetId, version: 1 },
+      selectedDirection: { id: command.selectedDirectionId, version: 1 },
+      authorityConsequences: { deepBuildStarted: false }
+    });
+    await expect(store.recordExplicit(workspaceId, command)).resolves.toEqual(recorded);
+    await expect(
+      store.recordExplicit(workspaceId, {
+        ...command,
+        selectedDirectionId: directionSet().directions[1].commercialDirectionId
+      })
+    ).rejects.toMatchObject({ code: 'IDEMPOTENCY_CONFLICT' });
+  });
+
   it('saves, replays and reloads one exact human selection', async () => {
     const store = repository();
     const value = selection();
