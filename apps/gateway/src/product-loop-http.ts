@@ -348,6 +348,7 @@ export function createGatewayProductLoopRoutes(
       opportunityQualificationAuthoritySpoofFields
     ),
     route('GET', '/api/lite/trademark-assets', ['workspace:read'], 'READ'),
+    route('GET', '/api/lite/trading/studio-runs/:studioRunId/state', ['workspace:read'], 'READ'),
     {
       method: 'GET',
       path: '/api/lite/trademark-assets/:trademarkAssetId',

@@ -144,6 +144,45 @@ describe('Gateway Lite Product-loop transport boundary', () => {
     });
   });
 
+  it('forwards the composed Trading Studio state as a read-only owner request', async () => {
+    const downstream = vi.fn((url: string, init: RequestInit) => {
+      expect(url).toBe('http://lite.test/v1/trading/studio-runs/trading-studio-run_1/state');
+      expect(init.method).toBe('GET');
+      expect(init.body).toBeUndefined();
+      return Promise.resolve(
+        new Response(
+          JSON.stringify({
+            run: { studioRunId: 'trading-studio-run_1' },
+            directionSet: null,
+            selection: null
+          }),
+          { status: 200, headers: { 'content-type': 'application/json' } }
+        )
+      );
+    });
+    vi.stubGlobal('fetch', downstream);
+
+    const result = await route('GET', '/api/lite/trading/studio-runs/:studioRunId/state').handle({
+      method: 'GET',
+      path: '/api/lite/trading/studio-runs/trading-studio-run_1/state',
+      params: { studioRunId: 'trading-studio-run_1' },
+      query: {},
+      headers: {
+        cookie: 'mo_session=token',
+        'x-markorbit-workspace-id': workspaceId
+      },
+      body: undefined
+    });
+
+    expect(result.status).toBe(200);
+    expect(result.body).toEqual({
+      run: { studioRunId: 'trading-studio-run_1' },
+      directionSet: null,
+      selection: null
+    });
+    expect(resolveWorkspace).toHaveBeenCalledWith('token', workspaceId, undefined);
+  });
+
   it('forwards feedback mutation with trusted principal and never accepts client actor identity', async () => {
     const downstream = vi.fn((url: string, init: RequestInit) => {
       expect(url).toBe('http://lite.test/v1/publish-packages/publish-package_1/use-feedback');
