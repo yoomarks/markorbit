@@ -25,7 +25,9 @@ import {
   createProductionIntakeClient,
   type ProductionIntakeClient
 } from './api/production-intake.js';
+import type { ProductionGuidanceClient } from './api/production-guidance.js';
 import { ProductionFeeFactsPanel } from './ProductionFeeFactsPanel.js';
+import { ProductionGuidance } from './ProductionGuidance.js';
 import './production-intake.css';
 
 export interface ProductionIntakeDraft {
@@ -219,9 +221,11 @@ const defaultClient = createProductionIntakeClient();
 
 export function ProductionIntakePlanning({
   client = defaultClient,
+  guidanceClient,
   workspaceId = currentWorkspaceId()
 }: {
   client?: ProductionIntakeClient;
+  guidanceClient?: ProductionGuidanceClient;
   workspaceId?: string;
 }) {
   const storageSuffix = workspaceId ?? 'no-workspace';
@@ -389,7 +393,14 @@ export function ProductionIntakePlanning({
     );
 
   if (status === 'received' && record)
-    return <ReceivedIntake record={record} onStartAnother={startAnother} />;
+    return (
+      <ReceivedIntake
+        record={record}
+        onStartAnother={startAnother}
+        onReload={() => void readDurable(record.intakeId, false)}
+        {...(guidanceClient ? { guidanceClient } : {})}
+      />
+    );
 
   if (status === 'write-uncertain' && failure)
     return (
@@ -615,9 +626,13 @@ function Review({ draft }: { draft: ProductionIntakeDraft }) {
 
 function ReceivedIntake({
   record,
+  guidanceClient,
+  onReload,
   onStartAnother
 }: {
   record: ProductionIntakeV1;
+  guidanceClient?: ProductionGuidanceClient;
+  onReload: () => void;
   onStartAnother: () => void;
 }) {
   return (
@@ -663,11 +678,13 @@ function ReceivedIntake({
           />
         </details>
       </Card>
-      <Alert tone="warning" title="Recommendation is not available here yet">
-        Production Recommendation remains gated on a production-admissible source under #388. This
-        Intake receipt does not fabricate options or advance the commercial or filing lifecycle.
-      </Alert>
       <ProductionFeeFactsPanel intake={record} />
+      <ProductionGuidance
+        key={`${record.intakeId}:${record.version}:${record.fingerprintSha256}`}
+        intake={record}
+        onReloadIntake={onReload}
+        {...(guidanceClient ? { client: guidanceClient } : {})}
+      />
       <Button variant="secondary" onClick={onStartAnother}>
         Start another Intake
       </Button>

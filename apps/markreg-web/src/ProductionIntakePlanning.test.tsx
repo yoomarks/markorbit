@@ -146,7 +146,7 @@ describe('production durable Intake planning', () => {
     expect(submitted).not.toHaveProperty('workspaceId');
     await waitFor(() => expect(get).toHaveBeenCalledWith(record.intakeId));
     expect(await screen.findByRole('heading', { name: 'Production Intake received' })).toBeTruthy();
-    expect(screen.getByText(/Recommendation remains gated/)).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Generate governed Recommendation' })).toBeTruthy();
     expect(screen.queryByText('Essential Protection')).toBeNull();
     expect(screen.queryByText('Recommended Protection')).toBeNull();
     expect(screen.queryByText('Extended Protection')).toBeNull();
