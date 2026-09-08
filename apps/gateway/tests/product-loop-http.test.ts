@@ -183,6 +183,59 @@ describe('Gateway Lite Product-loop transport boundary', () => {
     expect(resolveWorkspace).toHaveBeenCalledWith('token', workspaceId, undefined);
   });
 
+  it('forwards an explicit Selection through the protected mutation boundary', async () => {
+    const downstream = vi.fn((url: string, init: RequestInit) => {
+      expect(url).toBe(
+        'http://lite.test/v1/trading/direction-sets/commercial-direction-set_1/selection'
+      );
+      expect(init.method).toBe('POST');
+      expect(init.body).toBe(
+        JSON.stringify({
+          expectedDirectionSetVersion: 1,
+          selectedDirectionId: 'trading-ai-derived_commercial-direction_1',
+          expectedDirectionVersion: 1
+        })
+      );
+      const headers = init.headers as Record<string, string>;
+      expect(headers['idempotency-key']).toBe('select-direction-1');
+      expect(headers['x-correlation-id']).toBe('correlation_selection-1');
+      return Promise.resolve(
+        new Response(JSON.stringify({ selection: { directionSelectionId: 'selection_1' } }), {
+          status: 201,
+          headers: { 'content-type': 'application/json' }
+        })
+      );
+    });
+    vi.stubGlobal('fetch', downstream);
+    const body = {
+      expectedDirectionSetVersion: 1,
+      selectedDirectionId: 'trading-ai-derived_commercial-direction_1',
+      expectedDirectionVersion: 1
+    };
+
+    const result = await route(
+      'POST',
+      '/api/lite/trading/direction-sets/:directionSetId/selection'
+    ).handle({
+      method: 'POST',
+      path: '/api/lite/trading/direction-sets/commercial-direction-set_1/selection',
+      params: { directionSetId: 'commercial-direction-set_1' },
+      query: {},
+      headers: {
+        cookie: 'mo_session=token',
+        origin: 'https://test.markorbit.local',
+        'x-markorbit-workspace-id': workspaceId,
+        'x-markorbit-csrf-token': csrfToken(principal.sessionId, options.csrfSecret),
+        'x-correlation-id': 'correlation_selection-1',
+        'idempotency-key': 'select-direction-1'
+      },
+      body
+    });
+
+    expect(result.status).toBe(201);
+    expect(downstream).toHaveBeenCalledTimes(1);
+  });
+
   it('forwards feedback mutation with trusted principal and never accepts client actor identity', async () => {
     const downstream = vi.fn((url: string, init: RequestInit) => {
       expect(url).toBe('http://lite.test/v1/publish-packages/publish-package_1/use-feedback');
@@ -285,6 +338,28 @@ describe('Gateway Lite Product-loop transport boundary', () => {
           expectedPublishPackageFingerprintSha256: 'a'.repeat(64),
           outcome: 'USER_REPORTED_USED',
           recordedByPrincipalId: 'attacker'
+        }
+      })
+    ).rejects.toMatchObject({ status: 400, code: 'ACTOR_SPOOF_REJECTED' });
+
+    await expect(
+      route('POST', '/api/lite/trading/direction-sets/:directionSetId/selection').handle({
+        method: 'POST',
+        path: '/api/lite/trading/direction-sets/commercial-direction-set_1/selection',
+        params: { directionSetId: 'commercial-direction-set_1' },
+        query: {},
+        headers: {
+          cookie: 'mo_session=token',
+          origin: 'https://test.markorbit.local',
+          'x-markorbit-workspace-id': workspaceId,
+          'x-markorbit-csrf-token': 'unused-for-spoof-rejection',
+          'idempotency-key': 'selection-spoof'
+        },
+        body: {
+          expectedDirectionSetVersion: 1,
+          selectedDirectionId: 'trading-ai-derived_commercial-direction_1',
+          expectedDirectionVersion: 1,
+          selectionMethod: 'AI_SELECTED'
         }
       })
     ).rejects.toMatchObject({ status: 400, code: 'ACTOR_SPOOF_REJECTED' });
