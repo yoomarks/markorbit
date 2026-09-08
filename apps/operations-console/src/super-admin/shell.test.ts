@@ -1,4 +1,4 @@
-﻿import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { superAdminDomainLandings } from './domain-landings.js';
 import { superAdminNavigationItems } from './shell.js';
 
@@ -31,7 +31,6 @@ describe('Super Admin shell', () => {
     const navigationTargets = new Set<string>(superAdminNavigationItems.map((item) => item.href));
     expect(superAdminDomainLandings.map((item) => item.title)).toEqual([
       'Core',
-      'Brain',
       'Capability',
       'MarkReg',
       'Lite',
