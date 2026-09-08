@@ -47,6 +47,7 @@ import { PostgresTradingStudioRunStore } from './trading-studio-run.js';
 import { PostgresTradingDirectionSetStore } from './trading-direction-set.js';
 import { PostgresTradingDirectionSelectionStore } from './trading-direction-selection.js';
 import { PostgresTradingAiProfileStore } from './trading-ai-profile.js';
+import { PostgresTradingBrandDnaStore } from './trading-brand-dna.js';
 import { TrademarkAssetAiGuidePreparer } from './trademark-asset-ai-guide.js';
 import { PostgresTrademarkAssetCommerceStore } from './trademark-asset-commerce.js';
 import { PostgresTrademarkAssetManagementDispositionStore } from './trademark-asset-management-disposition.js';
@@ -303,6 +304,7 @@ const runtime = createServiceRuntime(serviceManifest, {
       internalServiceSecret,
       runs: new PostgresTradingStudioRunStore(database, pool),
       profiles: new PostgresTradingAiProfileStore(database, pool),
+      brandDnas: new PostgresTradingBrandDnaStore(database, pool),
       directionSets: new PostgresTradingDirectionSetStore(database, pool),
       selections: new PostgresTradingDirectionSelectionStore(database, pool)
     }),
