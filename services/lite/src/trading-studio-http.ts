@@ -26,6 +26,12 @@ import {
   TradingBrandDnaPersistenceError,
   type PostgresTradingBrandDnaStore
 } from './trading-brand-dna.js';
+import {
+  TradingAiProfileCheckpointError,
+  type TradingAiProfileCheckpointService
+} from './trading-ai-profile-checkpoint.js';
+import { TradingAiProfileGenerationError } from './trading-ai-profile-generation.js';
+import { TrademarkAssetPersistenceError } from './trademark-asset.js';
 
 export interface TradingStudioReadRouteOptions {
   internalServiceSecret: string;
@@ -37,6 +43,9 @@ export interface TradingStudioReadRouteOptions {
     PostgresTradingDirectionSelectionStore,
     'getCurrentForDirectionSet' | 'recordExplicit'
   >;
+  aiProfileCheckpointFor?: (
+    principal: Readonly<WorkspacePrincipal>
+  ) => Pick<TradingAiProfileCheckpointService, 'generate'>;
 }
 
 function trusted(configured: string, supplied: string | undefined): boolean {
@@ -86,7 +95,7 @@ function positive(value: unknown, field: string): number {
 }
 
 export function createTradingStudioReadRoutes(options: TradingStudioReadRouteOptions): JsonRoute[] {
-  return [
+  const routes: JsonRoute[] = [
     {
       method: 'GET',
       path: '/v1/trading/studio-runs/:studioRunId',
@@ -413,4 +422,57 @@ export function createTradingStudioReadRoutes(options: TradingStudioReadRouteOpt
       }
     }
   ];
+  const aiProfileCheckpointFor = options.aiProfileCheckpointFor;
+  if (aiProfileCheckpointFor) {
+    routes.push({
+      method: 'POST',
+      path: '/v1/trading/studio-runs/:studioRunId/ai-profile',
+      handle: async (request) => {
+        const principal = principalOf(request, options.internalServiceSecret);
+        if (!principal.permissions.includes('matter:manage'))
+          throw new HttpError(403, 'PERMISSION_DENIED', 'matter:manage permission is required.');
+        if (Object.keys(request.query).length)
+          throw new HttpError(
+            400,
+            'INVALID_REQUEST',
+            'AI Profile command does not accept query fields.'
+          );
+        const body = bodyOf(request);
+        if (Object.keys(body).some((field) => field !== 'userBrief'))
+          throw new HttpError(400, 'INVALID_REQUEST', 'Request body contains unsupported fields.');
+        if (body.userBrief !== undefined && typeof body.userBrief !== 'string')
+          throw new HttpError(400, 'INVALID_REQUEST', 'userBrief must be a string.');
+        const idempotencyKey = request.headers['idempotency-key']?.trim();
+        const correlationId = request.headers['x-correlation-id']?.trim();
+        if (!idempotencyKey)
+          throw new HttpError(400, 'IDEMPOTENCY_KEY_REQUIRED', 'Idempotency-Key is required.');
+        if (!correlationId)
+          throw new HttpError(400, 'INVALID_REQUEST', 'x-correlation-id is required.');
+        try {
+          const result = await aiProfileCheckpointFor(principal).generate({
+            workspaceId: principal.workspaceId,
+            studioRunId: request.params.studioRunId! as TradingStandardStudioRunId,
+            ...(typeof body.userBrief === 'string' ? { userBrief: body.userBrief } : {}),
+            idempotencyKey,
+            correlationId
+          });
+          return json(result.replayed ? 200 : 201, result);
+        } catch (error) {
+          if (
+            error instanceof TradingAiProfileCheckpointError ||
+            error instanceof TradingAiProfileGenerationError ||
+            error instanceof TradingStudioRunPersistenceError ||
+            error instanceof TradingAiProfilePersistenceError ||
+            error instanceof TrademarkAssetPersistenceError
+          ) {
+            const status = 'status' in error ? Number(error.status) : 409;
+            const retryable = 'retryable' in error ? Boolean(error.retryable) : false;
+            throw new HttpError(status, error.code, error.message, retryable);
+          }
+          throw error;
+        }
+      }
+    });
+  }
+  return routes;
 }
