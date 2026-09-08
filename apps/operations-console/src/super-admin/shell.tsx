@@ -11,7 +11,7 @@ const navigationItems = [
   { label: 'MarkReg', href: '#super-admin-markreg' },
   { label: 'Lite', href: '#super-admin-lite' },
   { label: 'MGSN', href: '#super-admin-mgsn' },
-  { label: 'Knowledge', href: '#knowledge-platform' },
+  { label: 'Knowledge', href: '#super-admin-knowledge' },
   { label: 'Data Engine', href: '#data-platform' },
   { label: 'Execution', href: '#super-admin-execution' },
   { label: 'Commercial / Payment', href: '#commercial-admin' },
