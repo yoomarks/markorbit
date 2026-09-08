@@ -38,10 +38,13 @@ describe('Super Admin Lite owner read', () => {
 
   it('keeps owner unavailability distinct from empty or zero state', async () => {
     vi.spyOn(globalThis, 'fetch').mockResolvedValue(
-      new Response(JSON.stringify({ code: 'LITE_ADMIN_OWNER_UNAVAILABLE', message: 'Lite unavailable' }), {
-        status: 503,
-        headers: { 'content-type': 'application/json' }
-      })
+      new Response(
+        JSON.stringify({ code: 'LITE_ADMIN_OWNER_UNAVAILABLE', message: 'Lite unavailable' }),
+        {
+          status: 503,
+          headers: { 'content-type': 'application/json' }
+        }
+      )
     );
 
     await expect(loadLiteAdministration()).rejects.toThrow('Lite unavailable');

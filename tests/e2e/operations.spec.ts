@@ -86,6 +86,18 @@ const mgsnOwnerProviders = [
     updatedAt: '2026-09-08T05:00:00.000Z'
   }
 ];
+const liteOwnerAdministration = {
+  schemaVersion: 1,
+  objectType: 'LITE_ADMINISTRATION_PROJECTION',
+  owner: 'LITE',
+  access: 'READ_ONLY',
+  requiredAuthority: 'lite-admin:read',
+  observedAt: '2026-09-08T10:00:00.000Z',
+  portfolio: {
+    availability: 'NOT_YET_MODELED',
+    reason: 'No canonical durable global Lite portfolio is modeled.'
+  }
+};
 const workspaceOwnerPortfolio = {
   schemaVersion: 1,
   objectType: 'WORKSPACE_ADMIN_PORTFOLIO_RESULT',
@@ -136,6 +148,13 @@ test('MarkOrbit Super Admin exposes truthful governed operator surfaces @visual'
       status: 200,
       contentType: 'application/json',
       body: JSON.stringify(dataOwnerSummary)
+    });
+  });
+  await page.route('**/api/internal/super-admin/lite', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify(liteOwnerAdministration)
     });
   });
   await page.route('**/api/internal/commercial-admin/providers', async (route) => {
