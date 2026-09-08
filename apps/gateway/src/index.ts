@@ -39,6 +39,7 @@ export * from './product-loop-http.js';
 export * from './data-engine-product-http.js';
 export * from './data-control-plane-http.js';
 export * from './knowledge-control-plane-http.js';
+export * from './knowledge-super-admin-http.js';
 export * from './lite-super-admin-http.js';
 export * from './workspace-super-admin-http.js';
 export * from './markreg-early-funnel-http.js';
@@ -68,6 +69,7 @@ import { createGatewayProductLoopRoutes } from './product-loop-http.js';
 import { createGatewayDataEngineRoutes } from './data-engine-product-http.js';
 import { createGatewayDataControlPlaneRoutes } from './data-control-plane-http.js';
 import { createGatewayKnowledgeControlPlaneRoutes } from './knowledge-control-plane-http.js';
+import { createGatewayKnowledgeSuperAdminRoutes } from './knowledge-super-admin-http.js';
 import { createGatewayWorkspaceSuperAdminRoutes } from './workspace-super-admin-http.js';
 import { createGatewayMarkRegEarlyFunnelRoutes } from './markreg-early-funnel-http.js';
 import { createGatewayPreparationLockHandler } from './preparation-lock-http.js';
@@ -483,6 +485,18 @@ export function createRuntime(options: GatewayOptions = {}) {
           ...(knowledgeTimeoutMs === undefined ? {} : { knowledgeTimeoutMs }),
           coreUrl: options.coreUrl ?? process.env.CORE_URL ?? 'http://127.0.0.1:4101',
           ...(authenticationClient ? { authenticationClient } : {}),
+          ...((options.internalServiceSecret ?? process.env.MO_INTERNAL_SERVICE_SECRET)
+            ? {
+                internalServiceSecret: (options.internalServiceSecret ??
+                  process.env.MO_INTERNAL_SERVICE_SECRET)!
+              }
+            : {}),
+          ...(options.knowledgeFetchImpl ? { fetchImpl: options.knowledgeFetchImpl } : {})
+        }),
+        ...createGatewayKnowledgeSuperAdminRoutes({
+          ...(knowledgeUrl ? { knowledgeUrl } : {}),
+          ...(knowledgeTimeoutMs === undefined ? {} : { ownerTimeoutMs: knowledgeTimeoutMs }),
+          coreUrl: options.coreUrl ?? process.env.CORE_URL ?? 'http://127.0.0.1:4101',
           ...((options.internalServiceSecret ?? process.env.MO_INTERNAL_SERVICE_SECRET)
             ? {
                 internalServiceSecret: (options.internalServiceSecret ??
