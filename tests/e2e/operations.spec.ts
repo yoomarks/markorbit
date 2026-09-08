@@ -257,7 +257,7 @@ test('MarkOrbit Super Admin exposes truthful governed operator surfaces @visual'
   await loadOwnerSummary.click();
   await expect(page.getByText('Data Engine owner-reported dependency health')).toBeVisible();
   expect(dataOwnerReads).toBe(1);
-  await expect(page.getByRole('heading', { name: 'Commercial operations' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Commercial / Payment' })).toBeVisible();
   for (const staleHeading of [
     'Service health',
     'Failed operations',
