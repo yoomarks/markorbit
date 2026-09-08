@@ -11,7 +11,10 @@ const row = {
   updated_at: '2026-09-06T00:00:00.000Z',
   membership_count: 4,
   active_membership_count: 3,
-  total_count: 12
+  total_count: 12,
+  workspace_total: 20,
+  active_count: 16,
+  archived_count: 4
 };
 
 function reader(rows: Record<string, unknown>[]) {
@@ -42,7 +45,10 @@ describe('Workspace admin portfolio reader', () => {
       observedAt: '2026-09-07T10:00:00.000Z',
       page: 2,
       pageSize: 10,
+      sort: 'NAME',
+      direction: 'ASC',
       total: 12,
+      summary: { total: 20, byStatus: { ACTIVE: 16, ARCHIVED: 4 } },
       items: [
         expect.objectContaining({
           workspaceId: row.workspace_id,
@@ -59,12 +65,29 @@ describe('Workspace admin portfolio reader', () => {
     expect(query).toHaveBeenCalledTimes(1);
     const [sql, values] = query.mock.calls[0]!;
     expect(String(sql)).toContain('workspace_memberships');
-    expect(String(sql)).toContain('ORDER BY lower(name), workspace_id');
+    expect(String(sql)).toContain('ORDER BY lower(name) ASC, workspace_id ASC');
     expect(String(sql)).not.toMatch(/orders|payments|matters|knowledge|data_engine/iu);
     expect(values).toEqual(['ARCHIVED', null, 10, 10]);
   });
+  it('uses only bounded owner-defined global sort expressions', async () => {
+    const { query, reader: service } = reader([row]);
+    await service.read({ page: 1, pageSize: 25, sort: 'MEMBERS', direction: 'DESC' });
+    const [sql] = query.mock.calls[0]!;
+    expect(String(sql)).toContain(
+      'ORDER BY active_membership_count DESC, membership_count DESC, lower(name) ASC, workspace_id ASC'
+    );
+  });
+
   it('keeps an out-of-range page empty while preserving the owner total', async () => {
-    const { reader: service } = reader([{ workspace_id: null, total_count: 12 }]);
+    const { reader: service } = reader([
+      {
+        workspace_id: null,
+        total_count: 12,
+        workspace_total: 20,
+        active_count: 16,
+        archived_count: 4
+      }
+    ]);
     await expect(service.read({ page: 9, pageSize: 50 })).resolves.toMatchObject({
       owner: 'CORE',
       total: 12,
@@ -72,7 +95,9 @@ describe('Workspace admin portfolio reader', () => {
     });
   });
   it('returns zero only when the owner query reports no Workspaces', async () => {
-    const { reader: service } = reader([{ workspace_id: null, total_count: 0 }]);
+    const { reader: service } = reader([
+      { workspace_id: null, total_count: 0, workspace_total: 0, active_count: 0, archived_count: 0 }
+    ]);
     await expect(service.read({ page: 1, pageSize: 50 })).resolves.toMatchObject({
       owner: 'CORE',
       total: 0,

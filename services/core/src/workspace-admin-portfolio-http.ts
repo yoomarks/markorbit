@@ -3,6 +3,8 @@ import { HttpError, json, type JsonRequest, type JsonRoute } from '@markorbit/se
 import { validateInternalServiceSecret } from './auth.js';
 import {
   WORKSPACE_ADMIN_PORTFOLIO_AUTHORITY,
+  WORKSPACE_ADMIN_PORTFOLIO_DIRECTIONS,
+  WORKSPACE_ADMIN_PORTFOLIO_SORTS,
   type WorkspaceAdminPortfolioQueryV1,
   type WorkspaceAdminPortfolioReaderV1
 } from './workspace-admin-portfolio.js';
@@ -13,8 +15,7 @@ export interface WorkspaceAdminPortfolioHttpOptionsV1 {
   now?: () => Date;
 }
 
-const allowedQueryKeys = new Set(['page', 'pageSize', 'status', 'search']);
-
+const allowedQueryKeys = new Set(['page', 'pageSize', 'status', 'search', 'sort', 'direction']);
 function positiveInteger(
   value: string | undefined,
   fallback: number,
@@ -29,6 +30,7 @@ function positiveInteger(
     throw new HttpError(400, 'INVALID_REQUEST', `${field} is invalid.`);
   return parsed;
 }
+
 function portfolioQuery(request: JsonRequest): WorkspaceAdminPortfolioQueryV1 {
   const unsupported = Object.keys(request.query).filter((key) => !allowedQueryKeys.has(key));
   if (unsupported.length)
@@ -43,9 +45,17 @@ function portfolioQuery(request: JsonRequest): WorkspaceAdminPortfolioQueryV1 {
   const search = request.query.search;
   if (search !== undefined && (!search || search.trim() !== search || search.length > 200))
     throw new HttpError(400, 'INVALID_REQUEST', 'search is invalid.');
+  const sort = request.query.sort ?? 'NAME';
+  if (!(WORKSPACE_ADMIN_PORTFOLIO_SORTS as readonly string[]).includes(sort))
+    throw new HttpError(400, 'INVALID_REQUEST', 'sort is invalid.');
+  const direction = request.query.direction ?? 'ASC';
+  if (!(WORKSPACE_ADMIN_PORTFOLIO_DIRECTIONS as readonly string[]).includes(direction))
+    throw new HttpError(400, 'INVALID_REQUEST', 'direction is invalid.');
   return {
     page: positiveInteger(request.query.page, 1, 'page', 1_000_000),
     pageSize: positiveInteger(request.query.pageSize, 50, 'pageSize', 100),
+    sort: sort as NonNullable<WorkspaceAdminPortfolioQueryV1['sort']>,
+    direction: direction as NonNullable<WorkspaceAdminPortfolioQueryV1['direction']>,
     ...(status === undefined ? {} : { status: status as 'ACTIVE' | 'ARCHIVED' }),
     ...(search === undefined ? {} : { search })
   };

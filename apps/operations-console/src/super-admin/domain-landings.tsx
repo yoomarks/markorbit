@@ -15,12 +15,6 @@ const landings: DomainLanding[] = [
     boundary: 'No account, identity or Workspace state is inferred from other domains.'
   },
   {
-    id: 'super-admin-workspace',
-    title: 'Workspace',
-    status: 'Global Workspace portfolio read is not connected yet.',
-    boundary: 'Current-user Workspace membership is not treated as platform-wide Workspace truth.'
-  },
-  {
     id: 'super-admin-brain',
     title: 'Brain',
     status: 'Dedicated Brain administration is not separated in this foundation step.',
