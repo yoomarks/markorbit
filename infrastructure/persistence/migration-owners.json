@@ -158,6 +158,7 @@
     "0100_lite_trading_direction_selections": "@markorbit/lite-service",
     "0101_lite_trading_direction_selection_heads": "@markorbit/lite-service",
     "0102_core_workspace_admin_actions": "@markorbit/core-service",
-    "0103_lite_trading_ai_profiles": "@markorbit/lite-service"
+    "0103_lite_trading_ai_profiles": "@markorbit/lite-service",
+    "0104_lite_trading_brand_dna": "@markorbit/lite-service"
   }
 }
