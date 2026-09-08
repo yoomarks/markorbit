@@ -5,15 +5,18 @@ import {
   createEnvironmentDataReadGrantSourceV1,
   createEnvironmentKnowledgeReadGrantSourceV1,
   createEnvironmentWorkspaceAdminReadGrantSourceV1,
+  createEnvironmentWorkspaceAdminManageGrantSourceV1,
   type CognitiveReadGrantSourceV1,
   type DataReadGrantSourceV1,
   type KnowledgeReadGrantSourceV1,
   type WorkspaceAdminReadGrantSourceV1,
+  type WorkspaceAdminManageGrantSourceV1,
   InternalOperatorPrincipalResolverV1,
   StaticCognitiveReadGrantSourceV1,
   StaticDataReadGrantSourceV1,
   StaticKnowledgeReadGrantSourceV1,
-  StaticWorkspaceAdminReadGrantSourceV1
+  StaticWorkspaceAdminReadGrantSourceV1,
+  StaticWorkspaceAdminManageGrantSourceV1
 } from '../src/internal-operator-principal.js';
 
 const userId = '018f0000-0000-7000-8000-000000000768';
@@ -48,6 +51,9 @@ function resolver(
   knowledgeReadGrants: KnowledgeReadGrantSourceV1 = new StaticKnowledgeReadGrantSourceV1([userId]),
   workspaceAdminReadGrants: WorkspaceAdminReadGrantSourceV1 = new StaticWorkspaceAdminReadGrantSourceV1(
     [userId]
+  ),
+  workspaceAdminManageGrants: WorkspaceAdminManageGrantSourceV1 = new StaticWorkspaceAdminManageGrantSourceV1(
+    [userId]
   )
 ) {
   const resolveSession = vi.fn(() => Promise.resolve(session));
@@ -61,7 +67,8 @@ function resolver(
       cognitiveReadGrants,
       dataReadGrants,
       knowledgeReadGrants,
-      workspaceAdminReadGrants
+      workspaceAdminReadGrants,
+      workspaceAdminManageGrants
     })
   };
 }
@@ -115,6 +122,33 @@ describe('explicit Control Plane read Internal Operator grant resolution', () =>
       capabilities: ['workspace-admin:read'],
       sessionExpiresAt: session.sessionExpiresAt
     });
+  });
+
+  it('issues a Workspace-Admin-manage-only principal only for an exact explicit manage grant', async () => {
+    const { service } = resolver();
+
+    await expect(service.resolve('raw-session-token', 'workspace-admin:manage')).resolves.toEqual({
+      kind: 'INTERNAL_OPERATOR',
+      sessionId: session.sessionId,
+      userId,
+      capabilities: ['workspace-admin:manage'],
+      sessionExpiresAt: session.sessionExpiresAt
+    });
+  });
+
+  it('does not let Workspace Admin read imply Workspace Admin manage', async () => {
+    const { service } = resolver(
+      new StaticCognitiveReadGrantSourceV1([userId]),
+      account(),
+      new StaticDataReadGrantSourceV1([userId]),
+      new StaticKnowledgeReadGrantSourceV1([userId]),
+      new StaticWorkspaceAdminReadGrantSourceV1([userId]),
+      new StaticWorkspaceAdminManageGrantSourceV1([otherUserId])
+    );
+
+    await expect(
+      service.resolve('raw-session-token', 'workspace-admin:manage')
+    ).rejects.toMatchObject({ code: 'PERMISSION_DENIED' });
   });
 
   it('does not let INTERNAL, Commercial or Control Plane authority imply Workspace Admin read', async () => {
@@ -352,6 +386,37 @@ describe('explicit Control Plane read Internal Operator grant resolution', () =>
     });
   });
 
+  it('fails closed when Workspace Admin manage grant truth is missing or malformed', async () => {
+    const missing = resolver(
+      new StaticCognitiveReadGrantSourceV1([userId]),
+      account(),
+      new StaticDataReadGrantSourceV1([userId]),
+      new StaticKnowledgeReadGrantSourceV1([userId]),
+      new StaticWorkspaceAdminReadGrantSourceV1([userId]),
+      createEnvironmentWorkspaceAdminManageGrantSourceV1(undefined)
+    ).service;
+    await expect(
+      missing.resolve('raw-session-token', 'workspace-admin:manage')
+    ).rejects.toMatchObject({ code: 'AUTHENTICATION_SERVICE_UNAVAILABLE' });
+
+    const malformed = resolver(
+      new StaticCognitiveReadGrantSourceV1([userId]),
+      account(),
+      new StaticDataReadGrantSourceV1([userId]),
+      new StaticKnowledgeReadGrantSourceV1([userId]),
+      new StaticWorkspaceAdminReadGrantSourceV1([userId]),
+      createEnvironmentWorkspaceAdminManageGrantSourceV1(
+        JSON.stringify({
+          schemaVersion: 1,
+          grants: [{ userId, capabilities: ['workspace-admin:read'] }]
+        })
+      )
+    ).service;
+    await expect(
+      malformed.resolve('raw-session-token', 'workspace-admin:manage')
+    ).rejects.toMatchObject({ code: 'AUTHENTICATION_SERVICE_UNAVAILABLE' });
+  });
+
   it('accepts only strict exact-user grant configuration for each read plane', async () => {
     const cognitive = createEnvironmentCognitiveReadGrantSourceV1(
       JSON.stringify({
@@ -378,6 +443,12 @@ describe('explicit Control Plane read Internal Operator grant resolution', () =>
         grants: [{ userId, capabilities: ['workspace-admin:read'] }]
       })
     );
+    const workspaceAdminManage = createEnvironmentWorkspaceAdminManageGrantSourceV1(
+      JSON.stringify({
+        schemaVersion: 1,
+        grants: [{ userId, capabilities: ['workspace-admin:manage'] }]
+      })
+    );
 
     await expect(cognitive.hasGrant(userId)).resolves.toBe(true);
     await expect(cognitive.hasGrant(otherUserId)).resolves.toBe(false);
@@ -387,5 +458,7 @@ describe('explicit Control Plane read Internal Operator grant resolution', () =>
     await expect(knowledge.hasGrant(otherUserId)).resolves.toBe(false);
     await expect(workspaceAdmin.hasGrant(userId)).resolves.toBe(true);
     await expect(workspaceAdmin.hasGrant(otherUserId)).resolves.toBe(false);
+    await expect(workspaceAdminManage.hasGrant(userId)).resolves.toBe(true);
+    await expect(workspaceAdminManage.hasGrant(otherUserId)).resolves.toBe(false);
   });
 });

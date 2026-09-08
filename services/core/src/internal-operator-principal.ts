@@ -11,10 +11,12 @@ export const COGNITIVE_READ_GRANTS_ENV = 'MO_COGNITIVE_READ_GRANTS_JSON';
 export const DATA_READ_GRANTS_ENV = 'MO_DATA_READ_GRANTS_JSON';
 export const KNOWLEDGE_READ_GRANTS_ENV = 'MO_KNOWLEDGE_READ_GRANTS_JSON';
 export const WORKSPACE_ADMIN_READ_GRANTS_ENV = 'MO_WORKSPACE_ADMIN_READ_GRANTS_JSON';
+export const WORKSPACE_ADMIN_MANAGE_GRANTS_ENV = 'MO_WORKSPACE_ADMIN_MANAGE_GRANTS_JSON';
 const COGNITIVE_READ_CAPABILITY = 'control-plane:cognitive:read' as const;
 const DATA_READ_CAPABILITY = 'control-plane:data:read' as const;
 const KNOWLEDGE_READ_CAPABILITY = 'control-plane:knowledge:read' as const;
 const WORKSPACE_ADMIN_READ_CAPABILITY = 'workspace-admin:read' as const;
+const WORKSPACE_ADMIN_MANAGE_CAPABILITY = 'workspace-admin:manage' as const;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/iu;
 
 export class CognitiveReadGrantSourceError extends Error {
@@ -45,6 +47,13 @@ export class WorkspaceAdminReadGrantSourceError extends Error {
   }
 }
 
+export class WorkspaceAdminManageGrantSourceError extends Error {
+  constructor(message: string, options?: ErrorOptions) {
+    super(message, options);
+    this.name = 'WorkspaceAdminManageGrantSourceError';
+  }
+}
+
 export interface CognitiveReadGrantSourceV1 {
   hasGrant(userId: string): Promise<boolean>;
 }
@@ -61,9 +70,13 @@ export interface WorkspaceAdminReadGrantSourceV1 {
   hasGrant(userId: string): Promise<boolean>;
 }
 
+export interface WorkspaceAdminManageGrantSourceV1 {
+  hasGrant(userId: string): Promise<boolean>;
+}
+
 function normalizedUserIds(
   userIds: Iterable<string>,
-  label: 'Cognitive' | 'Data' | 'Knowledge' | 'Workspace Admin'
+  label: 'Cognitive' | 'Data' | 'Knowledge' | 'Workspace Admin' | 'Workspace Admin Manage'
 ): string[] {
   const normalized = [...userIds].map((userId) => userId.trim().toLowerCase());
   const invalid = normalized.some((userId) => !UUID.test(userId));
@@ -82,7 +95,7 @@ function normalizedUserIds(
       throw new KnowledgeReadGrantSourceError('Knowledge read grant user identity is malformed.');
     if (duplicated)
       throw new KnowledgeReadGrantSourceError('Knowledge read grant user identity is duplicated.');
-  } else {
+  } else if (label === 'Workspace Admin') {
     if (invalid)
       throw new WorkspaceAdminReadGrantSourceError(
         'Workspace Admin read grant user identity is malformed.'
@@ -90,6 +103,15 @@ function normalizedUserIds(
     if (duplicated)
       throw new WorkspaceAdminReadGrantSourceError(
         'Workspace Admin read grant user identity is duplicated.'
+      );
+  } else {
+    if (invalid)
+      throw new WorkspaceAdminManageGrantSourceError(
+        'Workspace Admin manage grant user identity is malformed.'
+      );
+    if (duplicated)
+      throw new WorkspaceAdminManageGrantSourceError(
+        'Workspace Admin manage grant user identity is duplicated.'
       );
   }
   return normalized;
@@ -136,6 +158,18 @@ export class StaticWorkspaceAdminReadGrantSourceV1 implements WorkspaceAdminRead
 
   constructor(userIds: Iterable<string>) {
     this.userIds = new Set(normalizedUserIds(userIds, 'Workspace Admin'));
+  }
+
+  hasGrant(userId: string): Promise<boolean> {
+    return Promise.resolve(this.userIds.has(userId.trim().toLowerCase()));
+  }
+}
+
+export class StaticWorkspaceAdminManageGrantSourceV1 implements WorkspaceAdminManageGrantSourceV1 {
+  private readonly userIds: ReadonlySet<string>;
+
+  constructor(userIds: Iterable<string>) {
+    this.userIds = new Set(normalizedUserIds(userIds, 'Workspace Admin Manage'));
   }
 
   hasGrant(userId: string): Promise<boolean> {
@@ -191,6 +225,21 @@ class UnavailableWorkspaceAdminReadGrantSourceV1 implements WorkspaceAdminReadGr
   }
 }
 
+class UnavailableWorkspaceAdminManageGrantSourceV1 implements WorkspaceAdminManageGrantSourceV1 {
+  constructor(private readonly cause?: Error) {}
+
+  hasGrant(): Promise<boolean> {
+    return Promise.reject(
+      new WorkspaceAdminManageGrantSourceError(
+        'Workspace Admin manage grant source is unavailable.',
+        {
+          cause: this.cause
+        }
+      )
+    );
+  }
+}
+
 type GrantBackedCapability = ControlPlaneCapability | WorkspaceAdminCapability;
 
 type GrantConfig<TCapability extends GrantBackedCapability> = {
@@ -204,7 +253,7 @@ type GrantConfig<TCapability extends GrantBackedCapability> = {
 function parseGrantConfig<TCapability extends GrantBackedCapability>(
   value: string,
   capability: TCapability,
-  label: 'Cognitive' | 'Data' | 'Knowledge' | 'Workspace Admin'
+  label: 'Cognitive' | 'Data' | 'Knowledge' | 'Workspace Admin' | 'Workspace Admin Manage'
 ): GrantConfig<TCapability> {
   const fail = (message: string, cause?: Error): never => {
     if (label === 'Cognitive')
@@ -213,7 +262,9 @@ function parseGrantConfig<TCapability extends GrantBackedCapability>(
       throw new DataReadGrantSourceError(message, cause ? { cause } : undefined);
     if (label === 'Knowledge')
       throw new KnowledgeReadGrantSourceError(message, cause ? { cause } : undefined);
-    throw new WorkspaceAdminReadGrantSourceError(message, cause ? { cause } : undefined);
+    if (label === 'Workspace Admin')
+      throw new WorkspaceAdminReadGrantSourceError(message, cause ? { cause } : undefined);
+    throw new WorkspaceAdminManageGrantSourceError(message, cause ? { cause } : undefined);
   };
 
   let parsed: unknown;
@@ -221,23 +272,29 @@ function parseGrantConfig<TCapability extends GrantBackedCapability>(
     parsed = JSON.parse(value);
   } catch (error) {
     return fail(
-      `${label} read grant configuration is malformed.`,
+      `${label === 'Workspace Admin Manage' ? 'Workspace Admin manage' : `${label} read`} grant configuration is malformed.`,
       error instanceof Error ? error : undefined
     );
   }
   if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed))
-    return fail(`${label} read grant configuration is malformed.`);
+    return fail(
+      `${label === 'Workspace Admin Manage' ? 'Workspace Admin manage' : `${label} read`} grant configuration is malformed.`
+    );
   const config = parsed as Record<string, unknown>;
   if (
     config.schemaVersion !== 1 ||
     !Array.isArray(config.grants) ||
     Object.keys(config).some((key) => !['schemaVersion', 'grants'].includes(key))
   )
-    return fail(`${label} read grant configuration is malformed.`);
+    return fail(
+      `${label === 'Workspace Admin Manage' ? 'Workspace Admin manage' : `${label} read`} grant configuration is malformed.`
+    );
 
   const grants = config.grants.map((raw) => {
     if (!raw || typeof raw !== 'object' || Array.isArray(raw))
-      return fail(`${label} read grant entry is malformed.`);
+      return fail(
+        `${label === 'Workspace Admin Manage' ? 'Workspace Admin manage' : `${label} read`} grant entry is malformed.`
+      );
     const grant = raw as Record<string, unknown>;
     if (
       Object.keys(grant).some((key) => !['userId', 'capabilities'].includes(key)) ||
@@ -247,14 +304,18 @@ function parseGrantConfig<TCapability extends GrantBackedCapability>(
       grant.capabilities.length !== 1 ||
       grant.capabilities[0] !== capability
     )
-      return fail(`${label} read grant entry is malformed.`);
+      return fail(
+        `${label === 'Workspace Admin Manage' ? 'Workspace Admin manage' : `${label} read`} grant entry is malformed.`
+      );
     return {
       userId: grant.userId.trim().toLowerCase(),
       capabilities: [capability] as const
     };
   });
   if (new Set(grants.map((grant) => grant.userId)).size !== grants.length)
-    return fail(`${label} read grant user identity is duplicated.`);
+    return fail(
+      `${label === 'Workspace Admin Manage' ? 'Workspace Admin manage' : `${label} read`} grant user identity is duplicated.`
+    );
   return { schemaVersion: 1, grants };
 }
 
@@ -320,6 +381,27 @@ export function createEnvironmentWorkspaceAdminReadGrantSourceV1(
   }
 }
 
+export function createEnvironmentWorkspaceAdminManageGrantSourceV1(
+  value = process.env[WORKSPACE_ADMIN_MANAGE_GRANTS_ENV]
+): WorkspaceAdminManageGrantSourceV1 {
+  if (value === undefined)
+    return new UnavailableWorkspaceAdminManageGrantSourceV1(
+      new Error(`${WORKSPACE_ADMIN_MANAGE_GRANTS_ENV} is not configured.`)
+    );
+  try {
+    const config = parseGrantConfig(
+      value,
+      WORKSPACE_ADMIN_MANAGE_CAPABILITY,
+      'Workspace Admin Manage'
+    );
+    return new StaticWorkspaceAdminManageGrantSourceV1(config.grants.map((grant) => grant.userId));
+  } catch (error) {
+    return new UnavailableWorkspaceAdminManageGrantSourceV1(
+      error instanceof Error ? error : undefined
+    );
+  }
+}
+
 export interface InternalOperatorPrincipalResolverOptionsV1 {
   authentication: Pick<AuthenticationService, 'resolveSession'>;
   accountAccess: Pick<AccountAccessService, 'inspectAccount'>;
@@ -327,6 +409,7 @@ export interface InternalOperatorPrincipalResolverOptionsV1 {
   dataReadGrants?: Readonly<DataReadGrantSourceV1>;
   knowledgeReadGrants?: Readonly<KnowledgeReadGrantSourceV1>;
   workspaceAdminReadGrants?: Readonly<WorkspaceAdminReadGrantSourceV1>;
+  workspaceAdminManageGrants?: Readonly<WorkspaceAdminManageGrantSourceV1>;
 }
 
 export class InternalOperatorPrincipalResolverV1 {
@@ -357,7 +440,9 @@ export class InternalOperatorPrincipalResolverV1 {
             ? this.options.knowledgeReadGrants
             : requiredCapability === WORKSPACE_ADMIN_READ_CAPABILITY
               ? this.options.workspaceAdminReadGrants
-              : undefined;
+              : requiredCapability === WORKSPACE_ADMIN_MANAGE_CAPABILITY
+                ? this.options.workspaceAdminManageGrants
+                : undefined;
     if (!source)
       throw new AuthenticationError(
         'AUTHENTICATION_SERVICE_UNAVAILABLE',
@@ -372,7 +457,8 @@ export class InternalOperatorPrincipalResolverV1 {
         error instanceof CognitiveReadGrantSourceError ||
         error instanceof DataReadGrantSourceError ||
         error instanceof KnowledgeReadGrantSourceError ||
-        error instanceof WorkspaceAdminReadGrantSourceError
+        error instanceof WorkspaceAdminReadGrantSourceError ||
+        error instanceof WorkspaceAdminManageGrantSourceError
       )
         throw new AuthenticationError(
           'AUTHENTICATION_SERVICE_UNAVAILABLE',

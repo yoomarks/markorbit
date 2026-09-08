@@ -28,6 +28,10 @@ const workspaceAdminPrincipal = {
   ...cognitivePrincipal,
   capabilities: ['workspace-admin:read' as const]
 };
+const workspaceAdminManagePrincipal = {
+  ...cognitivePrincipal,
+  capabilities: ['workspace-admin:manage' as const]
+};
 
 type ResolverFunction = (
   token: string,
@@ -84,6 +88,32 @@ function workspaceRoute(
   };
 }
 
+function workspaceManageRequest(
+  body: unknown = { token: 'raw-session-token' },
+  includeAuthorization = true
+): JsonRequest {
+  return {
+    method: 'POST',
+    path: '/internal/super-admin/workspace/manage/operator-principals/resolve',
+    params: {},
+    query: {},
+    headers: includeAuthorization ? { 'x-markorbit-internal-authorization': secret } : {},
+    body
+  };
+}
+
+function workspaceManageRoute(
+  resolve: ResolverFunction = vi.fn(() => Promise.resolve(workspaceAdminManagePrincipal))
+) {
+  return {
+    resolve,
+    route: createInternalOperatorPrincipalRoutesV1({
+      resolver: { resolve },
+      internalServiceSecret: secret
+    })[2]!
+  };
+}
+
 describe('Control Plane Internal Operator resolver HTTP boundary', () => {
   it('preserves legacy token-only cognitive resolution', async () => {
     const { resolve, route: resolverRoute } = route();
@@ -134,6 +164,42 @@ describe('Control Plane Internal Operator resolver HTTP boundary', () => {
       body: workspaceAdminPrincipal
     });
     expect(resolve).toHaveBeenCalledWith('raw-session-token', 'workspace-admin:read');
+  });
+
+  it('resolves exact Workspace Admin manage only through its dedicated internal route', async () => {
+    const resolve = vi.fn(() => Promise.resolve(workspaceAdminManagePrincipal));
+    const { route: resolverRoute } = workspaceManageRoute(resolve);
+
+    await expect(resolverRoute.handle(workspaceManageRequest())).resolves.toEqual({
+      status: 200,
+      body: workspaceAdminManagePrincipal
+    });
+    expect(resolve).toHaveBeenCalledWith('raw-session-token', 'workspace-admin:manage');
+  });
+
+  it.each([
+    { token: 'raw-session-token', requiredCapability: 'workspace-admin:manage' },
+    { token: 'raw-session-token', capabilities: ['workspace-admin:manage'] },
+    { token: 'raw-session-token', principal: workspaceAdminManagePrincipal },
+    { token: 'raw-session-token', extra: true }
+  ])(
+    'rejects Workspace Admin manage authority manufacture on the dedicated route',
+    async (body) => {
+      const { resolve, route: resolverRoute } = workspaceManageRoute();
+      await expect(resolverRoute.handle(workspaceManageRequest(body))).rejects.toMatchObject({
+        status: 400,
+        code: 'INVALID_REQUEST'
+      });
+      expect(resolve).not.toHaveBeenCalled();
+    }
+  );
+
+  it('requires internal service identity on the dedicated Workspace Admin manage resolver', async () => {
+    const { resolve, route: resolverRoute } = workspaceManageRoute();
+    await expect(
+      resolverRoute.handle(workspaceManageRequest(undefined, false))
+    ).rejects.toMatchObject({ status: 401, code: 'INTERNAL_SERVICE_UNAUTHORIZED' });
+    expect(resolve).not.toHaveBeenCalled();
   });
 
   it.each([
