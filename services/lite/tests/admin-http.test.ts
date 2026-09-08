@@ -1,0 +1,75 @@
+import {
+  encodeInternalOperatorPrincipal,
+  type InternalOperatorPrincipal
+} from '@markorbit/contracts';
+import type { JsonRequest } from '@markorbit/service-kit';
+import { describe, expect, it } from 'vitest';
+import { createLiteAdminRoutesV1, type LiteAdministrationProjectionV1 } from '../src/admin-http.js';
+
+const secret = 'lite-admin-secret';
+const principal: InternalOperatorPrincipal = {
+  kind: 'INTERNAL_OPERATOR',
+  sessionId: 'session-lite-admin',
+  userId: '018f0000-0000-7000-8000-000000001012',
+  capabilities: ['lite-admin:read'],
+  sessionExpiresAt: '2030-01-01T00:00:00.000Z'
+};
+
+function request(headers: Record<string, string> = {}): JsonRequest {
+  return {
+    method: 'GET',
+    path: '/internal/super-admin/lite',
+    params: {},
+    query: {},
+    body: undefined,
+    headers: {
+      'x-markorbit-internal-authorization': secret,
+      'x-markorbit-internal-principal': encodeInternalOperatorPrincipal(principal),
+      ...headers
+    }
+  };
+}
+
+function route() {
+  const found = createLiteAdminRoutesV1({
+    internalServiceSecret: secret,
+    now: () => new Date('2026-09-08T09:00:00.000Z')
+  })[0];
+  if (!found) throw new Error('Missing Lite Admin route.');
+  return found;
+}
+
+describe('Lite owner administration read', () => {
+  it('returns an explicit owner limitation instead of synthesizing a portfolio', async () => {
+    const result = await route().handle(request());
+    expect(result.status).toBe(200);
+    const body = result.body as LiteAdministrationProjectionV1;
+    expect(body).toEqual({
+      schemaVersion: 1,
+      objectType: 'LITE_ADMINISTRATION_PROJECTION',
+      owner: 'LITE',
+      access: 'READ_ONLY',
+      requiredAuthority: 'lite-admin:read',
+      observedAt: '2026-09-08T09:00:00.000Z',
+      portfolio: { availability: 'NOT_YET_MODELED', reason: body.portfolio.reason }
+    });
+    expect(body.portfolio.reason).toContain('canonical durable global administration portfolio');
+  });
+
+  it('rejects missing service authority and non-Lite operator authority', () => {
+    expect(() =>
+      route().handle(request({ 'x-markorbit-internal-authorization': '' }))
+    ).toThrowError('Internal service identity is invalid.');
+    const wrong: InternalOperatorPrincipal = {
+      ...principal,
+      capabilities: ['workspace-admin:read']
+    };
+    expect(() =>
+      route().handle(
+        request({
+          'x-markorbit-internal-principal': encodeInternalOperatorPrincipal(wrong)
+        })
+      )
+    ).toThrowError('Exact lite-admin:read authority is required.');
+  });
+});

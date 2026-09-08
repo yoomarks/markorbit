@@ -9,12 +9,14 @@ import {
   type CognitiveReadGrantSourceV1,
   type DataReadGrantSourceV1,
   type KnowledgeReadGrantSourceV1,
+  type LiteAdminReadGrantSourceV1,
   type WorkspaceAdminReadGrantSourceV1,
   type WorkspaceAdminManageGrantSourceV1,
   InternalOperatorPrincipalResolverV1,
   StaticCognitiveReadGrantSourceV1,
   StaticDataReadGrantSourceV1,
   StaticKnowledgeReadGrantSourceV1,
+  StaticLiteAdminReadGrantSourceV1,
   StaticWorkspaceAdminReadGrantSourceV1,
   StaticWorkspaceAdminManageGrantSourceV1
 } from '../src/internal-operator-principal.js';
@@ -54,7 +56,8 @@ function resolver(
   ),
   workspaceAdminManageGrants: WorkspaceAdminManageGrantSourceV1 = new StaticWorkspaceAdminManageGrantSourceV1(
     [userId]
-  )
+  ),
+  liteAdminReadGrants: LiteAdminReadGrantSourceV1 = new StaticLiteAdminReadGrantSourceV1([userId])
 ) {
   const resolveSession = vi.fn(() => Promise.resolve(session));
   const inspectAccount = vi.fn(() => Promise.resolve(inspected));
@@ -68,7 +71,8 @@ function resolver(
       dataReadGrants,
       knowledgeReadGrants,
       workspaceAdminReadGrants,
-      workspaceAdminManageGrants
+      workspaceAdminManageGrants,
+      liteAdminReadGrants
     })
   };
 }
@@ -108,6 +112,17 @@ describe('explicit Control Plane read Internal Operator grant resolution', () =>
       sessionId: session.sessionId,
       userId,
       capabilities: ['control-plane:knowledge:read'],
+      sessionExpiresAt: session.sessionExpiresAt
+    });
+  });
+
+  it('issues a Lite-Admin-only principal only for an exact explicit Lite grant', async () => {
+    const { service } = resolver();
+    await expect(service.resolve('raw-session-token', 'lite-admin:read')).resolves.toEqual({
+      kind: 'INTERNAL_OPERATOR',
+      sessionId: session.sessionId,
+      userId,
+      capabilities: ['lite-admin:read'],
       sessionExpiresAt: session.sessionExpiresAt
     });
   });

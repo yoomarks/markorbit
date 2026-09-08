@@ -7,6 +7,7 @@ import type {
 } from '@markorbit/contracts/product-loop';
 import { createServiceRuntime } from '@markorbit/service-kit';
 import { PostgresLiteCandidateQualificationStore } from './candidate-qualification.js';
+import { createLiteAdminRoutesV1 } from './admin-http.js';
 import { ContentKitService, PostgresContentKitLifecycleReader } from './content-kit.js';
 import { createContentKitRoutes } from './content-kit-http.js';
 import {
@@ -300,6 +301,7 @@ const visualBridgeService = new VisualBridgeService(
 );
 const runtime = createServiceRuntime(serviceManifest, {
   routes: [
+    ...createLiteAdminRoutesV1({ internalServiceSecret }),
     ...createTradingStudioReadRoutes({
       internalServiceSecret,
       runs: new PostgresTradingStudioRunStore(database, pool),

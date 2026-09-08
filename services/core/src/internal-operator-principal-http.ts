@@ -47,7 +47,7 @@ function resolutionRequest(request: JsonRequest): ResolutionRequest {
   };
 }
 
-function workspaceAdminResolutionRequest(request: JsonRequest): string {
+function exactAdminResolutionRequest(request: JsonRequest, label: string): string {
   if (!request.body || typeof request.body !== 'object' || Array.isArray(request.body))
     throw new HttpError(400, 'INVALID_REQUEST', 'Request body must be an object.');
   const body = request.body as Record<string, unknown>;
@@ -55,7 +55,7 @@ function workspaceAdminResolutionRequest(request: JsonRequest): string {
     throw new HttpError(
       400,
       'INVALID_REQUEST',
-      'Workspace Admin resolution requires exactly one session token.'
+      `${label} resolution requires exactly one session token.`
     );
   return body.token;
 }
@@ -118,9 +118,32 @@ export function createInternalOperatorPrincipalRoutesV1(
             'INTERNAL_SERVICE_UNAUTHORIZED',
             'Internal service identity is invalid.'
           );
-        const token = workspaceAdminResolutionRequest(request);
+        const token = exactAdminResolutionRequest(request, 'Workspace Admin');
         try {
           return json(200, await options.resolver.resolve(token, 'workspace-admin:read'));
+        } catch (error) {
+          return translate(error);
+        }
+      }
+    },
+    {
+      method: 'POST',
+      path: '/internal/super-admin/lite/operator-principals/resolve',
+      async handle(request) {
+        if (
+          !validateInternalServiceSecret(
+            options.internalServiceSecret,
+            request.headers['x-markorbit-internal-authorization']
+          )
+        )
+          throw new HttpError(
+            401,
+            'INTERNAL_SERVICE_UNAUTHORIZED',
+            'Internal service identity is invalid.'
+          );
+        const token = exactAdminResolutionRequest(request, 'Lite Admin');
+        try {
+          return json(200, await options.resolver.resolve(token, 'lite-admin:read'));
         } catch (error) {
           return translate(error);
         }
@@ -141,7 +164,7 @@ export function createInternalOperatorPrincipalRoutesV1(
             'INTERNAL_SERVICE_UNAUTHORIZED',
             'Internal service identity is invalid.'
           );
-        const token = workspaceAdminResolutionRequest(request);
+        const token = exactAdminResolutionRequest(request, 'Workspace Admin Manage');
         try {
           return json(200, await options.resolver.resolve(token, 'workspace-admin:manage'));
         } catch (error) {

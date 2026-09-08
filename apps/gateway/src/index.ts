@@ -39,6 +39,7 @@ export * from './product-loop-http.js';
 export * from './data-engine-product-http.js';
 export * from './data-control-plane-http.js';
 export * from './knowledge-control-plane-http.js';
+export * from './lite-super-admin-http.js';
 export * from './workspace-super-admin-http.js';
 export * from './markreg-early-funnel-http.js';
 export * from './preparation-lock-http.js';
@@ -62,6 +63,7 @@ import { createGatewayCommercialAdminPaymentRoutes } from './commercial-admin-pa
 import { createGatewayCommercialAdminMarkRegRoutes } from './commercial-admin-markreg-http.js';
 import { createGatewayCommercialAdminMgsnRoutes } from './commercial-admin-mgsn-http.js';
 import { createGatewayMgsnRoutes } from './mgsn-http.js';
+import { createGatewayLiteSuperAdminRoutes } from './lite-super-admin-http.js';
 import { createGatewayProductLoopRoutes } from './product-loop-http.js';
 import { createGatewayDataEngineRoutes } from './data-engine-product-http.js';
 import { createGatewayDataControlPlaneRoutes } from './data-control-plane-http.js';
@@ -488,6 +490,16 @@ export function createRuntime(options: GatewayOptions = {}) {
               }
             : {}),
           ...(options.knowledgeFetchImpl ? { fetchImpl: options.knowledgeFetchImpl } : {})
+        }),
+        ...createGatewayLiteSuperAdminRoutes({
+          coreUrl: options.coreUrl ?? process.env.CORE_URL ?? 'http://127.0.0.1:4101',
+          liteUrl,
+          ...((options.internalServiceSecret ?? process.env.MO_INTERNAL_SERVICE_SECRET)
+            ? {
+                internalServiceSecret: (options.internalServiceSecret ??
+                  process.env.MO_INTERNAL_SERVICE_SECRET)!
+              }
+            : {})
         }),
         ...createGatewayWorkspaceSuperAdminRoutes({
           coreUrl: options.coreUrl ?? process.env.CORE_URL ?? 'http://127.0.0.1:4101',
