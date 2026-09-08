@@ -4,6 +4,7 @@ import {
   type ExecutionAdminCapability,
   type InternalOperatorPrincipal,
   type LiteAdminCapability,
+  type SystemAdminCapability,
   type WorkspaceAdminCapability
 } from '@markorbit/contracts';
 import type { JsonRequest } from '@markorbit/service-kit';
@@ -38,6 +39,10 @@ const executionAdminPrincipal = {
   ...cognitivePrincipal,
   capabilities: ['execution-admin:read' as const]
 };
+const systemAdminPrincipal = {
+  ...cognitivePrincipal,
+  capabilities: ['system-admin:read' as const]
+};
 const workspaceAdminManagePrincipal = {
   ...cognitivePrincipal,
   capabilities: ['workspace-admin:manage' as const]
@@ -50,6 +55,7 @@ type ResolverFunction = (
     | WorkspaceAdminCapability
     | LiteAdminCapability
     | ExecutionAdminCapability
+    | SystemAdminCapability
 ) => Promise<Readonly<InternalOperatorPrincipal>>;
 
 function request(
@@ -150,6 +156,31 @@ function executionRoute(
   };
 }
 
+function systemRequest(
+  body: unknown = { token: 'raw-session-token' },
+  includeAuthorization = true
+): JsonRequest {
+  return {
+    method: 'POST',
+    path: '/internal/super-admin/system/operator-principals/resolve',
+    params: {},
+    query: {},
+    headers: includeAuthorization ? { 'x-markorbit-internal-authorization': secret } : {},
+    body
+  };
+}
+function systemRoute(
+  resolve: ResolverFunction = vi.fn(() => Promise.resolve(systemAdminPrincipal))
+) {
+  return {
+    resolve,
+    route: createInternalOperatorPrincipalRoutesV1({
+      resolver: { resolve },
+      internalServiceSecret: secret
+    })[4]!
+  };
+}
+
 function workspaceManageRequest(
   body: unknown = { token: 'raw-session-token' },
   includeAuthorization = true
@@ -172,7 +203,7 @@ function workspaceManageRoute(
     route: createInternalOperatorPrincipalRoutesV1({
       resolver: { resolve },
       internalServiceSecret: secret
-    })[4]!
+    })[5]!
   };
 }
 
@@ -246,6 +277,16 @@ describe('Control Plane Internal Operator resolver HTTP boundary', () => {
       body: executionAdminPrincipal
     });
     expect(resolve).toHaveBeenCalledWith('raw-session-token', 'execution-admin:read');
+  });
+
+  it('resolves exact System Admin read only through its dedicated internal route', async () => {
+    const resolve = vi.fn(() => Promise.resolve(systemAdminPrincipal));
+    const { route: resolverRoute } = systemRoute(resolve);
+    await expect(resolverRoute.handle(systemRequest())).resolves.toEqual({
+      status: 200,
+      body: systemAdminPrincipal
+    });
+    expect(resolve).toHaveBeenCalledWith('raw-session-token', 'system-admin:read');
   });
 
   it('resolves exact Workspace Admin manage only through its dedicated internal route', async () => {
