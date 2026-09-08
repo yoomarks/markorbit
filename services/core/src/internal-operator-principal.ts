@@ -1,6 +1,7 @@
 import {
   AuthenticationError,
   type ControlPlaneCapability,
+  type ExecutionAdminCapability,
   type InternalOperatorPrincipal,
   type LiteAdminCapability,
   type WorkspaceAdminCapability
@@ -14,12 +15,14 @@ export const KNOWLEDGE_READ_GRANTS_ENV = 'MO_KNOWLEDGE_READ_GRANTS_JSON';
 export const WORKSPACE_ADMIN_READ_GRANTS_ENV = 'MO_WORKSPACE_ADMIN_READ_GRANTS_JSON';
 export const WORKSPACE_ADMIN_MANAGE_GRANTS_ENV = 'MO_WORKSPACE_ADMIN_MANAGE_GRANTS_JSON';
 export const LITE_ADMIN_READ_GRANTS_ENV = 'MO_LITE_ADMIN_READ_GRANTS_JSON';
+export const EXECUTION_ADMIN_READ_GRANTS_ENV = 'MO_EXECUTION_ADMIN_READ_GRANTS_JSON';
 const COGNITIVE_READ_CAPABILITY = 'control-plane:cognitive:read' as const;
 const DATA_READ_CAPABILITY = 'control-plane:data:read' as const;
 const KNOWLEDGE_READ_CAPABILITY = 'control-plane:knowledge:read' as const;
 const WORKSPACE_ADMIN_READ_CAPABILITY = 'workspace-admin:read' as const;
 const WORKSPACE_ADMIN_MANAGE_CAPABILITY = 'workspace-admin:manage' as const;
 const LITE_ADMIN_READ_CAPABILITY = 'lite-admin:read' as const;
+const EXECUTION_ADMIN_READ_CAPABILITY = 'execution-admin:read' as const;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/iu;
 
 export class CognitiveReadGrantSourceError extends Error {
@@ -57,6 +60,13 @@ export class LiteAdminReadGrantSourceError extends Error {
   }
 }
 
+export class ExecutionAdminReadGrantSourceError extends Error {
+  constructor(message: string, options?: ErrorOptions) {
+    super(message, options);
+    this.name = 'ExecutionAdminReadGrantSourceError';
+  }
+}
+
 export class WorkspaceAdminManageGrantSourceError extends Error {
   constructor(message: string, options?: ErrorOptions) {
     super(message, options);
@@ -84,6 +94,10 @@ export interface LiteAdminReadGrantSourceV1 {
   hasGrant(userId: string): Promise<boolean>;
 }
 
+export interface ExecutionAdminReadGrantSourceV1 {
+  hasGrant(userId: string): Promise<boolean>;
+}
+
 export interface WorkspaceAdminManageGrantSourceV1 {
   hasGrant(userId: string): Promise<boolean>;
 }
@@ -91,7 +105,13 @@ export interface WorkspaceAdminManageGrantSourceV1 {
 function normalizedUserIds(
   userIds: Iterable<string>,
   label:
-    'Cognitive' | 'Data' | 'Knowledge' | 'Workspace Admin' | 'Workspace Admin Manage' | 'Lite Admin'
+    | 'Cognitive'
+    | 'Data'
+    | 'Knowledge'
+    | 'Workspace Admin'
+    | 'Workspace Admin Manage'
+    | 'Lite Admin'
+    | 'Execution Admin'
 ): string[] {
   const normalized = [...userIds].map((userId) => userId.trim().toLowerCase());
   const invalid = normalized.some((userId) => !UUID.test(userId));
@@ -128,11 +148,20 @@ function normalizedUserIds(
       throw new WorkspaceAdminManageGrantSourceError(
         'Workspace Admin manage grant user identity is duplicated.'
       );
-  } else {
+  } else if (label === 'Lite Admin') {
     if (invalid)
       throw new LiteAdminReadGrantSourceError('Lite Admin read grant user identity is malformed.');
     if (duplicated)
       throw new LiteAdminReadGrantSourceError('Lite Admin read grant user identity is duplicated.');
+  } else {
+    if (invalid)
+      throw new ExecutionAdminReadGrantSourceError(
+        'Execution Admin read grant user identity is malformed.'
+      );
+    if (duplicated)
+      throw new ExecutionAdminReadGrantSourceError(
+        'Execution Admin read grant user identity is duplicated.'
+      );
   }
   return normalized;
 }
@@ -189,6 +218,16 @@ export class StaticLiteAdminReadGrantSourceV1 implements LiteAdminReadGrantSourc
   private readonly userIds: ReadonlySet<string>;
   constructor(userIds: Iterable<string>) {
     this.userIds = new Set(normalizedUserIds(userIds, 'Lite Admin'));
+  }
+  hasGrant(userId: string): Promise<boolean> {
+    return Promise.resolve(this.userIds.has(userId.trim().toLowerCase()));
+  }
+}
+
+export class StaticExecutionAdminReadGrantSourceV1 implements ExecutionAdminReadGrantSourceV1 {
+  private readonly userIds: ReadonlySet<string>;
+  constructor(userIds: Iterable<string>) {
+    this.userIds = new Set(normalizedUserIds(userIds, 'Execution Admin'));
   }
   hasGrant(userId: string): Promise<boolean> {
     return Promise.resolve(this.userIds.has(userId.trim().toLowerCase()));
@@ -266,6 +305,17 @@ class UnavailableLiteAdminReadGrantSourceV1 implements LiteAdminReadGrantSourceV
   }
 }
 
+class UnavailableExecutionAdminReadGrantSourceV1 implements ExecutionAdminReadGrantSourceV1 {
+  constructor(private readonly cause?: Error) {}
+  hasGrant(): Promise<boolean> {
+    return Promise.reject(
+      new ExecutionAdminReadGrantSourceError('Execution Admin read grant source is unavailable.', {
+        cause: this.cause
+      })
+    );
+  }
+}
+
 class UnavailableWorkspaceAdminManageGrantSourceV1 implements WorkspaceAdminManageGrantSourceV1 {
   constructor(private readonly cause?: Error) {}
 
@@ -282,7 +332,10 @@ class UnavailableWorkspaceAdminManageGrantSourceV1 implements WorkspaceAdminMana
 }
 
 type GrantBackedCapability =
-  ControlPlaneCapability | WorkspaceAdminCapability | LiteAdminCapability;
+  | ControlPlaneCapability
+  | WorkspaceAdminCapability
+  | LiteAdminCapability
+  | ExecutionAdminCapability;
 
 type GrantConfig<TCapability extends GrantBackedCapability> = {
   schemaVersion: 1;
@@ -296,7 +349,13 @@ function parseGrantConfig<TCapability extends GrantBackedCapability>(
   value: string,
   capability: TCapability,
   label:
-    'Cognitive' | 'Data' | 'Knowledge' | 'Workspace Admin' | 'Workspace Admin Manage' | 'Lite Admin'
+    | 'Cognitive'
+    | 'Data'
+    | 'Knowledge'
+    | 'Workspace Admin'
+    | 'Workspace Admin Manage'
+    | 'Lite Admin'
+    | 'Execution Admin'
 ): GrantConfig<TCapability> {
   const fail = (message: string, cause?: Error): never => {
     if (label === 'Cognitive')
@@ -309,7 +368,9 @@ function parseGrantConfig<TCapability extends GrantBackedCapability>(
       throw new WorkspaceAdminReadGrantSourceError(message, cause ? { cause } : undefined);
     if (label === 'Workspace Admin Manage')
       throw new WorkspaceAdminManageGrantSourceError(message, cause ? { cause } : undefined);
-    throw new LiteAdminReadGrantSourceError(message, cause ? { cause } : undefined);
+    if (label === 'Lite Admin')
+      throw new LiteAdminReadGrantSourceError(message, cause ? { cause } : undefined);
+    throw new ExecutionAdminReadGrantSourceError(message, cause ? { cause } : undefined);
   };
 
   let parsed: unknown;
@@ -441,6 +502,23 @@ export function createEnvironmentLiteAdminReadGrantSourceV1(
   }
 }
 
+export function createEnvironmentExecutionAdminReadGrantSourceV1(
+  value = process.env[EXECUTION_ADMIN_READ_GRANTS_ENV]
+): ExecutionAdminReadGrantSourceV1 {
+  if (value === undefined)
+    return new UnavailableExecutionAdminReadGrantSourceV1(
+      new Error(`${EXECUTION_ADMIN_READ_GRANTS_ENV} is not configured.`)
+    );
+  try {
+    const config = parseGrantConfig(value, EXECUTION_ADMIN_READ_CAPABILITY, 'Execution Admin');
+    return new StaticExecutionAdminReadGrantSourceV1(config.grants.map((grant) => grant.userId));
+  } catch (error) {
+    return new UnavailableExecutionAdminReadGrantSourceV1(
+      error instanceof Error ? error : undefined
+    );
+  }
+}
+
 export function createEnvironmentWorkspaceAdminManageGrantSourceV1(
   value = process.env[WORKSPACE_ADMIN_MANAGE_GRANTS_ENV]
 ): WorkspaceAdminManageGrantSourceV1 {
@@ -471,6 +549,7 @@ export interface InternalOperatorPrincipalResolverOptionsV1 {
   workspaceAdminReadGrants?: Readonly<WorkspaceAdminReadGrantSourceV1>;
   workspaceAdminManageGrants?: Readonly<WorkspaceAdminManageGrantSourceV1>;
   liteAdminReadGrants?: Readonly<LiteAdminReadGrantSourceV1>;
+  executionAdminReadGrants?: Readonly<ExecutionAdminReadGrantSourceV1>;
 }
 
 export class InternalOperatorPrincipalResolverV1 {
@@ -505,7 +584,9 @@ export class InternalOperatorPrincipalResolverV1 {
                 ? this.options.workspaceAdminManageGrants
                 : requiredCapability === LITE_ADMIN_READ_CAPABILITY
                   ? this.options.liteAdminReadGrants
-                  : undefined;
+                  : requiredCapability === EXECUTION_ADMIN_READ_CAPABILITY
+                    ? this.options.executionAdminReadGrants
+                    : undefined;
     if (!source)
       throw new AuthenticationError(
         'AUTHENTICATION_SERVICE_UNAVAILABLE',
@@ -522,7 +603,8 @@ export class InternalOperatorPrincipalResolverV1 {
         error instanceof KnowledgeReadGrantSourceError ||
         error instanceof WorkspaceAdminReadGrantSourceError ||
         error instanceof WorkspaceAdminManageGrantSourceError ||
-        error instanceof LiteAdminReadGrantSourceError
+        error instanceof LiteAdminReadGrantSourceError ||
+        error instanceof ExecutionAdminReadGrantSourceError
       )
         throw new AuthenticationError(
           'AUTHENTICATION_SERVICE_UNAVAILABLE',
