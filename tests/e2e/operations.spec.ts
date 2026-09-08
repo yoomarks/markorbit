@@ -72,6 +72,33 @@ const knowledgeOwnerHealth = {
     recentChanges30d: 0
   }
 };
+const workspaceOwnerPortfolio = {
+  schemaVersion: 1,
+  objectType: 'WORKSPACE_ADMIN_PORTFOLIO_RESULT',
+  owner: 'CORE',
+  access: 'READ_ONLY',
+  requiredAuthority: 'workspace-admin:read',
+  observedAt: '2026-09-08T05:00:00.000Z',
+  page: 1,
+  pageSize: 25,
+  sort: 'UPDATED_AT',
+  direction: 'DESC',
+  total: 1,
+  summary: { total: 1, byStatus: { ACTIVE: 1, ARCHIVED: 0 } },
+  items: [
+    {
+      workspaceId: 'workspace-global-001',
+      name: 'Orbit Demo Workspace',
+      slug: 'orbit-demo-workspace',
+      status: 'ACTIVE',
+      version: 3,
+      createdAt: '2026-08-01T08:00:00.000Z',
+      updatedAt: '2026-09-08T04:45:00.000Z',
+      membershipCount: 4,
+      activeMembershipCount: 3
+    }
+  ]
+};
 test('MarkOrbit Super Admin exposes truthful governed operator surfaces @visual', async ({
   page
 }, testInfo) => {
@@ -97,13 +124,21 @@ test('MarkOrbit Super Admin exposes truthful governed operator surfaces @visual'
       body: JSON.stringify(dataOwnerSummary)
     });
   });
+  await page.route('**/api/internal/super-admin/workspaces*', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify(workspaceOwnerPortfolio)
+    });
+  });
   await page.addInitScript(() => {
     sessionStorage.setItem('markorbit-workspace-id', 'workspace-916');
   });
   await page.goto(urls.operations);
   await expect(page.getByText('Internal only')).toBeVisible();
   await expect(page.getByText('MarkOrbit Super Admin')).toBeVisible();
-  await expect(page.getByRole('navigation', { name: 'Primary' })).toBeVisible();
+  const primaryNavigation = page.getByRole('navigation', { name: 'Primary' });
+  await expect(primaryNavigation).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Super admin overview' })).toBeVisible();
   for (const label of [
     'Overview',
@@ -121,7 +156,7 @@ test('MarkOrbit Super Admin exposes truthful governed operator surfaces @visual'
     'System',
     'Governance & Audit'
   ]) {
-    await expect(page.getByRole('link', { name: label, exact: true })).toBeVisible();
+    await expect(primaryNavigation.getByRole('link', { name: label, exact: true })).toBeVisible();
   }
   for (const heading of [
     'Connected governed surfaces',
@@ -170,10 +205,7 @@ test('MarkOrbit Super Admin exposes truthful governed operator surfaces @visual'
   }
   await expect(page.getByText('1,248')).toHaveCount(0);
   await expect(
-    page.locator('#super-admin-workspace').getByText('Workspace', { exact: true })
-  ).toBeVisible();
-  await expect(
-    page.getByText('Global Workspace portfolio read is not connected yet.')
+    page.locator('#super-admin-workspace').getByRole('heading', { name: 'Workspace', exact: true })
   ).toBeVisible();
   await expectNoHorizontalOverflow(page);
   await expectVisibleFocus(page);

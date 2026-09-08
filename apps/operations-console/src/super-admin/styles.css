@@ -17,3 +17,230 @@
     flex: 0 0 auto;
   }
 }
+
+.mo-workspace-admin {
+  --mo-brand: #2563eb;
+  --mo-brand-hover: #1d4ed8;
+  display: grid;
+  gap: 1rem;
+  padding: 0.25rem 0 1.5rem;
+}
+
+.mo-domain-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  padding: 0.4rem;
+  border: 1px solid #dbe5f4;
+  border-radius: 0.75rem;
+  background: #f8fbff;
+}
+
+.mo-domain-tabs a,
+.mo-domain-tabs button {
+  border: 0;
+  border-radius: 0.55rem;
+  padding: 0.55rem 0.8rem;
+  background: transparent;
+  color: #27415f;
+  text-decoration: none;
+  font-weight: 650;
+}
+.mo-domain-tabs a:hover {
+  background: #eaf2ff;
+  color: #1d4ed8;
+}
+
+.mo-workspace-metrics {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.85rem;
+}
+
+.mo-workspace-metrics .mo-card {
+  padding: 1rem 1.1rem;
+  border-color: #dbe5f4;
+  background: linear-gradient(145deg, #fff, #f8fbff);
+}
+
+.mo-metric-label {
+  display: block;
+  margin-bottom: 0.35rem;
+  color: #60738a;
+  font-size: 0.82rem;
+  font-weight: 650;
+}
+
+.mo-metric-value {
+  display: block;
+  margin-bottom: 0.2rem;
+  color: #12233d;
+  font-size: 1.7rem;
+}
+.mo-metric-value--small {
+  font-size: 1.05rem;
+}
+
+.mo-workspace-directory-card {
+  display: grid;
+  gap: 1rem;
+  border-color: #dbe5f4;
+}
+
+.mo-workspace-directory-header,
+.mo-workspace-detail__header,
+.mo-workspace-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.mo-workspace-directory-header p,
+.mo-workspace-detail__header p {
+  margin-bottom: 0;
+  color: #60738a;
+}
+
+.mo-workspace-filters {
+  display: grid;
+  grid-template-columns: minmax(16rem, 2fr) repeat(3, minmax(8rem, 1fr)) auto;
+  gap: 0.75rem;
+  align-items: end;
+  padding: 0.85rem;
+  border-radius: 0.75rem;
+  background: #f6f9fe;
+}
+.mo-workspace-filter-actions {
+  display: flex;
+  gap: 0.45rem;
+  padding-bottom: 0.05rem;
+}
+
+.mo-workspace-table-wrap {
+  overflow-x: auto;
+  border: 1px solid #e2e8f2;
+  border-radius: 0.7rem;
+}
+
+.mo-workspace-table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 760px;
+}
+
+.mo-workspace-table th,
+.mo-workspace-table td {
+  padding: 0.78rem 0.85rem;
+  border-bottom: 1px solid #e7edf5;
+  text-align: left;
+  vertical-align: middle;
+}
+
+.mo-workspace-table th {
+  background: #f7faff;
+  color: #5a6e86;
+  font-size: 0.78rem;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+.mo-workspace-table td:first-child strong,
+.mo-workspace-table td:first-child small {
+  display: block;
+}
+
+.mo-workspace-table td:first-child small {
+  margin-top: 0.2rem;
+  color: #71839a;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.72rem;
+}
+
+.mo-workspace-table tr.is-selected td {
+  background: #f2f7ff;
+}
+
+.mo-workspace-status {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 0.22rem 0.55rem;
+  font-size: 0.75rem;
+  font-weight: 750;
+}
+
+.mo-workspace-status--active {
+  background: #e7f7ee;
+  color: #17603a;
+}
+
+.mo-workspace-status--archived {
+  background: #eef1f5;
+  color: #586575;
+}
+.mo-workspace-pagination {
+  justify-content: flex-end;
+  flex-wrap: wrap;
+}
+
+.mo-workspace-pagination > span {
+  margin-right: auto;
+  color: #60738a;
+}
+
+.mo-workspace-pagination .mo-field {
+  min-width: 5.5rem;
+}
+
+.mo-workspace-detail {
+  display: grid;
+  gap: 1rem;
+  border: 1px solid #cfdcf0;
+  box-shadow: 0 14px 38px rgb(29 78 216 / 8%);
+}
+
+.mo-eyebrow {
+  display: block;
+  margin-bottom: 0.25rem;
+  color: #2563eb;
+  font-size: 0.75rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.mo-workspace-detail-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+}
+.mo-workspace-management {
+  padding: 1rem;
+  border: 1px solid #dbe5f4;
+  border-radius: 0.7rem;
+  background: #f8fbff;
+}
+
+@media (max-width: 1100px) {
+  .mo-workspace-metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .mo-workspace-filters {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 760px) {
+  .mo-workspace-metrics,
+  .mo-workspace-detail-grid,
+  .mo-workspace-filters {
+    grid-template-columns: 1fr;
+  }
+
+  .mo-workspace-directory-header,
+  .mo-workspace-detail__header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}
