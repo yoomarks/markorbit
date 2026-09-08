@@ -23,6 +23,7 @@ import { createRuntime } from './index.js';
 import {
   createEnvironmentCognitiveReadGrantSourceV1,
   createEnvironmentDataReadGrantSourceV1,
+  createEnvironmentExecutionAdminReadGrantSourceV1,
   createEnvironmentKnowledgeReadGrantSourceV1,
   createEnvironmentLiteAdminReadGrantSourceV1,
   createEnvironmentWorkspaceAdminReadGrantSourceV1,
@@ -94,7 +95,8 @@ const internalOperatorPrincipalResolver = new InternalOperatorPrincipalResolverV
   knowledgeReadGrants: createEnvironmentKnowledgeReadGrantSourceV1(),
   workspaceAdminReadGrants: createEnvironmentWorkspaceAdminReadGrantSourceV1(),
   workspaceAdminManageGrants: createEnvironmentWorkspaceAdminManageGrantSourceV1(),
-  liteAdminReadGrants: createEnvironmentLiteAdminReadGrantSourceV1()
+  liteAdminReadGrants: createEnvironmentLiteAdminReadGrantSourceV1(),
+  executionAdminReadGrants: createEnvironmentExecutionAdminReadGrantSourceV1()
 });
 const accountOnboarding = new AccountOnboardingService(
   new PostgresAccountOnboardingRepository(database)

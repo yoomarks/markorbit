@@ -5,6 +5,7 @@ import {
   PostgresProfessionalReviewRepository
 } from './index.js';
 import { json } from '@markorbit/service-kit';
+import { createExecutionAdminRoutesV1 } from './admin-http.js';
 import { createExecutionCapabilityObservationSourceRoutes } from './capability-observation-source-http.js';
 import { EvidenceReviewService } from './evidence-review.js';
 import { PostgresEvidenceReviewRepository } from './evidence-review-postgres.js';
@@ -167,6 +168,7 @@ if (fixtureRuntime) {
       new PostgresFilingGovernanceRepository(database, pool, workspaceId, actorId, correlationId),
     providerExecutionRoutes: [
       ...durableMilestoneSnapshotRoutes,
+      ...createExecutionAdminRoutesV1({ internalServiceSecret }),
       ...createDurableExecutionProviderRoutes({
         database,
         internalServiceSecret
