@@ -205,7 +205,7 @@ test('MarkOrbit Super Admin exposes truthful governed operator surfaces @visual'
   }
   await expect(page.getByText('1,248')).toHaveCount(0);
   await expect(
-    page.locator('#super-admin-workspace').getByText('Workspace', { exact: true })
+    page.locator('#super-admin-workspace').getByRole('heading', { name: 'Workspace', exact: true })
   ).toBeVisible();
   await expectNoHorizontalOverflow(page);
   await expectVisibleFocus(page);
