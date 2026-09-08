@@ -3,6 +3,19 @@ import type { TradingStudioClient, TradingStudioState } from '../../api/trading-
 import { TradingStudioHttpError } from '../../api/trading-studio.js';
 import { TradingStudio } from './TradingStudio.js';
 
+const commercialDirectionContext = {
+  aiProfile: { id: 'trading-ai-derived_ai-profile_story', version: 2 },
+  targetConsumerRefs: ['trading-commercial-persona_consumer-story'],
+  operatorPersonaRefs: ['trading-commercial-persona_operator-story'],
+  trademarkBuyerPersonaRefs: ['trading-commercial-persona_buyer-story'],
+  sellingPointRefs: ['trading-selling-point_clarity-story'],
+  buyingPointRefs: ['trading-buying-point_launch-story'],
+  scenarioRefs: ['trading-commercial-scenario_launch-story'],
+  evidenceRefs: ['trading-commercial-evidence_asset-story'],
+  assumptionRefs: ['trading-commercial-assumption_demand-story'],
+  riskNotes: ['Market demand remains unverified.']
+} as const;
+
 const state = {
   run: { studioRunId: 'standard-studio-run_story', currentness: 'CURRENT', status: 'COMPLETED' },
   aiProfile: {
@@ -76,32 +89,39 @@ const state = {
   directionSet: {
     commercialDirectionSetId: 'commercial-direction-set_story',
     version: 1,
+    aiProfile: { id: 'trading-ai-derived_ai-profile_story', version: 2 },
     directions: [
       {
+        ...commercialDirectionContext,
         commercialDirectionId: 'trading-ai-derived_commercial-direction_story-best',
         version: 1,
         role: 'BEST_FIT',
         title: 'Focused operator',
         summary: 'A clear, credible route grounded in the strongest existing signals.',
         rationale: 'Balances differentiation with immediate comprehension.',
+        thesis: 'A focused operator can turn the clear identity into an accessible launch.',
         constraints: ['Keep claims evidence-based']
       },
       {
+        ...commercialDirectionContext,
         commercialDirectionId: 'trading-ai-derived_commercial-direction_story-value',
         version: 1,
         role: 'VALUE_UP',
         title: 'Premium system',
         summary: 'Elevates the mark into a higher-value service and experience system.',
         rationale: 'Creates room for premium positioning without implying verified market value.',
+        thesis: 'A premium operator can build a higher-touch system around the same identity.',
         constraints: ['Avoid unverified leadership claims']
       },
       {
+        ...commercialDirectionContext,
         commercialDirectionId: 'trading-ai-derived_commercial-direction_story-possible',
         version: 1,
         role: 'POSSIBILITY',
         title: 'Category creator',
         summary: 'Explores a more imaginative adjacent category opportunity.',
         rationale: 'Tests distinctive potential while keeping the concept explicitly speculative.',
+        thesis: 'An exploratory operator can test an adjacent category without claiming demand.',
         constraints: ['Validate category fit before investment']
       }
     ]

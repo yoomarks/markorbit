@@ -1,6 +1,16 @@
 import type { ProductLoopExactReference } from './product-loop.js';
 import type { MarkOrbitId } from './index.js';
 import type { TradingBrandDnaId } from './trading-brand-dna.js';
+import type {
+  TradingAiProfileId,
+  TradingAiProfileV1,
+  TradingBuyingPointId,
+  TradingCommercialAssumptionId,
+  TradingCommercialEvidenceId,
+  TradingCommercialPersonaId,
+  TradingCommercialScenarioId,
+  TradingSellingPointId
+} from './trading-ai-profile.js';
 import {
   assertTradingAiProvenanceV1,
   type TradingAiProvenanceV1
@@ -32,9 +42,22 @@ export interface TradingCommercialDirectionVersionV1 {
   role: TradingCommercialDirectionRole;
   studioRun: Readonly<ProductLoopExactReference<TradingStandardStudioRunId>>;
   brandDna: Readonly<ProductLoopExactReference<TradingBrandDnaId>>;
+  aiProfile?: Readonly<ProductLoopExactReference<TradingAiProfileId>>;
   title: string;
   summary: string;
   rationale: string;
+  thesis?: string;
+  targetConsumerRefs?: readonly TradingCommercialPersonaId[];
+  operatorPersonaRefs?: readonly TradingCommercialPersonaId[];
+  trademarkBuyerPersonaRefs?: readonly TradingCommercialPersonaId[];
+  sellingPointRefs?: readonly TradingSellingPointId[];
+  buyingPointRefs?: readonly TradingBuyingPointId[];
+  scenarioRefs?: readonly TradingCommercialScenarioId[];
+  valueProposition?: string;
+  channelFit?: readonly string[];
+  evidenceRefs?: readonly TradingCommercialEvidenceId[];
+  assumptionRefs?: readonly TradingCommercialAssumptionId[];
+  riskNotes?: readonly string[];
   constraints: readonly string[];
   status: 'CANDIDATE';
   provenance: Readonly<TradingAiProvenanceV1>;
@@ -51,6 +74,7 @@ export interface TradingCommercialDirectionSetV1 {
   studioRun: Readonly<ProductLoopExactReference<TradingStandardStudioRunId>>;
   trademarkAsset: Readonly<ProductLoopExactReference<TrademarkAssetId>>;
   brandDna: Readonly<ProductLoopExactReference<TradingBrandDnaId>>;
+  aiProfile?: Readonly<ProductLoopExactReference<TradingAiProfileId>>;
   directions: readonly [
     Readonly<TradingCommercialDirectionVersionV1>,
     Readonly<TradingCommercialDirectionVersionV1>,
@@ -169,6 +193,30 @@ function assertDirectionVersion(
   required(direction.title, 'tradingCommercialDirection.title');
   required(direction.summary, 'tradingCommercialDirection.summary');
   required(direction.rationale, 'tradingCommercialDirection.rationale');
+  for (const [field, value] of [
+    ['thesis', direction.thesis],
+    ['valueProposition', direction.valueProposition]
+  ] as const)
+    if (value !== undefined) required(value, `tradingCommercialDirection.${field}`);
+  for (const [field, values] of [
+    ['targetConsumerRefs', direction.targetConsumerRefs],
+    ['operatorPersonaRefs', direction.operatorPersonaRefs],
+    ['trademarkBuyerPersonaRefs', direction.trademarkBuyerPersonaRefs],
+    ['sellingPointRefs', direction.sellingPointRefs],
+    ['buyingPointRefs', direction.buyingPointRefs],
+    ['scenarioRefs', direction.scenarioRefs],
+    ['channelFit', direction.channelFit],
+    ['evidenceRefs', direction.evidenceRefs],
+    ['assumptionRefs', direction.assumptionRefs],
+    ['riskNotes', direction.riskNotes]
+  ] as const)
+    if (
+      values !== undefined &&
+      (values.some((value) => !value.trim()) || new Set(values).size !== values.length)
+    )
+      throw new TradingCommercialDirectionValidationError(
+        `tradingCommercialDirection.${field} must contain distinct non-empty values.`
+      );
   if (!direction.constraints.length || direction.constraints.some((item) => !item.trim()))
     throw new TradingCommercialDirectionValidationError(
       'tradingCommercialDirection.constraints must contain non-empty values.'
@@ -209,6 +257,73 @@ function assertDirectionVersion(
   assertNoAuthority(direction.authorityConsequences);
 }
 
+const hasCommercialReferences = (direction: Readonly<TradingCommercialDirectionVersionV1>) =>
+  direction.thesis !== undefined ||
+  direction.targetConsumerRefs !== undefined ||
+  direction.operatorPersonaRefs !== undefined ||
+  direction.trademarkBuyerPersonaRefs !== undefined ||
+  direction.sellingPointRefs !== undefined ||
+  direction.buyingPointRefs !== undefined ||
+  direction.scenarioRefs !== undefined ||
+  direction.valueProposition !== undefined ||
+  direction.channelFit !== undefined ||
+  direction.evidenceRefs !== undefined ||
+  direction.assumptionRefs !== undefined ||
+  direction.riskNotes !== undefined;
+
+/** Validates enriched direction references against one exact AI Profile snapshot. */
+export function assertTradingDirectionCommercialReferencesV1(
+  set: Readonly<TradingCommercialDirectionSetV1>,
+  profile: Readonly<TradingAiProfileV1>
+): void {
+  const profileRef = set.aiProfile;
+  if (
+    !profileRef ||
+    profileRef.id !== profile.aiProfileId ||
+    profileRef.version !== profile.version ||
+    profile.workspaceId !== set.workspaceId ||
+    !sameReference(profile.trademarkAsset, set.trademarkAsset)
+  )
+    throw new TradingCommercialDirectionValidationError(
+      'Enriched directions must reference the exact AI Profile for this Direction Set.'
+    );
+  const insights = profile.commercialInsights;
+  if (!insights)
+    throw new TradingCommercialDirectionValidationError(
+      'Enriched directions require Commercial Value Map insights.'
+    );
+  const byKind = (kind: string) =>
+    new Set(
+      insights.personas
+        .filter((persona) => persona.kind === kind)
+        .map((persona) => persona.commercialPersonaId)
+    );
+  const known = {
+    targetConsumerRefs: byKind('END_CONSUMER'),
+    operatorPersonaRefs: byKind('BUSINESS_OPERATOR'),
+    trademarkBuyerPersonaRefs: byKind('TRADEMARK_BUYER'),
+    sellingPointRefs: new Set(insights.sellingPoints.map((item) => item.sellingPointId)),
+    buyingPointRefs: new Set(insights.buyingPoints.map((item) => item.buyingPointId)),
+    scenarioRefs: new Set(insights.scenarios.map((item) => item.commercialScenarioId)),
+    evidenceRefs: new Set(insights.evidenceBasis.map((item) => item.commercialEvidenceId)),
+    assumptionRefs: new Set(insights.assumptions.map((item) => item.commercialAssumptionId))
+  };
+  for (const direction of set.directions) {
+    if (!hasCommercialReferences(direction)) continue;
+    if (!direction.aiProfile || !sameReference(direction.aiProfile, profileRef))
+      throw new TradingCommercialDirectionValidationError(
+        'Each enriched direction must reference the exact AI Profile.'
+      );
+    for (const field of Object.keys(known) as (keyof typeof known)[]) {
+      const references = direction[field];
+      if (references?.some((reference) => !known[field].has(reference as never)))
+        throw new TradingCommercialDirectionValidationError(
+          `tradingCommercialDirection.${field} contains an unknown or wrong-kind reference.`
+        );
+    }
+  }
+}
+
 /** Validates comparable candidates without choosing one or starting Deep Build. */
 export function assertTradingCommercialDirectionSetV1(
   set: Readonly<TradingCommercialDirectionSetV1>
@@ -231,6 +346,10 @@ export function assertTradingCommercialDirectionSetV1(
       'A direction set must contain exactly three candidates.'
     );
   set.directions.forEach((direction) => assertDirectionVersion(direction, set));
+  if (set.directions.some(hasCommercialReferences) && !set.aiProfile)
+    throw new TradingCommercialDirectionValidationError(
+      'An enriched Direction Set must reference an exact AI Profile.'
+    );
   if (new Set(set.directions.map((direction) => direction.commercialDirectionId)).size !== 3)
     throw new TradingCommercialDirectionValidationError(
       'A direction set must contain three distinct direction identities.'
