@@ -97,7 +97,7 @@ describe('Gateway System Super Admin read', () => {
 
   it('fails closed on malformed owner success and preserves owner non-2xx', async () => {
     const malformedFetch: typeof fetch = vi.fn((input: Parameters<typeof fetch>[0]) =>
-      url(input).startsWith(coreUrl)
+      url(input).endsWith('/operator-principals/resolve')
         ? response(principal)
         : response({ ...owner, portfolio: { availability: 'AVAILABLE' } })
     );
