@@ -33,7 +33,6 @@ describe('Super Admin shell', () => {
       'Core',
       'MarkReg',
       'Lite',
-      'MGSN',
       'Execution',
       'System',
       'Governance & Audit'
