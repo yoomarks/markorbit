@@ -180,6 +180,110 @@ function CommercialValueMap({ profile }: { profile: Readonly<TradingAiProfileV1>
   );
 }
 
+function DirectionCommercialSummary({
+  direction,
+  profile
+}: {
+  direction: Readonly<TradingCommercialDirectionVersionV1>;
+  profile: Readonly<TradingAiProfileV1> | null;
+}) {
+  const insights = profile?.commercialInsights;
+  const personaRefs = [
+    ...(direction.targetConsumerRefs ?? []),
+    ...(direction.operatorPersonaRefs ?? []),
+    ...(direction.trademarkBuyerPersonaRefs ?? [])
+  ];
+  const personas = insights?.personas.filter((item) =>
+    personaRefs.includes(item.commercialPersonaId)
+  );
+  const buyingPoints = insights?.buyingPoints.filter((item) =>
+    direction.buyingPointRefs?.includes(item.buyingPointId)
+  );
+  const scenarios = insights?.scenarios.filter((item) =>
+    direction.scenarioRefs?.includes(item.commercialScenarioId)
+  );
+  const sellingPoints = insights?.sellingPoints.filter((item) =>
+    direction.sellingPointRefs?.includes(item.sellingPointId)
+  );
+  const enriched = Boolean(direction.aiProfile && direction.thesis && insights);
+
+  if (!enriched)
+    return (
+      <>
+        <h3>Why it could work</h3>
+        <p>{direction.rationale}</p>
+        <h3>Constraints</h3>
+        <ul>
+          {direction.constraints.map((constraint) => (
+            <li key={constraint}>{constraint}</li>
+          ))}
+        </ul>
+      </>
+    );
+
+  return (
+    <div className="trading-studio__direction-value">
+      <p className="trading-studio__thesis">{direction.thesis}</p>
+      <section>
+        <h3>WHO</h3>
+        <p>{personas?.map((item) => item.label).join(' · ') || 'No audience reference'}</p>
+      </section>
+      <section>
+        <h3>WHY</h3>
+        <p>
+          {buyingPoints
+            ?.slice(0, 2)
+            .map((item) => item.label)
+            .join(' · ') || direction.rationale}
+        </p>
+      </section>
+      <section>
+        <h3>WHERE</h3>
+        <p>
+          {scenarios
+            ?.slice(0, 2)
+            .map((item) => item.label)
+            .join(' · ') || 'No scenario reference'}
+        </p>
+      </section>
+      <details>
+        <summary>Why this direction?</summary>
+        {direction.valueProposition ? <p>{direction.valueProposition}</p> : null}
+        {sellingPoints?.length ? (
+          <>
+            <h4>Selling points</h4>
+            <ul>
+              {sellingPoints.map((item) => (
+                <li key={item.sellingPointId}>{item.label}</li>
+              ))}
+            </ul>
+          </>
+        ) : null}
+        {buyingPoints?.length ? (
+          <>
+            <h4>Buying points</h4>
+            <ul>
+              {buyingPoints.map((item) => (
+                <li key={item.buyingPointId}>{item.description}</li>
+              ))}
+            </ul>
+          </>
+        ) : null}
+        {direction.riskNotes?.length ? (
+          <>
+            <h4>Risks and limits</h4>
+            <ul>
+              {direction.riskNotes.map((item) => (
+                <li key={item}>{item}</li>
+              ))}
+            </ul>
+          </>
+        ) : null}
+      </details>
+    </div>
+  );
+}
+
 function failureMessage(error: unknown): { title: string; description: string } {
   if (error instanceof TradingStudioHttpError && (error.status === 401 || error.status === 403))
     return {
@@ -322,14 +426,7 @@ export function TradingStudio({ workspaceId, studioRunId, client }: TradingStudi
                 </div>
                 <h2>{direction.title}</h2>
                 <p>{direction.summary}</p>
-                <h3>Why it could work</h3>
-                <p>{direction.rationale}</p>
-                <h3>Constraints</h3>
-                <ul>
-                  {direction.constraints.map((constraint) => (
-                    <li key={constraint}>{constraint}</li>
-                  ))}
-                </ul>
+                <DirectionCommercialSummary direction={direction} profile={state.aiProfile} />
                 <Button
                   variant={isSelected ? 'secondary' : 'primary'}
                   disabled={stale || Boolean(selecting) || isSelected}

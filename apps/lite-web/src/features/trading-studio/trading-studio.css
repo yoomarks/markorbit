@@ -107,6 +107,30 @@
 .trading-studio__direction button {
   margin-top: auto;
 }
+.trading-studio__direction-value {
+  display: grid;
+  gap: 10px;
+}
+.trading-studio__direction-value section {
+  display: grid;
+  gap: 3px;
+}
+.trading-studio__direction-value h4 {
+  margin: 10px 0 4px;
+  font-size: 0.82rem;
+}
+.trading-studio__direction-value details {
+  padding-top: 4px;
+  border-top: 1px solid var(--mo-border, #d8dee8);
+}
+.trading-studio__direction-value summary {
+  color: var(--mo-primary, #2563eb);
+  font-weight: 700;
+  cursor: pointer;
+}
+.trading-studio__thesis {
+  font-weight: 650;
+}
 .trading-studio__boundary {
   max-width: 880px;
   margin: 0;

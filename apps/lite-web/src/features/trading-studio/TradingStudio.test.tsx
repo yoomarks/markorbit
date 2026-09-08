@@ -23,6 +23,15 @@ function state(selected = false): TradingStudioState {
     title,
     summary: `${title} summary`,
     rationale: `${title} rationale`,
+    aiProfile: { id: 'trading-ai-derived_ai-profile_ui', version: 2 },
+    thesis: `${title} connects a specific operator to a plausible launch path.`,
+    targetConsumerRefs: ['trading-commercial-persona_consumer-ui'],
+    operatorPersonaRefs: ['trading-commercial-persona_operator-ui'],
+    trademarkBuyerPersonaRefs: ['trading-commercial-persona_buyer-ui'],
+    sellingPointRefs: ['trading-selling-point_identity-ui'],
+    buyingPointRefs: ['trading-buying-point_launch-ui'],
+    scenarioRefs: ['trading-commercial-scenario_launch-ui'],
+    riskNotes: ['Market demand remains unverified.'],
     constraints: ['Keep claims evidence-based'],
     status: 'CANDIDATE'
   }));
@@ -75,7 +84,13 @@ function state(selected = false): TradingStudioState {
             personaRefs: ['trading-commercial-persona_buyer-ui']
           }
         ],
-        scenarios: [],
+        scenarios: [
+          {
+            commercialScenarioId: 'trading-commercial-scenario_launch-ui',
+            label: 'Focused launch',
+            description: 'A possible launch path for the operator.'
+          }
+        ],
         evidenceBasis: [],
         assumptions: [
           {
@@ -90,6 +105,7 @@ function state(selected = false): TradingStudioState {
     directionSet: {
       commercialDirectionSetId: 'commercial-direction-set_ui',
       version: 1,
+      aiProfile: { id: 'trading-ai-derived_ai-profile_ui', version: 2 },
       directions
     },
     selection: selected
@@ -126,10 +142,12 @@ describe('Orbit Trading Studio direction comparison', () => {
     expect(screen.getByText('Possibility')).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Commercial Value Map' })).toBeInTheDocument();
     expect(screen.getByText('Active consumer')).toBeInTheDocument();
-    expect(screen.getByText('Potential launch fit')).toBeInTheDocument();
+    expect(screen.getAllByText('Potential launch fit')).toHaveLength(4);
     expect(screen.getByText(/not Trademark Truth, verified market demand/u)).toBeInTheDocument();
     expect(screen.getAllByRole('button', { name: /^Choose/u })).toHaveLength(3);
     expect(screen.getByText(/Selection does not start Deep Build/u)).toBeInTheDocument();
+    expect(screen.getAllByText('WHO')).toHaveLength(3);
+    expect(screen.getAllByText('Focused launch')).toHaveLength(4);
   });
 
   it('records one explicit exact-version choice and reloads durable owner state', async () => {

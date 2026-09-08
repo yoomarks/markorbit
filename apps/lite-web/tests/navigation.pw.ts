@@ -450,6 +450,12 @@ test('Orbit Studio compares three owner directions and records an explicit durab
     title,
     summary: `${title} summary`,
     rationale: `${title} rationale`,
+    aiProfile: { id: 'trading-ai-derived_ai-profile_browser', version: 2 },
+    thesis: `${title} connects a buyer to a plausible launch scenario.`,
+    targetConsumerRefs: ['trading-commercial-persona_consumer-browser'],
+    operatorPersonaRefs: ['trading-commercial-persona_operator-browser'],
+    trademarkBuyerPersonaRefs: ['trading-commercial-persona_buyer-browser'],
+    scenarioRefs: ['trading-commercial-scenario_launch-browser'],
     constraints: ['Keep claims evidence-based']
   }));
   let selected = false;
@@ -489,7 +495,13 @@ test('Orbit Studio compares three owner directions and records an explicit durab
             ],
             sellingPoints: [],
             buyingPoints: [],
-            scenarios: [],
+            scenarios: [
+              {
+                commercialScenarioId: 'trading-commercial-scenario_launch-browser',
+                label: 'Browser launch scenario',
+                description: 'A possible launch path.'
+              }
+            ],
             evidenceBasis: [],
             assumptions: [],
             limits: ['This fixture does not establish market demand.']
@@ -498,6 +510,7 @@ test('Orbit Studio compares three owner directions and records an explicit durab
         directionSet: {
           commercialDirectionSetId: 'commercial-direction-set_browser',
           version: 1,
+          aiProfile: { id: 'trading-ai-derived_ai-profile_browser', version: 2 },
           directions
         },
         selection: selected
@@ -523,9 +536,11 @@ test('Orbit Studio compares three owner directions and records an explicit durab
   );
   await expect(page.getByRole('heading', { name: 'Orbit Studio directions' })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Commercial Value Map' })).toBeVisible();
-  await expect(page.getByText('Browser consumer')).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Browser consumer', exact: true })).toBeVisible();
   await expect(page.getByText(/not Trademark Truth, verified market demand/u)).toBeVisible();
-  await expect(page.getByLabel('Commercial directions').locator('section')).toHaveCount(3);
+  await expect(page.getByText('WHO').first()).toBeVisible();
+  await expect(page.getByText('Browser launch scenario').first()).toBeVisible();
+  await expect(page.getByLabel('Commercial directions').locator(':scope > section')).toHaveCount(3);
   await page.getByRole('button', { name: 'Choose Best Fit' }).click();
   await expect(page.getByRole('button', { name: 'Selected' })).toBeDisabled();
   expect(mutation?.headers['x-markorbit-workspace-id']).toBe('workspace-browser');
