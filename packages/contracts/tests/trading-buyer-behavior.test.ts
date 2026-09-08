@@ -57,6 +57,39 @@ describe('Lite Trading Buyer Behavior V1 contract', () => {
     expect(parseBuyerBehaviorEventV1(offer)).toEqual(offer);
   });
 
+  it('keeps existing events readable when opportunity context is absent', () => {
+    expect(parseBuyerBehaviorEventV1(event()).opportunityContext).toBeUndefined();
+  });
+
+  it('captures only stable commercial insight references for opportunity interactions', () => {
+    const observed = event({
+      eventType: 'CLICK',
+      opportunityContext: {
+        section: 'BUYING_POINTS',
+        insightReferences: [
+          { kind: 'BUYING_POINT', id: 'trading-buying-point_fast-launch-1' },
+          { kind: 'PERSONA', id: 'trading-commercial-persona_buyer-1' }
+        ]
+      }
+    });
+    expect(parseBuyerBehaviorEventV1(observed).opportunityContext).toEqual(
+      observed.opportunityContext
+    );
+  });
+
+  it('rejects arbitrary opportunity payloads and mismatched insight ids', () => {
+    expect(() =>
+      parseBuyerBehaviorEventV1(
+        event({
+          opportunityContext: {
+            section: 'WHY_MO_THINKS_THIS',
+            insightReferences: [{ kind: 'EVIDENCE', id: 'private-prompt_do-not-record' }]
+          } as unknown as NonNullable<BuyerBehaviorEventV1['opportunityContext']>
+        })
+      )
+    ).toThrow(/insightReferences\[0\]\.id is invalid/u);
+  });
+
   it('requires canonical owner evidence for consequential observations', () => {
     expect(() => parseBuyerBehaviorEventV1(event({ eventType: 'OFFER_CREATED' }))).toThrow(
       /canonical owner action reference/u

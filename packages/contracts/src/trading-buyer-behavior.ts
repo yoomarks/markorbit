@@ -1,4 +1,12 @@
 import type { TrademarkAssetId } from './trademark-asset-workspace.js';
+import type {
+  TradingBuyingPointId,
+  TradingCommercialAssumptionId,
+  TradingCommercialEvidenceId,
+  TradingCommercialPersonaId,
+  TradingCommercialScenarioId,
+  TradingSellingPointId
+} from './trading-ai-profile.js';
 
 export type BuyerBehaviorEventId = `buyer-behavior_${string}`;
 
@@ -25,6 +33,29 @@ export const buyerBehaviorSurfaces = [
   'OTHER'
 ] as const;
 export type BuyerBehaviorSurface = (typeof buyerBehaviorSurfaces)[number];
+
+export const buyerBehaviorOpportunitySections = [
+  'BEST_FOR',
+  'SELLING_POINTS',
+  'BUYING_POINTS',
+  'LAUNCH_SCENARIOS',
+  'WHY_MO_THINKS_THIS'
+] as const;
+export type BuyerBehaviorOpportunitySection = (typeof buyerBehaviorOpportunitySections)[number];
+
+export type BuyerBehaviorCommercialInsightReferenceV1 =
+  | Readonly<{ kind: 'PERSONA'; id: TradingCommercialPersonaId }>
+  | Readonly<{ kind: 'SELLING_POINT'; id: TradingSellingPointId }>
+  | Readonly<{ kind: 'BUYING_POINT'; id: TradingBuyingPointId }>
+  | Readonly<{ kind: 'SCENARIO'; id: TradingCommercialScenarioId }>
+  | Readonly<{ kind: 'EVIDENCE'; id: TradingCommercialEvidenceId }>
+  | Readonly<{ kind: 'ASSUMPTION'; id: TradingCommercialAssumptionId }>;
+
+/** Public-safe context only: stable Commercial Value Map IDs, never prompts or asset content. */
+export interface BuyerBehaviorOpportunityContextV1 {
+  section: BuyerBehaviorOpportunitySection;
+  insightReferences: readonly BuyerBehaviorCommercialInsightReferenceV1[];
+}
 
 export type BuyerBehaviorSubjectV1 =
   | Readonly<{ kind: 'ANONYMOUS'; sessionId: string }>
@@ -65,6 +96,7 @@ export interface BuyerBehaviorEventV1 {
   correlationId: string;
   canonicalActionReference?: string;
   dwellDurationMs?: number;
+  opportunityContext?: Readonly<BuyerBehaviorOpportunityContextV1>;
   authorityConsequences: BuyerBehaviorAuthorityConsequencesV1;
 }
 
@@ -144,6 +176,53 @@ const canonicalActionEventTypes = new Set<BuyerBehaviorEventType>([
   'TRANSACTION_COMPLETED'
 ]);
 
+const commercialInsightPrefixes = {
+  PERSONA: 'trading-commercial-persona_',
+  SELLING_POINT: 'trading-selling-point_',
+  BUYING_POINT: 'trading-buying-point_',
+  SCENARIO: 'trading-commercial-scenario_',
+  EVIDENCE: 'trading-commercial-evidence_',
+  ASSUMPTION: 'trading-commercial-assumption_'
+} as const;
+
+function parseOpportunityContext(value: unknown): BuyerBehaviorOpportunityContextV1 {
+  const context = record(value, 'buyerBehavior.opportunityContext');
+  const section = oneOf(
+    context.section,
+    buyerBehaviorOpportunitySections,
+    'buyerBehavior.opportunityContext.section'
+  );
+  if (!Array.isArray(context.insightReferences) || context.insightReferences.length === 0)
+    throw new BuyerBehaviorContractValidationError(
+      'buyerBehavior.opportunityContext.insightReferences must contain stable insight references.'
+    );
+  const seen = new Set<string>();
+  const insightReferences = context.insightReferences.map((value, index) => {
+    const reference = record(value, `buyerBehavior.opportunityContext.insightReferences[${index}]`);
+    const kind = oneOf(
+      reference.kind,
+      Object.keys(commercialInsightPrefixes),
+      `buyerBehavior.opportunityContext.insightReferences[${index}].kind`
+    ) as keyof typeof commercialInsightPrefixes;
+    const id = text(
+      reference.id,
+      `buyerBehavior.opportunityContext.insightReferences[${index}].id`
+    );
+    if (!id.startsWith(commercialInsightPrefixes[kind]))
+      throw new BuyerBehaviorContractValidationError(
+        `buyerBehavior.opportunityContext.insightReferences[${index}].id is invalid.`
+      );
+    const key = `${kind}:${id}`;
+    if (seen.has(key))
+      throw new BuyerBehaviorContractValidationError(
+        'buyerBehavior.opportunityContext.insightReferences must be distinct.'
+      );
+    seen.add(key);
+    return { kind, id } as BuyerBehaviorCommercialInsightReferenceV1;
+  });
+  return { section, insightReferences };
+}
+
 export function parseBuyerBehaviorEventV1(value: unknown): BuyerBehaviorEventV1 {
   const event = record(value, 'buyerBehavior');
   if (event.schemaVersion !== 1)
@@ -167,6 +246,10 @@ export function parseBuyerBehaviorEventV1(value: unknown): BuyerBehaviorEventV1 
     event.dwellDurationMs === undefined
       ? undefined
       : positiveInteger(event.dwellDurationMs, 'buyerBehavior.dwellDurationMs');
+  const opportunityContext =
+    event.opportunityContext === undefined
+      ? undefined
+      : parseOpportunityContext(event.opportunityContext);
   if ((eventType === 'DWELL') !== (dwellDurationMs !== undefined))
     throw new BuyerBehaviorContractValidationError(
       'dwellDurationMs is required only for DWELL events.'
@@ -197,6 +280,7 @@ export function parseBuyerBehaviorEventV1(value: unknown): BuyerBehaviorEventV1 
     correlationId: text(event.correlationId, 'buyerBehavior.correlationId'),
     ...(canonicalActionReference === undefined ? {} : { canonicalActionReference }),
     ...(dwellDurationMs === undefined ? {} : { dwellDurationMs }),
+    ...(opportunityContext === undefined ? {} : { opportunityContext }),
     authorityConsequences: parseAuthority(event.authorityConsequences)
   };
 }
