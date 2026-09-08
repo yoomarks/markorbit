@@ -86,6 +86,18 @@ const mgsnOwnerProviders = [
     updatedAt: '2026-09-08T05:00:00.000Z'
   }
 ];
+const knowledgePlatformAdministration = {
+  schemaVersion: 1,
+  objectType: 'KNOWLEDGE_PLATFORM_ADMINISTRATION_OWNER_RESULT',
+  owner: 'KNOWLEDGE',
+  access: 'READ_ONLY',
+  requiredUpstreamAuthority: 'control-plane:knowledge:read',
+  observedAt: '2026-09-08T11:00:00.000Z',
+  portfolio: {
+    availability: 'NOT_YET_MODELED',
+    reason: 'Canonical Evidence Supply Health is currently Workspace-scoped.'
+  }
+};
 const liteOwnerAdministration = {
   schemaVersion: 1,
   objectType: 'LITE_ADMINISTRATION_PROJECTION',
@@ -150,6 +162,13 @@ test('MarkOrbit Super Admin exposes truthful governed operator surfaces @visual'
       body: JSON.stringify(dataOwnerSummary)
     });
   });
+  await page.route('**/api/internal/super-admin/knowledge', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify(knowledgePlatformAdministration)
+    });
+  });
   await page.route('**/api/internal/super-admin/lite', async (route) => {
     await route.fulfill({
       status: 200,
@@ -207,16 +226,20 @@ test('MarkOrbit Super Admin exposes truthful governed operator surfaces @visual'
     await expect(page.getByRole('heading', { name: heading })).toBeVisible();
   }
   await page.getByRole('link', { name: 'Knowledge', exact: true }).click();
-  await expect(page).toHaveURL(/#knowledge-platform$/);
-  await expect(page.getByRole('heading', { name: 'Knowledge', exact: true })).toBeVisible();
+  await expect(page).toHaveURL(/#super-admin-knowledge$/);
+  const knowledgeAdmin = page.locator('#super-admin-knowledge');
   await expect(
-    page.getByText(
-      'No Knowledge owner health loaded. Load owner health to determine current evidence-supply state.'
-    )
+    knowledgeAdmin.getByRole('heading', { name: 'Knowledge', exact: true })
   ).toBeVisible();
-  const loadKnowledgeOwnerHealth = page.getByRole('button', { name: 'Load owner health' });
-  await expect(loadKnowledgeOwnerHealth).toBeVisible();
+  await expect(
+    knowledgeAdmin.getByText('Global Knowledge portfolio not yet modeled')
+  ).toBeVisible();
+  await expect(knowledgeAdmin.getByText('NOT_YET_MODELED')).toBeVisible();
   expect(knowledgeOwnerReads).toBe(0);
+  await expect(page.locator('#knowledge-platform')).toBeVisible();
+  const loadKnowledgeOwnerHealth = page.locator('#knowledge-platform').getByRole('button', {
+    name: 'Load owner health'
+  });
   await loadKnowledgeOwnerHealth.click();
   await expect(page.getByText('Knowledge owner-reported evidence supply health')).toBeVisible();
   expect(knowledgeOwnerReads).toBe(1);

@@ -25,6 +25,9 @@ describe('Super Admin shell', () => {
     expect(new Set(superAdminNavigationItems.map((item) => item.href)).size).toBe(
       expectedNavigation.length
     );
+    expect(superAdminNavigationItems.find((item) => item.label === 'Knowledge')?.href).toBe(
+      '#super-admin-knowledge'
+    );
   });
 
   it('gives every not-yet-connected domain an explicit truthful landing', () => {
