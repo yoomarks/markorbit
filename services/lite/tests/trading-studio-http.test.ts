@@ -23,6 +23,68 @@ const brandDnaReader = (studioRun: TradingStudioRunV1) => ({
         } as never)
       : Promise.reject(new Error('getExact BrandDNA is not expected'))
 });
+
+describe('Lite Trading AI Profile checkpoint HTTP boundary', () => {
+  function commandRoute(generate: () => Promise<unknown>) {
+    const found = createTradingStudioReadRoutes({
+      internalServiceSecret: secret,
+      runs: { getLatest: () => Promise.resolve(run) },
+      profiles: unusedProfileReader,
+      brandDnas: brandDnaReader(run),
+      directionSets: { getExact: () => Promise.resolve({} as never) },
+      selections: {
+        ...unusedSelectionWriter,
+        getCurrentForDirectionSet: () => Promise.resolve(undefined)
+      },
+      aiProfileCheckpointFor: () => ({ generate: generate as never })
+    }).find((route) => route.method === 'POST' && route.path.endsWith('/ai-profile'));
+    if (!found) throw new Error('AI Profile checkpoint route missing.');
+    return found;
+  }
+
+  it('passes trusted workspace context and command idempotency to the checkpoint', async () => {
+    const result = { run: { version: 2 }, aiProfile: { version: 1 }, replayed: false };
+    const generate = vi.fn(() => Promise.resolve(result));
+    const response = await commandRoute(generate).handle({
+      ...request(),
+      method: 'POST',
+      body: { userBrief: 'Let AI lead' },
+      headers: {
+        ...request().headers,
+        'x-markorbit-principal': encodeInternalWorkspacePrincipal(manager),
+        'idempotency-key': 'run-1:ai-profile',
+        'x-correlation-id': 'run-1'
+      }
+    });
+    expect(response).toEqual({ status: 201, body: result });
+    expect(generate).toHaveBeenCalledWith({
+      workspaceId,
+      studioRunId: run.studioRunId,
+      userBrief: 'Let AI lead',
+      idempotencyKey: 'run-1:ai-profile',
+      correlationId: 'run-1'
+    });
+  });
+
+  it('requires mutation permission and an idempotency key', async () => {
+    const found = commandRoute(() => Promise.reject(new Error('not expected')));
+    await expect(found.handle({ ...request(), method: 'POST', body: {} })).rejects.toMatchObject({
+      status: 403,
+      code: 'PERMISSION_DENIED'
+    });
+    await expect(
+      found.handle({
+        ...request(),
+        method: 'POST',
+        body: {},
+        headers: {
+          ...request().headers,
+          'x-markorbit-principal': encodeInternalWorkspacePrincipal(manager)
+        }
+      })
+    ).rejects.toMatchObject({ status: 400, code: 'IDEMPOTENCY_KEY_REQUIRED' });
+  });
+});
 const workspaceId = '98989898-9898-4989-8989-989898989898';
 const principal: WorkspacePrincipal = {
   kind: 'WORKSPACE',

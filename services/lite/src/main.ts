@@ -48,6 +48,11 @@ import { PostgresTradingStudioRunStore } from './trading-studio-run.js';
 import { PostgresTradingDirectionSetStore } from './trading-direction-set.js';
 import { PostgresTradingDirectionSelectionStore } from './trading-direction-selection.js';
 import { PostgresTradingAiProfileStore } from './trading-ai-profile.js';
+import { TradingAiProfileCheckpointService } from './trading-ai-profile-checkpoint.js';
+import {
+  HttpTradingManagedAiClient,
+  TradingAiProfileGenerator
+} from './trading-ai-profile-generation.js';
 import { PostgresTradingBrandDnaStore } from './trading-brand-dna.js';
 import { TrademarkAssetAiGuidePreparer } from './trademark-asset-ai-guide.js';
 import { PostgresTrademarkAssetCommerceStore } from './trademark-asset-commerce.js';
@@ -78,6 +83,7 @@ if (!configuredInternalServiceSecret)
 const internalServiceSecret: string = configuredInternalServiceSecret;
 const markRegUrl = process.env.MARKREG_URL ?? 'http://127.0.0.1:4105';
 const coreUrl = process.env.CORE_URL ?? 'http://127.0.0.1:4101';
+const capabilityEngineUrl = process.env.CAPABILITY_ENGINE_URL ?? 'http://127.0.0.1:4103';
 const liteVisualStyleId = process.env.MOKI_LITE_STYLE_ID ?? 'markorbit-lite-editorial-v1';
 
 const { ManagedDatabase, parseDatabaseConfig } = await import('@markorbit/persistence');
@@ -98,6 +104,8 @@ const dailySignalStore = new PostgresLiteDailySignalStore(
   new HttpCoreDailyKnowledgeSourceAuthority(coreUrl, internalServiceSecret)
 );
 const trademarkAssetStore = new PostgresLiteTrademarkAssetStore(database, pool);
+const tradingStudioRunStore = new PostgresTradingStudioRunStore(database, pool);
+const tradingAiProfileStore = new PostgresTradingAiProfileStore(database, pool);
 const trademarkAssetCommerceStore = new PostgresTrademarkAssetCommerceStore(
   database,
   pool,
@@ -304,11 +312,20 @@ const runtime = createServiceRuntime(serviceManifest, {
     ...createLiteAdminRoutesV1({ internalServiceSecret }),
     ...createTradingStudioReadRoutes({
       internalServiceSecret,
-      runs: new PostgresTradingStudioRunStore(database, pool),
-      profiles: new PostgresTradingAiProfileStore(database, pool),
+      runs: tradingStudioRunStore,
+      profiles: tradingAiProfileStore,
       brandDnas: new PostgresTradingBrandDnaStore(database, pool),
       directionSets: new PostgresTradingDirectionSetStore(database, pool),
-      selections: new PostgresTradingDirectionSelectionStore(database, pool)
+      selections: new PostgresTradingDirectionSelectionStore(database, pool),
+      aiProfileCheckpointFor: (principal) =>
+        new TradingAiProfileCheckpointService(
+          tradingStudioRunStore,
+          trademarkAssetStore,
+          tradingAiProfileStore,
+          new TradingAiProfileGenerator(
+            new HttpTradingManagedAiClient(capabilityEngineUrl, internalServiceSecret, principal)
+          )
+        )
     }),
     ...createContentStudioRoutes({
       internalServiceSecret,
