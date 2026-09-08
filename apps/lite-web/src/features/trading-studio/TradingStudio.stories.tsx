@@ -5,6 +5,74 @@ import { TradingStudio } from './TradingStudio.js';
 
 const state = {
   run: { studioRunId: 'standard-studio-run_story', currentness: 'CURRENT', status: 'COMPLETED' },
+  aiProfile: {
+    aiProfileId: 'trading-ai-derived_ai-profile_story',
+    version: 2,
+    commercialInsights: {
+      schemaVersion: 1,
+      evidenceCoverage: 'LIMITED',
+      personas: [
+        {
+          commercialPersonaId: 'trading-commercial-persona_consumer-story',
+          kind: 'END_CONSUMER',
+          label: 'Design-aware customer',
+          summary: 'A possible customer seeking an accessible, modern offer.'
+        },
+        {
+          commercialPersonaId: 'trading-commercial-persona_operator-story',
+          kind: 'BUSINESS_OPERATOR',
+          label: 'Focused operator',
+          summary: 'An operator exploring a tightly positioned offer.'
+        },
+        {
+          commercialPersonaId: 'trading-commercial-persona_buyer-story',
+          kind: 'TRADEMARK_BUYER',
+          label: 'Launch-oriented buyer',
+          summary: 'A buyer assessing whether the asset supports a future launch.'
+        }
+      ],
+      sellingPoints: [
+        {
+          sellingPointId: 'trading-selling-point_clarity-story',
+          label: 'Clear identity',
+          description: 'The supplied identity is concise and easy to scan.',
+          basisType: 'TRUTH_DERIVED'
+        }
+      ],
+      buyingPoints: [
+        {
+          buyingPointId: 'trading-buying-point_launch-story',
+          label: 'Potential launch fit',
+          description: 'The concise identity may help a buyer frame a future launch.',
+          sellingPointRefs: ['trading-selling-point_clarity-story'],
+          personaRefs: ['trading-commercial-persona_buyer-story']
+        }
+      ],
+      scenarios: [
+        {
+          commercialScenarioId: 'trading-commercial-scenario_launch-story',
+          label: 'Possible launch',
+          description: 'A hypothetical launch scenario, not an existing business fact.'
+        }
+      ],
+      evidenceBasis: [
+        {
+          commercialEvidenceId: 'trading-commercial-evidence_asset-story',
+          label: 'Supplied Trademark Asset',
+          sourceType: 'TRADEMARK_ASSET'
+        }
+      ],
+      assumptions: [
+        {
+          commercialAssumptionId: 'trading-commercial-assumption_demand-story',
+          label: 'Future demand',
+          description: 'Market demand has not been established.',
+          risk: 'HIGH'
+        }
+      ],
+      limits: ['Evidence coverage is qualitative and does not predict commercial success.']
+    }
+  },
   directionSet: {
     commercialDirectionSetId: 'commercial-direction-set_story',
     version: 1,
@@ -86,6 +154,15 @@ export const PermissionDenied: Story = {
   args: {
     ...base,
     client: client(new TradingStudioHttpError(403, 'PERMISSION_DENIED', 'Forbidden'))
+  }
+};
+export const LegacyProfileWithoutValueMap: Story = {
+  args: {
+    ...base,
+    client: client({
+      ...state,
+      aiProfile: { ...state.aiProfile, commercialInsights: undefined }
+    } as unknown as TradingStudioState)
   }
 };
 export const ReadyToChooseMobile390: Story = {
