@@ -1,6 +1,7 @@
 import { Alert, PageHeader } from '@markorbit/ui';
 import { BrainAdminWorkspace } from './brain-admin.js';
 import { CapabilityAdminWorkspace } from './capability-admin.js';
+import { KnowledgeAdminWorkspace } from './knowledge-admin.js';
 import { LiteAdminWorkspace } from './lite-admin.js';
 import { MarkRegAdminWorkspace } from './markreg-admin.js';
 import { MgsnAdminWorkspace } from './mgsn-admin.js';
@@ -62,6 +63,7 @@ export function SuperAdminDomainLandings() {
       <MarkRegAdminWorkspace />
       <LiteAdminWorkspace />
       <MgsnAdminWorkspace />
+      <KnowledgeAdminWorkspace />
     </section>
   );
 }
