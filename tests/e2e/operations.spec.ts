@@ -98,6 +98,18 @@ const knowledgePlatformAdministration = {
     reason: 'Canonical Evidence Supply Health is currently Workspace-scoped.'
   }
 };
+const executionOwnerAdministration = {
+  schemaVersion: 1,
+  objectType: 'EXECUTION_ADMINISTRATION_PROJECTION',
+  owner: 'EXECUTION',
+  access: 'READ_ONLY',
+  requiredAuthority: 'execution-admin:read',
+  observedAt: '2026-09-08T14:10:00.000Z',
+  portfolio: {
+    availability: 'NOT_YET_MODELED',
+    reason: 'No canonical durable global Execution portfolio is modeled.'
+  }
+};
 const liteOwnerAdministration = {
   schemaVersion: 1,
   objectType: 'LITE_ADMINISTRATION_PROJECTION',
@@ -167,6 +179,13 @@ test('MarkOrbit Super Admin exposes truthful governed operator surfaces @visual'
       status: 200,
       contentType: 'application/json',
       body: JSON.stringify(knowledgePlatformAdministration)
+    });
+  });
+  await page.route('**/api/internal/super-admin/execution', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify(executionOwnerAdministration)
     });
   });
   await page.route('**/api/internal/super-admin/lite', async (route) => {
@@ -243,6 +262,16 @@ test('MarkOrbit Super Admin exposes truthful governed operator surfaces @visual'
   await loadKnowledgeOwnerHealth.click();
   await expect(page.getByText('Knowledge owner-reported evidence supply health')).toBeVisible();
   expect(knowledgeOwnerReads).toBe(1);
+  await page.getByRole('link', { name: 'Execution', exact: true }).click();
+  await expect(page).toHaveURL(/#super-admin-execution$/);
+  const executionAdmin = page.locator('#super-admin-execution');
+  await expect(
+    executionAdmin.getByRole('heading', { name: 'Execution', exact: true })
+  ).toBeVisible();
+  await expect(
+    executionAdmin.getByText('Global Execution portfolio not yet modeled')
+  ).toBeVisible();
+  await expect(executionAdmin.getByText('NOT_YET_MODELED')).toBeVisible();
   await page.getByRole('link', { name: 'Data Engine', exact: true }).click();
   await expect(page).toHaveURL(/#data-platform$/);
   await expect(page.getByRole('heading', { name: 'Data', exact: true })).toBeVisible();
