@@ -1,10 +1,7 @@
 import { useState } from 'react';
 import { Alert, Button, Card, DataList, PageHeader } from '@markorbit/ui';
 import { CapabilityCatalogIntegrity } from '../capability-catalog-integrity.js';
-import {
-  CognitiveOwnerReadError,
-  loadCapabilityCognitiveOwner
-} from '../cognitive-platform.js';
+import { CognitiveOwnerReadError, loadCapabilityCognitiveOwner } from '../cognitive-platform.js';
 
 type JsonObject = Record<string, unknown>;
 
@@ -150,7 +147,9 @@ function CapabilityOwnerTruth({ value }: { value: JsonObject }) {
         ) : (
           <ol>
             {model.runtimeCapabilities.map((capability) => (
-              <li key={text(capability.runtimeCapabilityDefinitionId, text(capability.capabilityId))}>
+              <li
+                key={text(capability.runtimeCapabilityDefinitionId, text(capability.capabilityId))}
+              >
                 <strong>{text(capability.title, text(capability.capabilityId))}</strong> ·{' '}
                 {text(capability.capabilityId)}@{text(capability.capabilityVersion)} · definition v
                 {scalar(capability.version)}
@@ -168,14 +167,16 @@ function CapabilityOwnerTruth({ value }: { value: JsonObject }) {
           <ol>
             {model.implementationProfiles.map((profile) => (
               <li key={`${text(profile.implementationProfileId)}:${scalar(profile.version)}`}>
-                <strong>{text(profile.implementationProfileId)}</strong> v{scalar(profile.version)} ·{' '}
-                {text(profile.status)} · {text(profile.capabilityId)}@
+                <strong>{text(profile.implementationProfileId)}</strong> v{scalar(profile.version)}{' '}
+                · {text(profile.status)} · {text(profile.capabilityId)}@
                 {text(profile.capabilityVersion)} · {text(profile.kind)}
               </li>
             ))}
           </ol>
         )}
-        <p>APPROVED is lifecycle truth only; it is not production source admission or correctness.</p>
+        <p>
+          APPROVED is lifecycle truth only; it is not production source admission or correctness.
+        </p>
       </Card>
       <Card>
         <h3 id="capability-admin-admission">Admission / Source Policy</h3>
@@ -187,7 +188,8 @@ function CapabilityOwnerTruth({ value }: { value: JsonObject }) {
               <li key={`${text(policy.policyId)}:${scalar(policy.policyVersion)}`}>
                 <strong>{text(policy.policyId)}</strong> v{scalar(policy.policyVersion)} ·{' '}
                 {text(policy.maturityClass)} · {text(policy.capabilityId)}@
-                {text(policy.capabilityVersion)} · fingerprint {text(policy.policyFingerprintSha256)}
+                {text(policy.capabilityVersion)} · fingerprint{' '}
+                {text(policy.policyFingerprintSha256)}
               </li>
             ))}
           </ol>
@@ -248,12 +250,18 @@ export function CapabilityAdminWorkspace() {
         recomputation of integrity or mutation authority is introduced.
       </Alert>
       <nav aria-label="Capability administration">
-        <a href="#capability-admin-overview">Overview</a>{' · '}
-        <a href="#capability-admin-registry">Registry</a>{' · '}
-        <a href="#capability-admin-implementations">Implementations</a>{' · '}
-        <a href="#capability-admin-runtime">Runtime & Observations</a>{' · '}
-        <a href="#capability-admin-admission">Admission</a>{' · '}
-        <a href="#capability-admin-integrity">Dependencies & Integrity</a>{' · '}
+        <a href="#capability-admin-overview">Overview</a>
+        {' · '}
+        <a href="#capability-admin-registry">Registry</a>
+        {' · '}
+        <a href="#capability-admin-implementations">Implementations</a>
+        {' · '}
+        <a href="#capability-admin-runtime">Runtime & Observations</a>
+        {' · '}
+        <a href="#capability-admin-admission">Admission</a>
+        {' · '}
+        <a href="#capability-admin-integrity">Dependencies & Integrity</a>
+        {' · '}
         <a href="#capability-admin-audit">Audit</a>
       </nav>
       <Card>
