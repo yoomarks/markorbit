@@ -34,7 +34,6 @@ describe('Super Admin shell', () => {
     const navigationTargets = new Set<string>(superAdminNavigationItems.map((item) => item.href));
     expect(superAdminDomainLandings.map((item) => item.title)).toEqual([
       'Core',
-      'Execution',
       'System',
       'Governance & Audit'
     ]);
