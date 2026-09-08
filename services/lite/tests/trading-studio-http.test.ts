@@ -11,6 +11,18 @@ const unusedSelectionWriter = {
 const unusedProfileReader = {
   getExact: () => Promise.reject(new Error('getExact profile is not expected'))
 };
+const brandDnaReader = (studioRun: TradingStudioRunV1) => ({
+  getExact: () =>
+    studioRun.brandDna && studioRun.aiProfile
+      ? Promise.resolve({
+          brandDnaId: studioRun.brandDna.id,
+          version: studioRun.brandDna.version,
+          studioRun: { id: studioRun.studioRunId, version: studioRun.version },
+          trademarkAsset: studioRun.trademarkAsset,
+          aiProfile: studioRun.aiProfile
+        } as never)
+      : Promise.reject(new Error('getExact BrandDNA is not expected'))
+});
 const workspaceId = '98989898-9898-4989-8989-989898989898';
 const principal: WorkspacePrincipal = {
   kind: 'WORKSPACE',
@@ -67,6 +79,7 @@ function route() {
   const found = createTradingStudioReadRoutes({
     internalServiceSecret: secret,
     runs: { getLatest: () => Promise.resolve(run) },
+    brandDnas: brandDnaReader(run),
     profiles: unusedProfileReader,
     directionSets: { getExact: () => Promise.resolve({} as TradingCommercialDirectionSetV1) },
     selections: {
@@ -83,6 +96,7 @@ function directionRoute() {
   const found = createTradingStudioReadRoutes({
     internalServiceSecret: secret,
     runs: { getLatest: () => Promise.resolve(run) },
+    brandDnas: brandDnaReader(run),
     profiles: unusedProfileReader,
     selections: {
       ...unusedSelectionWriter,
@@ -137,6 +151,7 @@ describe('Lite Trading Studio read HTTP boundary', () => {
     const found = createTradingStudioReadRoutes({
       internalServiceSecret: secret,
       runs: { getLatest: () => Promise.resolve(run) },
+      brandDnas: brandDnaReader(run),
       profiles: unusedProfileReader,
       directionSets: { getExact: () => Promise.resolve({} as TradingCommercialDirectionSetV1) },
       selections: {
@@ -173,6 +188,7 @@ describe('Lite Trading Studio read HTTP boundary', () => {
     const found = createTradingStudioReadRoutes({
       internalServiceSecret: secret,
       runs: { getLatest: () => Promise.resolve(completed) },
+      brandDnas: brandDnaReader(completed),
       profiles: {
         getExact: () =>
           Promise.resolve({
@@ -199,6 +215,13 @@ describe('Lite Trading Studio read HTTP boundary', () => {
         version: completed.aiProfile.version,
         trademarkAsset: completed.trademarkAsset
       },
+      brandDna: {
+        brandDnaId: completed.brandDna.id,
+        version: completed.brandDna.version,
+        studioRun: { id: completed.studioRunId, version: completed.version },
+        trademarkAsset: completed.trademarkAsset,
+        aiProfile: completed.aiProfile
+      },
       directionSet,
       selection
     });
@@ -213,6 +236,7 @@ describe('Lite Trading Studio read HTTP boundary', () => {
     const found = createTradingStudioReadRoutes({
       internalServiceSecret: secret,
       runs: { getLatest: () => Promise.resolve(profiled) },
+      brandDnas: brandDnaReader(profiled),
       profiles: {
         getExact: () =>
           Promise.resolve({
@@ -236,6 +260,46 @@ describe('Lite Trading Studio read HTTP boundary', () => {
     ).rejects.toMatchObject({ status: 409, code: 'STUDIO_STATE_VERSION_CONFLICT' });
   });
 
+  it('fails closed when BrandDNA points at another Studio Run version', async () => {
+    const branded = {
+      ...run,
+      checkpoint: 'BRAND_DNA' as const,
+      aiProfile: { id: 'trading-ai-derived_ai-profile_1' as const, version: 1 },
+      brandDna: { id: 'trading-ai-derived_brand-dna_1' as const, version: 1 }
+    } as TradingStudioRunV1;
+    const found = createTradingStudioReadRoutes({
+      internalServiceSecret: secret,
+      runs: { getLatest: () => Promise.resolve(branded) },
+      profiles: {
+        getExact: () =>
+          Promise.resolve({
+            aiProfileId: branded.aiProfile!.id,
+            version: branded.aiProfile!.version,
+            trademarkAsset: branded.trademarkAsset
+          } as never)
+      },
+      brandDnas: {
+        getExact: () =>
+          Promise.resolve({
+            brandDnaId: branded.brandDna!.id,
+            version: branded.brandDna!.version,
+            studioRun: { id: branded.studioRunId, version: 99 },
+            trademarkAsset: branded.trademarkAsset,
+            aiProfile: branded.aiProfile
+          } as never)
+      },
+      directionSets: { getExact: () => Promise.resolve({} as never) },
+      selections: {
+        ...unusedSelectionWriter,
+        getCurrentForDirectionSet: () => Promise.resolve(undefined)
+      }
+    })[3];
+    if (!found) throw new Error('Studio state route missing.');
+    await expect(
+      found.handle({ ...request(), path: `/v1/trading/studio-runs/${run.studioRunId}/state` })
+    ).rejects.toMatchObject({ status: 409, code: 'STUDIO_STATE_VERSION_CONFLICT' });
+  });
+
   it('fails closed when current Selection points at another Direction Set version', async () => {
     const completed = {
       ...run,
@@ -250,6 +314,7 @@ describe('Lite Trading Studio read HTTP boundary', () => {
     const found = createTradingStudioReadRoutes({
       internalServiceSecret: secret,
       runs: { getLatest: () => Promise.resolve(completed) },
+      brandDnas: brandDnaReader(completed),
       profiles: {
         getExact: () =>
           Promise.resolve({
@@ -283,6 +348,7 @@ describe('Lite Trading Studio read HTTP boundary', () => {
     const found = createTradingStudioReadRoutes({
       internalServiceSecret: secret,
       runs: { getLatest: () => Promise.resolve(run) },
+      brandDnas: brandDnaReader(run),
       profiles: unusedProfileReader,
       directionSets: { getExact: () => Promise.resolve({} as never) },
       selections: { getCurrentForDirectionSet: () => Promise.resolve(undefined), recordExplicit }
@@ -325,6 +391,7 @@ describe('Lite Trading Studio read HTTP boundary', () => {
     const found = createTradingStudioReadRoutes({
       internalServiceSecret: secret,
       runs: { getLatest: () => Promise.resolve(run) },
+      brandDnas: brandDnaReader(run),
       profiles: unusedProfileReader,
       directionSets: { getExact: () => Promise.resolve({} as never) },
       selections: { getCurrentForDirectionSet: () => Promise.resolve(undefined), recordExplicit }
@@ -371,6 +438,7 @@ describe('Lite Trading Studio read HTTP boundary', () => {
     const found = createTradingStudioReadRoutes({
       internalServiceSecret: secret,
       runs: { getLatest: () => Promise.resolve(run) },
+      brandDnas: brandDnaReader(run),
       profiles: { getExact },
       directionSets: { getExact: () => Promise.resolve({} as never) },
       selections: {
@@ -386,5 +454,29 @@ describe('Lite Trading Studio read HTTP boundary', () => {
     });
     expect(response.body).toEqual({ aiProfile });
     expect(getExact).toHaveBeenCalledWith(workspaceId, 'trading-ai-derived_ai-profile_1', 2);
+  });
+
+  it('loads the exact workspace-scoped BrandDNA version', async () => {
+    const brandDna = { brandDnaId: 'trading-ai-derived_brand-dna_1', version: 2 };
+    const getExact = vi.fn(() => Promise.resolve(brandDna as never));
+    const found = createTradingStudioReadRoutes({
+      internalServiceSecret: secret,
+      runs: { getLatest: () => Promise.resolve(run) },
+      profiles: unusedProfileReader,
+      brandDnas: { getExact },
+      directionSets: { getExact: () => Promise.resolve({} as never) },
+      selections: {
+        ...unusedSelectionWriter,
+        getCurrentForDirectionSet: () => Promise.resolve(undefined)
+      }
+    })[6];
+    if (!found) throw new Error('Exact BrandDNA route missing.');
+    const response = await found.handle({
+      ...request(),
+      path: '/v1/trading/brand-dnas/trading-ai-derived_brand-dna_1/versions/2',
+      params: { brandDnaId: 'trading-ai-derived_brand-dna_1', version: '2' }
+    });
+    expect(response.body).toEqual({ brandDna });
+    expect(getExact).toHaveBeenCalledWith(workspaceId, 'trading-ai-derived_brand-dna_1', 2);
   });
 });

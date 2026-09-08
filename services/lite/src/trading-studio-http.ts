@@ -22,11 +22,16 @@ import {
   TradingAiProfilePersistenceError,
   type PostgresTradingAiProfileStore
 } from './trading-ai-profile.js';
+import {
+  TradingBrandDnaPersistenceError,
+  type PostgresTradingBrandDnaStore
+} from './trading-brand-dna.js';
 
 export interface TradingStudioReadRouteOptions {
   internalServiceSecret: string;
   runs: Pick<PostgresTradingStudioRunStore, 'getLatest'>;
   profiles: Pick<PostgresTradingAiProfileStore, 'getExact'>;
+  brandDnas: Pick<PostgresTradingBrandDnaStore, 'getExact'>;
   directionSets: Pick<PostgresTradingDirectionSetStore, 'getExact'>;
   selections: Pick<
     PostgresTradingDirectionSelectionStore,
@@ -202,10 +207,46 @@ export function createTradingStudioReadRoutes(options: TradingStudioReadRouteOpt
               'STUDIO_STATE_VERSION_CONFLICT',
               'AI Profile does not reference the Studio Run exact source versions.'
             );
+          const brandDnaReference = run.brandDna;
+          if (
+            brandDnaReference &&
+            (!Number.isSafeInteger(brandDnaReference.version) ||
+              Number(brandDnaReference.version) < 1)
+          )
+            throw new HttpError(
+              409,
+              'STUDIO_STATE_VERSION_CONFLICT',
+              'Studio Run does not reference a valid BrandDNA version.'
+            );
+          const brandDna = brandDnaReference
+            ? await options.brandDnas.getExact(
+                principal.workspaceId,
+                brandDnaReference.id,
+                Number(brandDnaReference.version)
+              )
+            : undefined;
+          if (
+            brandDna &&
+            (brandDna.brandDnaId !== brandDnaReference?.id ||
+              brandDna.version !== Number(brandDnaReference.version) ||
+              brandDna.studioRun.id !== run.studioRunId ||
+              brandDna.studioRun.version !== run.version ||
+              brandDna.trademarkAsset.id !== run.trademarkAsset.id ||
+              brandDna.trademarkAsset.version !== run.trademarkAsset.version ||
+              !aiProfileReference ||
+              brandDna.aiProfile.id !== aiProfileReference.id ||
+              brandDna.aiProfile.version !== aiProfileReference.version)
+          )
+            throw new HttpError(
+              409,
+              'STUDIO_STATE_VERSION_CONFLICT',
+              'BrandDNA does not reference the Studio Run exact source versions.'
+            );
           if (!run.directionSet)
             return json(200, {
               run,
               aiProfile: aiProfile ?? null,
+              brandDna: brandDna ?? null,
               directionSet: null,
               selection: null
             });
@@ -242,6 +283,7 @@ export function createTradingStudioReadRoutes(options: TradingStudioReadRouteOpt
           return json(200, {
             run,
             aiProfile: aiProfile ?? null,
+            brandDna: brandDna ?? null,
             directionSet,
             selection: selection ?? null
           });
@@ -249,6 +291,7 @@ export function createTradingStudioReadRoutes(options: TradingStudioReadRouteOpt
           if (
             error instanceof TradingStudioRunPersistenceError ||
             error instanceof TradingAiProfilePersistenceError ||
+            error instanceof TradingBrandDnaPersistenceError ||
             error instanceof TradingDirectionSetPersistenceError ||
             error instanceof TradingDirectionSelectionPersistenceError
           )
@@ -343,6 +386,27 @@ export function createTradingStudioReadRoutes(options: TradingStudioReadRouteOpt
           return json(200, { aiProfile });
         } catch (error) {
           if (error instanceof TradingAiProfilePersistenceError)
+            throw new HttpError(error.status, error.code, error.message, error.retryable);
+          throw error;
+        }
+      }
+    },
+    {
+      method: 'GET',
+      path: '/v1/trading/brand-dnas/:brandDnaId/versions/:version',
+      handle: async (request) => {
+        const principal = principalOf(request, options.internalServiceSecret);
+        if (request.body !== undefined || Object.keys(request.query).length)
+          throw new HttpError(400, 'INVALID_REQUEST', 'BrandDNA read accepts only path fields.');
+        try {
+          const brandDna = await options.brandDnas.getExact(
+            principal.workspaceId,
+            request.params.brandDnaId! as `trading-ai-derived_brand-dna_${string}`,
+            Number(request.params.version)
+          );
+          return json(200, { brandDna });
+        } catch (error) {
+          if (error instanceof TradingBrandDnaPersistenceError)
             throw new HttpError(error.status, error.code, error.message, error.retryable);
           throw error;
         }
