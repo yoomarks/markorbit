@@ -21,6 +21,8 @@ import { CapabilityCenter } from './features/capability/CapabilityCenter.js';
 import { TrademarkAssetPortfolio } from './features/trademark-assets/TrademarkAssetPortfolio.js';
 import { ContentStudio } from './features/content-studio/ContentStudio.js';
 import type { ContentStudioClient } from './api/content-studio.js';
+import type { TradingStudioClient } from './api/trading-studio.js';
+import { TradingStudio } from './features/trading-studio/TradingStudio.js';
 import { CandidateReview } from './features/opportunities/CandidateReview.js';
 import { GovernedActionComposer } from './features/opportunities/GovernedActionComposer.js';
 import { GuideWorkspace } from './features/guide/GuideWorkspace.js';
@@ -48,6 +50,8 @@ export interface LiteAppProps {
   workspaceId?: string;
   contentStudioClient?: ContentStudioClient;
   initialContentOpportunityId?: string;
+  initialTradingStudioRunId?: `standard-studio-run_${string}`;
+  tradingStudioClient?: TradingStudioClient;
 }
 
 const workSubnavigationSurfaces: readonly LiteSurface[] = [
@@ -150,7 +154,9 @@ export function LiteApp({
   initialFilingAuthorization,
   workspaceId,
   contentStudioClient,
-  initialContentOpportunityId
+  initialContentOpportunityId,
+  initialTradingStudioRunId,
+  tradingStudioClient
 }: LiteAppProps) {
   const [surface, setSurface] = useState<LiteSurface>(
     () => liteSurfaceFromHash(window.location.hash) ?? initialSurface
@@ -183,7 +189,10 @@ export function LiteApp({
     previousWorkspaceId.current = activeWorkspaceId;
     if (!previous || previous === activeWorkspaceId) return;
     const context = new URLSearchParams(window.location.search);
-    if ((surface === 'trademarks' || surface === 'guide') && context.has('trademarkAssetId')) {
+    if (
+      (surface === 'trademarks' || surface === 'guide') &&
+      (context.has('trademarkAssetId') || context.has('studioRunId'))
+    ) {
       updateLiteLocation(
         { surface, workspaceId: activeWorkspaceId || undefined },
         { replace: true }
@@ -212,6 +221,10 @@ export function LiteApp({
     trademarkAssetVersionValue && /^[1-9]\d*$/.test(trademarkAssetVersionValue)
       ? Number(trademarkAssetVersionValue)
       : undefined;
+  const studioRunIdValue = initialTradingStudioRunId ?? currentQuery.get('studioRunId');
+  const studioRunId = studioRunIdValue?.startsWith('standard-studio-run_')
+    ? (studioRunIdValue as `standard-studio-run_${string}`)
+    : undefined;
 
   return (
     <AppShell
@@ -290,11 +303,20 @@ export function LiteApp({
           )
         ) : surface === 'trademarks' ? (
           activeWorkspaceId ? (
-            <TrademarkAssetPortfolio
-              key={activeWorkspaceId}
-              workspaceId={activeWorkspaceId}
-              {...(trademarkAssetId ? { initialTrademarkAssetId: trademarkAssetId } : {})}
-            />
+            studioRunId ? (
+              <TradingStudio
+                key={`${activeWorkspaceId}:${studioRunId}`}
+                workspaceId={activeWorkspaceId}
+                studioRunId={studioRunId}
+                {...(tradingStudioClient ? { client: tradingStudioClient } : {})}
+              />
+            ) : (
+              <TrademarkAssetPortfolio
+                key={activeWorkspaceId}
+                workspaceId={activeWorkspaceId}
+                {...(trademarkAssetId ? { initialTrademarkAssetId: trademarkAssetId } : {})}
+              />
+            )
           ) : (
             workspaceRequired(
               'A valid Workspace context is required to load durable Trademark Assets.'
