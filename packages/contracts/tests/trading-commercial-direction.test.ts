@@ -1,12 +1,14 @@
 import { describe, expect, it } from 'vitest';
 import {
   assertTradingCommercialDirectionSetV1,
+  assertTradingDirectionCommercialReferencesV1,
   assertTradingCommercialDirectionRefinementV1,
   noTradingDirectionAuthorityConsequencesV1,
   type TradingCommercialDirectionRole,
   type TradingCommercialDirectionSetV1,
   type TradingCommercialDirectionVersionV1
 } from '../src/trading-commercial-direction.js';
+import type { TradingAiProfileV1 } from '../src/trading-ai-profile.js';
 import { noTradingAiAuthorityConsequencesV1 } from '../src/trading-ai-provenance.js';
 
 const direction = (
@@ -223,5 +225,63 @@ describe('Lite Trading CommercialDirection V1 contract', () => {
         { ...before, version: 2 }
       )
     ).toThrow(/exact current DirectionSet version/u);
+  });
+
+  it('resolves enriched WHO, WHY and WHERE references only against the exact AI Profile', () => {
+    const profile = {
+      aiProfileId: 'trading-ai-derived_ai-profile_mark-1',
+      version: 1,
+      workspaceId: 'workspace-1',
+      trademarkAsset: { id: 'trademark-asset_mark-1', version: 4 },
+      commercialInsights: {
+        personas: [
+          { commercialPersonaId: 'trading-commercial-persona_consumer', kind: 'END_CONSUMER' },
+          {
+            commercialPersonaId: 'trading-commercial-persona_operator',
+            kind: 'BUSINESS_OPERATOR'
+          },
+          { commercialPersonaId: 'trading-commercial-persona_buyer', kind: 'TRADEMARK_BUYER' }
+        ],
+        sellingPoints: [{ sellingPointId: 'trading-selling-point_registered' }],
+        buyingPoints: [{ buyingPointId: 'trading-buying-point_faster-launch' }],
+        scenarios: [{ commercialScenarioId: 'trading-commercial-scenario_launch' }],
+        evidenceBasis: [{ commercialEvidenceId: 'trading-commercial-evidence_record' }],
+        assumptions: [{ commercialAssumptionId: 'trading-commercial-assumption_fit' }]
+      }
+    } as unknown as TradingAiProfileV1;
+    const value = directionSet();
+    const enriched = {
+      ...value,
+      aiProfile: { id: profile.aiProfileId, version: profile.version },
+      directions: value.directions.map((candidate) => ({
+        ...candidate,
+        aiProfile: { id: profile.aiProfileId, version: profile.version },
+        thesis: `${candidate.role} thesis`,
+        targetConsumerRefs: ['trading-commercial-persona_consumer'],
+        operatorPersonaRefs: ['trading-commercial-persona_operator'],
+        trademarkBuyerPersonaRefs: ['trading-commercial-persona_buyer'],
+        sellingPointRefs: ['trading-selling-point_registered'],
+        buyingPointRefs: ['trading-buying-point_faster-launch'],
+        scenarioRefs: ['trading-commercial-scenario_launch'],
+        evidenceRefs: ['trading-commercial-evidence_record'],
+        assumptionRefs: ['trading-commercial-assumption_fit']
+      }))
+    } as unknown as TradingCommercialDirectionSetV1;
+
+    expect(() => assertTradingCommercialDirectionSetV1(enriched)).not.toThrow();
+    expect(() => assertTradingDirectionCommercialReferencesV1(enriched, profile)).not.toThrow();
+    expect(() =>
+      assertTradingDirectionCommercialReferencesV1(
+        {
+          ...enriched,
+          directions: [
+            { ...enriched.directions[0], targetConsumerRefs: ['trading-commercial-persona_buyer'] },
+            enriched.directions[1],
+            enriched.directions[2]
+          ]
+        },
+        profile
+      )
+    ).toThrow(/wrong-kind reference/u);
   });
 });

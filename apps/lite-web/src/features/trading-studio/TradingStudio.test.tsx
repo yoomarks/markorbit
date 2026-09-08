@@ -23,6 +23,15 @@ function state(selected = false): TradingStudioState {
     title,
     summary: `${title} summary`,
     rationale: `${title} rationale`,
+    aiProfile: { id: 'trading-ai-derived_ai-profile_ui', version: 2 },
+    thesis: `${title} connects a specific operator to a plausible launch path.`,
+    targetConsumerRefs: ['trading-commercial-persona_consumer-ui'],
+    operatorPersonaRefs: ['trading-commercial-persona_operator-ui'],
+    trademarkBuyerPersonaRefs: ['trading-commercial-persona_buyer-ui'],
+    sellingPointRefs: ['trading-selling-point_identity-ui'],
+    buyingPointRefs: ['trading-buying-point_launch-ui'],
+    scenarioRefs: ['trading-commercial-scenario_launch-ui'],
+    riskNotes: ['Market demand remains unverified.'],
     constraints: ['Keep claims evidence-based'],
     status: 'CANDIDATE'
   }));
@@ -32,9 +41,71 @@ function state(selected = false): TradingStudioState {
       currentness: 'CURRENT',
       status: 'COMPLETED'
     },
+    aiProfile: {
+      aiProfileId: 'trading-ai-derived_ai-profile_ui',
+      version: 2,
+      commercialInsights: {
+        schemaVersion: 1,
+        evidenceCoverage: 'LIMITED',
+        personas: [
+          {
+            commercialPersonaId: 'trading-commercial-persona_consumer-ui',
+            kind: 'END_CONSUMER',
+            label: 'Active consumer',
+            summary: 'A possible audience for a future offer.'
+          },
+          {
+            commercialPersonaId: 'trading-commercial-persona_operator-ui',
+            kind: 'BUSINESS_OPERATOR',
+            label: 'Focused operator',
+            summary: 'An operator exploring a business around the asset.'
+          },
+          {
+            commercialPersonaId: 'trading-commercial-persona_buyer-ui',
+            kind: 'TRADEMARK_BUYER',
+            label: 'Asset buyer',
+            summary: 'A buyer assessing fit for a future launch.'
+          }
+        ],
+        sellingPoints: [
+          {
+            sellingPointId: 'trading-selling-point_identity-ui',
+            label: 'Concise identity',
+            description: 'The supplied mark text is concise.',
+            basisType: 'TRUTH_DERIVED'
+          }
+        ],
+        buyingPoints: [
+          {
+            buyingPointId: 'trading-buying-point_launch-ui',
+            label: 'Potential launch fit',
+            description: 'The identity may suit a future launch.',
+            sellingPointRefs: ['trading-selling-point_identity-ui'],
+            personaRefs: ['trading-commercial-persona_buyer-ui']
+          }
+        ],
+        scenarios: [
+          {
+            commercialScenarioId: 'trading-commercial-scenario_launch-ui',
+            label: 'Focused launch',
+            description: 'A possible launch path for the operator.'
+          }
+        ],
+        evidenceBasis: [],
+        assumptions: [
+          {
+            commercialAssumptionId: 'trading-commercial-assumption_demand-ui',
+            label: 'Future demand',
+            description: 'Market demand has not been established.'
+          }
+        ],
+        limits: ['Evidence coverage does not predict commercial success.']
+      }
+    },
     directionSet: {
       commercialDirectionSetId: 'commercial-direction-set_ui',
       version: 1,
+      aiProfile: { id: 'trading-ai-derived_ai-profile_ui', version: 2 },
       directions
     },
     selection: selected
@@ -69,8 +140,14 @@ describe('Orbit Trading Studio direction comparison', () => {
     expect(await screen.findByText('Best Fit')).toBeInTheDocument();
     expect(screen.getByText('Value Up')).toBeInTheDocument();
     expect(screen.getByText('Possibility')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Commercial Value Map' })).toBeInTheDocument();
+    expect(screen.getByText('Active consumer')).toBeInTheDocument();
+    expect(screen.getAllByText('Potential launch fit')).toHaveLength(4);
+    expect(screen.getByText(/not Trademark Truth, verified market demand/u)).toBeInTheDocument();
     expect(screen.getAllByRole('button', { name: /^Choose/u })).toHaveLength(3);
     expect(screen.getByText(/Selection does not start Deep Build/u)).toBeInTheDocument();
+    expect(screen.getAllByText('WHO')).toHaveLength(3);
+    expect(screen.getAllByText('Focused launch')).toHaveLength(4);
   });
 
   it('records one explicit exact-version choice and reloads durable owner state', async () => {
@@ -155,5 +232,29 @@ describe('Orbit Trading Studio direction comparison', () => {
       />
     );
     expect(await screen.findByText('Directions are not ready')).toBeInTheDocument();
+  });
+
+  it('distinguishes a missing profile from a legacy profile without commercial insights', async () => {
+    const missing = client({ ...state(), aiProfile: null });
+    const { rerender } = render(
+      <TradingStudio workspaceId={workspaceId} studioRunId={studioRunId} client={missing.api} />
+    );
+    expect(await screen.findByText('Commercial Value Map is not ready')).toBeInTheDocument();
+
+    const legacy = state();
+    (legacy as unknown as { aiProfile: object }).aiProfile = {
+      ...legacy.aiProfile,
+      commercialInsights: undefined
+    };
+    rerender(
+      <TradingStudio
+        workspaceId={workspaceId}
+        studioRunId={'standard-studio-run_legacy'}
+        client={client(legacy).api}
+      />
+    );
+    expect(
+      await screen.findByText('Commercial Value Map is unavailable for this profile')
+    ).toBeInTheDocument();
   });
 });

@@ -1,10 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import {
   assertTradingAssetClassificationV1,
+  assertTradingListingAssetCommercialIntentV1,
   noTradingAssetClassificationAuthorityConsequencesV1,
   type TradingListingAssetV1,
   type TradingSourceAssetV1
 } from '../src/trading-asset-classification.js';
+import type { TradingAiProfileV1 } from '../src/trading-ai-profile.js';
+import type { TradingCommercialDirectionVersionV1 } from '../src/trading-commercial-direction.js';
 
 const sourceAsset = (): TradingSourceAssetV1 => ({
   schemaVersion: 1,
@@ -37,6 +40,36 @@ const listingAsset = (): TradingListingAssetV1 => ({
   createdAt: '2026-09-07T12:05:00.000Z',
   authorityConsequences: noTradingAssetClassificationAuthorityConsequencesV1
 });
+
+const commercialListingAsset = (): TradingListingAssetV1 => ({
+  ...listingAsset(),
+  commercialDirection: {
+    id: 'trading-ai-derived_commercial-direction_contract-1',
+    version: 2
+  },
+  aiProfile: { id: 'trading-ai-derived_ai-profile_contract-1', version: 3 },
+  targetAudienceRefs: ['trading-commercial-persona_end-consumer-1'],
+  buyingPointRefs: ['trading-buying-point_fast-launch-1'],
+  scenarioRefs: ['trading-commercial-scenario_dtc-launch-1'],
+  creativeRole: 'HERO'
+});
+
+const direction = {
+  commercialDirectionId: 'trading-ai-derived_commercial-direction_contract-1',
+  version: 2,
+  aiProfile: { id: 'trading-ai-derived_ai-profile_contract-1', version: 3 },
+  targetConsumerRefs: ['trading-commercial-persona_end-consumer-1'],
+  operatorPersonaRefs: ['trading-commercial-persona_operator-1'],
+  trademarkBuyerPersonaRefs: ['trading-commercial-persona_buyer-1'],
+  buyingPointRefs: ['trading-buying-point_fast-launch-1'],
+  scenarioRefs: ['trading-commercial-scenario_dtc-launch-1']
+} as unknown as TradingCommercialDirectionVersionV1;
+
+const profile = {
+  aiProfileId: 'trading-ai-derived_ai-profile_contract-1',
+  version: 3,
+  trademarkAsset: { id: 'trademark-asset_contract-1', version: 3 }
+} as unknown as TradingAiProfileV1;
 
 describe('Lite Trading asset classification V1 contract', () => {
   it('keeps private Source Assets and approved Listing Assets as distinct identities', () => {
@@ -105,5 +138,34 @@ describe('Lite Trading asset classification V1 contract', () => {
       trademarkTruthMutated: false,
       ownershipOrAuthorityVerified: false
     });
+  });
+
+  it('preserves commercial intent against exact DirectionVersion and AI Profile owners', () => {
+    const asset = commercialListingAsset();
+    expect(() => assertTradingAssetClassificationV1(asset)).not.toThrow();
+    expect(() =>
+      assertTradingListingAssetCommercialIntentV1(asset, direction, profile)
+    ).not.toThrow();
+
+    expect(() =>
+      assertTradingListingAssetCommercialIntentV1(
+        { ...asset, buyingPointRefs: ['trading-buying-point_unknown'] },
+        direction,
+        profile
+      )
+    ).toThrow(/buyingPointRefs.*exact DirectionVersion/u);
+    expect(() =>
+      assertTradingListingAssetCommercialIntentV1(
+        { ...asset, commercialDirection: { ...asset.commercialDirection!, version: 1 } },
+        direction,
+        profile
+      )
+    ).toThrow(/exact DirectionVersion/u);
+  });
+
+  it('does not add commercial-intent fields to private Source Assets', () => {
+    expect(sourceAsset()).not.toHaveProperty('commercialDirection');
+    expect(sourceAsset()).not.toHaveProperty('targetAudienceRefs');
+    expect(sourceAsset()).not.toHaveProperty('creativeRole');
   });
 });
