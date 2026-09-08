@@ -103,7 +103,8 @@ test('MarkOrbit Super Admin exposes truthful governed operator surfaces @visual'
   await page.goto(urls.operations);
   await expect(page.getByText('Internal only')).toBeVisible();
   await expect(page.getByText('MarkOrbit Super Admin')).toBeVisible();
-  await expect(page.getByRole('navigation', { name: 'Primary' })).toBeVisible();
+  const primaryNavigation = page.getByRole('navigation', { name: 'Primary' });
+  await expect(primaryNavigation).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Super admin overview' })).toBeVisible();
   for (const label of [
     'Overview',
@@ -121,7 +122,7 @@ test('MarkOrbit Super Admin exposes truthful governed operator surfaces @visual'
     'System',
     'Governance & Audit'
   ]) {
-    await expect(page.getByRole('link', { name: label, exact: true })).toBeVisible();
+    await expect(primaryNavigation.getByRole('link', { name: label, exact: true })).toBeVisible();
   }
   for (const heading of [
     'Connected governed surfaces',
