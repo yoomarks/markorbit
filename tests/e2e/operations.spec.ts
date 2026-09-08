@@ -72,6 +72,20 @@ const knowledgeOwnerHealth = {
     recentChanges30d: 0
   }
 };
+const mgsnOwnerProviders = [
+  {
+    schemaVersion: 1,
+    providerId: 'provider-super-admin-001',
+    providerWorkspaceId: 'workspace-provider-001',
+    displayName: 'Orbit Provider One',
+    operationalStatus: 'ACTIVE',
+    version: 2,
+    createdBy: 'user-ops',
+    updatedBy: 'user-ops',
+    createdAt: '2026-09-01T08:00:00.000Z',
+    updatedAt: '2026-09-08T05:00:00.000Z'
+  }
+];
 const workspaceOwnerPortfolio = {
   schemaVersion: 1,
   objectType: 'WORKSPACE_ADMIN_PORTFOLIO_RESULT',
@@ -122,6 +136,13 @@ test('MarkOrbit Super Admin exposes truthful governed operator surfaces @visual'
       status: 200,
       contentType: 'application/json',
       body: JSON.stringify(dataOwnerSummary)
+    });
+  });
+  await page.route('**/api/internal/commercial-admin/providers', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify(mgsnOwnerProviders)
     });
   });
   await page.route('**/api/internal/super-admin/workspaces*', async (route) => {
