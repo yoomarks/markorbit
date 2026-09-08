@@ -1,3 +1,4 @@
+import { encodeInternalWorkspacePrincipal, type WorkspacePrincipal } from '@markorbit/contracts';
 import {
   MANAGED_AI_EXECUTION_CAPABILITY_ID,
   MANAGED_AI_EXECUTION_CONTRACT_VERSION,
@@ -25,6 +26,97 @@ export interface TradingManagedAiClient {
     input: Readonly<ManagedAiExecutionInputV1>,
     context: Readonly<{ idempotencyKey: string; correlationId: string }>
   ): Promise<unknown>;
+}
+
+export class HttpTradingManagedAiClient implements TradingManagedAiClient {
+  constructor(
+    private readonly capabilityUrl: string,
+    private readonly internalServiceSecret: string,
+    private readonly principal: Readonly<WorkspacePrincipal>,
+    private readonly fetcher: typeof fetch = fetch
+  ) {}
+
+  async execute(
+    input: Readonly<ManagedAiExecutionInputV1>,
+    context: Readonly<{ idempotencyKey: string; correlationId: string }>
+  ): Promise<unknown> {
+    const command = {
+      schemaVersion: 2,
+      capabilityId: MANAGED_AI_EXECUTION_CAPABILITY_ID,
+      capabilityVersion: MANAGED_AI_EXECUTION_CONTRACT_VERSION,
+      caller: {
+        workspaceId: this.principal.workspaceId,
+        principalId: this.principal.userId,
+        callerProduct: 'LITE',
+        permissionContextRef: `core-workspace-membership:${this.principal.membershipId}`
+      },
+      purpose: 'Generate one versioned Lite Trading AI Profile candidate.',
+      input,
+      inputSchemaId: 'managed-ai-input.v1',
+      outputSchemaId: 'managed-ai-output.v1',
+      riskClass: 'LOW',
+      idempotencyKey: context.idempotencyKey,
+      correlationId: context.correlationId
+    } as const;
+    let response: Response;
+    try {
+      response = await this.fetcher(
+        `${this.capabilityUrl.replace(/\/$/u, '')}/v1/capability-requests`,
+        {
+          method: 'POST',
+          headers: {
+            'content-type': 'application/json',
+            'x-markorbit-internal-authorization': this.internalServiceSecret,
+            'x-markorbit-principal': encodeInternalWorkspacePrincipal(this.principal),
+            'x-markorbit-workspace-id': this.principal.workspaceId,
+            'x-markorbit-caller-product': 'LITE',
+            'idempotency-key': context.idempotencyKey,
+            'x-correlation-id': context.correlationId
+          },
+          body: JSON.stringify(command)
+        }
+      );
+    } catch (cause) {
+      throw new TradingAiProfileGenerationError(
+        'MANAGED_AI_FAILED',
+        'Governed Capability Runtime is unavailable.',
+        true,
+        { cause: cause instanceof Error ? cause : undefined }
+      );
+    }
+    const payload: unknown = await response.json().catch(() => undefined);
+    if (!response.ok) {
+      const error =
+        payload && typeof payload === 'object' && !Array.isArray(payload)
+          ? (payload as Record<string, unknown>)
+          : undefined;
+      throw new TradingAiProfileGenerationError(
+        'MANAGED_AI_FAILED',
+        typeof error?.message === 'string'
+          ? error.message
+          : 'Governed Capability Runtime rejected AI Profile generation.',
+        response.status >= 500
+      );
+    }
+    if (!payload || typeof payload !== 'object' || Array.isArray(payload))
+      throw new TradingAiProfileGenerationError(
+        'MANAGED_AI_CONTRACT_MISMATCH',
+        'Governed Capability Runtime returned an invalid execution.'
+      );
+    const returned = (payload as Record<string, unknown>).returnValue;
+    if (!returned || typeof returned !== 'object' || Array.isArray(returned))
+      throw new TradingAiProfileGenerationError(
+        'MANAGED_AI_CONTRACT_MISMATCH',
+        'Governed Capability Runtime omitted its return value.'
+      );
+    const value = returned as Record<string, unknown>;
+    if (value.status !== 'COMPLETED' || value.outputSchemaId !== 'managed-ai-output.v1')
+      throw new TradingAiProfileGenerationError(
+        'MANAGED_AI_FAILED',
+        'Governed Capability Runtime did not complete Managed AI execution.'
+      );
+    return structuredClone(value.output);
+  }
 }
 
 export interface GenerateTradingAiProfileCommand {
