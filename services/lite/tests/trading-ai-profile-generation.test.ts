@@ -38,6 +38,80 @@ const asset: TrademarkAsset = {
   updatedAt: '2026-09-08T00:00:00Z'
 };
 
+const commercialInsights = {
+  schemaVersion: 1,
+  evidenceCoverage: 'LIMITED',
+  personas: [
+    {
+      commercialPersonaId: 'trading-commercial-persona_consumer-1',
+      kind: 'END_CONSUMER',
+      label: 'Potential end consumer',
+      summary: 'A possible audience for a future ORBIT-branded offer.',
+      evidenceRefs: ['trading-commercial-evidence_asset-1']
+    },
+    {
+      commercialPersonaId: 'trading-commercial-persona_operator-1',
+      kind: 'BUSINESS_OPERATOR',
+      label: 'Potential operator',
+      summary: 'An operator exploring a business built around the asset.'
+    },
+    {
+      commercialPersonaId: 'trading-commercial-persona_buyer-1',
+      kind: 'TRADEMARK_BUYER',
+      label: 'Potential trademark buyer',
+      summary: 'A buyer evaluating whether the asset fits a future launch.',
+      assumptionRefs: ['trading-commercial-assumption_demand-1']
+    }
+  ],
+  sellingPoints: [
+    {
+      sellingPointId: 'trading-selling-point_identity-1',
+      label: 'Concise identity',
+      description: 'The supplied mark text is concise.',
+      basisType: 'TRUTH_DERIVED',
+      sourceRefs: [asset.trademarkAssetId]
+    }
+  ],
+  buyingPoints: [
+    {
+      buyingPointId: 'trading-buying-point_launch-1',
+      label: 'Potential launch fit',
+      description: 'A buyer may consider the concise identity useful for a future launch.',
+      sellingPointRefs: ['trading-selling-point_identity-1'],
+      personaRefs: ['trading-commercial-persona_buyer-1'],
+      scenarioRefs: ['trading-commercial-scenario_launch-1'],
+      assumptionRefs: ['trading-commercial-assumption_demand-1']
+    }
+  ],
+  scenarios: [
+    {
+      commercialScenarioId: 'trading-commercial-scenario_launch-1',
+      label: 'Possible future launch',
+      description: 'A hypothetical launch scenario, not an existing business fact.',
+      kind: 'LAUNCH',
+      personaRefs: ['trading-commercial-persona_operator-1'],
+      buyingPointRefs: ['trading-buying-point_launch-1']
+    }
+  ],
+  evidenceBasis: [
+    {
+      commercialEvidenceId: 'trading-commercial-evidence_asset-1',
+      label: 'Supplied Trademark Asset',
+      sourceRef: asset.trademarkAssetId,
+      sourceType: 'TRADEMARK_ASSET'
+    }
+  ],
+  assumptions: [
+    {
+      commercialAssumptionId: 'trading-commercial-assumption_demand-1',
+      label: 'Future demand',
+      description: 'Market demand has not been established.',
+      risk: 'HIGH'
+    }
+  ],
+  limits: ['Evidence coverage is qualitative and does not predict commercial success.']
+} as const;
+
 function outcome(overrides: Record<string, unknown> = {}) {
   return {
     schemaVersion: 1,
@@ -53,7 +127,7 @@ function outcome(overrides: Record<string, unknown> = {}) {
       provider: 'deepseek',
       model: 'deepseek-chat',
       promptPolicyId: 'lite-trading-ai-profile',
-      promptPolicyVersion: '1',
+      promptPolicyVersion: '2',
       outputSchemaId: TRADING_AI_PROFILE_OUTPUT_SCHEMA_ID,
       inputSha256: 'a'.repeat(64),
       startedAt: '2026-09-08T00:00:01Z',
@@ -68,6 +142,7 @@ function outcome(overrides: Record<string, unknown> = {}) {
     },
     structuredOutput: {
       summary: 'A focused technology brand.',
+      commercialInsights,
       tags: [
         {
           aiTagId: 'trading-ai-tag_industry-1',
@@ -186,6 +261,7 @@ describe('Lite Trading AI Profile generation adapter', () => {
     expect(profile).toMatchObject({
       trademarkAsset: { id: asset.trademarkAssetId, version: asset.version },
       summary: 'A focused technology brand.',
+      commercialInsights,
       provenance: {
         truthClass: 'AI_INFERENCE',
         sourceReferences: [
@@ -246,5 +322,40 @@ describe('Lite Trading AI Profile generation adapter', () => {
         workspaceId: '11111111-1111-4111-8111-111111111111'
       })
     ).rejects.toMatchObject({ code: 'INVALID_INPUT' });
+  });
+
+  it('rejects incomplete or quantitative Commercial Value Map output', async () => {
+    await expect(
+      new TradingAiProfileGenerator({
+        execute: () =>
+          Promise.resolve(
+            outcome({
+              structuredOutput: {
+                summary: 'Profile',
+                tags: [],
+                commercialInsights: {
+                  ...commercialInsights,
+                  personas: commercialInsights.personas.slice(0, 2)
+                }
+              }
+            })
+          )
+      }).generate(command())
+    ).rejects.toMatchObject({ code: 'MANAGED_AI_CONTRACT_MISMATCH' });
+
+    await expect(
+      new TradingAiProfileGenerator({
+        execute: () =>
+          Promise.resolve(
+            outcome({
+              structuredOutput: {
+                summary: 'Profile',
+                tags: [],
+                commercialInsights: { ...commercialInsights, confidence: 0.91 }
+              }
+            })
+          )
+      }).generate(command())
+    ).rejects.toMatchObject({ code: 'MANAGED_AI_CONTRACT_MISMATCH' });
   });
 });

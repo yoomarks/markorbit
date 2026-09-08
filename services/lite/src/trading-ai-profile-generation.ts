@@ -9,6 +9,7 @@ import {
 import {
   assertTradingAiProfileV1,
   tradingAiTagCategories,
+  type TradingCommercialInsightsV1,
   type TradingAiProfileId,
   type TradingAiProfileV1,
   type TradingAiTagV1
@@ -17,9 +18,9 @@ import { noTradingAiAuthorityConsequencesV1 } from '@markorbit/contracts/trading
 import type { TradingStandardStudioRunId } from '@markorbit/contracts/trading-studio-usage';
 import type { TrademarkAsset } from '@markorbit/contracts/trademark-asset-workspace';
 
-export const TRADING_AI_PROFILE_OUTPUT_SCHEMA_ID = 'lite-trading-ai-profile-generation.v1';
+export const TRADING_AI_PROFILE_OUTPUT_SCHEMA_ID = 'lite-trading-ai-profile-generation.v2';
 export const TRADING_AI_PROFILE_PROMPT_POLICY_ID = 'lite-trading-ai-profile';
-export const TRADING_AI_PROFILE_PROMPT_POLICY_VERSION = '1';
+export const TRADING_AI_PROFILE_PROMPT_POLICY_VERSION = '2';
 
 export interface TradingManagedAiClient {
   execute(
@@ -152,14 +153,22 @@ function required(value: string, field: string, maximum = 500): string {
   return cleaned;
 }
 
-function output(value: unknown): Readonly<{ summary: string; tags: readonly TradingAiTagV1[] }> {
+function output(value: unknown): Readonly<{
+  summary: string;
+  tags: readonly TradingAiTagV1[];
+  commercialInsights: Readonly<TradingCommercialInsightsV1>;
+}> {
   if (!value || typeof value !== 'object' || Array.isArray(value))
     throw new TradingAiProfileGenerationError(
       'MANAGED_AI_CONTRACT_MISMATCH',
       'Managed AI output must be an object.'
     );
   const record = value as Record<string, unknown>;
-  if (Object.keys(record).some((key) => key !== 'summary' && key !== 'tags'))
+  if (
+    Object.keys(record).some(
+      (key) => key !== 'summary' && key !== 'tags' && key !== 'commercialInsights'
+    )
+  )
     throw new TradingAiProfileGenerationError(
       'MANAGED_AI_CONTRACT_MISMATCH',
       'Managed AI output contains unsupported fields.'
@@ -203,7 +212,129 @@ function output(value: unknown): Readonly<{ summary: string; tags: readonly Trad
       rationale: tag.rationale.trim()
     };
   });
-  return { summary: requiredOutput(record.summary, 'summary'), tags };
+  return {
+    summary: requiredOutput(record.summary, 'summary'),
+    tags,
+    commercialInsights: commercialInsightsOutput(record.commercialInsights)
+  };
+}
+
+function commercialInsightsOutput(value: unknown): Readonly<TradingCommercialInsightsV1> {
+  if (!value || typeof value !== 'object' || Array.isArray(value))
+    throw new TradingAiProfileGenerationError(
+      'MANAGED_AI_CONTRACT_MISMATCH',
+      'Managed AI output commercialInsights must be an object.'
+    );
+  const record = value as Record<string, unknown>;
+  const allowed = [
+    'schemaVersion',
+    'evidenceCoverage',
+    'personas',
+    'sellingPoints',
+    'buyingPoints',
+    'scenarios',
+    'evidenceBasis',
+    'assumptions',
+    'limits'
+  ];
+  if (Object.keys(record).some((key) => !allowed.includes(key)))
+    throw new TradingAiProfileGenerationError(
+      'MANAGED_AI_CONTRACT_MISMATCH',
+      'Managed AI output commercialInsights contains unsupported fields.'
+    );
+  return {
+    schemaVersion: record.schemaVersion as 1,
+    evidenceCoverage: record.evidenceCoverage as TradingCommercialInsightsV1['evidenceCoverage'],
+    personas: objectArray(record.personas, 'commercialInsights.personas', [
+      'commercialPersonaId',
+      'kind',
+      'label',
+      'summary',
+      'jobs',
+      'pains',
+      'desiredOutcomes',
+      'evidenceRefs',
+      'assumptionRefs'
+    ]) as unknown as TradingCommercialInsightsV1['personas'],
+    sellingPoints: objectArray(record.sellingPoints, 'commercialInsights.sellingPoints', [
+      'sellingPointId',
+      'label',
+      'description',
+      'category',
+      'basisType',
+      'sourceRefs',
+      'evidenceRefs',
+      'assumptionRefs'
+    ]) as unknown as TradingCommercialInsightsV1['sellingPoints'],
+    buyingPoints: objectArray(record.buyingPoints, 'commercialInsights.buyingPoints', [
+      'buyingPointId',
+      'label',
+      'description',
+      'sellingPointRefs',
+      'personaRefs',
+      'scenarioRefs',
+      'evidenceRefs',
+      'assumptionRefs'
+    ]) as unknown as TradingCommercialInsightsV1['buyingPoints'],
+    scenarios: objectArray(record.scenarios, 'commercialInsights.scenarios', [
+      'commercialScenarioId',
+      'label',
+      'description',
+      'kind',
+      'personaRefs',
+      'buyingPointRefs',
+      'evidenceRefs',
+      'assumptionRefs'
+    ]) as unknown as TradingCommercialInsightsV1['scenarios'],
+    evidenceBasis: objectArray(record.evidenceBasis, 'commercialInsights.evidenceBasis', [
+      'commercialEvidenceId',
+      'label',
+      'sourceRef',
+      'sourceType',
+      'description',
+      'observedAt'
+    ]) as unknown as TradingCommercialInsightsV1['evidenceBasis'],
+    assumptions: objectArray(record.assumptions, 'commercialInsights.assumptions', [
+      'commercialAssumptionId',
+      'label',
+      'description',
+      'risk'
+    ]) as unknown as TradingCommercialInsightsV1['assumptions'],
+    ...(record.limits === undefined
+      ? {}
+      : { limits: stringArray(record.limits, 'commercialInsights.limits') })
+  };
+}
+
+function objectArray(value: unknown, field: string, allowedKeys: readonly string[]) {
+  if (!Array.isArray(value))
+    throw new TradingAiProfileGenerationError(
+      'MANAGED_AI_CONTRACT_MISMATCH',
+      `Managed AI output ${field} must be an array.`
+    );
+  return value.map((item, index) => {
+    if (!item || typeof item !== 'object' || Array.isArray(item))
+      throw new TradingAiProfileGenerationError(
+        'MANAGED_AI_CONTRACT_MISMATCH',
+        `Managed AI output ${field}[${index}] must be an object.`
+      );
+    const record = item as Record<string, unknown>;
+    if (Object.keys(record).some((key) => !allowedKeys.includes(key)))
+      throw new TradingAiProfileGenerationError(
+        'MANAGED_AI_CONTRACT_MISMATCH',
+        `Managed AI output ${field}[${index}] contains unsupported fields.`
+      );
+    return structuredClone(record);
+  });
+}
+
+function stringArray(value: unknown, field: string): readonly string[] {
+  if (!Array.isArray(value) || value.some((item) => typeof item !== 'string'))
+    throw new TradingAiProfileGenerationError(
+      'MANAGED_AI_CONTRACT_MISMATCH',
+      `Managed AI output ${field} must be a string array.`
+    );
+  return value.map((item) => item as string);
 }
 
 function requiredOutput(value: unknown, field: string): string {
