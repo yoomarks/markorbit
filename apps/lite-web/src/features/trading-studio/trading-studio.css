@@ -1,0 +1,54 @@
+.trading-studio {
+  display: grid;
+  gap: 20px;
+  padding: 24px;
+}
+.trading-studio__directions {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+}
+.trading-studio__direction {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.trading-studio__direction.is-selected {
+  border-color: var(--mo-primary, #2563eb);
+  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.16);
+}
+.trading-studio__direction-heading {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: center;
+}
+.trading-studio__direction h2,
+.trading-studio__direction h3,
+.trading-studio__direction p {
+  margin: 0;
+}
+.trading-studio__direction h3 {
+  margin-top: 6px;
+  font-size: 0.9rem;
+}
+.trading-studio__direction ul {
+  margin: 0 0 6px;
+  padding-left: 20px;
+}
+.trading-studio__direction button {
+  margin-top: auto;
+}
+.trading-studio__boundary {
+  max-width: 880px;
+  margin: 0;
+  color: var(--mo-muted, #475569);
+}
+@media (max-width: 760px) {
+  .trading-studio {
+    padding: 16px;
+  }
+  .trading-studio__directions {
+    grid-template-columns: 1fr;
+  }
+}

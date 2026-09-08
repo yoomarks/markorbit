@@ -8,6 +8,9 @@ const secret = 'lite-trading-studio-http-secret-0123456789';
 const unusedSelectionWriter = {
   recordExplicit: () => Promise.reject(new Error('recordExplicit is not expected'))
 };
+const unusedProfileReader = {
+  getExact: () => Promise.reject(new Error('getExact profile is not expected'))
+};
 const workspaceId = '98989898-9898-4989-8989-989898989898';
 const principal: WorkspacePrincipal = {
   kind: 'WORKSPACE',
@@ -64,6 +67,7 @@ function route() {
   const found = createTradingStudioReadRoutes({
     internalServiceSecret: secret,
     runs: { getLatest: () => Promise.resolve(run) },
+    profiles: unusedProfileReader,
     directionSets: { getExact: () => Promise.resolve({} as TradingCommercialDirectionSetV1) },
     selections: {
       ...unusedSelectionWriter,
@@ -79,6 +83,7 @@ function directionRoute() {
   const found = createTradingStudioReadRoutes({
     internalServiceSecret: secret,
     runs: { getLatest: () => Promise.resolve(run) },
+    profiles: unusedProfileReader,
     selections: {
       ...unusedSelectionWriter,
       getCurrentForDirectionSet: () => Promise.resolve(undefined)
@@ -132,6 +137,7 @@ describe('Lite Trading Studio read HTTP boundary', () => {
     const found = createTradingStudioReadRoutes({
       internalServiceSecret: secret,
       runs: { getLatest: () => Promise.resolve(run) },
+      profiles: unusedProfileReader,
       directionSets: { getExact: () => Promise.resolve({} as TradingCommercialDirectionSetV1) },
       selections: {
         ...unusedSelectionWriter,
@@ -167,6 +173,14 @@ describe('Lite Trading Studio read HTTP boundary', () => {
     const found = createTradingStudioReadRoutes({
       internalServiceSecret: secret,
       runs: { getLatest: () => Promise.resolve(completed) },
+      profiles: {
+        getExact: () =>
+          Promise.resolve({
+            aiProfileId: completed.aiProfile.id,
+            version: completed.aiProfile.version,
+            trademarkAsset: completed.trademarkAsset
+          } as never)
+      },
       directionSets: { getExact: () => Promise.resolve(directionSet as never) },
       selections: {
         ...unusedSelectionWriter,
@@ -178,7 +192,48 @@ describe('Lite Trading Studio read HTTP boundary', () => {
       ...request(),
       path: `/v1/trading/studio-runs/${run.studioRunId}/state`
     });
-    expect(response.body).toEqual({ run: completed, directionSet, selection });
+    expect(response.body).toEqual({
+      run: completed,
+      aiProfile: {
+        aiProfileId: completed.aiProfile.id,
+        version: completed.aiProfile.version,
+        trademarkAsset: completed.trademarkAsset
+      },
+      directionSet,
+      selection
+    });
+  });
+
+  it('fails closed when the AI Profile points at another Trademark Asset version', async () => {
+    const profiled = {
+      ...run,
+      checkpoint: 'AI_PROFILE' as const,
+      aiProfile: { id: 'trading-ai-derived_ai-profile_1' as const, version: 1 }
+    };
+    const found = createTradingStudioReadRoutes({
+      internalServiceSecret: secret,
+      runs: { getLatest: () => Promise.resolve(profiled) },
+      profiles: {
+        getExact: () =>
+          Promise.resolve({
+            aiProfileId: profiled.aiProfile.id,
+            version: profiled.aiProfile.version,
+            trademarkAsset: { ...profiled.trademarkAsset, version: 2 }
+          } as never)
+      },
+      directionSets: { getExact: () => Promise.resolve({} as never) },
+      selections: {
+        ...unusedSelectionWriter,
+        getCurrentForDirectionSet: () => Promise.resolve(undefined)
+      }
+    })[3];
+    if (!found) throw new Error('Studio state route missing.');
+    await expect(
+      found.handle({
+        ...request(),
+        path: `/v1/trading/studio-runs/${run.studioRunId}/state`
+      })
+    ).rejects.toMatchObject({ status: 409, code: 'STUDIO_STATE_VERSION_CONFLICT' });
   });
 
   it('fails closed when current Selection points at another Direction Set version', async () => {
@@ -195,6 +250,14 @@ describe('Lite Trading Studio read HTTP boundary', () => {
     const found = createTradingStudioReadRoutes({
       internalServiceSecret: secret,
       runs: { getLatest: () => Promise.resolve(completed) },
+      profiles: {
+        getExact: () =>
+          Promise.resolve({
+            aiProfileId: completed.aiProfile.id,
+            version: completed.aiProfile.version,
+            trademarkAsset: completed.trademarkAsset
+          } as never)
+      },
       directionSets: { getExact: () => Promise.resolve({} as never) },
       selections: {
         ...unusedSelectionWriter,
@@ -220,6 +283,7 @@ describe('Lite Trading Studio read HTTP boundary', () => {
     const found = createTradingStudioReadRoutes({
       internalServiceSecret: secret,
       runs: { getLatest: () => Promise.resolve(run) },
+      profiles: unusedProfileReader,
       directionSets: { getExact: () => Promise.resolve({} as never) },
       selections: { getCurrentForDirectionSet: () => Promise.resolve(undefined), recordExplicit }
     })[4];
@@ -261,6 +325,7 @@ describe('Lite Trading Studio read HTTP boundary', () => {
     const found = createTradingStudioReadRoutes({
       internalServiceSecret: secret,
       runs: { getLatest: () => Promise.resolve(run) },
+      profiles: unusedProfileReader,
       directionSets: { getExact: () => Promise.resolve({} as never) },
       selections: { getCurrentForDirectionSet: () => Promise.resolve(undefined), recordExplicit }
     })[4];
@@ -295,5 +360,31 @@ describe('Lite Trading Studio read HTTP boundary', () => {
       })
     ).rejects.toMatchObject({ status: 400, code: 'ACTOR_SPOOF_REJECTED' });
     expect(recordExplicit).not.toHaveBeenCalled();
+  });
+
+  it('loads the exact workspace-scoped AI Profile version', async () => {
+    const aiProfile = {
+      aiProfileId: 'trading-ai-derived_ai-profile_1',
+      version: 2
+    };
+    const getExact = vi.fn(() => Promise.resolve(aiProfile as never));
+    const found = createTradingStudioReadRoutes({
+      internalServiceSecret: secret,
+      runs: { getLatest: () => Promise.resolve(run) },
+      profiles: { getExact },
+      directionSets: { getExact: () => Promise.resolve({} as never) },
+      selections: {
+        ...unusedSelectionWriter,
+        getCurrentForDirectionSet: () => Promise.resolve(undefined)
+      }
+    })[5];
+    if (!found) throw new Error('Exact AI Profile route missing.');
+    const response = await found.handle({
+      ...request(),
+      path: '/v1/trading/ai-profiles/trading-ai-derived_ai-profile_1/versions/2',
+      params: { aiProfileId: 'trading-ai-derived_ai-profile_1', version: '2' }
+    });
+    expect(response.body).toEqual({ aiProfile });
+    expect(getExact).toHaveBeenCalledWith(workspaceId, 'trading-ai-derived_ai-profile_1', 2);
   });
 });
