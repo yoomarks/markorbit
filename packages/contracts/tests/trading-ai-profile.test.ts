@@ -55,6 +55,80 @@ const profile = (): TradingAiProfileV1 => ({
   createdAt: '2026-09-07T12:00:03.000Z'
 });
 
+const commercialInsights = (): NonNullable<TradingAiProfileV1['commercialInsights']> => ({
+  schemaVersion: 1,
+  evidenceCoverage: 'LIMITED',
+  personas: [
+    {
+      commercialPersonaId: 'trading-commercial-persona_consumer-1',
+      kind: 'END_CONSUMER',
+      label: 'Active urban consumer',
+      summary: 'A possible consumer audience for a future brand.',
+      evidenceRefs: ['trading-commercial-evidence_mark-record-1']
+    },
+    {
+      commercialPersonaId: 'trading-commercial-persona_operator-1',
+      kind: 'BUSINESS_OPERATOR',
+      label: 'Apparel operator',
+      summary: 'An operator positioned to build an apparel business.'
+    },
+    {
+      commercialPersonaId: 'trading-commercial-persona_buyer-1',
+      kind: 'TRADEMARK_BUYER',
+      label: 'Trademark asset buyer',
+      summary: 'A buyer seeking an existing trademark asset.',
+      assumptionRefs: ['trading-commercial-assumption_channel-1']
+    }
+  ],
+  sellingPoints: [
+    {
+      sellingPointId: 'trading-selling-point_class-fit-1',
+      label: 'Relevant class coverage',
+      description: 'The recorded goods may fit an apparel business direction.',
+      basisType: 'TRUTH_DERIVED',
+      sourceRefs: ['trademark-asset_mark-1']
+    }
+  ],
+  buyingPoints: [
+    {
+      buyingPointId: 'trading-buying-point_launch-fit-1',
+      label: 'Potential launch fit',
+      description: 'The class coverage may reduce naming-to-launch friction for this operator.',
+      sellingPointRefs: ['trading-selling-point_class-fit-1'],
+      personaRefs: ['trading-commercial-persona_buyer-1'],
+      scenarioRefs: ['trading-commercial-scenario_launch-1'],
+      assumptionRefs: ['trading-commercial-assumption_channel-1']
+    }
+  ],
+  scenarios: [
+    {
+      commercialScenarioId: 'trading-commercial-scenario_launch-1',
+      label: 'Possible apparel launch',
+      description: 'A possible future launch scenario, not an existing business fact.',
+      kind: 'LAUNCH',
+      personaRefs: ['trading-commercial-persona_operator-1'],
+      buyingPointRefs: ['trading-buying-point_launch-fit-1']
+    }
+  ],
+  evidenceBasis: [
+    {
+      commercialEvidenceId: 'trading-commercial-evidence_mark-record-1',
+      label: 'Current trademark record',
+      sourceRef: 'trademark-asset_mark-1',
+      sourceType: 'TRADEMARK_TRUTH'
+    }
+  ],
+  assumptions: [
+    {
+      commercialAssumptionId: 'trading-commercial-assumption_channel-1',
+      label: 'Future channel fit',
+      description: 'Channel suitability has not been validated with market-performance data.',
+      risk: 'MEDIUM'
+    }
+  ],
+  limits: ['Evidence coverage describes data sufficiency, not commercial success probability.']
+});
+
 describe('Lite Trading AI Profile V1 contract', () => {
   it('supports the eight structured Product PRD tag categories without numeric confidence', () => {
     expect(tradingAiTagCategories).toEqual([
@@ -110,5 +184,78 @@ describe('Lite Trading AI Profile V1 contract', () => {
     expect(() =>
       assertTradingAiProfileV1({ ...profile(), createdAt: '2026-09-07T12:00:04.000Z' })
     ).toThrow(/provenance timestamp/u);
+  });
+
+  it('accepts a backward-compatible Commercial Value Map with three distinct persona kinds', () => {
+    expect(() =>
+      assertTradingAiProfileV1({ ...profile(), commercialInsights: commercialInsights() })
+    ).not.toThrow();
+    expect(commercialInsights().evidenceCoverage).toBe('LIMITED');
+    expect(commercialInsights()).not.toHaveProperty('confidence');
+  });
+
+  it('requires all three commercial persona layers', () => {
+    const insights = commercialInsights();
+    expect(() =>
+      assertTradingAiProfileV1({
+        ...profile(),
+        commercialInsights: { ...insights, personas: insights.personas.slice(0, 2) }
+      })
+    ).toThrow(/all three persona kinds/u);
+  });
+
+  it('rejects buying points with unknown selling-point, persona or scenario references', () => {
+    const insights = commercialInsights();
+    expect(() =>
+      assertTradingAiProfileV1({
+        ...profile(),
+        commercialInsights: {
+          ...insights,
+          buyingPoints: [
+            {
+              ...insights.buyingPoints[0]!,
+              sellingPointRefs: ['trading-selling-point_unknown']
+            }
+          ]
+        }
+      })
+    ).toThrow(/unknown reference/u);
+  });
+
+  it('rejects dangling evidence and assumption references', () => {
+    const insights = commercialInsights();
+    expect(() =>
+      assertTradingAiProfileV1({
+        ...profile(),
+        commercialInsights: {
+          ...insights,
+          personas: [
+            {
+              ...insights.personas[0]!,
+              evidenceRefs: ['trading-commercial-evidence_unknown']
+            },
+            ...insights.personas.slice(1)
+          ]
+        }
+      })
+    ).toThrow(/unknown reference/u);
+  });
+
+  it('binds commercial evidence to exact AI Profile provenance sources', () => {
+    const insights = commercialInsights();
+    expect(() =>
+      assertTradingAiProfileV1({
+        ...profile(),
+        commercialInsights: {
+          ...insights,
+          evidenceBasis: [
+            {
+              ...insights.evidenceBasis[0]!,
+              sourceRef: 'unbound-private-source'
+            }
+          ]
+        }
+      })
+    ).toThrow(/unknown reference/u);
   });
 });
