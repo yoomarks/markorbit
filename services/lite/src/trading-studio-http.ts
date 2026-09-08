@@ -18,10 +18,15 @@ import {
   TradingDirectionSelectionPersistenceError,
   type PostgresTradingDirectionSelectionStore
 } from './trading-direction-selection.js';
+import {
+  TradingAiProfilePersistenceError,
+  type PostgresTradingAiProfileStore
+} from './trading-ai-profile.js';
 
 export interface TradingStudioReadRouteOptions {
   internalServiceSecret: string;
   runs: Pick<PostgresTradingStudioRunStore, 'getLatest'>;
+  profiles: Pick<PostgresTradingAiProfileStore, 'getExact'>;
   directionSets: Pick<PostgresTradingDirectionSetStore, 'getExact'>;
   selections: Pick<
     PostgresTradingDirectionSelectionStore,
@@ -167,7 +172,43 @@ export function createTradingStudioReadRoutes(options: TradingStudioReadRouteOpt
             principal.workspaceId,
             request.params.studioRunId! as TradingStandardStudioRunId
           );
-          if (!run.directionSet) return json(200, { run, directionSet: null, selection: null });
+          const aiProfileReference = run.aiProfile;
+          if (
+            aiProfileReference &&
+            (!Number.isSafeInteger(aiProfileReference.version) ||
+              Number(aiProfileReference.version) < 1)
+          )
+            throw new HttpError(
+              409,
+              'STUDIO_STATE_VERSION_CONFLICT',
+              'Studio Run does not reference a valid AI Profile version.'
+            );
+          const aiProfile = aiProfileReference
+            ? await options.profiles.getExact(
+                principal.workspaceId,
+                aiProfileReference.id,
+                Number(aiProfileReference.version)
+              )
+            : undefined;
+          if (
+            aiProfile &&
+            (aiProfile.aiProfileId !== aiProfileReference?.id ||
+              aiProfile.version !== Number(aiProfileReference.version) ||
+              aiProfile.trademarkAsset.id !== run.trademarkAsset.id ||
+              aiProfile.trademarkAsset.version !== run.trademarkAsset.version)
+          )
+            throw new HttpError(
+              409,
+              'STUDIO_STATE_VERSION_CONFLICT',
+              'AI Profile does not reference the Studio Run exact source versions.'
+            );
+          if (!run.directionSet)
+            return json(200, {
+              run,
+              aiProfile: aiProfile ?? null,
+              directionSet: null,
+              selection: null
+            });
           const directionSetReference = run.directionSet;
           if (
             !Number.isSafeInteger(directionSetReference.version) ||
@@ -198,10 +239,16 @@ export function createTradingStudioReadRoutes(options: TradingStudioReadRouteOpt
               'STUDIO_STATE_VERSION_CONFLICT',
               'Current Selection does not reference the Studio Run exact Direction Set version.'
             );
-          return json(200, { run, directionSet, selection: selection ?? null });
+          return json(200, {
+            run,
+            aiProfile: aiProfile ?? null,
+            directionSet,
+            selection: selection ?? null
+          });
         } catch (error) {
           if (
             error instanceof TradingStudioRunPersistenceError ||
+            error instanceof TradingAiProfilePersistenceError ||
             error instanceof TradingDirectionSetPersistenceError ||
             error instanceof TradingDirectionSelectionPersistenceError
           )
@@ -275,6 +322,27 @@ export function createTradingStudioReadRoutes(options: TradingStudioReadRouteOpt
           return json(201, { selection });
         } catch (error) {
           if (error instanceof TradingDirectionSelectionPersistenceError)
+            throw new HttpError(error.status, error.code, error.message, error.retryable);
+          throw error;
+        }
+      }
+    },
+    {
+      method: 'GET',
+      path: '/v1/trading/ai-profiles/:aiProfileId/versions/:version',
+      handle: async (request) => {
+        const principal = principalOf(request, options.internalServiceSecret);
+        if (request.body !== undefined || Object.keys(request.query).length)
+          throw new HttpError(400, 'INVALID_REQUEST', 'AI Profile read accepts only path fields.');
+        try {
+          const aiProfile = await options.profiles.getExact(
+            principal.workspaceId,
+            request.params.aiProfileId! as `trading-ai-derived_ai-profile_${string}`,
+            Number(request.params.version)
+          );
+          return json(200, { aiProfile });
+        } catch (error) {
+          if (error instanceof TradingAiProfilePersistenceError)
             throw new HttpError(error.status, error.code, error.message, error.retryable);
           throw error;
         }
