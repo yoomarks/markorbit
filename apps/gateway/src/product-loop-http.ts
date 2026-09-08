@@ -349,6 +349,13 @@ export function createGatewayProductLoopRoutes(
     ),
     route('GET', '/api/lite/trademark-assets', ['workspace:read'], 'READ'),
     route('GET', '/api/lite/trading/studio-runs/:studioRunId/state', ['workspace:read'], 'READ'),
+    route(
+      'POST',
+      '/api/lite/trading/direction-sets/:directionSetId/selection',
+      ['matter:manage'],
+      'DURABLE_MUTATION',
+      ['selectedByPrincipalId', 'selectionMethod', 'selectedAt', 'authorityConsequences']
+    ),
     {
       method: 'GET',
       path: '/api/lite/trademark-assets/:trademarkAssetId',
