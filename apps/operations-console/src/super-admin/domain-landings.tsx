@@ -1,6 +1,7 @@
 import { Alert, PageHeader } from '@markorbit/ui';
 import { BrainAdminWorkspace } from './brain-admin.js';
 import { CapabilityAdminWorkspace } from './capability-admin.js';
+import { LiteAdminWorkspace } from './lite-admin.js';
 import { MarkRegAdminWorkspace } from './markreg-admin.js';
 import { MgsnAdminWorkspace } from './mgsn-admin.js';
 
@@ -17,14 +18,6 @@ const landings: DomainLanding[] = [
     title: 'Core',
     status: 'Global Core administration is not connected in this shell yet.',
     boundary: 'No account, identity or Workspace state is inferred from other domains.'
-  }
-];
-landings.push(
-  {
-    id: 'super-admin-lite',
-    title: 'Lite',
-    status: 'Dedicated Lite administration is not connected yet.',
-    boundary: 'Creative or AI-derived output is not promoted to legal or Official Truth.'
   },
   {
     id: 'super-admin-execution',
@@ -32,9 +25,7 @@ landings.push(
     status: 'Execution-wide administration is not connected as a single owner read.',
     boundary:
       'Existing evidence review and lifecycle provenance remain explicit governed workflows.'
-  }
-);
-landings.push(
+  },
   {
     id: 'super-admin-system',
     title: 'System',
@@ -47,7 +38,7 @@ landings.push(
     status: 'No unified audit truth is connected in this foundation step.',
     boundary: 'Per-owner evidence and governance records retain their own authority boundaries.'
   }
-);
+];
 
 export function SuperAdminDomainLandings() {
   return (
@@ -69,6 +60,7 @@ export function SuperAdminDomainLandings() {
       <BrainAdminWorkspace />
       <CapabilityAdminWorkspace />
       <MarkRegAdminWorkspace />
+      <LiteAdminWorkspace />
       <MgsnAdminWorkspace />
     </section>
   );
