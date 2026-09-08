@@ -174,6 +174,29 @@ export function createInternalOperatorPrincipalRoutesV1(
     },
     {
       method: 'POST',
+      path: '/internal/super-admin/system/operator-principals/resolve',
+      async handle(request) {
+        if (
+          !validateInternalServiceSecret(
+            options.internalServiceSecret,
+            request.headers['x-markorbit-internal-authorization']
+          )
+        )
+          throw new HttpError(
+            401,
+            'INTERNAL_SERVICE_UNAUTHORIZED',
+            'Internal service identity is invalid.'
+          );
+        const token = exactAdminResolutionRequest(request, 'System Admin');
+        try {
+          return json(200, await options.resolver.resolve(token, 'system-admin:read'));
+        } catch (error) {
+          return translate(error);
+        }
+      }
+    },
+    {
+      method: 'POST',
       path: '/internal/super-admin/workspace/manage/operator-principals/resolve',
       async handle(request) {
         if (
