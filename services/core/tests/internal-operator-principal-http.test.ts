@@ -2,6 +2,7 @@ import {
   AuthenticationError,
   type ControlPlaneCapability,
   type InternalOperatorPrincipal,
+  type LiteAdminCapability,
   type WorkspaceAdminCapability
 } from '@markorbit/contracts';
 import type { JsonRequest } from '@markorbit/service-kit';
@@ -28,6 +29,10 @@ const workspaceAdminPrincipal = {
   ...cognitivePrincipal,
   capabilities: ['workspace-admin:read' as const]
 };
+const liteAdminPrincipal = {
+  ...cognitivePrincipal,
+  capabilities: ['lite-admin:read' as const]
+};
 const workspaceAdminManagePrincipal = {
   ...cognitivePrincipal,
   capabilities: ['workspace-admin:manage' as const]
@@ -35,7 +40,7 @@ const workspaceAdminManagePrincipal = {
 
 type ResolverFunction = (
   token: string,
-  requiredCapability?: ControlPlaneCapability | WorkspaceAdminCapability
+  requiredCapability?: ControlPlaneCapability | WorkspaceAdminCapability | LiteAdminCapability
 ) => Promise<Readonly<InternalOperatorPrincipal>>;
 
 function request(
@@ -88,6 +93,29 @@ function workspaceRoute(
   };
 }
 
+function liteRequest(
+  body: unknown = { token: 'raw-session-token' },
+  includeAuthorization = true
+): JsonRequest {
+  return {
+    method: 'POST',
+    path: '/internal/super-admin/lite/operator-principals/resolve',
+    params: {},
+    query: {},
+    headers: includeAuthorization ? { 'x-markorbit-internal-authorization': secret } : {},
+    body
+  };
+}
+function liteRoute(resolve: ResolverFunction = vi.fn(() => Promise.resolve(liteAdminPrincipal))) {
+  return {
+    resolve,
+    route: createInternalOperatorPrincipalRoutesV1({
+      resolver: { resolve },
+      internalServiceSecret: secret
+    })[2]!
+  };
+}
+
 function workspaceManageRequest(
   body: unknown = { token: 'raw-session-token' },
   includeAuthorization = true
@@ -110,7 +138,7 @@ function workspaceManageRoute(
     route: createInternalOperatorPrincipalRoutesV1({
       resolver: { resolve },
       internalServiceSecret: secret
-    })[2]!
+    })[3]!
   };
 }
 
@@ -164,6 +192,16 @@ describe('Control Plane Internal Operator resolver HTTP boundary', () => {
       body: workspaceAdminPrincipal
     });
     expect(resolve).toHaveBeenCalledWith('raw-session-token', 'workspace-admin:read');
+  });
+
+  it('resolves exact Lite Admin read only through its dedicated internal route', async () => {
+    const resolve = vi.fn(() => Promise.resolve(liteAdminPrincipal));
+    const { route: resolverRoute } = liteRoute(resolve);
+    await expect(resolverRoute.handle(liteRequest())).resolves.toEqual({
+      status: 200,
+      body: liteAdminPrincipal
+    });
+    expect(resolve).toHaveBeenCalledWith('raw-session-token', 'lite-admin:read');
   });
 
   it('resolves exact Workspace Admin manage only through its dedicated internal route', async () => {

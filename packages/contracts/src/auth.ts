@@ -56,10 +56,13 @@ export const WORKSPACE_ADMIN_CAPABILITIES = [
   'workspace-admin:manage'
 ] as const;
 export type WorkspaceAdminCapability = (typeof WORKSPACE_ADMIN_CAPABILITIES)[number];
+export const LITE_ADMIN_CAPABILITIES = ['lite-admin:read'] as const;
+export type LiteAdminCapability = (typeof LITE_ADMIN_CAPABILITIES)[number];
 export const INTERNAL_OPERATOR_CAPABILITIES = [
   ...COMMERCIAL_ADMIN_CAPABILITIES,
   ...CONTROL_PLANE_CAPABILITIES,
-  ...WORKSPACE_ADMIN_CAPABILITIES
+  ...WORKSPACE_ADMIN_CAPABILITIES,
+  ...LITE_ADMIN_CAPABILITIES
 ] as const;
 export type InternalOperatorCapability = (typeof INTERNAL_OPERATOR_CAPABILITIES)[number];
 export interface CommercialAdminAccountView {
