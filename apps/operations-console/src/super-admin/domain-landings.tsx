@@ -1,6 +1,7 @@
 import { Alert, PageHeader } from '@markorbit/ui';
 import { BrainAdminWorkspace } from './brain-admin.js';
 import { CapabilityAdminWorkspace } from './capability-admin.js';
+import { MgsnAdminWorkspace } from './mgsn-admin.js';
 
 type DomainLanding = {
   id: string;
@@ -29,12 +30,6 @@ landings.push(
     title: 'Lite',
     status: 'Dedicated Lite administration is not connected yet.',
     boundary: 'Creative or AI-derived output is not promoted to legal or Official Truth.'
-  },
-  {
-    id: 'super-admin-mgsn',
-    title: 'MGSN',
-    status: 'Dedicated MGSN administration is not connected yet.',
-    boundary: 'No recommendation, appointment or filing authority is inferred by this shell.'
   },
   {
     id: 'super-admin-execution',
@@ -78,6 +73,7 @@ export function SuperAdminDomainLandings() {
       </ul>
       <BrainAdminWorkspace />
       <CapabilityAdminWorkspace />
+      <MgsnAdminWorkspace />
     </section>
   );
 }
