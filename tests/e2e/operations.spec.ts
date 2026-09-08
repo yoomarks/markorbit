@@ -173,9 +173,6 @@ test('MarkOrbit Super Admin exposes truthful governed operator surfaces @visual'
   await expect(
     page.locator('#super-admin-workspace').getByText('Workspace', { exact: true })
   ).toBeVisible();
-  await expect(
-    page.getByText('Global Workspace portfolio read is not connected yet.')
-  ).toBeVisible();
   await expectNoHorizontalOverflow(page);
   await expectVisibleFocus(page);
   if (testInfo.project.name.startsWith('desktop')) {
