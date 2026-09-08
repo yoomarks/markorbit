@@ -1,6 +1,7 @@
 import { Alert, PageHeader } from '@markorbit/ui';
 import { BrainAdminWorkspace } from './brain-admin.js';
 import { CapabilityAdminWorkspace } from './capability-admin.js';
+import { MarkRegAdminWorkspace } from './markreg-admin.js';
 import { MgsnAdminWorkspace } from './mgsn-admin.js';
 
 type DomainLanding = {
@@ -19,12 +20,6 @@ const landings: DomainLanding[] = [
   }
 ];
 landings.push(
-  {
-    id: 'super-admin-markreg',
-    title: 'MarkReg',
-    status: 'Dedicated MarkReg Super Admin surface is not connected in this foundation step.',
-    boundary: 'Fee facts, filing state and Official Truth remain with their authoritative owners.'
-  },
   {
     id: 'super-admin-lite',
     title: 'Lite',
@@ -73,6 +68,7 @@ export function SuperAdminDomainLandings() {
       </ul>
       <BrainAdminWorkspace />
       <CapabilityAdminWorkspace />
+      <MarkRegAdminWorkspace />
       <MgsnAdminWorkspace />
     </section>
   );
