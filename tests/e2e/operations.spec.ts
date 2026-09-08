@@ -72,6 +72,33 @@ const knowledgeOwnerHealth = {
     recentChanges30d: 0
   }
 };
+const workspaceOwnerPortfolio = {
+  schemaVersion: 1,
+  objectType: 'WORKSPACE_ADMIN_PORTFOLIO_RESULT',
+  owner: 'CORE',
+  access: 'READ_ONLY',
+  requiredAuthority: 'workspace-admin:read',
+  observedAt: '2026-09-08T05:00:00.000Z',
+  page: 1,
+  pageSize: 25,
+  sort: 'UPDATED_AT',
+  direction: 'DESC',
+  total: 1,
+  summary: { total: 1, byStatus: { ACTIVE: 1, ARCHIVED: 0 } },
+  items: [
+    {
+      workspaceId: 'workspace-global-001',
+      name: 'Orbit Demo Workspace',
+      slug: 'orbit-demo-workspace',
+      status: 'ACTIVE',
+      version: 3,
+      createdAt: '2026-08-01T08:00:00.000Z',
+      updatedAt: '2026-09-08T04:45:00.000Z',
+      membershipCount: 4,
+      activeMembershipCount: 3
+    }
+  ]
+};
 test('MarkOrbit Super Admin exposes truthful governed operator surfaces @visual', async ({
   page
 }, testInfo) => {
@@ -95,6 +122,13 @@ test('MarkOrbit Super Admin exposes truthful governed operator surfaces @visual'
       status: 200,
       contentType: 'application/json',
       body: JSON.stringify(dataOwnerSummary)
+    });
+  });
+  await page.route('**/api/internal/super-admin/workspaces*', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify(workspaceOwnerPortfolio)
     });
   });
   await page.addInitScript(() => {
