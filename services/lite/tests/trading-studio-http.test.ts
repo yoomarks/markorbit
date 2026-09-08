@@ -1,10 +1,13 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { encodeInternalWorkspacePrincipal, type WorkspacePrincipal } from '@markorbit/contracts';
 import type { TradingStudioRunV1 } from '@markorbit/contracts/trading-studio-run';
 import type { TradingCommercialDirectionSetV1 } from '@markorbit/contracts/trading-commercial-direction';
 import { createTradingStudioReadRoutes } from '../src/trading-studio-http.js';
 
 const secret = 'lite-trading-studio-http-secret-0123456789';
+const unusedSelectionWriter = {
+  recordExplicit: () => Promise.reject(new Error('recordExplicit is not expected'))
+};
 const workspaceId = '98989898-9898-4989-8989-989898989898';
 const principal: WorkspacePrincipal = {
   kind: 'WORKSPACE',
@@ -15,6 +18,11 @@ const principal: WorkspacePrincipal = {
   membershipId: 'membership_trading_studio',
   role: 'READ_ONLY',
   permissions: ['workspace:read']
+};
+const manager: WorkspacePrincipal = {
+  ...principal,
+  role: 'WORKSPACE_ADMIN',
+  permissions: ['workspace:read', 'matter:manage']
 };
 const run: TradingStudioRunV1 = {
   schemaVersion: 1,
@@ -57,7 +65,10 @@ function route() {
     internalServiceSecret: secret,
     runs: { getLatest: () => Promise.resolve(run) },
     directionSets: { getExact: () => Promise.resolve({} as TradingCommercialDirectionSetV1) },
-    selections: { getCurrentForDirectionSet: () => Promise.resolve(undefined) }
+    selections: {
+      ...unusedSelectionWriter,
+      getCurrentForDirectionSet: () => Promise.resolve(undefined)
+    }
   })[0];
   if (!found) throw new Error('Trading Studio read route missing.');
   return found;
@@ -68,7 +79,10 @@ function directionRoute() {
   const found = createTradingStudioReadRoutes({
     internalServiceSecret: secret,
     runs: { getLatest: () => Promise.resolve(run) },
-    selections: { getCurrentForDirectionSet: () => Promise.resolve(undefined) },
+    selections: {
+      ...unusedSelectionWriter,
+      getCurrentForDirectionSet: () => Promise.resolve(undefined)
+    },
     directionSets: {
       getExact: (actualWorkspace, id, version) => {
         expect([actualWorkspace, id, version]).toEqual([
@@ -119,7 +133,10 @@ describe('Lite Trading Studio read HTTP boundary', () => {
       internalServiceSecret: secret,
       runs: { getLatest: () => Promise.resolve(run) },
       directionSets: { getExact: () => Promise.resolve({} as TradingCommercialDirectionSetV1) },
-      selections: { getCurrentForDirectionSet: () => Promise.resolve(selection as never) }
+      selections: {
+        ...unusedSelectionWriter,
+        getCurrentForDirectionSet: () => Promise.resolve(selection as never)
+      }
     })[2];
     if (!found) throw new Error('Current Selection route missing.');
     const response = await found.handle({
@@ -151,7 +168,10 @@ describe('Lite Trading Studio read HTTP boundary', () => {
       internalServiceSecret: secret,
       runs: { getLatest: () => Promise.resolve(completed) },
       directionSets: { getExact: () => Promise.resolve(directionSet as never) },
-      selections: { getCurrentForDirectionSet: () => Promise.resolve(selection as never) }
+      selections: {
+        ...unusedSelectionWriter,
+        getCurrentForDirectionSet: () => Promise.resolve(selection as never)
+      }
     })[3];
     if (!found) throw new Error('Studio state route missing.');
     const response = await found.handle({
@@ -177,6 +197,7 @@ describe('Lite Trading Studio read HTTP boundary', () => {
       runs: { getLatest: () => Promise.resolve(completed) },
       directionSets: { getExact: () => Promise.resolve({} as never) },
       selections: {
+        ...unusedSelectionWriter,
         getCurrentForDirectionSet: () =>
           Promise.resolve({
             directionSet: { id: completed.directionSet.id, version: 2 }
@@ -190,5 +211,89 @@ describe('Lite Trading Studio read HTTP boundary', () => {
         path: `/v1/trading/studio-runs/${run.studioRunId}/state`
       })
     ).rejects.toMatchObject({ status: 409, code: 'STUDIO_STATE_VERSION_CONFLICT' });
+  });
+
+  it('records only a trusted explicit human Selection command', async () => {
+    const recordExplicit = vi.fn(() =>
+      Promise.resolve({ directionSelectionId: 'trading-direction-selection_1' } as never)
+    );
+    const found = createTradingStudioReadRoutes({
+      internalServiceSecret: secret,
+      runs: { getLatest: () => Promise.resolve(run) },
+      directionSets: { getExact: () => Promise.resolve({} as never) },
+      selections: { getCurrentForDirectionSet: () => Promise.resolve(undefined), recordExplicit }
+    })[4];
+    if (!found) throw new Error('Selection command route missing.');
+
+    const response = await found.handle({
+      ...request({
+        'idempotency-key': 'select-direction-1',
+        'x-correlation-id': 'correlation_selection-1',
+        'x-markorbit-principal': encodeInternalWorkspacePrincipal(manager)
+      }),
+      method: 'POST',
+      path: '/v1/trading/direction-sets/commercial-direction-set_1/selection',
+      params: { directionSetId: 'commercial-direction-set_1' },
+      body: {
+        expectedDirectionSetVersion: 1,
+        selectedDirectionId: 'trading-ai-derived_commercial-direction_1',
+        expectedDirectionVersion: 1
+      }
+    });
+
+    expect(response).toEqual({
+      status: 201,
+      body: { selection: { directionSelectionId: 'trading-direction-selection_1' } }
+    });
+    expect(recordExplicit).toHaveBeenCalledWith(workspaceId, {
+      schemaVersion: 1,
+      directionSetId: 'commercial-direction-set_1',
+      expectedDirectionSetVersion: 1,
+      selectedDirectionId: 'trading-ai-derived_commercial-direction_1',
+      expectedDirectionVersion: 1,
+      idempotencyKey: 'select-direction-1',
+      correlationId: 'correlation_selection-1'
+    });
+  });
+
+  it('rejects missing mutation permission and client-authored Selection authority', async () => {
+    const recordExplicit = vi.fn();
+    const found = createTradingStudioReadRoutes({
+      internalServiceSecret: secret,
+      runs: { getLatest: () => Promise.resolve(run) },
+      directionSets: { getExact: () => Promise.resolve({} as never) },
+      selections: { getCurrentForDirectionSet: () => Promise.resolve(undefined), recordExplicit }
+    })[4];
+    if (!found) throw new Error('Selection command route missing.');
+    const body = {
+      expectedDirectionSetVersion: 1,
+      selectedDirectionId: 'trading-ai-derived_commercial-direction_1',
+      expectedDirectionVersion: 1
+    };
+
+    await expect(
+      found.handle({
+        ...request({
+          'idempotency-key': 'select-direction-2',
+          'x-correlation-id': 'correlation_selection-2'
+        }),
+        method: 'POST',
+        params: { directionSetId: 'commercial-direction-set_1' },
+        body
+      })
+    ).rejects.toMatchObject({ status: 403, code: 'PERMISSION_DENIED' });
+    await expect(
+      found.handle({
+        ...request({
+          'idempotency-key': 'select-direction-3',
+          'x-correlation-id': 'correlation_selection-3',
+          'x-markorbit-principal': encodeInternalWorkspacePrincipal(manager)
+        }),
+        method: 'POST',
+        params: { directionSetId: 'commercial-direction-set_1' },
+        body: { ...body, selectedAt: '2026-09-08T00:00:00Z' }
+      })
+    ).rejects.toMatchObject({ status: 400, code: 'ACTOR_SPOOF_REJECTED' });
+    expect(recordExplicit).not.toHaveBeenCalled();
   });
 });
