@@ -110,6 +110,18 @@ const executionOwnerAdministration = {
     reason: 'No canonical durable global Execution portfolio is modeled.'
   }
 };
+const systemOwnerAdministration = {
+  schemaVersion: 1,
+  objectType: 'SYSTEM_ADMINISTRATION_PROJECTION',
+  owner: 'CORE_CONTROL_PLANE',
+  access: 'READ_ONLY',
+  requiredAuthority: 'system-admin:read',
+  observedAt: '2026-09-09T00:10:00.000Z',
+  portfolio: {
+    availability: 'NOT_YET_MODELED',
+    reason: 'No canonical durable global System administration portfolio is modeled.'
+  }
+};
 const liteOwnerAdministration = {
   schemaVersion: 1,
   objectType: 'LITE_ADMINISTRATION_PROJECTION',
@@ -186,6 +198,13 @@ test('MarkOrbit Super Admin exposes truthful governed operator surfaces @visual'
       status: 200,
       contentType: 'application/json',
       body: JSON.stringify(executionOwnerAdministration)
+    });
+  });
+  await page.route('**/api/internal/super-admin/system', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify(systemOwnerAdministration)
     });
   });
   await page.route('**/api/internal/super-admin/lite', async (route) => {
@@ -272,6 +291,12 @@ test('MarkOrbit Super Admin exposes truthful governed operator surfaces @visual'
     executionAdmin.getByText('Global Execution portfolio not yet modeled')
   ).toBeVisible();
   await expect(executionAdmin.getByText('NOT_YET_MODELED')).toBeVisible();
+  await page.getByRole('link', { name: 'System', exact: true }).click();
+  await expect(page).toHaveURL(/#super-admin-system$/);
+  const systemAdmin = page.locator('#super-admin-system');
+  await expect(systemAdmin.getByRole('heading', { name: 'System', exact: true })).toBeVisible();
+  await expect(systemAdmin.getByText('Global System portfolio not yet modeled')).toBeVisible();
+  await expect(systemAdmin.getByText('NOT_YET_MODELED')).toBeVisible();
   await page.getByRole('link', { name: 'Data Engine', exact: true }).click();
   await expect(page).toHaveURL(/#data-platform$/);
   await expect(page.getByRole('heading', { name: 'Data', exact: true })).toBeVisible();
