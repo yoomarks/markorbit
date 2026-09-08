@@ -6,6 +6,7 @@ import { KnowledgeAdminWorkspace } from './knowledge-admin.js';
 import { LiteAdminWorkspace } from './lite-admin.js';
 import { MarkRegAdminWorkspace } from './markreg-admin.js';
 import { MgsnAdminWorkspace } from './mgsn-admin.js';
+import { SystemAdminWorkspace } from './system-admin.js';
 
 type DomainLanding = {
   id: string;
@@ -20,12 +21,6 @@ const landings: DomainLanding[] = [
     title: 'Core',
     status: 'Global Core administration is not connected in this shell yet.',
     boundary: 'No account, identity or Workspace state is inferred from other domains.'
-  },
-  {
-    id: 'super-admin-system',
-    title: 'System',
-    status: 'No authoritative aggregate system-health projection is connected.',
-    boundary: 'Unavailable owner telemetry is not rendered as healthy, empty or zero.'
   },
   {
     id: 'super-admin-governance',
@@ -59,6 +54,7 @@ export function SuperAdminDomainLandings() {
       <MgsnAdminWorkspace />
       <KnowledgeAdminWorkspace />
       <ExecutionAdminWorkspace />
+      <SystemAdminWorkspace />
     </section>
   );
 }
