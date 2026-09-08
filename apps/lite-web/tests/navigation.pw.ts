@@ -435,3 +435,79 @@ test('Today Insights keeps unavailable owner truth distinct from zero metrics', 
     0
   );
 });
+
+test('Orbit Studio compares three owner directions and records an explicit durable choice', async ({
+  page
+}, testInfo) => {
+  const directions = [
+    ['best', 'BEST_FIT', 'Focused operator'],
+    ['value', 'VALUE_UP', 'Premium system'],
+    ['possible', 'POSSIBILITY', 'Category creator']
+  ].map(([suffix, role, title]) => ({
+    commercialDirectionId: `trading-ai-derived_commercial-direction_${suffix}`,
+    version: 1,
+    role,
+    title,
+    summary: `${title} summary`,
+    rationale: `${title} rationale`,
+    constraints: ['Keep claims evidence-based']
+  }));
+  let selected = false;
+  let mutation: { headers: Record<string, string>; body: unknown } | undefined;
+  await page.route('**/api/auth/session', (route) =>
+    route.fulfill({ json: { csrfToken: 'csrf-studio' } })
+  );
+  await page.route('**/api/lite/trading/studio-runs/standard-studio-run_browser/state', (route) =>
+    route.fulfill({
+      json: {
+        run: { studioRunId: 'standard-studio-run_browser', currentness: 'CURRENT' },
+        directionSet: {
+          commercialDirectionSetId: 'commercial-direction-set_browser',
+          version: 1,
+          directions
+        },
+        selection: selected
+          ? { selectedDirection: { id: directions[0]!.commercialDirectionId, version: 1 } }
+          : null
+      }
+    })
+  );
+  await page.route(
+    '**/api/lite/trading/direction-sets/commercial-direction-set_browser/selection',
+    async (route) => {
+      mutation = { headers: route.request().headers(), body: route.request().postDataJSON() };
+      selected = true;
+      await route.fulfill({
+        json: { selection: { directionSelectionId: 'trading-direction-selection_browser' } },
+        status: 201
+      });
+    }
+  );
+
+  await page.goto(
+    '/?workspaceId=workspace-browser&studioRunId=standard-studio-run_browser#trademarks'
+  );
+  await expect(page.getByRole('heading', { name: 'Orbit Studio directions' })).toBeVisible();
+  await expect(page.getByLabel('Commercial directions').locator('section')).toHaveCount(3);
+  await page.getByRole('button', { name: 'Choose Best Fit' }).click();
+  await expect(page.getByRole('button', { name: 'Selected' })).toBeDisabled();
+  expect(mutation?.headers['x-markorbit-workspace-id']).toBe('workspace-browser');
+  expect(mutation?.headers['x-markorbit-csrf-token']).toBe('csrf-studio');
+  expect(mutation?.headers['idempotency-key']).toBeTruthy();
+  expect(mutation?.headers['x-correlation-id']).toMatch(/^correlation_/u);
+  expect(mutation?.body).toEqual({
+    expectedDirectionSetVersion: 1,
+    selectedDirectionId: directions[0]!.commercialDirectionId,
+    expectedDirectionVersion: 1
+  });
+  await page.screenshot({ path: testInfo.outputPath('orbit-studio-desktop.png'), fullPage: true });
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(
+    true
+  );
+  await page.screenshot({
+    path: testInfo.outputPath('orbit-studio-mobile-390.png'),
+    fullPage: true
+  });
+});

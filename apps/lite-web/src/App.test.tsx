@@ -30,6 +30,13 @@ vi.mock('./features/capability/CapabilityCenter.js', () => ({
 vi.mock('./features/content-studio/ContentStudio.js', () => ({
   ContentStudio: ({ workspaceId }: { workspaceId: string }) => <h1>Content Studio {workspaceId}</h1>
 }));
+vi.mock('./features/trading-studio/TradingStudio.js', () => ({
+  TradingStudio: ({ workspaceId, studioRunId }: { workspaceId: string; studioRunId: string }) => (
+    <h1>
+      Orbit Studio {workspaceId} {studioRunId}
+    </h1>
+  )
+}));
 vi.mock('./features/guide/GuideWorkspace.js', () => ({
   GuideWorkspace: ({
     workspaceId,
@@ -310,5 +317,25 @@ describe('Lite Workspace Shell V2 navigation truth', () => {
     await waitFor(() => expect(window.location.search).toBe('?workspaceId=workspace-2'));
     expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Guide workspace-2');
     expect(screen.getByRole('heading', { level: 1 })).not.toHaveTextContent('trademark-asset_1');
+  });
+
+  it('opens an exact Studio Run inside Trademarks without adding primary navigation', async () => {
+    window.history.replaceState(
+      null,
+      '',
+      '/?workspaceId=workspace-1&studioRunId=standard-studio-run_1#trademarks'
+    );
+    render(<LiteApp />);
+
+    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(
+      'Orbit Studio workspace-1 standard-studio-run_1'
+    );
+    expect(
+      within(screen.getByRole('navigation', { name: 'Primary' })).getAllByRole('link')
+    ).toHaveLength(5);
+
+    location('/?workspaceId=workspace-2&studioRunId=standard-studio-run_1#trademarks', 'popstate');
+    await waitFor(() => expect(window.location.search).toBe('?workspaceId=workspace-2'));
+    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Trademarks workspace-2');
   });
 });
