@@ -1,6 +1,7 @@
 import { Alert, PageHeader } from '@markorbit/ui';
 import { BrainAdminWorkspace } from './brain-admin.js';
 import { CapabilityAdminWorkspace } from './capability-admin.js';
+import { ExecutionAdminWorkspace } from './execution-admin.js';
 import { KnowledgeAdminWorkspace } from './knowledge-admin.js';
 import { LiteAdminWorkspace } from './lite-admin.js';
 import { MarkRegAdminWorkspace } from './markreg-admin.js';
@@ -19,13 +20,6 @@ const landings: DomainLanding[] = [
     title: 'Core',
     status: 'Global Core administration is not connected in this shell yet.',
     boundary: 'No account, identity or Workspace state is inferred from other domains.'
-  },
-  {
-    id: 'super-admin-execution',
-    title: 'Execution',
-    status: 'Execution-wide administration is not connected as a single owner read.',
-    boundary:
-      'Existing evidence review and lifecycle provenance remain explicit governed workflows.'
   },
   {
     id: 'super-admin-system',
@@ -64,6 +58,7 @@ export function SuperAdminDomainLandings() {
       <LiteAdminWorkspace />
       <MgsnAdminWorkspace />
       <KnowledgeAdminWorkspace />
+      <ExecutionAdminWorkspace />
     </section>
   );
 }
