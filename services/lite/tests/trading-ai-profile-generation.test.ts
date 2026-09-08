@@ -3,11 +3,23 @@ import { managedAiNoAuthorityConsequences } from '@markorbit/contracts/managed-a
 import type { TrademarkAsset } from '@markorbit/contracts/trademark-asset-workspace';
 import {
   TRADING_AI_PROFILE_OUTPUT_SCHEMA_ID,
+  HttpTradingManagedAiClient,
   TradingAiProfileGenerator,
   type TradingManagedAiClient
 } from '../src/trading-ai-profile-generation.js';
 
 const workspaceId = '98989898-9898-4989-8989-989898989898';
+const principal = {
+  kind: 'WORKSPACE' as const,
+  sessionId: 'session_1',
+  userId: 'user_1',
+  workspaceId,
+  membershipId: 'membership_1',
+  role: 'WORKSPACE_ADMIN' as const,
+  permissions: ['workspace:read' as const],
+  sessionExpiresAt: '2026-09-09T00:00:00Z'
+};
+
 const asset: TrademarkAsset = {
   schemaVersion: 1,
   trademarkAssetId: 'trademark-asset_1',
@@ -84,6 +96,73 @@ function command() {
 }
 
 describe('Lite Trading AI Profile generation adapter', () => {
+  it('invokes the governed Capability Runtime with trusted Lite caller context', async () => {
+    const fetcher = vi.fn<typeof fetch>(() =>
+      Promise.resolve(
+        new Response(
+          JSON.stringify({
+            returnValue: {
+              status: 'COMPLETED',
+              outputSchemaId: 'managed-ai-output.v1',
+              output: outcome()
+            }
+          }),
+          { status: 201, headers: { 'content-type': 'application/json' } }
+        )
+      )
+    );
+    const client = new HttpTradingManagedAiClient(
+      'http://capability.test/',
+      's'.repeat(32),
+      principal,
+      fetcher
+    );
+    expect(
+      await client.execute({ schemaVersion: 1 } as never, {
+        idempotencyKey: 'profile-1',
+        correlationId: 'run-1'
+      })
+    ).toEqual(outcome());
+    const [url, init] = fetcher.mock.calls[0]!;
+    expect(url).toBe('http://capability.test/v1/capability-requests');
+    expect(init?.headers).toMatchObject({
+      'x-markorbit-workspace-id': workspaceId,
+      'x-markorbit-caller-product': 'LITE',
+      'idempotency-key': 'profile-1',
+      'x-correlation-id': 'run-1'
+    });
+    expect(JSON.parse(init?.body as string)).toMatchObject({
+      capabilityId: 'managed-ai-execution',
+      caller: {
+        workspaceId,
+        principalId: principal.userId,
+        callerProduct: 'LITE',
+        permissionContextRef: `core-workspace-membership:${principal.membershipId}`
+      },
+      inputSchemaId: 'managed-ai-input.v1',
+      outputSchemaId: 'managed-ai-output.v1'
+    });
+  });
+
+  it('maps network and governed runtime failures without accepting partial output', async () => {
+    await expect(
+      new HttpTradingManagedAiClient('http://capability.test', 's'.repeat(32), principal, () =>
+        Promise.reject(new Error('offline'))
+      ).execute({ schemaVersion: 1 } as never, {
+        idempotencyKey: 'profile-1',
+        correlationId: 'run-1'
+      })
+    ).rejects.toMatchObject({ code: 'MANAGED_AI_FAILED', retryable: true });
+    await expect(
+      new HttpTradingManagedAiClient('http://capability.test', 's'.repeat(32), principal, () =>
+        Promise.resolve(new Response(JSON.stringify({ returnValue: {} }), { status: 200 }))
+      ).execute({ schemaVersion: 1 } as never, {
+        idempotencyKey: 'profile-1',
+        correlationId: 'run-1'
+      })
+    ).rejects.toMatchObject({ code: 'MANAGED_AI_FAILED' });
+  });
+
   it('uses governed Managed AI and binds exact source and implementation provenance', async () => {
     const execute = vi.fn<TradingManagedAiClient['execute']>(() => Promise.resolve(outcome()));
     const profile = await new TradingAiProfileGenerator({ execute }).generate(command());
