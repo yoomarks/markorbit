@@ -1,6 +1,13 @@
 import { useState, type FormEvent } from 'react';
 import { Alert, Button, Card, DataList, PageHeader, StatusBadge } from '@markorbit/ui';
 
+export const COMMERCIAL_ADMIN_SCOPE_TEXT =
+  'Catalogue and Provider Registry are platform-level owner reads. Orders and Formal Matters remain Workspace-scoped; Payment inspection requires both Workspace and Payment ID. A selected Workspace narrows scope only and does not grant authority.';
+export const COMMERCIAL_ADMIN_NOT_MODELED_TEXT =
+  'Current plan, entitlement and paid-state are NOT_YET_MODELED as one authoritative Commercial / Payment projection. Historical Orders or Payments must not be used to infer them.';
+export const COMMERCIAL_ADMIN_BOUNDARY_TEXT =
+  'Product/Price is not entitlement. Order is not Payment or Formal Matter. Provider Registry is not Selection, Handoff, Allocation or Provider Acceptance. Payment success is not legal, Filing or Official Truth.';
+
 type JsonObject = Record<string, unknown>;
 type ResourceKind = 'account' | 'catalog' | 'orders' | 'payment' | 'matters' | 'provider';
 
@@ -147,13 +154,35 @@ export function CommercialAdminWorkspace() {
   return (
     <section id="commercial-admin" aria-labelledby="commercial-admin-heading">
       <PageHeader
-        title="Commercial operations"
-        description="Internal owner-routed inspection for Accounts, Workspaces, Catalogue, Orders, Payments, Matters and Providers."
+        title="Commercial / Payment"
+        description="Internal owner-routed inspection across bounded Commercial and Payment owner reads, with platform and Workspace scope kept explicit."
       />
       <Alert tone="info" title="Owner authority is preserved">
         The console does not author Account Type, Workspace Role, Product/Price, Order, Payment,
         Matter, Provider, Filing or Official Truth. Each view is loaded through its owner domain.
       </Alert>
+      <div className="mo-grid">
+        <Card>
+          <h3>Scope and availability</h3>
+          <DataList
+            items={[
+              { label: 'Platform-level reads', value: 'Catalogue · Provider Registry' },
+              {
+                label: 'Scoped reads',
+                value:
+                  'Account by User ID · Orders/Matters by Workspace · Payment by Workspace + Payment ID'
+              },
+              { label: 'Current plan / entitlement / paid-state', value: 'NOT_YET_MODELED' }
+            ]}
+          />
+          <p>{COMMERCIAL_ADMIN_SCOPE_TEXT}</p>
+        </Card>
+        <Card>
+          <h3>Semantic boundary</h3>
+          <p>{COMMERCIAL_ADMIN_NOT_MODELED_TEXT}</p>
+          <p>{COMMERCIAL_ADMIN_BOUNDARY_TEXT}</p>
+        </Card>
+      </div>
 
       <div className="mo-grid">
         <Card>
