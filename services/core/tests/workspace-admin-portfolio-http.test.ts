@@ -47,7 +47,10 @@ function route() {
       observedAt: '2026-09-07T10:00:00.000Z',
       page: 1,
       pageSize: 50,
+      sort: 'NAME' as const,
+      direction: 'ASC' as const,
       total: 0,
+      summary: { total: 0, byStatus: { ACTIVE: 0, ARCHIVED: 0 } },
       items: []
     })
   );
@@ -64,13 +67,24 @@ describe('Workspace admin portfolio HTTP owner boundary', () => {
   it('accepts exact workspace-admin:read and parses bounded filters', async () => {
     const { read, route: ownerRoute } = route();
     await expect(
-      ownerRoute.handle(request({ page: '2', pageSize: '25', status: 'ARCHIVED', search: 'Alpha' }))
+      ownerRoute.handle(
+        request({
+          page: '2',
+          pageSize: '25',
+          status: 'ARCHIVED',
+          search: 'Alpha',
+          sort: 'UPDATED_AT',
+          direction: 'DESC'
+        })
+      )
     ).resolves.toMatchObject({ status: 200 });
     expect(read).toHaveBeenCalledWith({
       page: 2,
       pageSize: 25,
       status: 'ARCHIVED',
-      search: 'Alpha'
+      search: 'Alpha',
+      sort: 'UPDATED_AT',
+      direction: 'DESC'
     });
   });
 
@@ -103,12 +117,16 @@ describe('Workspace admin portfolio HTTP owner boundary', () => {
     expect(read).not.toHaveBeenCalled();
   });
 
-  it.each([{ pageSize: '101' }, { status: 'SUSPENDED' }, { search: ' Alpha' }, { plan: 'PRO' }])(
-    'fails closed on malformed query %j',
-    async (query) => {
-      const { read, route: ownerRoute } = route();
-      await expect(ownerRoute.handle(request(query))).rejects.toMatchObject({ status: 400 });
-      expect(read).not.toHaveBeenCalled();
-    }
-  );
+  it.each([
+    { pageSize: '101' },
+    { status: 'SUSPENDED' },
+    { search: ' Alpha' },
+    { plan: 'PRO' },
+    { sort: 'OWNER' },
+    { direction: 'SIDEWAYS' }
+  ])('fails closed on malformed query %j', async (query) => {
+    const { read, route: ownerRoute } = route();
+    await expect(ownerRoute.handle(request(query))).rejects.toMatchObject({ status: 400 });
+    expect(read).not.toHaveBeenCalled();
+  });
 });

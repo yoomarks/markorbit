@@ -6,6 +6,7 @@ import { DataPlatformWorkspace } from './data-platform.js';
 import { KnowledgePlatformWorkspace } from './knowledge-platform.js';
 import { SuperAdminDomainLandings } from './super-admin/domain-landings.js';
 import { SuperAdminShell } from './super-admin/shell.js';
+import { WorkspacePlatformWorkspace } from './workspace-platform.js';
 import {
   admitReviewedSource,
   captureEvidenceReviewSource,
@@ -226,6 +227,8 @@ export function OperationsApp() {
       </section>
 
       <SuperAdminDomainLandings />
+
+      <WorkspacePlatformWorkspace />
 
       <section id="evidence-review">
         <PageHeader
