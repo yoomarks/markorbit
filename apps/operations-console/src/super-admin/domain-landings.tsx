@@ -1,4 +1,5 @@
 import { Alert, PageHeader } from '@markorbit/ui';
+import { BrainAdminWorkspace } from './brain-admin.js';
 
 type DomainLanding = {
   id: string;
@@ -13,12 +14,6 @@ const landings: DomainLanding[] = [
     title: 'Core',
     status: 'Global Core administration is not connected in this shell yet.',
     boundary: 'No account, identity or Workspace state is inferred from other domains.'
-  },
-  {
-    id: 'super-admin-brain',
-    title: 'Brain',
-    status: 'Dedicated Brain administration is not separated in this foundation step.',
-    boundary: 'The existing bounded Cognitive Platform surface remains available below.'
   },
   {
     id: 'super-admin-capability',
@@ -86,6 +81,7 @@ export function SuperAdminDomainLandings() {
           </li>
         ))}
       </ul>
+      <BrainAdminWorkspace />
     </section>
   );
 }
