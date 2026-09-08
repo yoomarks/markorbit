@@ -1,7 +1,10 @@
 import { timingSafeEqual } from 'node:crypto';
 import { parseInternalWorkspacePrincipal, type WorkspacePrincipal } from '@markorbit/contracts';
 import type { TradingStandardStudioRunId } from '@markorbit/contracts/trading-studio-usage';
-import type { TradingCommercialDirectionSetId } from '@markorbit/contracts/trading-commercial-direction';
+import type {
+  TradingCommercialDirectionId,
+  TradingCommercialDirectionSetId
+} from '@markorbit/contracts/trading-commercial-direction';
 import { HttpError, json, type JsonRequest, type JsonRoute } from '@markorbit/service-kit';
 import {
   TradingStudioRunPersistenceError,
@@ -20,7 +23,10 @@ export interface TradingStudioReadRouteOptions {
   internalServiceSecret: string;
   runs: Pick<PostgresTradingStudioRunStore, 'getLatest'>;
   directionSets: Pick<PostgresTradingDirectionSetStore, 'getExact'>;
-  selections: Pick<PostgresTradingDirectionSelectionStore, 'getCurrentForDirectionSet'>;
+  selections: Pick<
+    PostgresTradingDirectionSelectionStore,
+    'getCurrentForDirectionSet' | 'recordExplicit'
+  >;
 }
 
 function trusted(configured: string, supplied: string | undefined): boolean {
@@ -55,6 +61,18 @@ function principalOf(request: JsonRequest, secret: string): WorkspacePrincipal {
   if (!principal.permissions.includes('workspace:read'))
     throw new HttpError(403, 'PERMISSION_DENIED', 'workspace:read permission is required.');
   return principal;
+}
+
+function bodyOf(request: JsonRequest): Record<string, unknown> {
+  if (!request.body || typeof request.body !== 'object' || Array.isArray(request.body))
+    throw new HttpError(400, 'INVALID_REQUEST', 'Request body must be an object.');
+  return request.body as Record<string, unknown>;
+}
+
+function positive(value: unknown, field: string): number {
+  if (!Number.isSafeInteger(value) || Number(value) < 1)
+    throw new HttpError(400, 'INVALID_REQUEST', `${field} must be a positive integer.`);
+  return Number(value);
 }
 
 export function createTradingStudioReadRoutes(options: TradingStudioReadRouteOptions): JsonRoute[] {
@@ -187,6 +205,76 @@ export function createTradingStudioReadRoutes(options: TradingStudioReadRouteOpt
             error instanceof TradingDirectionSetPersistenceError ||
             error instanceof TradingDirectionSelectionPersistenceError
           )
+            throw new HttpError(error.status, error.code, error.message, error.retryable);
+          throw error;
+        }
+      }
+    },
+    {
+      method: 'POST',
+      path: '/v1/trading/direction-sets/:directionSetId/selection',
+      handle: async (request) => {
+        const principal = principalOf(request, options.internalServiceSecret);
+        if (!principal.permissions.includes('matter:manage'))
+          throw new HttpError(403, 'PERMISSION_DENIED', 'matter:manage permission is required.');
+        if (Object.keys(request.query).length)
+          throw new HttpError(
+            400,
+            'INVALID_REQUEST',
+            'Selection command does not accept query fields.'
+          );
+        const body = bodyOf(request);
+        const actorField = [
+          'workspaceId',
+          'actorId',
+          'userId',
+          'principalId',
+          'membershipId',
+          'selectedByPrincipalId',
+          'selectionMethod',
+          'selectedAt',
+          'authorityConsequences'
+        ].find((field) => body[field] !== undefined);
+        if (actorField)
+          throw new HttpError(
+            400,
+            'ACTOR_SPOOF_REJECTED',
+            'Selection authority comes from the authenticated Principal.'
+          );
+        const allowed = [
+          'expectedDirectionSetVersion',
+          'selectedDirectionId',
+          'expectedDirectionVersion'
+        ];
+        if (Object.keys(body).some((field) => !allowed.includes(field)))
+          throw new HttpError(400, 'INVALID_REQUEST', 'Request body contains unsupported fields.');
+        const idempotencyKey = request.headers['idempotency-key']?.trim();
+        if (!idempotencyKey)
+          throw new HttpError(400, 'IDEMPOTENCY_KEY_REQUIRED', 'Idempotency-Key is required.');
+        const correlationId = request.headers['x-correlation-id']?.trim();
+        if (!correlationId || !correlationId.includes('_'))
+          throw new HttpError(400, 'INVALID_REQUEST', 'x-correlation-id is required.');
+        if (typeof body.selectedDirectionId !== 'string')
+          throw new HttpError(400, 'INVALID_REQUEST', 'selectedDirectionId is required.');
+        try {
+          const selection = await options.selections.recordExplicit(principal.workspaceId, {
+            schemaVersion: 1,
+            directionSetId: request.params.directionSetId! as TradingCommercialDirectionSetId,
+            expectedDirectionSetVersion: positive(
+              body.expectedDirectionSetVersion,
+              'expectedDirectionSetVersion'
+            ),
+            selectedDirectionId: body.selectedDirectionId as TradingCommercialDirectionId,
+            expectedDirectionVersion: positive(
+              body.expectedDirectionVersion,
+              'expectedDirectionVersion'
+            ),
+            idempotencyKey,
+            correlationId: correlationId as `${string}_${string}`
+          });
+          return json(201, { selection });
+        } catch (error) {
+          if (error instanceof TradingDirectionSelectionPersistenceError)
             throw new HttpError(error.status, error.code, error.message, error.retryable);
           throw error;
         }
