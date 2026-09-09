@@ -29,6 +29,7 @@ import {
   US_TRADEMARK_MARK_REPRESENTATION_CAPABILITY_DEFINITION,
   US_TRADEMARK_MARK_REPRESENTATION_IMPLEMENTATION_PROFILE
 } from './us-trademark-mark-representation-strategy-source.js';
+import { PostgresWorkspaceImplementationPreferenceStoreV1 } from './workspace-implementation-preference-postgres.js';
 
 const milestoneFixtureMode = process.env.MO_MILESTONE_TEST_RUNTIME === '1';
 let database: ManagedDatabase | undefined;
@@ -62,6 +63,10 @@ if (milestoneFixtureMode) {
   const pool = database.getPool();
   const registry = new PostgresRuntimeCapabilityRegistry(database, pool);
   const implementationProfiles = new PostgresImplementationProfileRegistryV1(database, pool);
+  const workspaceImplementationPreferences = new PostgresWorkspaceImplementationPreferenceStoreV1(
+    database,
+    pool
+  );
   await registry.importAccepted({
     idempotencyKey: 'capability-848-us-trademark-mark-representation-strategy-v1',
     definition: {
@@ -134,6 +139,7 @@ if (milestoneFixtureMode) {
   const rawGovernedCapabilityRuntime = createGovernedProductionRuntimeV1({
     definitions: registry,
     implementationProfiles,
+    workspaceImplementationPreferences,
     managedAiRuntime,
     officialFeeReferences,
     strategySourceEnabled: true,

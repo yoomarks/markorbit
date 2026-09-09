@@ -62,6 +62,7 @@
     "capability_engine_managed_ai_execution_claims": "@markorbit/capability-engine",
     "capability_engine_managed_ai_exact_outputs": "@markorbit/capability-engine",
     "capability_engine_implementation_profile_registry": "@markorbit/capability-engine",
+    "capability_engine_workspace_implementation_preferences": "@markorbit/capability-engine",
     "capability_engine_governed_runtime_replays": "@markorbit/capability-engine",
     "capability_engine_managed_communication_foundation": "@markorbit/capability-engine",
     "capability_engine_managed_communication_outbound": "@markorbit/capability-engine",
@@ -159,6 +160,7 @@
     "0101_lite_trading_direction_selection_heads": "@markorbit/lite-service",
     "0102_core_workspace_admin_actions": "@markorbit/core-service",
     "0103_lite_trading_ai_profiles": "@markorbit/lite-service",
-    "0104_lite_trading_brand_dna": "@markorbit/lite-service"
+    "0104_lite_trading_brand_dna": "@markorbit/lite-service",
+    "0105_capability_engine_workspace_implementation_preferences": "@markorbit/capability-engine"
   }
 }

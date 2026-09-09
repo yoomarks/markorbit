@@ -19,10 +19,8 @@ import {
   type ImplementationProfileSelector,
   type RuntimeCapabilityDefinitionResolver
 } from './capability-runtime.js';
-import {
-  PostgresGovernedImplementationProfileSelectorV1,
-  type DurableImplementationProfileRegistryV1
-} from './implementation-profile-registry-postgres.js';
+import type { DurableImplementationProfileRegistryV1 } from './implementation-profile-registry-postgres.js';
+import type { WorkspaceImplementationPreferenceResolverV1 } from './implementation-profile-registry.js';
 import type { ManagedAiRuntimeBindingsV1 } from './managed-ai-bootstrap.js';
 import { createManagedAiExecutionRoutesV1 } from './managed-ai-http.js';
 import { createApprovedUsptoOfficialFeeResolverCapabilityExecutorV1 } from './uspto-official-fee-production-promotion.js';
@@ -42,6 +40,7 @@ import {
   validateUsTrademarkMarkRepresentationStrategyInputV1,
   validateUsTrademarkMarkRepresentationStrategyOutputV1
 } from './us-trademark-mark-representation-strategy-source.js';
+import { PostgresWorkspaceAwareImplementationProfileSelectorV1 } from './workspace-implementation-preference-postgres.js';
 
 export const MANAGED_AI_CAPABILITY_INPUT_SCHEMA_ID = 'managed-ai-input.v1' as const;
 export const MANAGED_AI_CAPABILITY_OUTPUT_SCHEMA_ID = 'managed-ai-output.v1' as const;
@@ -55,6 +54,7 @@ export const US_TRADEMARK_MARK_REPRESENTATION_SELECTION_POLICY_VERSION =
 export interface GovernedProductionRuntimeBootstrapOptionsV1 {
   definitions: RuntimeCapabilityDefinitionResolver;
   implementationProfiles: DurableImplementationProfileRegistryV1;
+  workspaceImplementationPreferences?: Readonly<WorkspaceImplementationPreferenceResolverV1>;
   managedAiRuntime: ManagedAiRuntimeBindingsV1 | null;
   officialFeeReferences?: Readonly<OfficialFeeReferenceReaderV1> | null;
   strategySourceEnabled?: boolean;
@@ -245,29 +245,41 @@ function productionSelector(
   options: Readonly<GovernedProductionRuntimeBootstrapOptionsV1>
 ): ImplementationProfileSelector {
   const managedAi = options.managedAiRuntime
-    ? new PostgresGovernedImplementationProfileSelectorV1(options.implementationProfiles, {
-        policyVersion: MANAGED_AI_CAPABILITY_SELECTION_POLICY_VERSION,
-        admittedImplementationKinds: ['AI_ASSISTED_SERVICE'],
-        preferredImplementationKeys: [KNOWLEDGE_DEEPSEEK_IMPLEMENTATION_KEY]
-      })
+    ? new PostgresWorkspaceAwareImplementationProfileSelectorV1(
+        options.implementationProfiles,
+        {
+          policyVersion: MANAGED_AI_CAPABILITY_SELECTION_POLICY_VERSION,
+          admittedImplementationKinds: ['AI_ASSISTED_SERVICE'],
+          preferredImplementationKeys: [KNOWLEDGE_DEEPSEEK_IMPLEMENTATION_KEY]
+        },
+        options.workspaceImplementationPreferences
+      )
     : undefined;
   const officialFee = options.officialFeeReferences
-    ? new PostgresGovernedImplementationProfileSelectorV1(options.implementationProfiles, {
-        policyVersion: USPTO_OFFICIAL_FEE_CAPABILITY_SELECTION_POLICY_VERSION,
-        admittedImplementationKinds: ['DETERMINISTIC_SERVICE'],
-        preferredImplementationKeys: [
-          USPTO_OFFICIAL_FEE_RESOLVER_IMPLEMENTATION_PROFILE.implementationKey
-        ]
-      })
+    ? new PostgresWorkspaceAwareImplementationProfileSelectorV1(
+        options.implementationProfiles,
+        {
+          policyVersion: USPTO_OFFICIAL_FEE_CAPABILITY_SELECTION_POLICY_VERSION,
+          admittedImplementationKinds: ['DETERMINISTIC_SERVICE'],
+          preferredImplementationKeys: [
+            USPTO_OFFICIAL_FEE_RESOLVER_IMPLEMENTATION_PROFILE.implementationKey
+          ]
+        },
+        options.workspaceImplementationPreferences
+      )
     : undefined;
   const strategy = options.strategySourceEnabled
-    ? new PostgresGovernedImplementationProfileSelectorV1(options.implementationProfiles, {
-        policyVersion: US_TRADEMARK_MARK_REPRESENTATION_SELECTION_POLICY_VERSION,
-        admittedImplementationKinds: ['DETERMINISTIC_SERVICE'],
-        preferredImplementationKeys: [
-          US_TRADEMARK_MARK_REPRESENTATION_IMPLEMENTATION_PROFILE.implementationKey
-        ]
-      })
+    ? new PostgresWorkspaceAwareImplementationProfileSelectorV1(
+        options.implementationProfiles,
+        {
+          policyVersion: US_TRADEMARK_MARK_REPRESENTATION_SELECTION_POLICY_VERSION,
+          admittedImplementationKinds: ['DETERMINISTIC_SERVICE'],
+          preferredImplementationKeys: [
+            US_TRADEMARK_MARK_REPRESENTATION_IMPLEMENTATION_PROFILE.implementationKey
+          ]
+        },
+        options.workspaceImplementationPreferences
+      )
     : undefined;
   return {
     select: (request, definition) =>
