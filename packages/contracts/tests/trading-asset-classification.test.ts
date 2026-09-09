@@ -2,11 +2,16 @@ import { describe, expect, it } from 'vitest';
 import {
   assertTradingAssetClassificationV1,
   assertTradingListingAssetCommercialIntentV1,
+  assertRequestTradingStudioVisualRetryCommandV1,
   assertTradingStudioVisualAssetV1,
+  assertTradingStudioVisualQualityReviewV1,
   noTradingAssetClassificationAuthorityConsequencesV1,
+  noTradingStudioVisualQualityAuthorityConsequencesV1,
+  type RequestTradingStudioVisualRetryCommandV1,
   type TradingListingAssetV1,
   type TradingSourceAssetV1,
-  type TradingStudioVisualAssetV1
+  type TradingStudioVisualAssetV1,
+  type TradingStudioVisualQualityReviewV1
 } from '../src/trading-asset-classification.js';
 import { noTradingAiAuthorityConsequencesV1 } from '../src/trading-ai-provenance.js';
 import type { TradingAiProfileV1 } from '../src/trading-ai-profile.js';
@@ -157,6 +162,31 @@ const studioVisualAsset = (): TradingStudioVisualAssetV1 => ({
   aiConceptLabel: true,
   createdAt: '2026-09-07T12:05:00.000Z',
   authorityConsequences: noTradingAssetClassificationAuthorityConsequencesV1
+});
+
+const failedQualityReview = (): TradingStudioVisualQualityReviewV1 => ({
+  schemaVersion: 1,
+  visualQualityReviewId: 'trading-studio-visual-quality-review_contract-1',
+  workspaceId: 'workspace-contract-1',
+  version: 1,
+  studioVisualAsset: { id: 'trading-ai-derived_visual-asset_contract-1', version: 1 },
+  status: 'FAIL',
+  findings: [{ code: 'MARK_SPELLING_DRIFT', message: 'Generated mark spelling changed.' }],
+  retryDisposition: 'RETRY_ALLOWED',
+  reviewedAt: '2026-09-07T12:06:00.000Z',
+  authorityConsequences: noTradingStudioVisualQualityAuthorityConsequencesV1
+});
+
+const retryCommand = (): RequestTradingStudioVisualRetryCommandV1 => ({
+  schemaVersion: 1,
+  studioVisualAssetId: 'trading-ai-derived_visual-asset_contract-1',
+  expectedAssetVersion: 1,
+  visualQualityReviewId: 'trading-studio-visual-quality-review_contract-1',
+  expectedReviewVersion: 1,
+  attemptNumber: 1,
+  reason: 'Retry only the failed hero while preserving the selected direction.',
+  idempotencyKey: 'visual-retry-contract-1',
+  correlationId: 'correlation_visual-retry-1'
 });
 
 describe('Lite Trading asset classification V1 contract', () => {
@@ -320,5 +350,88 @@ describe('Lite Trading asset classification V1 contract', () => {
         profile
       )
     ).toThrow(/scenarioRefs.*exact DirectionVersion/u);
+  });
+
+  it('records clean and failed QA against one exact Studio Visual Asset', () => {
+    const asset = studioVisualAsset();
+    expect(() =>
+      assertTradingStudioVisualQualityReviewV1(failedQualityReview(), asset)
+    ).not.toThrow();
+    expect(() =>
+      assertTradingStudioVisualQualityReviewV1(
+        {
+          ...failedQualityReview(),
+          status: 'PASS',
+          findings: [],
+          retryDisposition: 'RETRY_FORBIDDEN'
+        },
+        asset
+      )
+    ).not.toThrow();
+    expect(() =>
+      assertTradingStudioVisualQualityReviewV1(
+        {
+          ...failedQualityReview(),
+          studioVisualAsset: { ...failedQualityReview().studioVisualAsset, version: 2 }
+        },
+        asset
+      )
+    ).toThrow(/exact Studio Visual Asset/u);
+  });
+
+  it('requires findings for warnings or failure and keeps PASS clean', () => {
+    expect(() =>
+      assertTradingStudioVisualQualityReviewV1(
+        { ...failedQualityReview(), findings: [] },
+        studioVisualAsset()
+      )
+    ).toThrow(/require findings/u);
+    expect(() =>
+      assertTradingStudioVisualQualityReviewV1(
+        {
+          ...failedQualityReview(),
+          status: 'PASS',
+          retryDisposition: 'RETRY_FORBIDDEN'
+        },
+        studioVisualAsset()
+      )
+    ).toThrow(/PASS quality review cannot contain findings/u);
+  });
+
+  it('allows a bounded retry only for FAIL plus RETRY_ALLOWED', () => {
+    const asset = studioVisualAsset();
+    const review = failedQualityReview();
+    expect(() =>
+      assertRequestTradingStudioVisualRetryCommandV1(retryCommand(), review, asset)
+    ).not.toThrow();
+    expect(() =>
+      assertRequestTradingStudioVisualRetryCommandV1(
+        { ...retryCommand(), expectedAssetVersion: 2 },
+        review,
+        asset
+      )
+    ).toThrow(/exact failed asset/u);
+    expect(() =>
+      assertRequestTradingStudioVisualRetryCommandV1(
+        retryCommand(),
+        { ...review, retryDisposition: 'RETRY_FORBIDDEN' },
+        asset
+      )
+    ).toThrow(/failed quality review.*RETRY_ALLOWED/u);
+  });
+
+  it('does not let visual QA absorb Managed AI delivery reconciliation', () => {
+    expect(() =>
+      assertTradingStudioVisualQualityReviewV1(
+        { ...failedQualityReview(), retryDisposition: 'RECONCILIATION_REQUIRED' },
+        studioVisualAsset()
+      )
+    ).toThrow(/reconciliation belongs to Managed AI execution/u);
+    expect(noTradingStudioVisualQualityAuthorityConsequencesV1).toEqual({
+      humanApprovalCreated: false,
+      showcaseApproved: false,
+      listingPublicationCreated: false,
+      trademarkTruthMutated: false
+    });
   });
 });

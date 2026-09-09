@@ -1,4 +1,6 @@
 import type { ProductLoopExactReference } from './product-loop.js';
+import type { MarkOrbitId } from './index.js';
+import type { ManagedAiRetryDisposition } from './managed-ai-execution.js';
 import type {
   TradingAiProfileId,
   TradingAiProfileV1,
@@ -23,6 +25,7 @@ import type { TrademarkAssetId } from './trademark-asset-workspace.js';
 export type TradingSourceAssetId = `source-asset_${string}`;
 export type TradingListingAssetId = `listing-asset_${string}`;
 export type TradingStudioVisualAssetId = `trading-ai-derived_visual-asset_${string}`;
+export type TradingStudioVisualQualityReviewId = `trading-studio-visual-quality-review_${string}`;
 export type TradingSourceMediaReference = `source-media_${string}`;
 export type TradingListingMediaReference = `listing-media_${string}`;
 export type TradingStudioMediaReference = `studio-media_${string}`;
@@ -118,6 +121,50 @@ export interface TradingStudioVisualAssetV1 extends TradingAssetBaseV1 {
   aiConceptLabel: true;
 }
 
+export const tradingStudioVisualQualityStatuses = ['PASS', 'PASS_WITH_WARNINGS', 'FAIL'] as const;
+export type TradingStudioVisualQualityStatus = (typeof tradingStudioVisualQualityStatuses)[number];
+
+export interface TradingStudioVisualQualityFindingV1 {
+  code: string;
+  message: string;
+}
+
+export const noTradingStudioVisualQualityAuthorityConsequencesV1 = Object.freeze({
+  humanApprovalCreated: false,
+  showcaseApproved: false,
+  listingPublicationCreated: false,
+  trademarkTruthMutated: false
+});
+export type TradingStudioVisualQualityAuthorityConsequencesV1 =
+  typeof noTradingStudioVisualQualityAuthorityConsequencesV1;
+
+/** Quality evidence for one exact Studio visual; it is not approval or execution authority. */
+export interface TradingStudioVisualQualityReviewV1 {
+  schemaVersion: 1;
+  visualQualityReviewId: TradingStudioVisualQualityReviewId;
+  workspaceId: string;
+  version: number;
+  studioVisualAsset: Readonly<ProductLoopExactReference<TradingStudioVisualAssetId>>;
+  status: TradingStudioVisualQualityStatus;
+  findings: readonly Readonly<TradingStudioVisualQualityFindingV1>[];
+  retryDisposition: ManagedAiRetryDisposition;
+  reviewedAt: string;
+  authorityConsequences: TradingStudioVisualQualityAuthorityConsequencesV1;
+}
+
+/** Trusted server context supplies Workspace and actor authority. */
+export interface RequestTradingStudioVisualRetryCommandV1 {
+  schemaVersion: 1;
+  studioVisualAssetId: TradingStudioVisualAssetId;
+  expectedAssetVersion: number;
+  visualQualityReviewId: TradingStudioVisualQualityReviewId;
+  expectedReviewVersion: number;
+  attemptNumber: 1 | 2 | 3;
+  reason: string;
+  idempotencyKey: string;
+  correlationId: MarkOrbitId;
+}
+
 export type TradingAssetReferenceV1 =
   TradingSourceAssetV1 | TradingStudioVisualAssetV1 | TradingListingAssetV1;
 
@@ -161,6 +208,11 @@ function assertDistinctReferences(values: readonly string[] | undefined, field: 
     throw new TradingAssetClassificationValidationError(
       `${field} must contain distinct non-empty references.`
     );
+}
+
+function timestamp(value: string, field: string): void {
+  if (!value.trim() || Number.isNaN(Date.parse(value)))
+    throw new TradingAssetClassificationValidationError(`${field} must be an ISO timestamp.`);
 }
 
 /** Enforces the classification boundary without creating, approving or publishing either asset. */
@@ -335,6 +387,92 @@ export function assertTradingStudioVisualAssetV1(
         `tradingAsset.${field} must be present on the exact DirectionVersion.`
       );
   }
+}
+
+/** Validates quality evidence against the exact immutable Studio Visual Asset version. */
+export function assertTradingStudioVisualQualityReviewV1(
+  review: Readonly<TradingStudioVisualQualityReviewV1>,
+  asset: Readonly<TradingStudioVisualAssetV1>
+): void {
+  if (review.schemaVersion !== 1)
+    throw new TradingAssetClassificationValidationError(
+      'visualQualityReview.schemaVersion must be 1.'
+    );
+  if (!/^trading-studio-visual-quality-review_[A-Za-z0-9_-]+$/u.test(review.visualQualityReviewId))
+    throw new TradingAssetClassificationValidationError('visualQualityReview.id is invalid.');
+  required(review.workspaceId, 'visualQualityReview.workspaceId');
+  positiveVersion(review.version, 'visualQualityReview.version');
+  if (
+    review.workspaceId !== asset.workspaceId ||
+    review.studioVisualAsset.id !== asset.studioVisualAssetId ||
+    review.studioVisualAsset.version !== asset.version
+  )
+    throw new TradingAssetClassificationValidationError(
+      'Visual quality review must reference the exact Studio Visual Asset in the same Workspace.'
+    );
+  if (!tradingStudioVisualQualityStatuses.includes(review.status))
+    throw new TradingAssetClassificationValidationError('visualQualityReview.status is invalid.');
+  review.findings.forEach((finding, index) => {
+    required(finding.code, `visualQualityReview.findings[${index}].code`);
+    required(finding.message, `visualQualityReview.findings[${index}].message`);
+  });
+  if (review.status === 'PASS' && review.findings.length)
+    throw new TradingAssetClassificationValidationError(
+      'PASS quality review cannot contain findings.'
+    );
+  if (review.status !== 'PASS' && !review.findings.length)
+    throw new TradingAssetClassificationValidationError(
+      'Warning and failed quality reviews require findings.'
+    );
+  if (review.status !== 'FAIL' && review.retryDisposition !== 'RETRY_FORBIDDEN')
+    throw new TradingAssetClassificationValidationError(
+      'Only a failed quality review may allow retry.'
+    );
+  if (review.retryDisposition === 'RECONCILIATION_REQUIRED')
+    throw new TradingAssetClassificationValidationError(
+      'Delivery reconciliation belongs to Managed AI execution, not visual QA.'
+    );
+  timestamp(review.reviewedAt, 'visualQualityReview.reviewedAt');
+  for (const [key, value] of Object.entries(review.authorityConsequences)) {
+    if (value !== false)
+      throw new TradingAssetClassificationValidationError(
+        `visualQualityReview.authorityConsequences.${key} must be false.`
+      );
+  }
+}
+
+/** Validates a bounded retry request without executing generation or replacing any asset. */
+export function assertRequestTradingStudioVisualRetryCommandV1(
+  command: Readonly<RequestTradingStudioVisualRetryCommandV1>,
+  review: Readonly<TradingStudioVisualQualityReviewV1>,
+  asset: Readonly<TradingStudioVisualAssetV1>
+): void {
+  if (command.schemaVersion !== 1)
+    throw new TradingAssetClassificationValidationError(
+      'visualRetryCommand.schemaVersion must be 1.'
+    );
+  if (
+    command.studioVisualAssetId !== asset.studioVisualAssetId ||
+    command.expectedAssetVersion !== asset.version ||
+    command.visualQualityReviewId !== review.visualQualityReviewId ||
+    command.expectedReviewVersion !== review.version ||
+    review.studioVisualAsset.id !== asset.studioVisualAssetId ||
+    review.studioVisualAsset.version !== asset.version
+  )
+    throw new TradingAssetClassificationValidationError(
+      'Visual retry must target the exact failed asset and quality review versions.'
+    );
+  if (review.status !== 'FAIL' || review.retryDisposition !== 'RETRY_ALLOWED')
+    throw new TradingAssetClassificationValidationError(
+      'Visual retry requires a failed quality review with RETRY_ALLOWED disposition.'
+    );
+  if (![1, 2, 3].includes(command.attemptNumber))
+    throw new TradingAssetClassificationValidationError(
+      'visualRetryCommand.attemptNumber must be between 1 and 3.'
+    );
+  required(command.reason, 'visualRetryCommand.reason');
+  required(command.idempotencyKey, 'visualRetryCommand.idempotencyKey');
+  required(command.correlationId, 'visualRetryCommand.correlationId');
 }
 
 /** Validates optional commercial-intent provenance against exact T1 owner snapshots. */
