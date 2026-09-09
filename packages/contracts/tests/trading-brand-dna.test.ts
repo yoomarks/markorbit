@@ -1,6 +1,18 @@
 import { describe, expect, it } from 'vitest';
 import { noTradingAiAuthorityConsequencesV1 } from '../src/trading-ai-provenance.js';
-import { assertTradingBrandDnaV1, type TradingBrandDnaV1 } from '../src/trading-brand-dna.js';
+import {
+  assertTradingBrandBibleV1,
+  assertTradingBrandDnaV1,
+  type TradingBrandBibleV1,
+  type TradingBrandDnaV1
+} from '../src/trading-brand-dna.js';
+import { noTradingStudioVisualQualityAuthorityConsequencesV1 } from '../src/trading-asset-classification.js';
+import type {
+  TradingStudioVisualAssetV1,
+  TradingStudioVisualQualityReviewV1
+} from '../src/trading-asset-classification.js';
+import type { TradingCommercialDirectionVersionV1 } from '../src/trading-commercial-direction.js';
+import type { TradingDirectionSelectionV1 } from '../src/trading-direction-selection.js';
 
 const brandDna = (): TradingBrandDnaV1 => ({
   schemaVersion: 1,
@@ -64,6 +76,104 @@ const brandDna = (): TradingBrandDnaV1 => ({
   createdAt: '2026-09-07T12:01:03.000Z'
 });
 
+const selection = {
+  directionSelectionId: 'trading-direction-selection_mark-1',
+  workspaceId: 'workspace-1',
+  version: 1,
+  status: 'CURRENT',
+  selectedDirection: { id: 'trading-ai-derived_commercial-direction_mark-1', version: 2 }
+} as unknown as TradingDirectionSelectionV1;
+
+const direction = {
+  commercialDirectionId: 'trading-ai-derived_commercial-direction_mark-1',
+  version: 2,
+  aiProfile: { id: 'trading-ai-derived_ai-profile_mark-1', version: 2 }
+} as unknown as TradingCommercialDirectionVersionV1;
+
+const heroAsset = {
+  studioVisualAssetId: 'trading-ai-derived_visual-asset_hero-1',
+  workspaceId: 'workspace-1',
+  version: 1,
+  commercialDirection: { id: 'trading-ai-derived_commercial-direction_mark-1', version: 2 },
+  creativeRole: 'HERO'
+} as unknown as TradingStudioVisualAssetV1;
+
+const heroReview = (): TradingStudioVisualQualityReviewV1 => ({
+  schemaVersion: 1,
+  visualQualityReviewId: 'trading-studio-visual-quality-review_hero-1',
+  workspaceId: 'workspace-1',
+  version: 1,
+  studioVisualAsset: { id: 'trading-ai-derived_visual-asset_hero-1', version: 1 },
+  status: 'PASS',
+  findings: [],
+  retryDisposition: 'RETRY_FORBIDDEN',
+  reviewedAt: '2026-09-07T12:05:00.000Z',
+  authorityConsequences: noTradingStudioVisualQualityAuthorityConsequencesV1
+});
+
+const brandBible = (): TradingBrandBibleV1 => ({
+  schemaVersion: 1,
+  brandBibleId: 'trading-ai-derived_brand-bible_mark-1',
+  workspaceId: 'workspace-1',
+  version: 1,
+  trademarkAsset: { id: 'trademark-asset_mark-1', version: 4 },
+  aiProfile: { id: 'trading-ai-derived_ai-profile_mark-1', version: 2 },
+  brandDna: { id: 'trading-ai-derived_brand-dna_mark-1', version: 1 },
+  directionSelection: { id: 'trading-direction-selection_mark-1', version: 1 },
+  commercialDirection: { id: 'trading-ai-derived_commercial-direction_mark-1', version: 2 },
+  visualInputs: [
+    {
+      studioVisualAsset: { id: 'trading-ai-derived_visual-asset_hero-1', version: 1 },
+      qualityReview: { id: 'trading-studio-visual-quality-review_hero-1', version: 1 },
+      creativeRole: 'HERO'
+    }
+  ],
+  markUsageRules: ['Preserve the registered mark spelling.'],
+  visualSystem: ['Use clear geometric systems.'],
+  colorSystem: ['Use high-contrast blue with warm accents.'],
+  typographySystem: ['Use the selected humanist sans serif hierarchy.'],
+  imageryGuidance: ['Keep product scenes warm and uncluttered.'],
+  prohibitedRepresentations: ['Do not present imagined packaging as an existing product.'],
+  provenance: {
+    ...brandDna().provenance,
+    derivedObject: { id: 'trading-ai-derived_brand-bible_mark-1', version: 1 },
+    truthClass: 'AI_CONCEPT',
+    sourceReferences: [
+      {
+        ownerReference: 'lite-trading-brand-dna',
+        sourceId: 'trading-ai-derived_brand-dna_mark-1',
+        sourceVersion: 1
+      },
+      {
+        ownerReference: 'lite-trading-selection',
+        sourceId: 'trading-direction-selection_mark-1',
+        sourceVersion: 1
+      },
+      {
+        ownerReference: 'lite-trading-direction',
+        sourceId: 'trading-ai-derived_commercial-direction_mark-1',
+        sourceVersion: 2
+      },
+      {
+        ownerReference: 'lite-trading-assets',
+        sourceId: 'trading-ai-derived_visual-asset_hero-1',
+        sourceVersion: 1
+      },
+      {
+        ownerReference: 'lite-trading-assets',
+        sourceId: 'trading-studio-visual-quality-review_hero-1',
+        sourceVersion: 1
+      }
+    ],
+    createdAt: '2026-09-07T12:06:00.000Z',
+    currentness: { state: 'CURRENT', evaluatedAt: '2026-09-07T12:06:00.000Z' }
+  },
+  visibility: 'PRIVATE',
+  publicationEligibility: 'NOT_ELIGIBLE',
+  aiConceptLabel: true,
+  createdAt: '2026-09-07T12:06:00.000Z'
+});
+
 describe('Lite Trading BrandDNA V1 contract', () => {
   it('represents the complete creative baseline for one exact Studio run', () => {
     expect(() => assertTradingBrandDnaV1(brandDna())).not.toThrow();
@@ -104,5 +214,81 @@ describe('Lite Trading BrandDNA V1 contract', () => {
     ).toThrow(/AI_INFERENCE/u);
     expect(brandDna().provenance.authorityConsequences.trademarkTruthMutated).toBe(false);
     expect(brandDna().provenance.authorityConsequences.officialTruthCreated).toBe(false);
+  });
+});
+
+describe('Lite Trading Brand Bible V1 contract', () => {
+  const resolved = () => [{ asset: heroAsset, qualityReview: heroReview() }];
+
+  it('binds private creative guidance to exact selected and quality-passed inputs', () => {
+    expect(() =>
+      assertTradingBrandBibleV1(brandBible(), selection, direction, brandDna(), resolved())
+    ).not.toThrow();
+  });
+
+  it('requires a quality-passed HERO from the selected direction', () => {
+    expect(() =>
+      assertTradingBrandBibleV1(brandBible(), selection, direction, brandDna(), [
+        {
+          asset: heroAsset,
+          qualityReview: {
+            ...heroReview(),
+            status: 'FAIL',
+            findings: [{ code: 'DRIFT', message: 'Mark drifted.' }]
+          }
+        }
+      ])
+    ).toThrow(/quality-passed assets/u);
+    expect(() =>
+      assertTradingBrandBibleV1(
+        {
+          ...brandBible(),
+          visualInputs: [{ ...brandBible().visualInputs[0]!, creativeRole: 'BRAND_WORLD' }]
+        },
+        selection,
+        direction,
+        brandDna(),
+        resolved()
+      )
+    ).toThrow(/exact asset, review and creative role/u);
+  });
+
+  it('requires complete guidance including prohibited representations', () => {
+    expect(() =>
+      assertTradingBrandBibleV1(
+        { ...brandBible(), prohibitedRepresentations: [] },
+        selection,
+        direction,
+        brandDna(),
+        resolved()
+      )
+    ).toThrow(/prohibitedRepresentations/u);
+  });
+
+  it('remains a private, publication-ineligible AI Concept with exact lineage', () => {
+    expect(() =>
+      assertTradingBrandBibleV1(
+        { ...brandBible(), publicationEligibility: 'ELIGIBLE' } as unknown as TradingBrandBibleV1,
+        selection,
+        direction,
+        brandDna(),
+        resolved()
+      )
+    ).toThrow(/private, publication-ineligible AI Concept/u);
+    expect(() =>
+      assertTradingBrandBibleV1(
+        {
+          ...brandBible(),
+          provenance: {
+            ...brandBible().provenance,
+            sourceReferences: brandBible().provenance.sourceReferences.slice(0, -1)
+          }
+        },
+        selection,
+        direction,
+        brandDna(),
+        resolved()
+      )
+    ).toThrow(/every exact Deep Build input/u);
   });
 });
