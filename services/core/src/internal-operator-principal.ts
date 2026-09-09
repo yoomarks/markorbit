@@ -2,6 +2,7 @@ import {
   AuthenticationError,
   type ControlPlaneCapability,
   type ExecutionAdminCapability,
+  type GovernanceAdminCapability,
   type InternalOperatorPrincipal,
   type LiteAdminCapability,
   type SystemAdminCapability,
@@ -18,6 +19,7 @@ export const WORKSPACE_ADMIN_MANAGE_GRANTS_ENV = 'MO_WORKSPACE_ADMIN_MANAGE_GRAN
 export const LITE_ADMIN_READ_GRANTS_ENV = 'MO_LITE_ADMIN_READ_GRANTS_JSON';
 export const EXECUTION_ADMIN_READ_GRANTS_ENV = 'MO_EXECUTION_ADMIN_READ_GRANTS_JSON';
 export const SYSTEM_ADMIN_READ_GRANTS_ENV = 'MO_SYSTEM_ADMIN_READ_GRANTS_JSON';
+export const GOVERNANCE_ADMIN_READ_GRANTS_ENV = 'MO_GOVERNANCE_ADMIN_READ_GRANTS_JSON';
 const COGNITIVE_READ_CAPABILITY = 'control-plane:cognitive:read' as const;
 const DATA_READ_CAPABILITY = 'control-plane:data:read' as const;
 const KNOWLEDGE_READ_CAPABILITY = 'control-plane:knowledge:read' as const;
@@ -26,6 +28,7 @@ const WORKSPACE_ADMIN_MANAGE_CAPABILITY = 'workspace-admin:manage' as const;
 const LITE_ADMIN_READ_CAPABILITY = 'lite-admin:read' as const;
 const EXECUTION_ADMIN_READ_CAPABILITY = 'execution-admin:read' as const;
 const SYSTEM_ADMIN_READ_CAPABILITY = 'system-admin:read' as const;
+const GOVERNANCE_ADMIN_READ_CAPABILITY = 'governance-admin:read' as const;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/iu;
 
 export class CognitiveReadGrantSourceError extends Error {
@@ -77,6 +80,13 @@ export class SystemAdminReadGrantSourceError extends Error {
   }
 }
 
+export class GovernanceAdminReadGrantSourceError extends Error {
+  constructor(message: string, options?: ErrorOptions) {
+    super(message, options);
+    this.name = 'GovernanceAdminReadGrantSourceError';
+  }
+}
+
 export class WorkspaceAdminManageGrantSourceError extends Error {
   constructor(message: string, options?: ErrorOptions) {
     super(message, options);
@@ -112,6 +122,10 @@ export interface SystemAdminReadGrantSourceV1 {
   hasGrant(userId: string): Promise<boolean>;
 }
 
+export interface GovernanceAdminReadGrantSourceV1 {
+  hasGrant(userId: string): Promise<boolean>;
+}
+
 export interface WorkspaceAdminManageGrantSourceV1 {
   hasGrant(userId: string): Promise<boolean>;
 }
@@ -127,6 +141,7 @@ function normalizedUserIds(
     | 'Lite Admin'
     | 'Execution Admin'
     | 'System Admin'
+    | 'Governance Admin'
 ): string[] {
   const normalized = [...userIds].map((userId) => userId.trim().toLowerCase());
   const invalid = normalized.some((userId) => !UUID.test(userId));
@@ -177,7 +192,7 @@ function normalizedUserIds(
       throw new ExecutionAdminReadGrantSourceError(
         'Execution Admin read grant user identity is duplicated.'
       );
-  } else {
+  } else if (label === 'System Admin') {
     if (invalid)
       throw new SystemAdminReadGrantSourceError(
         'System Admin read grant user identity is malformed.'
@@ -185,6 +200,15 @@ function normalizedUserIds(
     if (duplicated)
       throw new SystemAdminReadGrantSourceError(
         'System Admin read grant user identity is duplicated.'
+      );
+  } else {
+    if (invalid)
+      throw new GovernanceAdminReadGrantSourceError(
+        'Governance Admin read grant user identity is malformed.'
+      );
+    if (duplicated)
+      throw new GovernanceAdminReadGrantSourceError(
+        'Governance Admin read grant user identity is duplicated.'
       );
   }
   return normalized;
@@ -262,6 +286,16 @@ export class StaticSystemAdminReadGrantSourceV1 implements SystemAdminReadGrantS
   private readonly userIds: ReadonlySet<string>;
   constructor(userIds: Iterable<string>) {
     this.userIds = new Set(normalizedUserIds(userIds, 'System Admin'));
+  }
+  hasGrant(userId: string): Promise<boolean> {
+    return Promise.resolve(this.userIds.has(userId.trim().toLowerCase()));
+  }
+}
+
+export class StaticGovernanceAdminReadGrantSourceV1 implements GovernanceAdminReadGrantSourceV1 {
+  private readonly userIds: ReadonlySet<string>;
+  constructor(userIds: Iterable<string>) {
+    this.userIds = new Set(normalizedUserIds(userIds, 'Governance Admin'));
   }
   hasGrant(userId: string): Promise<boolean> {
     return Promise.resolve(this.userIds.has(userId.trim().toLowerCase()));
@@ -361,6 +395,20 @@ class UnavailableSystemAdminReadGrantSourceV1 implements SystemAdminReadGrantSou
   }
 }
 
+class UnavailableGovernanceAdminReadGrantSourceV1 implements GovernanceAdminReadGrantSourceV1 {
+  constructor(private readonly cause?: Error) {}
+  hasGrant(): Promise<boolean> {
+    return Promise.reject(
+      new GovernanceAdminReadGrantSourceError(
+        'Governance Admin read grant source is unavailable.',
+        {
+          cause: this.cause
+        }
+      )
+    );
+  }
+}
+
 class UnavailableWorkspaceAdminManageGrantSourceV1 implements WorkspaceAdminManageGrantSourceV1 {
   constructor(private readonly cause?: Error) {}
 
@@ -381,7 +429,8 @@ type GrantBackedCapability =
   | WorkspaceAdminCapability
   | LiteAdminCapability
   | ExecutionAdminCapability
-  | SystemAdminCapability;
+  | SystemAdminCapability
+  | GovernanceAdminCapability;
 
 type GrantConfig<TCapability extends GrantBackedCapability> = {
   schemaVersion: 1;
@@ -403,6 +452,7 @@ function parseGrantConfig<TCapability extends GrantBackedCapability>(
     | 'Lite Admin'
     | 'Execution Admin'
     | 'System Admin'
+    | 'Governance Admin'
 ): GrantConfig<TCapability> {
   const fail = (message: string, cause?: Error): never => {
     if (label === 'Cognitive')
@@ -419,7 +469,9 @@ function parseGrantConfig<TCapability extends GrantBackedCapability>(
       throw new LiteAdminReadGrantSourceError(message, cause ? { cause } : undefined);
     if (label === 'Execution Admin')
       throw new ExecutionAdminReadGrantSourceError(message, cause ? { cause } : undefined);
-    throw new SystemAdminReadGrantSourceError(message, cause ? { cause } : undefined);
+    if (label === 'System Admin')
+      throw new SystemAdminReadGrantSourceError(message, cause ? { cause } : undefined);
+    throw new GovernanceAdminReadGrantSourceError(message, cause ? { cause } : undefined);
   };
 
   let parsed: unknown;
@@ -583,6 +635,23 @@ export function createEnvironmentSystemAdminReadGrantSourceV1(
   }
 }
 
+export function createEnvironmentGovernanceAdminReadGrantSourceV1(
+  value = process.env[GOVERNANCE_ADMIN_READ_GRANTS_ENV]
+): GovernanceAdminReadGrantSourceV1 {
+  if (value === undefined)
+    return new UnavailableGovernanceAdminReadGrantSourceV1(
+      new Error(`${GOVERNANCE_ADMIN_READ_GRANTS_ENV} is not configured.`)
+    );
+  try {
+    const config = parseGrantConfig(value, GOVERNANCE_ADMIN_READ_CAPABILITY, 'Governance Admin');
+    return new StaticGovernanceAdminReadGrantSourceV1(config.grants.map((grant) => grant.userId));
+  } catch (error) {
+    return new UnavailableGovernanceAdminReadGrantSourceV1(
+      error instanceof Error ? error : undefined
+    );
+  }
+}
+
 export function createEnvironmentWorkspaceAdminManageGrantSourceV1(
   value = process.env[WORKSPACE_ADMIN_MANAGE_GRANTS_ENV]
 ): WorkspaceAdminManageGrantSourceV1 {
@@ -615,6 +684,7 @@ export interface InternalOperatorPrincipalResolverOptionsV1 {
   liteAdminReadGrants?: Readonly<LiteAdminReadGrantSourceV1>;
   executionAdminReadGrants?: Readonly<ExecutionAdminReadGrantSourceV1>;
   systemAdminReadGrants?: Readonly<SystemAdminReadGrantSourceV1>;
+  governanceAdminReadGrants?: Readonly<GovernanceAdminReadGrantSourceV1>;
 }
 
 export class InternalOperatorPrincipalResolverV1 {
@@ -653,7 +723,9 @@ export class InternalOperatorPrincipalResolverV1 {
                     ? this.options.executionAdminReadGrants
                     : requiredCapability === SYSTEM_ADMIN_READ_CAPABILITY
                       ? this.options.systemAdminReadGrants
-                      : undefined;
+                      : requiredCapability === GOVERNANCE_ADMIN_READ_CAPABILITY
+                        ? this.options.governanceAdminReadGrants
+                        : undefined;
     if (!source)
       throw new AuthenticationError(
         'AUTHENTICATION_SERVICE_UNAVAILABLE',
@@ -672,7 +744,8 @@ export class InternalOperatorPrincipalResolverV1 {
         error instanceof WorkspaceAdminManageGrantSourceError ||
         error instanceof LiteAdminReadGrantSourceError ||
         error instanceof ExecutionAdminReadGrantSourceError ||
-        error instanceof SystemAdminReadGrantSourceError
+        error instanceof SystemAdminReadGrantSourceError ||
+        error instanceof GovernanceAdminReadGrantSourceError
       )
         throw new AuthenticationError(
           'AUTHENTICATION_SERVICE_UNAVAILABLE',

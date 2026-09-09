@@ -42,6 +42,7 @@ export * from './knowledge-control-plane-http.js';
 export * from './knowledge-super-admin-http.js';
 export * from './execution-super-admin-http.js';
 export * from './system-super-admin-http.js';
+export * from './governance-super-admin-http.js';
 export * from './lite-super-admin-http.js';
 export * from './workspace-super-admin-http.js';
 export * from './markreg-early-funnel-http.js';
@@ -67,6 +68,7 @@ import { createGatewayCommercialAdminMarkRegRoutes } from './commercial-admin-ma
 import { createGatewayCommercialAdminMgsnRoutes } from './commercial-admin-mgsn-http.js';
 import { createGatewayMgsnRoutes } from './mgsn-http.js';
 import { createGatewaySystemSuperAdminRoutes } from './system-super-admin-http.js';
+import { createGatewayGovernanceSuperAdminRoutes } from './governance-super-admin-http.js';
 import { createGatewayExecutionSuperAdminRoutes } from './execution-super-admin-http.js';
 import { createGatewayLiteSuperAdminRoutes } from './lite-super-admin-http.js';
 import { createGatewayProductLoopRoutes } from './product-loop-http.js';
@@ -520,6 +522,15 @@ export function createRuntime(options: GatewayOptions = {}) {
             : {})
         }),
         ...createGatewaySystemSuperAdminRoutes({
+          coreUrl: options.coreUrl ?? process.env.CORE_URL ?? 'http://127.0.0.1:4101',
+          ...((options.internalServiceSecret ?? process.env.MO_INTERNAL_SERVICE_SECRET)
+            ? {
+                internalServiceSecret: (options.internalServiceSecret ??
+                  process.env.MO_INTERNAL_SERVICE_SECRET)!
+              }
+            : {})
+        }),
+        ...createGatewayGovernanceSuperAdminRoutes({
           coreUrl: options.coreUrl ?? process.env.CORE_URL ?? 'http://127.0.0.1:4101',
           ...((options.internalServiceSecret ?? process.env.MO_INTERNAL_SERVICE_SECRET)
             ? {
