@@ -6,7 +6,9 @@ import type { BulkImportTrademarkAssetsInput } from './trademark-asset-portfolio
 
 type BulkInput = BulkImportTrademarkAssetsInput;
 type BulkResult = TrademarkAssetBulkImportResult;
+type ChunkResult = Readonly<BulkResult>;
 type MigrationErrorCode = 'INVALID_INPUT' | 'OWNER_RESULT_INVALID';
+type BulkItemResultWithoutIndex = Omit<TrademarkAssetBulkImportItemResult, 'importIndex'>;
 
 export const MAX_LARGE_TRADEMARK_ASSET_MIGRATION_ITEMS = 50_000;
 const TRADEMARK_ASSET_MIGRATION_CHUNK_SIZE = 100;
@@ -20,8 +22,9 @@ export interface LargeTrademarkAssetMigrationInput {
   items: ReadonlyArray<TrademarkAssetMigrationAdmissionItem>;
 }
 
-export interface LargeTrademarkAssetMigrationItemResult
-  extends Omit<TrademarkAssetBulkImportItemResult, 'importIndex'> {
+type MigrationInput = Readonly<LargeTrademarkAssetMigrationInput>;
+
+export interface LargeTrademarkAssetMigrationItemResult extends BulkItemResultWithoutIndex {
   /** Stable zero-based index in the caller's complete normalized migration input. */
   importIndex: number;
 }
@@ -39,6 +42,8 @@ export interface LargeTrademarkAssetMigrationResult {
   officialTruthVerifiedByLite: false;
   matterCreatedAutomatically: false;
 }
+
+type MigrationResult = LargeTrademarkAssetMigrationResult;
 
 export interface TrademarkAssetBulkImporter {
   bulkImport(input: Readonly<BulkInput>): Promise<BulkResult>;
@@ -62,7 +67,7 @@ function cleanMigrationKey(value: string): string {
   return cleaned;
 }
 
-function validateInput(input: Readonly<LargeTrademarkAssetMigrationInput>): string {
+function validateInput(input: MigrationInput): string {
   const tooFew = input.items.length < 1;
   const tooMany = input.items.length > MAX_LARGE_TRADEMARK_ASSET_MIGRATION_ITEMS;
   if (tooFew || tooMany) {
@@ -74,29 +79,27 @@ function validateInput(input: Readonly<LargeTrademarkAssetMigrationInput>): stri
   return cleanMigrationKey(input.migrationKey);
 }
 
-function hasExpectedIndices(result: Readonly<BulkResult>, expectedTotal: number): boolean {
+function hasExpectedIndices(result: ChunkResult, total: number): boolean {
   const indices = new Set<number>();
   for (const item of result.items) {
     const index = item.importIndex;
-    if (!Number.isInteger(index) || index < 0 || index >= expectedTotal) return false;
+    const validIndex = Number.isInteger(index) && index >= 0 && index < total;
+    if (!validIndex) return false;
     indices.add(index);
   }
-  return indices.size === expectedTotal;
+  return indices.size === total;
 }
 
-function assertChunkResult(
-  result: Readonly<BulkResult>,
-  expectedWorkspaceId: string,
-  expectedTotal: number
-): void {
+function assertChunkResult(result: ChunkResult, workspaceId: string, total: number): void {
   const counted = result.created + result.duplicates + result.rejected;
-  const ownerMatches = result.workspaceId === expectedWorkspaceId;
-  const totalsMatch = result.total === expectedTotal && result.items.length === expectedTotal;
-  const countedMatch = counted === expectedTotal;
-  const indicesMatch = hasExpectedIndices(result, expectedTotal);
-  const authoritySafe =
-    result.officialTruthVerifiedByLite === false && result.matterCreatedAutomatically === false;
-  const valid = ownerMatches && totalsMatch && countedMatch && indicesMatch && authoritySafe;
+  const ownerMatches = result.workspaceId === workspaceId;
+  const totalsMatch = result.total === total && result.items.length === total;
+  const countedMatch = counted === total;
+  const indicesMatch = hasExpectedIndices(result, total);
+  const countsSafe = totalsMatch && countedMatch && indicesMatch;
+  const officialTruthSafe = result.officialTruthVerifiedByLite === false;
+  const matterSafe = result.matterCreatedAutomatically === false;
+  const valid = ownerMatches && countsSafe && officialTruthSafe && matterSafe;
 
   if (!valid) {
     throw new TrademarkAssetMigrationOrchestrationError(
@@ -115,21 +118,16 @@ function assertChunkResult(
 export class TrademarkAssetMigrationOrchestrator {
   constructor(private readonly portfolio: TrademarkAssetBulkImporter) {}
 
-  async migrate(
-    input: Readonly<LargeTrademarkAssetMigrationInput>
-  ): Promise<LargeTrademarkAssetMigrationResult> {
+  async migrate(input: MigrationInput): Promise<MigrationResult> {
     const migrationKey = validateInput(input);
     const items: LargeTrademarkAssetMigrationItemResult[] = [];
     let created = 0;
     let duplicates = 0;
     let rejected = 0;
     let chunkCount = 0;
+    let startIndex = 0;
 
-    for (
-      let startIndex = 0;
-      startIndex < input.items.length;
-      startIndex += TRADEMARK_ASSET_MIGRATION_CHUNK_SIZE
-    ) {
+    while (startIndex < input.items.length) {
       const endIndex = startIndex + TRADEMARK_ASSET_MIGRATION_CHUNK_SIZE;
       const chunk = input.items.slice(startIndex, endIndex);
       const chunkIndex = Math.floor(startIndex / TRADEMARK_ASSET_MIGRATION_CHUNK_SIZE);
@@ -145,12 +143,10 @@ export class TrademarkAssetMigrationOrchestrator {
       created += result.created;
       duplicates += result.duplicates;
       rejected += result.rejected;
-      items.push(
-        ...result.items.map((item) => ({
-          ...item,
-          importIndex: startIndex + item.importIndex
-        }))
-      );
+      for (const item of result.items) {
+        items.push({ ...item, importIndex: startIndex + item.importIndex });
+      }
+      startIndex += TRADEMARK_ASSET_MIGRATION_CHUNK_SIZE;
     }
 
     return {
