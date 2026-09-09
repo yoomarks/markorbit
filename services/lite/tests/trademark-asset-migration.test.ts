@@ -50,7 +50,9 @@ function ownerResult(
       importIndex,
       status,
       ...(status === 'CREATED'
-        ? { trademarkAssetId: `trademark-asset_${input.batchKey}_${importIndex}` as TrademarkAssetId }
+        ? {
+            trademarkAssetId: `trademark-asset_${input.batchKey}_${importIndex}` as TrademarkAssetId
+          }
         : { reason: `${status.toLowerCase()}-${importIndex}` })
     };
   });
@@ -69,7 +71,9 @@ function ownerResult(
 }
 
 function importer(
-  implementation: (input: Readonly<BulkImportTrademarkAssetsInput>) => Promise<TrademarkAssetBulkImportResult>
+  implementation: (
+    input: Readonly<BulkImportTrademarkAssetsInput>
+  ) => Promise<TrademarkAssetBulkImportResult>
 ): TrademarkAssetBulkImporter {
   return { bulkImport: vi.fn(implementation) };
 }
@@ -79,41 +83,50 @@ describe('Lite Agency Workspace large Trademark Asset migration orchestration', 
     { total: 1, expectedChunks: 1 },
     { total: 100, expectedChunks: 1 },
     { total: 101, expectedChunks: 2 }
-  ])('delegates $total normalized assets in bounded owner chunks', async ({ total, expectedChunks }) => {
-    const bulkImport = vi.fn(async (input: Readonly<BulkImportTrademarkAssetsInput>) => ownerResult(input));
-    const service = new TrademarkAssetMigrationOrchestrator({ bulkImport });
-    const items = Array.from({ length: total }, (_, index) => normalizedItem(index));
+  ])(
+    'delegates $total normalized assets in bounded owner chunks',
+    async ({ total, expectedChunks }) => {
+      const bulkImport = vi.fn(async (input: Readonly<BulkImportTrademarkAssetsInput>) =>
+        ownerResult(input)
+      );
+      const service = new TrademarkAssetMigrationOrchestrator({ bulkImport });
+      const items = Array.from({ length: total }, (_, index) => normalizedItem(index));
 
-    const result = await service.migrate({
-      workspaceId,
-      migrationKey: 'agency-bootstrap',
-      items
-    });
+      const result = await service.migrate({
+        workspaceId,
+        migrationKey: 'agency-bootstrap',
+        items
+      });
 
-    expect(bulkImport).toHaveBeenCalledTimes(expectedChunks);
-    expect(
-      bulkImport.mock.calls.every(([input]) => input.items.length >= 1 && input.items.length <= 100)
-    ).toBe(true);
-    expect(result).toMatchObject({
-      total,
-      created: total,
-      duplicates: 0,
-      rejected: 0,
-      chunkCount: expectedChunks,
-      officialTruthVerifiedByLite: false,
-      matterCreatedAutomatically: false
-    });
-    expect(result.items.map((item) => item.importIndex)).toEqual(
-      Array.from({ length: total }, (_, index) => index)
-    );
-    expect(bulkImport.mock.calls[0]?.[0].batchKey).toBe('agency-bootstrap:chunk:0');
-    if (expectedChunks > 1) {
-      expect(bulkImport.mock.calls[1]?.[0].batchKey).toBe('agency-bootstrap:chunk:1');
+      expect(bulkImport).toHaveBeenCalledTimes(expectedChunks);
+      expect(
+        bulkImport.mock.calls.every(
+          ([input]) => input.items.length >= 1 && input.items.length <= 100
+        )
+      ).toBe(true);
+      expect(result).toMatchObject({
+        total,
+        created: total,
+        duplicates: 0,
+        rejected: 0,
+        chunkCount: expectedChunks,
+        officialTruthVerifiedByLite: false,
+        matterCreatedAutomatically: false
+      });
+      expect(result.items.map((item) => item.importIndex)).toEqual(
+        Array.from({ length: total }, (_, index) => index)
+      );
+      expect(bulkImport.mock.calls[0]?.[0].batchKey).toBe('agency-bootstrap:chunk:0');
+      if (expectedChunks > 1) {
+        expect(bulkImport.mock.calls[1]?.[0].batchKey).toBe('agency-bootstrap:chunk:1');
+      }
     }
-  });
+  );
 
   it('scales to a realistic multi-thousand normalized migration without bypassing bulk import', async () => {
-    const bulkImport = vi.fn(async (input: Readonly<BulkImportTrademarkAssetsInput>) => ownerResult(input));
+    const bulkImport = vi.fn(async (input: Readonly<BulkImportTrademarkAssetsInput>) =>
+      ownerResult(input)
+    );
     const service = new TrademarkAssetMigrationOrchestrator({ bulkImport });
     const items = Array.from({ length: 2_501 }, (_, index) => normalizedItem(index));
 
@@ -124,9 +137,9 @@ describe('Lite Agency Workspace large Trademark Asset migration orchestration', 
     });
 
     expect(bulkImport).toHaveBeenCalledTimes(26);
-    expect(bulkImport.mock.calls.slice(0, 25).every(([input]) => input.items.length === 100)).toBe(
-      true
-    );
+    expect(
+      bulkImport.mock.calls.slice(0, 25).every(([input]) => input.items.length === 100)
+    ).toBe(true);
     expect(bulkImport.mock.calls[25]?.[0].items).toHaveLength(1);
     expect(result.total).toBe(2_501);
     expect(result.items.at(-1)?.importIndex).toBe(2_500);
@@ -205,7 +218,9 @@ describe('Lite Agency Workspace large Trademark Asset migration orchestration', 
   });
 
   it('rejects empty, oversized and unsafe migration keys before delegation', async () => {
-    const bulkImport = vi.fn(async (input: Readonly<BulkImportTrademarkAssetsInput>) => ownerResult(input));
+    const bulkImport = vi.fn(async (input: Readonly<BulkImportTrademarkAssetsInput>) =>
+      ownerResult(input)
+    );
     const service = new TrademarkAssetMigrationOrchestrator({ bulkImport });
 
     await expect(
