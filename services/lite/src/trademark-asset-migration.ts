@@ -8,8 +8,7 @@ export const MAX_LARGE_TRADEMARK_ASSET_MIGRATION_ITEMS = 50_000;
 const TRADEMARK_ASSET_MIGRATION_CHUNK_SIZE = 100;
 const MAX_MIGRATION_KEY_LENGTH = 260;
 
-export type TrademarkAssetMigrationAdmissionItem =
-  BulkImportTrademarkAssetsInput['items'][number];
+export type TrademarkAssetMigrationAdmissionItem = BulkImportTrademarkAssetsInput['items'][number];
 
 export interface LargeTrademarkAssetMigrationInput {
   workspaceId: string;
@@ -84,7 +83,10 @@ function assertChunkResult(
   const hasExpectedIndices =
     indices.size === expectedTotal &&
     result.items.every(
-      (item) => Number.isInteger(item.importIndex) && item.importIndex >= 0 && item.importIndex < expectedTotal
+      (item) =>
+        Number.isInteger(item.importIndex) &&
+        item.importIndex >= 0 &&
+        item.importIndex < expectedTotal
     );
 
   if (
@@ -127,7 +129,10 @@ export class TrademarkAssetMigrationOrchestrator {
       startIndex < input.items.length;
       startIndex += TRADEMARK_ASSET_MIGRATION_CHUNK_SIZE
     ) {
-      const chunk = input.items.slice(startIndex, startIndex + TRADEMARK_ASSET_MIGRATION_CHUNK_SIZE);
+      const chunk = input.items.slice(
+        startIndex,
+        startIndex + TRADEMARK_ASSET_MIGRATION_CHUNK_SIZE
+      );
       const chunkIndex = Math.floor(startIndex / TRADEMARK_ASSET_MIGRATION_CHUNK_SIZE);
       const result = await this.portfolio.bulkImport({
         workspaceId: input.workspaceId,
