@@ -1,0 +1,59 @@
+{
+  "schemaVersion": 1,
+  "spikeId": "SPIKE-VOICE-001",
+  "capturedAt": "2026-09-09T06:37:00.000Z",
+  "candidate": {
+    "implementationLayerOnly": true,
+    "repository": "https://github.com/QwenLM/Qwen3-TTS",
+    "repositoryCommit": "022e286b98fbec7e1e916cb940cdf532cd9f488e",
+    "model": "Qwen/Qwen3-TTS-12Hz-0.6B-CustomVoice",
+    "modelRevision": "85e237c12c027371202489a0ec509ded67b5e4b5",
+    "modelSizeClass": "0.6B",
+    "licenseObserved": "Apache-2.0"
+  },
+  "environment": {
+    "operatingSystem": "Windows",
+    "python": "3.12.14",
+    "gpu": "NVIDIA GeForce RTX 5060 Ti",
+    "gpuMemoryMiB": 16311,
+    "driver": "591.86",
+    "systemMemoryBytes": 33684291584,
+    "packages": {
+      "qwen-tts": "0.1.1",
+      "torch": "2.14.0",
+      "torchaudio": "2.11.0",
+      "transformers": "4.57.3"
+    }
+  },
+  "inputs": {
+    "chinese": "欢迎使用 Mark Orbit。本段仅用于本地语音合成基准，不构成商业事实或专业意见。",
+    "english": "Welcome to Mark Orbit. This local synthesis sample is benchmark evidence, not commercial truth or professional advice.",
+    "chunking": ["欢迎使用 Mark Orbit。", "This is a bounded local benchmark."],
+    "voiceClone": "NOT_ATTEMPTED_NO_CONSENTED_REFERENCE_AUDIO"
+  },
+  "result": {
+    "state": "BLOCKED_BEFORE_MODEL_LOAD",
+    "failureStage": "TORCH_RUNTIME_IMPORT",
+    "errorClass": "OSError",
+    "errorCode": "WinError 4551",
+    "failingLibrary": "torch/lib/c10.dll",
+    "modelWeightsDownloaded": false,
+    "audioGenerated": false,
+    "latencyMs": null,
+    "realTimeFactor": null,
+    "peakGpuMemoryMiB": null,
+    "concurrency": null,
+    "chineseQuality": "NOT_MEASURED",
+    "englishQuality": "NOT_MEASURED",
+    "chunkingQuality": "NOT_MEASURED",
+    "cloneConsistency": "NOT_MEASURED"
+  },
+  "authority": {
+    "providerApproved": false,
+    "productionReady": false,
+    "qualityTruthCreated": false,
+    "consentAuthorityCreated": false,
+    "productContractChanged": false
+  },
+  "recommendation": "WATCH"
+}
