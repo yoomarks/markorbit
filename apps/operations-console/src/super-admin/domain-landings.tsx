@@ -1,4 +1,5 @@
 import { Alert, PageHeader } from '@markorbit/ui';
+import { CoreAdminWorkspace } from './core-admin.js';
 import { BrainAdminWorkspace } from './brain-admin.js';
 import { CapabilityAdminWorkspace } from './capability-admin.js';
 import { ExecutionAdminWorkspace } from './execution-admin.js';
@@ -9,21 +10,12 @@ import { MgsnAdminWorkspace } from './mgsn-admin.js';
 import { SystemAdminWorkspace } from './system-admin.js';
 import { GovernanceAdminWorkspace } from './governance-admin.js';
 
-type DomainLanding = {
+export type SuperAdminDomainLanding = Readonly<{
   id: string;
   title: string;
   status: string;
   boundary: string;
-};
-
-const landings: DomainLanding[] = [
-  {
-    id: 'super-admin-core',
-    title: 'Core',
-    status: 'Global Core administration is not connected in this shell yet.',
-    boundary: 'No account, identity or Workspace state is inferred from other domains.'
-  }
-];
+}>;
 
 export function SuperAdminDomainLandings() {
   return (
@@ -35,13 +27,7 @@ export function SuperAdminDomainLandings() {
       <Alert tone="info" title="No synthetic platform truth">
         A domain landing is a navigation boundary, not evidence that its owner read is connected.
       </Alert>
-      <ul>
-        {landings.map((landing) => (
-          <li id={landing.id} key={landing.id}>
-            <strong>{landing.title}</strong> — {landing.status} {landing.boundary}
-          </li>
-        ))}
-      </ul>
+      <CoreAdminWorkspace />
       <BrainAdminWorkspace />
       <CapabilityAdminWorkspace />
       <MarkRegAdminWorkspace />
@@ -55,4 +41,4 @@ export function SuperAdminDomainLandings() {
   );
 }
 
-export const superAdminDomainLandings = landings;
+export const superAdminDomainLandings: readonly SuperAdminDomainLanding[] = [];

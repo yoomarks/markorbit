@@ -110,6 +110,19 @@ const executionOwnerAdministration = {
     reason: 'No canonical durable global Execution portfolio is modeled.'
   }
 };
+const coreOwnerAdministration = {
+  schemaVersion: 1,
+  objectType: 'CORE_ADMINISTRATION_PROJECTION',
+  owner: 'CORE',
+  access: 'READ_ONLY',
+  requiredAuthority: 'core-admin:read',
+  observedAt: '2026-09-09T10:00:00.000Z',
+  portfolio: {
+    availability: 'NOT_YET_MODELED',
+    reason:
+      'Core does not yet expose one canonical durable platform administration portfolio for Users, Internal Operators, Sessions, Access Control, API Keys, Feature Flags and Audit.'
+  }
+};
 const systemOwnerAdministration = {
   schemaVersion: 1,
   objectType: 'SYSTEM_ADMINISTRATION_PROJECTION',
@@ -179,6 +192,7 @@ test('MarkOrbit Super Admin exposes truthful governed operator surfaces @visual'
   const assertHealthy = watchPage(page);
   let dataOwnerReads = 0;
   let knowledgeOwnerReads = 0;
+  let coreOwnerReads = 0;
   await page.route(
     '**/api/internal/control-plane/knowledge/evidence-supply-health',
     async (route) => {
@@ -196,6 +210,14 @@ test('MarkOrbit Super Admin exposes truthful governed operator surfaces @visual'
       status: 200,
       contentType: 'application/json',
       body: JSON.stringify(dataOwnerSummary)
+    });
+  });
+  await page.route('**/api/internal/super-admin/core', async (route) => {
+    coreOwnerReads += 1;
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify(coreOwnerAdministration)
     });
   });
   await page.route('**/api/internal/super-admin/knowledge', async (route) => {
@@ -282,6 +304,17 @@ test('MarkOrbit Super Admin exposes truthful governed operator surfaces @visual'
   ]) {
     await expect(page.getByRole('heading', { name: heading })).toBeVisible();
   }
+  await primaryNavigation.getByRole('link', { name: 'Core', exact: true }).click();
+  await expect(page).toHaveURL(/#super-admin-core$/);
+  const coreAdmin = page.locator('#super-admin-core');
+  await expect(coreAdmin.getByRole('heading', { name: 'Core', exact: true })).toBeVisible();
+  await expect(coreAdmin.getByText('Global Core portfolio not yet modeled')).toBeVisible();
+  await expect(coreAdmin.getByText('core-admin:read', { exact: true })).toBeVisible();
+  await expect(coreAdmin.getByText('NOT_YET_MODELED')).toBeVisible();
+  await expect(
+    page.getByText('Global Core administration is not connected in this shell yet.')
+  ).toHaveCount(0);
+  expect(coreOwnerReads).toBeGreaterThanOrEqual(1);
   await page.getByRole('link', { name: 'Knowledge', exact: true }).click();
   await expect(page).toHaveURL(/#super-admin-knowledge$/);
   const knowledgeAdmin = page.locator('#super-admin-knowledge');
