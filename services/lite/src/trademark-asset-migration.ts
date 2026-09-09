@@ -95,8 +95,7 @@ function assertChunkResult(
   const countedMatch = counted === expectedTotal;
   const indicesMatch = hasExpectedIndices(result, expectedTotal);
   const authoritySafe =
-    result.officialTruthVerifiedByLite === false &&
-    result.matterCreatedAutomatically === false;
+    result.officialTruthVerifiedByLite === false && result.matterCreatedAutomatically === false;
   const valid = ownerMatches && totalsMatch && countedMatch && indicesMatch && authoritySafe;
 
   if (!valid) {
