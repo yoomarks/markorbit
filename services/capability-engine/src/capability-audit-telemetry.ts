@@ -117,6 +117,7 @@ export interface CapabilityAuditTelemetrySinkV1 {
 export interface ManagedAiExecutionContextLikeV1 {
   executionId: string;
   correlationId: string;
+  selectedImplementationKey?: string;
 }
 
 export interface ManagedAiExecutionAuthorityLikeV1 {

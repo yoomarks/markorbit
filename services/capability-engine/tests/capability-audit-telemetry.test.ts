@@ -231,6 +231,20 @@ describe('Capability audit telemetry V1', () => {
     expect(sink.list()[0]?.eventType).toBe('MANAGED_AI_EXECUTION_OUTCOME');
   });
 
+  it('preserves the trusted governed implementation binding through the production telemetry wrapper without exposing it in telemetry', async () => {
+    const sink = new InMemoryCapabilityAuditTelemetrySinkV1();
+    const execute = vi.fn(() => Promise.resolve(outcome));
+    const observed = new ObservedManagedAiExecutionAuthorityV1({ execute }, sink);
+    const selectedContext = {
+      ...context,
+      selectedImplementationKey: 'ai:workspace-approved:chat-completions:v1'
+    };
+
+    await expect(observed.execute(input, selectedContext)).resolves.toBe(outcome);
+    expect(execute).toHaveBeenCalledWith(input, selectedContext);
+    expect(JSON.stringify(sink.list()[0])).not.toContain(selectedContext.selectedImplementationKey);
+  });
+
   it('never retries or changes the provider result when the telemetry sink fails', async () => {
     const record = vi.fn(() => Promise.reject(new Error('telemetry unavailable')));
     const sink: CapabilityAuditTelemetrySinkV1 = { record };

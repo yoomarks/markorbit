@@ -26,6 +26,7 @@ import {
 export interface ManagedAiExecutionContextV1 {
   executionId: string;
   correlationId: string;
+  selectedImplementationKey?: string;
 }
 
 export interface ManagedAiExecutionAuthorityV1 {
@@ -74,6 +75,23 @@ function requiredHeader(
   const value = request.headers[header]?.trim();
   if (!value || value.length > maxLength)
     throw new HttpError(400, code, `${header} must contain 1 to ${maxLength} characters.`);
+  return value;
+}
+
+function optionalHeader(
+  request: JsonRequest,
+  header: string,
+  maxLength: number
+): string | undefined {
+  const supplied = request.headers[header];
+  if (supplied === undefined) return undefined;
+  const value = supplied.trim();
+  if (!value || value.length > maxLength)
+    throw new HttpError(
+      400,
+      'INVALID_GOVERNED_IMPLEMENTATION_BINDING',
+      `${header} must contain 1 to ${maxLength} characters when supplied.`
+    );
   return value;
 }
 
@@ -273,8 +291,19 @@ export function createManagedAiExecutionRoutesV1(
           'CORRELATION_ID_REQUIRED',
           300
         );
+        const selectedImplementationKey = optionalHeader(
+          request,
+          'x-markorbit-governed-implementation-key',
+          500
+        );
         const input = parseInput(request.body);
-        const fingerprintSha256 = sha256(canonicalJson({ correlationId, input }));
+        const fingerprintSha256 = sha256(
+          canonicalJson({
+            correlationId,
+            ...(selectedImplementationKey === undefined ? {} : { selectedImplementationKey }),
+            input
+          })
+        );
         const pending = inFlight.get(idempotencyKey);
         if (pending) {
           if (pending.fingerprintSha256 !== fingerprintSha256)
@@ -344,7 +373,11 @@ export function createManagedAiExecutionRoutesV1(
 
           let rawOutcome: unknown;
           try {
-            rawOutcome = await options.executor.execute(input, { executionId, correlationId });
+            rawOutcome = await options.executor.execute(input, {
+              executionId,
+              correlationId,
+              ...(selectedImplementationKey === undefined ? {} : { selectedImplementationKey })
+            });
           } catch {
             await bestEffortReconciliation(
               claimStore,
