@@ -2,12 +2,16 @@ import { describe, expect, it } from 'vitest';
 import {
   assertTradingAssetClassificationV1,
   assertTradingListingAssetCommercialIntentV1,
+  assertTradingStudioVisualAssetV1,
   noTradingAssetClassificationAuthorityConsequencesV1,
   type TradingListingAssetV1,
-  type TradingSourceAssetV1
+  type TradingSourceAssetV1,
+  type TradingStudioVisualAssetV1
 } from '../src/trading-asset-classification.js';
+import { noTradingAiAuthorityConsequencesV1 } from '../src/trading-ai-provenance.js';
 import type { TradingAiProfileV1 } from '../src/trading-ai-profile.js';
 import type { TradingCommercialDirectionVersionV1 } from '../src/trading-commercial-direction.js';
+import type { TradingDirectionSelectionV1 } from '../src/trading-direction-selection.js';
 
 const sourceAsset = (): TradingSourceAssetV1 => ({
   schemaVersion: 1,
@@ -70,6 +74,90 @@ const profile = {
   version: 3,
   trademarkAsset: { id: 'trademark-asset_contract-1', version: 3 }
 } as unknown as TradingAiProfileV1;
+
+const selection = {
+  directionSelectionId: 'trading-direction-selection_contract-1',
+  workspaceId: 'workspace-contract-1',
+  version: 1,
+  status: 'CURRENT',
+  selectedDirection: {
+    id: 'trading-ai-derived_commercial-direction_contract-1',
+    version: 2
+  }
+} as unknown as TradingDirectionSelectionV1;
+
+const studioVisualAsset = (): TradingStudioVisualAssetV1 => ({
+  schemaVersion: 1,
+  classification: 'STUDIO_VISUAL_ASSET',
+  studioVisualAssetId: 'trading-ai-derived_visual-asset_contract-1',
+  version: 1,
+  workspaceId: 'workspace-contract-1',
+  trademarkAsset: { id: 'trademark-asset_contract-1', version: 3 },
+  owner: { ownerReference: 'lite-trading-studio', ownerVersion: 1 },
+  mediaReference: 'studio-media_private-concept-1',
+  directionSelection: { id: 'trading-direction-selection_contract-1', version: 1 },
+  commercialDirection: {
+    id: 'trading-ai-derived_commercial-direction_contract-1',
+    version: 2
+  },
+  aiProfile: { id: 'trading-ai-derived_ai-profile_contract-1', version: 3 },
+  sourceAssets: [{ id: 'source-asset_contract-1', version: 1 }],
+  generationRecipeReference: 'generation-recipe_hero-v1',
+  provenance: {
+    schemaVersion: 1,
+    derivedObject: { id: 'trading-ai-derived_visual-asset_contract-1', version: 1 },
+    truthClass: 'AI_CONCEPT',
+    trademarkAsset: { id: 'trademark-asset_contract-1', version: 3 },
+    sourceReferences: [
+      {
+        ownerReference: 'lite-trading-selection',
+        sourceId: 'trading-direction-selection_contract-1',
+        sourceVersion: 1
+      },
+      {
+        ownerReference: 'lite-trading-direction',
+        sourceId: 'trading-ai-derived_commercial-direction_contract-1',
+        sourceVersion: 2
+      },
+      {
+        ownerReference: 'lite-trading-profile',
+        sourceId: 'trading-ai-derived_ai-profile_contract-1',
+        sourceVersion: 3
+      },
+      {
+        ownerReference: 'lite-trading-assets',
+        sourceId: 'source-asset_contract-1',
+        sourceVersion: 1
+      }
+    ],
+    implementation: {
+      implementationProfileId: 'implementation-profile_visual-generation',
+      implementationProfileVersion: 1,
+      implementationKey: 'visual-generation/default',
+      provider: 'provider-a',
+      model: 'image-model-1',
+      promptPolicyId: 'prompt-policy_studio-build',
+      promptPolicyVersion: '1.0.0',
+      outputSchemaId: 'trading-studio-visual-asset-v1',
+      inputSha256: 'a'.repeat(64),
+      providerRequestId: 'provider-request-visual-1',
+      startedAt: '2026-09-07T12:00:00.000Z',
+      completedAt: '2026-09-07T12:00:04.000Z'
+    },
+    createdAt: '2026-09-07T12:05:00.000Z',
+    currentness: { state: 'CURRENT', evaluatedAt: '2026-09-07T12:05:00.000Z' },
+    authorityConsequences: noTradingAiAuthorityConsequencesV1
+  },
+  targetAudienceRefs: ['trading-commercial-persona_end-consumer-1'],
+  buyingPointRefs: ['trading-buying-point_fast-launch-1'],
+  scenarioRefs: ['trading-commercial-scenario_dtc-launch-1'],
+  creativeRole: 'HERO',
+  visibility: 'PRIVATE',
+  publicationEligibility: 'NOT_ELIGIBLE',
+  aiConceptLabel: true,
+  createdAt: '2026-09-07T12:05:00.000Z',
+  authorityConsequences: noTradingAssetClassificationAuthorityConsequencesV1
+});
 
 describe('Lite Trading asset classification V1 contract', () => {
   it('keeps private Source Assets and approved Listing Assets as distinct identities', () => {
@@ -167,5 +255,70 @@ describe('Lite Trading asset classification V1 contract', () => {
     expect(sourceAsset()).not.toHaveProperty('commercialDirection');
     expect(sourceAsset()).not.toHaveProperty('targetAudienceRefs');
     expect(sourceAsset()).not.toHaveProperty('creativeRole');
+  });
+
+  it('represents a private AI Concept from the exact current human selection', () => {
+    const asset = studioVisualAsset();
+    expect(() => assertTradingAssetClassificationV1(asset)).not.toThrow();
+    expect(() =>
+      assertTradingStudioVisualAssetV1(asset, selection, direction, profile)
+    ).not.toThrow();
+  });
+
+  it('rejects an unselected DirectionVersion and incomplete generation lineage', () => {
+    const asset = studioVisualAsset();
+    expect(() =>
+      assertTradingStudioVisualAssetV1(
+        { ...asset, commercialDirection: { ...asset.commercialDirection, version: 1 } },
+        selection,
+        direction,
+        profile
+      )
+    ).toThrow(/exact current human-selected DirectionVersion/u);
+    expect(() =>
+      assertTradingStudioVisualAssetV1(
+        {
+          ...asset,
+          provenance: {
+            ...asset.provenance,
+            sourceReferences: asset.provenance.sourceReferences.filter(
+              (source) => source.sourceId !== 'source-asset_contract-1'
+            )
+          }
+        },
+        selection,
+        direction,
+        profile
+      )
+    ).toThrow(/every exact generation input/u);
+  });
+
+  it('keeps Studio Visual Assets private, publication-ineligible and explicitly AI Concept', () => {
+    expect(() =>
+      assertTradingAssetClassificationV1({
+        ...studioVisualAsset(),
+        visibility: 'LISTING_PUBLIC'
+      } as unknown as TradingStudioVisualAssetV1)
+    ).toThrow(/private and publication-ineligible/u);
+    expect(() =>
+      assertTradingAssetClassificationV1({
+        ...studioVisualAsset(),
+        aiConceptLabel: false
+      } as unknown as TradingStudioVisualAssetV1)
+    ).toThrow(/AI concept label/u);
+  });
+
+  it('validates optional commercial intent against the exact DirectionVersion', () => {
+    expect(() =>
+      assertTradingStudioVisualAssetV1(
+        {
+          ...studioVisualAsset(),
+          scenarioRefs: ['trading-commercial-scenario_unknown']
+        },
+        selection,
+        direction,
+        profile
+      )
+    ).toThrow(/scenarioRefs.*exact DirectionVersion/u);
   });
 });
