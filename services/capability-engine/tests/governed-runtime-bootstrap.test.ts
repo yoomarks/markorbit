@@ -21,6 +21,7 @@ import {
   MANAGED_AI_CAPABILITY_OUTPUT_SCHEMA_ID
 } from '../src/governed-runtime-bootstrap.js';
 import type { DurableImplementationProfileRegistryV1 } from '../src/implementation-profile-registry-postgres.js';
+import type { ManagedAiExecutionAuthorityV1 } from '../src/managed-ai-http.js';
 
 const internalServiceSecret = 's'.repeat(40);
 const definition: RuntimeCapabilityDefinition = {
@@ -44,16 +45,18 @@ const definition: RuntimeCapabilityDefinition = {
 };
 
 function profile(
-  implementationKey: string = KNOWLEDGE_DEEPSEEK_IMPLEMENTATION_KEY
+  implementationKey: string = KNOWLEDGE_DEEPSEEK_IMPLEMENTATION_KEY,
+  implementationProfileId: ImplementationProfile['implementationProfileId'] = 'implementation-profile_managed-ai-knowledge',
+  status: ImplementationProfile['status'] = 'APPROVED'
 ): ImplementationProfile {
   return {
     schemaVersion: 1,
-    implementationProfileId: 'implementation-profile_managed-ai-knowledge',
+    implementationProfileId,
     version: 1,
     capabilityId: 'managed-ai-execution',
     capabilityVersion: '1.0.0',
     kind: 'AI_ASSISTED_SERVICE',
-    status: 'APPROVED',
+    status,
     implementationKey,
     inputSchemaId: MANAGED_AI_CAPABILITY_INPUT_SCHEMA_ID,
     outputSchemaId: MANAGED_AI_CAPABILITY_OUTPUT_SCHEMA_ID,
@@ -66,12 +69,23 @@ function profile(
   };
 }
 
-function registry(selected: ImplementationProfile): DurableImplementationProfileRegistryV1 {
+function registry(...selected: ImplementationProfile[]): DurableImplementationProfileRegistryV1 {
   return {
     register: vi.fn((value: unknown) => Promise.resolve(value as ImplementationProfile)),
-    findCurrent: vi.fn(() => Promise.resolve(selected)),
-    findVersion: vi.fn(() => Promise.resolve(selected)),
-    listCurrent: vi.fn(() => Promise.resolve([selected]))
+    findCurrent: vi.fn((implementationProfileId: string) =>
+      Promise.resolve(
+        selected.find((item) => item.implementationProfileId === implementationProfileId)
+      )
+    ),
+    findVersion: vi.fn((implementationProfileId: string, version: number) =>
+      Promise.resolve(
+        selected.find(
+          (item) =>
+            item.implementationProfileId === implementationProfileId && item.version === version
+        )
+      )
+    ),
+    listCurrent: vi.fn(() => Promise.resolve(selected))
   };
 }
 
@@ -130,13 +144,17 @@ function outcome(
   };
 }
 
-function command() {
+function command(
+  workspaceId = 'workspace_test',
+  idempotencyKey = 'wp07-governed-runtime-1',
+  correlationId = 'correlation_wp07'
+) {
   return {
     schemaVersion: 2 as const,
     capabilityId: 'managed-ai-execution',
     capabilityVersion: '1.0.0',
     caller: {
-      workspaceId: 'workspace_test',
+      workspaceId,
       principalId: 'principal_test',
       callerProduct: 'LITE',
       permissionContextRef: 'core-workspace-membership:membership_test'
@@ -146,8 +164,8 @@ function command() {
     inputSchemaId: MANAGED_AI_CAPABILITY_INPUT_SCHEMA_ID,
     outputSchemaId: MANAGED_AI_CAPABILITY_OUTPUT_SCHEMA_ID,
     riskClass: 'MODERATE' as const,
-    idempotencyKey: 'wp07-governed-runtime-1',
-    correlationId: 'correlation_wp07'
+    idempotencyKey,
+    correlationId
   };
 }
 
@@ -197,6 +215,108 @@ describe('MO-CAP-001 WP07 governed production runtime bootstrap', () => {
     expect(execute).toHaveBeenCalledTimes(1);
   });
 
+  it('uses one stable Managed AI Capability with global fallback for Workspace A and an approved local implementation for Workspace B', async () => {
+    const workspaceImplementationKey = 'ai:workspace-approved:chat-completions:v1';
+    const defaultProfile = profile();
+    const workspaceProfile = profile(
+      workspaceImplementationKey,
+      'implementation-profile_managed-ai-workspace'
+    );
+    const workspacePolicyVersion = 'workspace-implementation-preference.v1:test-proof';
+    const workspacePreferences = {
+      resolve: vi.fn((context: { workspaceId: string }) =>
+        Promise.resolve(
+          context.workspaceId === 'workspace_b'
+            ? {
+                policyVersion: workspacePolicyVersion,
+                preferredImplementationKeys: [workspaceImplementationKey]
+              }
+            : undefined
+        )
+      )
+    };
+    const execute = vi.fn((...args: Parameters<ManagedAiExecutionAuthorityV1['execute']>) => {
+      const executionContext = args[1];
+      const implementationKey =
+        executionContext.selectedImplementationKey ?? KNOWLEDGE_DEEPSEEK_IMPLEMENTATION_KEY;
+      return Promise.resolve(outcome(implementationKey));
+    });
+    const instance = createGovernedProductionRuntimeV1({
+      definitions: { findCurrent: vi.fn(() => Promise.resolve(definition)) },
+      implementationProfiles: registry(defaultProfile, workspaceProfile),
+      workspaceImplementationPreferences: workspacePreferences,
+      managedAiRuntime: {
+        managedAiExecutor: { execute },
+        managedAiClaimStore: new InMemoryManagedAiExecutionClaimStoreV1(),
+        managedAiExactOutputStore: new InMemoryManagedAiExactOutputStoreV1()
+      },
+      internalServiceSecret
+    });
+    if (!instance) throw new Error('Expected governed production runtime.');
+
+    const workspaceA = await instance.invoke(
+      command('workspace_a', 'wp07-workspace-a-1', 'correlation_wp07_a')
+    );
+    const workspaceB = await instance.invoke(
+      command('workspace_b', 'wp07-workspace-b-1', 'correlation_wp07_b')
+    );
+
+    expect(workspaceA.binding.runtimeCapability).toEqual(workspaceB.binding.runtimeCapability);
+    expect(workspaceA.binding.implementation.implementationKey).toBe(
+      KNOWLEDGE_DEEPSEEK_IMPLEMENTATION_KEY
+    );
+    expect(workspaceA.binding.selectionPolicyVersion).toBe('capability-managed-ai-selection.v1');
+    expect(workspaceB.binding.implementation).toMatchObject({
+      id: workspaceProfile.implementationProfileId,
+      implementationKey: workspaceImplementationKey,
+      kind: 'AI_ASSISTED_SERVICE'
+    });
+    expect(workspaceB.binding.selectionPolicyVersion).toBe(workspacePolicyVersion);
+    expect(workspaceA.receipt.workspaceId).toBe('workspace_a');
+    expect(workspaceB.receipt.workspaceId).toBe('workspace_b');
+    expect(workspaceA.outcome.output).toMatchObject({
+      provenance: { implementationKey: KNOWLEDGE_DEEPSEEK_IMPLEMENTATION_KEY }
+    });
+    expect(workspaceB.outcome.output).toMatchObject({
+      provenance: { implementationKey: workspaceImplementationKey }
+    });
+    expect(execute.mock.calls.map((call) => call[1].selectedImplementationKey)).toEqual([
+      KNOWLEDGE_DEEPSEEK_IMPLEMENTATION_KEY,
+      workspaceImplementationKey
+    ]);
+    expect(workspacePreferences.resolve).toHaveBeenCalledTimes(2);
+  });
+
+  it('fails closed when a Workspace preference selects no approved eligible implementation', async () => {
+    const execute = vi.fn(() => Promise.resolve(outcome()));
+    const instance = createGovernedProductionRuntimeV1({
+      definitions: { findCurrent: vi.fn(() => Promise.resolve(definition)) },
+      implementationProfiles: registry(profile()),
+      workspaceImplementationPreferences: {
+        resolve: vi.fn(() =>
+          Promise.resolve({
+            policyVersion: 'workspace-implementation-preference.v1:invalid',
+            preferredImplementationKeys: ['ai:workspace-missing:v1']
+          })
+        )
+      },
+      managedAiRuntime: {
+        managedAiExecutor: { execute },
+        managedAiClaimStore: new InMemoryManagedAiExecutionClaimStoreV1(),
+        managedAiExactOutputStore: new InMemoryManagedAiExactOutputStoreV1()
+      },
+      internalServiceSecret
+    });
+    if (!instance) throw new Error('Expected governed production runtime.');
+
+    await expect(
+      instance.invoke(
+        command('workspace_b', 'wp07-workspace-b-invalid', 'correlation_wp07_invalid')
+      )
+    ).rejects.toMatchObject({ code: 'NO_APPROVED_IMPLEMENTATION', status: 409 });
+    expect(execute).not.toHaveBeenCalled();
+  });
+
   it('fails closed before provider dispatch for unknown Capability input contracts', async () => {
     const { instance, execute } = runtime();
     await expect(
@@ -205,7 +325,7 @@ describe('MO-CAP-001 WP07 governed production runtime bootstrap', () => {
     expect(execute).not.toHaveBeenCalled();
   });
 
-  it('does not dispatch a durable profile whose implementation key is outside the production adapter set', async () => {
+  it('fails closed when the global policy cannot select the only registered implementation key', async () => {
     const { instance, execute } = runtime(profile('ai:caller-selected:unsafe-v1'));
 
     await expect(instance.invoke(command())).rejects.toMatchObject({

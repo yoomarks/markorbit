@@ -61,6 +61,7 @@ export const knowledgeDeepSeekImplementationProfileV1 = Object.freeze({
 export interface ManagedAiExecutionContextV1 {
   executionId: string;
   correlationId: string;
+  selectedImplementationKey?: string;
 }
 
 export interface ManagedAiProviderGatewayV1 {
@@ -179,9 +180,15 @@ export class ManagedAiImplementationRegistryV1 {
   }
 
   select(
-    input: Readonly<ManagedAiExecutionInputV1>
+    input: Readonly<ManagedAiExecutionInputV1>,
+    selectedImplementationKey?: string
   ): Readonly<ManagedAiImplementationProfileV1> | null {
-    const matches = this.profiles.filter((profile) => profileMatches(profile, input));
+    const matches = this.profiles.filter(
+      (profile) =>
+        (selectedImplementationKey === undefined ||
+          profile.implementationKey === selectedImplementationKey) &&
+        profileMatches(profile, input)
+    );
     if (matches.length > 1) {
       throw new ManagedAiExecutorBoundaryError(
         'MANAGED_AI_PROFILE_AMBIGUOUS',
@@ -249,7 +256,21 @@ function executionContext(
       'Managed AI executionId and correlationId must contain 1 to 300 characters.'
     );
   }
-  return { executionId, correlationId };
+  const selectedImplementationKey = value.selectedImplementationKey?.trim();
+  if (
+    value.selectedImplementationKey !== undefined &&
+    (!selectedImplementationKey || selectedImplementationKey.length > 500)
+  ) {
+    throw new ManagedAiExecutorBoundaryError(
+      'MANAGED_AI_CONTEXT_INVALID',
+      'Managed AI selectedImplementationKey must contain 1 to 500 characters when supplied.'
+    );
+  }
+  return {
+    executionId,
+    correlationId,
+    ...(selectedImplementationKey === undefined ? {} : { selectedImplementationKey })
+  };
 }
 
 function exactOutput(
@@ -350,7 +371,7 @@ export class ManagedAiExecutorV1 {
     const input = parseManagedAiExecutionInputV1(value);
     const context = executionContext(runtimeContext);
     const inputSha256 = sha256(canonicalJson(input));
-    const profile = this.implementations.select(input);
+    const profile = this.implementations.select(input, context.selectedImplementationKey);
     if (!profile) {
       return {
         schemaVersion: 1,

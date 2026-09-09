@@ -112,6 +112,38 @@ describe('Capability Engine internal Managed AI execution route', () => {
     });
   });
 
+  it('forwards a trusted governed implementation binding and includes it in idempotency identity', async () => {
+    const execute = vi.fn((...args: Parameters<ManagedAiExecutionAuthorityV1['execute']>) => {
+      void args;
+      return Promise.resolve(blockedOutcome);
+    });
+    const target = route({ execute });
+    const selectedImplementationKey = 'ai:workspace-approved:chat-completions:v1';
+
+    const first = await target.handle(
+      request(input(), {
+        'x-markorbit-governed-implementation-key': selectedImplementationKey
+      })
+    );
+
+    expect(first).toEqual({ status: 200, body: blockedOutcome });
+    expect(execute).toHaveBeenCalledTimes(1);
+    expect(execute.mock.calls[0]?.[1]).toEqual({
+      executionId: `maiexec_${createHash('sha256').update(idempotencyKey).digest('hex').slice(0, 32)}`,
+      correlationId,
+      selectedImplementationKey
+    });
+
+    await expect(
+      target.handle(
+        request(input(), {
+          'x-markorbit-governed-implementation-key': 'ai:another-approved-key:v1'
+        })
+      )
+    ).rejects.toMatchObject({ status: 409, code: 'IDEMPOTENCY_CONFLICT' });
+    expect(execute).toHaveBeenCalledTimes(1);
+  });
+
   it('rejects untrusted internal callers before claim or executor access', async () => {
     const execute = vi.fn(() => Promise.resolve(blockedOutcome));
     const target = route({ execute });
@@ -182,6 +214,9 @@ describe('Capability Engine internal Managed AI execution route', () => {
 
     await expect(
       target.handle(request({ ...input(), provider: 'DEEPSEEK' }))
+    ).rejects.toMatchObject({ status: 400, code: 'INVALID_MANAGED_AI_REQUEST' });
+    await expect(
+      target.handle(request({ ...input(), implementationKey: 'ai:caller-selected:v1' }))
     ).rejects.toMatchObject({ status: 400, code: 'INVALID_MANAGED_AI_REQUEST' });
     expect(execute).not.toHaveBeenCalled();
   });

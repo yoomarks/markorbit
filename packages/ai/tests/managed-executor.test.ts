@@ -172,6 +172,76 @@ describe('Managed AI executor V1', () => {
     expect(outcome.provenance?.inputSha256).toMatch(/^[a-f0-9]{64}$/u);
   });
 
+  it('honors an exact server-selected implementation key without granting caller selection authority', async () => {
+    const workspaceImplementationKey = 'ai:workspace-approved:chat-completions:v1';
+    const workspaceProfile = {
+      ...knowledgeDeepSeekImplementationProfileV1,
+      profileId: 'managed-ai:workspace-approved:v1',
+      implementationKey: workspaceImplementationKey
+    };
+    const defaultExecute = vi.fn(() =>
+      Promise.resolve(success(new TextEncoder().encode('{"source":"default"}')))
+    );
+    const workspaceExecute = vi.fn(() =>
+      Promise.resolve(success(new TextEncoder().encode('{"source":"workspace"}')))
+    );
+    const executor = new ManagedAiExecutorV1(
+      new ManagedAiImplementationRegistryV1([
+        knowledgeDeepSeekImplementationProfileV1,
+        workspaceProfile
+      ]),
+      new AiProviderRegistryV1([
+        {
+          implementationKey: KNOWLEDGE_DEEPSEEK_IMPLEMENTATION_KEY,
+          provider: 'DEEPSEEK',
+          execute: defaultExecute
+        },
+        {
+          implementationKey: workspaceImplementationKey,
+          provider: 'DEEPSEEK',
+          execute: workspaceExecute
+        }
+      ])
+    );
+
+    const selected = await executor.execute(managedInput(), {
+      ...context,
+      executionId: 'aiexec_workspace_selected_1',
+      selectedImplementationKey: workspaceImplementationKey
+    });
+
+    expect(defaultExecute).not.toHaveBeenCalled();
+    expect(workspaceExecute).toHaveBeenCalledTimes(1);
+    expect(selected).toMatchObject({
+      status: 'COMPLETED',
+      provenance: {
+        implementationProfileId: workspaceProfile.profileId,
+        implementationProfileVersion: workspaceProfile.version,
+        implementationKey: workspaceImplementationKey,
+        provider: 'DEEPSEEK'
+      }
+    });
+
+    await expect(
+      executor.execute(managedInput(), {
+        ...context,
+        executionId: 'aiexec_workspace_missing_1',
+        selectedImplementationKey: 'ai:missing-approved-key:v1'
+      })
+    ).resolves.toMatchObject({
+      status: 'BLOCKED',
+      deliveryState: 'NOT_DELIVERED',
+      retryDisposition: 'RETRY_FORBIDDEN',
+      error: { code: 'POLICY_BLOCKED' }
+    });
+    expect(defaultExecute).not.toHaveBeenCalled();
+    expect(workspaceExecute).toHaveBeenCalledTimes(1);
+
+    await expect(executor.execute(managedInput(), context)).rejects.toMatchObject({
+      code: 'MANAGED_AI_PROFILE_AMBIGUOUS'
+    });
+  });
+
   it('rejects provider/model/endpoint/credential controls before transport', async () => {
     const transport: AiHttpTransport = vi.fn(() =>
       Promise.resolve({

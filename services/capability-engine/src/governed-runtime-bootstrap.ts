@@ -144,10 +144,7 @@ class ManagedAiCapabilityImplementationExecutorV1 implements CapabilityImplement
     request: Readonly<CapabilityRequestV2>,
     binding: Readonly<ImplementationBinding>
   ): Promise<CapabilityImplementationExecutionResult> {
-    if (
-      binding.implementation.kind !== 'AI_ASSISTED_SERVICE' ||
-      binding.implementation.implementationKey !== KNOWLEDGE_DEEPSEEK_IMPLEMENTATION_KEY
-    ) {
+    if (binding.implementation.kind !== 'AI_ASSISTED_SERVICE') {
       throw new Error(
         'The selected Capability implementation is not registered in the production execution adapter set.'
       );
@@ -161,7 +158,8 @@ class ManagedAiCapabilityImplementationExecutorV1 implements CapabilityImplement
       headers: {
         'x-markorbit-internal-authorization': this.internalServiceSecret,
         'idempotency-key': request.idempotencyKey,
-        'x-correlation-id': request.correlationId
+        'x-correlation-id': request.correlationId,
+        'x-markorbit-governed-implementation-key': binding.implementation.implementationKey
       },
       body: request.input
     };
@@ -227,11 +225,7 @@ class ProductionCapabilityImplementationExecutorV1 implements CapabilityImplemen
         USPTO_OFFICIAL_FEE_RESOLVER_IMPLEMENTATION_PROFILE.implementationKey
     )
       return this.officialFee.execute(request, binding);
-    if (
-      this.managedAi &&
-      binding.implementation.kind === 'AI_ASSISTED_SERVICE' &&
-      binding.implementation.implementationKey === KNOWLEDGE_DEEPSEEK_IMPLEMENTATION_KEY
-    )
+    if (this.managedAi && binding.implementation.kind === 'AI_ASSISTED_SERVICE')
       return this.managedAi.execute(request, binding);
     return Promise.reject(
       new Error(
