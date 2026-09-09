@@ -30,9 +30,9 @@ describe('Super Admin shell', () => {
     );
   });
 
-  it('gives every not-yet-connected domain an explicit truthful landing', () => {
+  it('keeps the placeholder registry empty once every frozen domain has an owner surface', () => {
     const navigationTargets = new Set<string>(superAdminNavigationItems.map((item) => item.href));
-    expect(superAdminDomainLandings.map((item) => item.title)).toEqual(['Core']);
+    expect(superAdminDomainLandings.map((item) => item.title)).toEqual([]);
     for (const landing of superAdminDomainLandings) {
       expect(navigationTargets.has(`#${landing.id}`)).toBe(true);
       expect(landing.status.length).toBeGreaterThan(0);
