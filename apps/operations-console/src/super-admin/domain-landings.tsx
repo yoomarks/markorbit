@@ -7,6 +7,7 @@ import { LiteAdminWorkspace } from './lite-admin.js';
 import { MarkRegAdminWorkspace } from './markreg-admin.js';
 import { MgsnAdminWorkspace } from './mgsn-admin.js';
 import { SystemAdminWorkspace } from './system-admin.js';
+import { GovernanceAdminWorkspace } from './governance-admin.js';
 
 type DomainLanding = {
   id: string;
@@ -21,12 +22,6 @@ const landings: DomainLanding[] = [
     title: 'Core',
     status: 'Global Core administration is not connected in this shell yet.',
     boundary: 'No account, identity or Workspace state is inferred from other domains.'
-  },
-  {
-    id: 'super-admin-governance',
-    title: 'Governance & Audit',
-    status: 'No unified audit truth is connected in this foundation step.',
-    boundary: 'Per-owner evidence and governance records retain their own authority boundaries.'
   }
 ];
 
@@ -55,6 +50,7 @@ export function SuperAdminDomainLandings() {
       <KnowledgeAdminWorkspace />
       <ExecutionAdminWorkspace />
       <SystemAdminWorkspace />
+      <GovernanceAdminWorkspace />
     </section>
   );
 }

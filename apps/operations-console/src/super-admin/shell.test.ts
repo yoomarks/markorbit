@@ -32,10 +32,7 @@ describe('Super Admin shell', () => {
 
   it('gives every not-yet-connected domain an explicit truthful landing', () => {
     const navigationTargets = new Set<string>(superAdminNavigationItems.map((item) => item.href));
-    expect(superAdminDomainLandings.map((item) => item.title)).toEqual([
-      'Core',
-      'Governance & Audit'
-    ]);
+    expect(superAdminDomainLandings.map((item) => item.title)).toEqual(['Core']);
     for (const landing of superAdminDomainLandings) {
       expect(navigationTargets.has(`#${landing.id}`)).toBe(true);
       expect(landing.status.length).toBeGreaterThan(0);
