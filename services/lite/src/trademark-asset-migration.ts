@@ -4,11 +4,15 @@ import type {
 } from '@markorbit/contracts/trademark-asset-portfolio';
 import type { BulkImportTrademarkAssetsInput } from './trademark-asset-portfolio.js';
 
+type BulkInput = BulkImportTrademarkAssetsInput;
+type BulkResult = TrademarkAssetBulkImportResult;
+type MigrationErrorCode = 'INVALID_INPUT' | 'OWNER_RESULT_INVALID';
+
 export const MAX_LARGE_TRADEMARK_ASSET_MIGRATION_ITEMS = 50_000;
 const TRADEMARK_ASSET_MIGRATION_CHUNK_SIZE = 100;
 const MAX_MIGRATION_KEY_LENGTH = 260;
 
-export type TrademarkAssetMigrationAdmissionItem = BulkImportTrademarkAssetsInput['items'][number];
+export type TrademarkAssetMigrationAdmissionItem = BulkInput['items'][number];
 
 export interface LargeTrademarkAssetMigrationInput {
   workspaceId: string;
@@ -37,16 +41,11 @@ export interface LargeTrademarkAssetMigrationResult {
 }
 
 export interface TrademarkAssetBulkImporter {
-  bulkImport(
-    input: Readonly<BulkImportTrademarkAssetsInput>
-  ): Promise<TrademarkAssetBulkImportResult>;
+  bulkImport(input: Readonly<BulkInput>): Promise<BulkResult>;
 }
 
 export class TrademarkAssetMigrationOrchestrationError extends Error {
-  constructor(
-    readonly code: 'INVALID_INPUT' | 'OWNER_RESULT_INVALID',
-    message: string
-  ) {
+  constructor(readonly code: MigrationErrorCode, message: string) {
     super(message);
     this.name = 'TrademarkAssetMigrationOrchestrationError';
   }
@@ -64,7 +63,9 @@ function cleanMigrationKey(value: string): string {
 }
 
 function validateInput(input: Readonly<LargeTrademarkAssetMigrationInput>): string {
-  if (input.items.length < 1 || input.items.length > MAX_LARGE_TRADEMARK_ASSET_MIGRATION_ITEMS) {
+  const tooFew = input.items.length < 1;
+  const tooMany = input.items.length > MAX_LARGE_TRADEMARK_ASSET_MIGRATION_ITEMS;
+  if (tooFew || tooMany) {
     throw new TrademarkAssetMigrationOrchestrationError(
       'INVALID_INPUT',
       `large trademark asset migration requires between 1 and ${MAX_LARGE_TRADEMARK_ASSET_MIGRATION_ITEMS} normalized assets.`
@@ -73,31 +74,32 @@ function validateInput(input: Readonly<LargeTrademarkAssetMigrationInput>): stri
   return cleanMigrationKey(input.migrationKey);
 }
 
+function hasExpectedIndices(result: Readonly<BulkResult>, expectedTotal: number): boolean {
+  const indices = new Set<number>();
+  for (const item of result.items) {
+    const index = item.importIndex;
+    if (!Number.isInteger(index) || index < 0 || index >= expectedTotal) return false;
+    indices.add(index);
+  }
+  return indices.size === expectedTotal;
+}
+
 function assertChunkResult(
-  result: Readonly<TrademarkAssetBulkImportResult>,
+  result: Readonly<BulkResult>,
   expectedWorkspaceId: string,
   expectedTotal: number
 ): void {
   const counted = result.created + result.duplicates + result.rejected;
-  const indices = new Set(result.items.map((item) => item.importIndex));
-  const hasExpectedIndices =
-    indices.size === expectedTotal &&
-    result.items.every(
-      (item) =>
-        Number.isInteger(item.importIndex) &&
-        item.importIndex >= 0 &&
-        item.importIndex < expectedTotal
-    );
+  const ownerMatches = result.workspaceId === expectedWorkspaceId;
+  const totalsMatch = result.total === expectedTotal && result.items.length === expectedTotal;
+  const countedMatch = counted === expectedTotal;
+  const indicesMatch = hasExpectedIndices(result, expectedTotal);
+  const authoritySafe =
+    result.officialTruthVerifiedByLite === false &&
+    result.matterCreatedAutomatically === false;
+  const valid = ownerMatches && totalsMatch && countedMatch && indicesMatch && authoritySafe;
 
-  if (
-    result.workspaceId !== expectedWorkspaceId ||
-    result.total !== expectedTotal ||
-    result.items.length !== expectedTotal ||
-    counted !== expectedTotal ||
-    !hasExpectedIndices ||
-    result.officialTruthVerifiedByLite !== false ||
-    result.matterCreatedAutomatically !== false
-  ) {
+  if (!valid) {
     throw new TrademarkAssetMigrationOrchestrationError(
       'OWNER_RESULT_INVALID',
       'Trademark Asset bulk-import owner returned an inconsistent chunk result.'
@@ -129,14 +131,13 @@ export class TrademarkAssetMigrationOrchestrator {
       startIndex < input.items.length;
       startIndex += TRADEMARK_ASSET_MIGRATION_CHUNK_SIZE
     ) {
-      const chunk = input.items.slice(
-        startIndex,
-        startIndex + TRADEMARK_ASSET_MIGRATION_CHUNK_SIZE
-      );
+      const endIndex = startIndex + TRADEMARK_ASSET_MIGRATION_CHUNK_SIZE;
+      const chunk = input.items.slice(startIndex, endIndex);
       const chunkIndex = Math.floor(startIndex / TRADEMARK_ASSET_MIGRATION_CHUNK_SIZE);
+      const batchKey = `${migrationKey}:chunk:${chunkIndex}`;
       const result = await this.portfolio.bulkImport({
         workspaceId: input.workspaceId,
-        batchKey: `${migrationKey}:chunk:${chunkIndex}`,
+        batchKey,
         items: chunk
       });
 
