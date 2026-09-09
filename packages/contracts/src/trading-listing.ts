@@ -8,6 +8,7 @@ import type {
   TradingSellingPointId
 } from './trading-ai-profile.js';
 import type { TradingListingAssetId } from './trading-asset-classification.js';
+import type { TradingShowcaseId } from './trading-brand-dna.js';
 import type { TradingCommercialDirectionId } from './trading-commercial-direction.js';
 import type { TrademarkAssetCommerceProfileId } from './trademark-asset-commerce.js';
 import type { TrademarkAssetId } from './trademark-asset-workspace.js';
@@ -40,6 +41,7 @@ export interface TradingListingDraftV1 {
   commerceProfile: Readonly<ProductLoopExactReference<TrademarkAssetCommerceProfileId>>;
   commercialDirection: Readonly<ProductLoopExactReference<TradingCommercialDirectionId>>;
   aiProfile: Readonly<ProductLoopExactReference<TradingAiProfileId>>;
+  showcase: Readonly<ProductLoopExactReference<TradingShowcaseId>>;
   listingAssets: readonly ProductLoopExactReference<TradingListingAssetId>[];
   opportunityStory: Readonly<TradingListingOpportunityStoryV1>;
   listingMethod: TradingListingMethod;
@@ -51,6 +53,7 @@ export interface TradingListingDraftV1 {
 export interface TradingListingPublishReviewV1 {
   reviewedTrademarkAsset: Readonly<ProductLoopExactReference<TrademarkAssetId>>;
   reviewedCommercialDirection: Readonly<ProductLoopExactReference<TradingCommercialDirectionId>>;
+  reviewedShowcase: Readonly<ProductLoopExactReference<TradingShowcaseId>>;
   reviewState: TradingListingReviewState;
   reviewedAt: string;
   humanApprovalReference?: string;
@@ -88,6 +91,15 @@ function exact(reference: Readonly<ProductLoopExactReference>, field: string): v
     throw new TradingListingValidationError(`${field}.version must identify an exact version.`);
 }
 
+function exactShowcase(
+  reference: Readonly<ProductLoopExactReference<TradingShowcaseId>> | undefined,
+  field: string
+): void {
+  if (!reference || !/^trading-showcase_[A-Za-z0-9_-]+$/u.test(reference.id))
+    throw new TradingListingValidationError(`${field} must identify a Showcase.`);
+  exact(reference, field);
+}
+
 function distinct(values: readonly string[], field: string, requiredValues = true): void {
   if (
     (requiredValues && values.length === 0) ||
@@ -109,6 +121,7 @@ export function assertTradingListingDraftV1(draft: Readonly<TradingListingDraftV
   exact(draft.commerceProfile, 'commerceProfile');
   exact(draft.commercialDirection, 'commercialDirection');
   exact(draft.aiProfile, 'aiProfile');
+  exactShowcase(draft.showcase, 'showcase');
   draft.listingAssets.forEach((item, index) => exact(item, `listingAssets[${index}]`));
   if (!draft.listingAssets.length)
     throw new TradingListingValidationError(
@@ -151,6 +164,7 @@ export function assertTradingPublishedListingV1(
     throw new TradingListingValidationError(
       'Publication requires CURRENT review and explicit human approval.'
     );
+  exactShowcase(listing.publishReview.reviewedShowcase, 'publishReview.reviewedShowcase');
   if (
     listing.publishReview.reviewedTrademarkAsset.id !==
       listing.publishedDraftSnapshot.trademarkAsset.id ||
@@ -159,10 +173,13 @@ export function assertTradingPublishedListingV1(
     listing.publishReview.reviewedCommercialDirection.id !==
       listing.publishedDraftSnapshot.commercialDirection.id ||
     listing.publishReview.reviewedCommercialDirection.version !==
-      listing.publishedDraftSnapshot.commercialDirection.version
+      listing.publishedDraftSnapshot.commercialDirection.version ||
+    listing.publishReview.reviewedShowcase.id !== listing.publishedDraftSnapshot.showcase.id ||
+    listing.publishReview.reviewedShowcase.version !==
+      listing.publishedDraftSnapshot.showcase.version
   )
     throw new TradingListingValidationError(
-      'Publish review must bind the exact truth and direction versions.'
+      'Publish review must bind the exact truth, direction and Showcase versions.'
     );
   if (listing.status !== 'PUBLISHED')
     throw new TradingListingValidationError('Published Listing status is invalid.');
