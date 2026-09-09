@@ -18,6 +18,7 @@ const draft = (): TradingListingDraftV1 => ({
     version: 2
   },
   aiProfile: { id: 'trading-ai-derived_ai-profile_contract-1', version: 3 },
+  showcase: { id: 'trading-showcase_contract-1', version: 4 },
   listingAssets: [{ id: 'listing-asset_contract-1', version: 1 }],
   opportunityStory: {
     bestForBuyerPersonaRefs: ['trading-commercial-persona_buyer-1'],
@@ -44,6 +45,7 @@ const published = (): TradingPublishedListingV1 => ({
   publishReview: {
     reviewedTrademarkAsset: draft().trademarkAsset,
     reviewedCommercialDirection: draft().commercialDirection,
+    reviewedShowcase: draft().showcase,
     reviewState: 'CURRENT',
     reviewedAt: '2026-09-09T00:05:00.000Z',
     humanApprovalReference: 'listing-publish-approval_contract-1'
@@ -57,6 +59,25 @@ describe('Lite Trading Listing opportunity story contract', () => {
     expect(() => assertTradingListingDraftV1(draft())).not.toThrow();
     expect(draft().status).toBe('DRAFT');
     expect(draft().sellerRelationshipVerified).toBe(false);
+    expect(draft().showcase).toEqual({ id: 'trading-showcase_contract-1', version: 4 });
+  });
+
+  it('fails closed on a missing or invalid exact Showcase reference', () => {
+    expect(() =>
+      assertTradingListingDraftV1({
+        ...draft(),
+        showcase: undefined
+      } as unknown as TradingListingDraftV1)
+    ).toThrow(/Showcase/u);
+    expect(() =>
+      assertTradingListingDraftV1({
+        ...draft(),
+        showcase: { id: 'listing-showcase_contract-1', version: 4 }
+      } as unknown as TradingListingDraftV1)
+    ).toThrow(/Showcase/u);
+    expect(() =>
+      assertTradingListingDraftV1({ ...draft(), showcase: { ...draft().showcase, version: 0 } })
+    ).toThrow(/exact version/u);
   });
 
   it.each(['FIXED_PRICE', 'MAKE_OFFER', 'INQUIRY'] as const)(
@@ -68,18 +89,41 @@ describe('Lite Trading Listing opportunity story contract', () => {
 
   it('publishes only a frozen exact draft after CURRENT explicit human review', () => {
     expect(() => assertTradingPublishedListingV1(published())).not.toThrow();
-    expect(() =>
-      assertTradingPublishedListingV1({
-        ...published(),
-        publishReview: { ...published().publishReview, reviewState: 'STALE' }
-      })
-    ).toThrow(/CURRENT review/u);
+    for (const reviewState of ['STALE', 'CONFLICT'] as const) {
+      expect(() =>
+        assertTradingPublishedListingV1({
+          ...published(),
+          publishReview: { ...published().publishReview, reviewState }
+        })
+      ).toThrow(/CURRENT review/u);
+    }
     expect(() =>
       assertTradingPublishedListingV1({
         ...published(),
         draft: { id: draft().listingDraftId, version: 2 }
       })
     ).toThrow(/exact reviewed draft/u);
+  });
+
+  it('fails closed when publish review does not bind the draft exact Showcase', () => {
+    expect(() =>
+      assertTradingPublishedListingV1({
+        ...published(),
+        publishReview: {
+          ...published().publishReview,
+          reviewedShowcase: { id: 'trading-showcase_other', version: draft().showcase.version }
+        }
+      })
+    ).toThrow(/Showcase versions/u);
+    expect(() =>
+      assertTradingPublishedListingV1({
+        ...published(),
+        publishReview: {
+          ...published().publishReview,
+          reviewedShowcase: { ...draft().showcase, version: 5 }
+        }
+      })
+    ).toThrow(/Showcase versions/u);
   });
 
   it('cannot convert seller declaration into verified ownership', () => {
