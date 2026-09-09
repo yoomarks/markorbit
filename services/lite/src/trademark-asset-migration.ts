@@ -28,7 +28,6 @@ export interface LargeTrademarkAssetMigrationItemResult extends BulkItemResultWi
   /** Stable zero-based index in the caller's complete normalized migration input. */
   importIndex: number;
 }
-
 export interface LargeTrademarkAssetMigrationResult {
   schemaVersion: 1;
   workspaceId: string;
@@ -50,7 +49,10 @@ export interface TrademarkAssetBulkImporter {
 }
 
 export class TrademarkAssetMigrationOrchestrationError extends Error {
-  constructor(readonly code: MigrationErrorCode, message: string) {
+  constructor(
+    readonly code: MigrationErrorCode,
+    message: string
+  ) {
     super(message);
     this.name = 'TrademarkAssetMigrationOrchestrationError';
   }
@@ -117,7 +119,6 @@ function assertChunkResult(result: ChunkResult, workspaceId: string, total: numb
  */
 export class TrademarkAssetMigrationOrchestrator {
   constructor(private readonly portfolio: TrademarkAssetBulkImporter) {}
-
   async migrate(input: MigrationInput): Promise<MigrationResult> {
     const migrationKey = validateInput(input);
     const items: LargeTrademarkAssetMigrationItemResult[] = [];
@@ -148,7 +149,6 @@ export class TrademarkAssetMigrationOrchestrator {
       }
       startIndex += TRADEMARK_ASSET_MIGRATION_CHUNK_SIZE;
     }
-
     return {
       schemaVersion: 1,
       workspaceId: input.workspaceId,
