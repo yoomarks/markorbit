@@ -1235,3 +1235,4 @@ export * from './trading-listing.js';
 export * from './media.js';
 export * from './media-rights.js';
 export * from './voice-capability.js';
+export * from './avatar-capability.js';
