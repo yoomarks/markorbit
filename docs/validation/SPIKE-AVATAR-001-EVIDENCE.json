@@ -1,0 +1,58 @@
+{
+  "schemaVersion": 1,
+  "spikeId": "SPIKE-AVATAR-001",
+  "capturedAt": "2026-09-09T06:52:00.000Z",
+  "primaryCandidate": {
+    "implementationLayerOnly": true,
+    "repository": "https://github.com/TMElyralab/MuseTalk",
+    "repositoryCommit": "0a89dec45a0192b824e3cf4daf96c239440c5ed8",
+    "candidateVersion": "1.5",
+    "codeLicenseObserved": "MIT",
+    "modelCommercialUseClaimObserved": true,
+    "upstreamTestDataCommercialUseAllowed": false
+  },
+  "optionalComparison": {
+    "repository": "https://github.com/antgroup/echomimic",
+    "repositoryCommit": "c32b3a557003f84ead1483a2d2386035685d984d",
+    "licenseObserved": "Apache-2.0",
+    "executed": false
+  },
+  "environment": {
+    "operatingSystem": "Windows",
+    "availablePython": ["3.12.14", "3.13.15", "3.14"],
+    "candidateRecommendedPython": "3.10",
+    "gpu": "NVIDIA GeForce RTX 5060 Ti",
+    "gpuMemoryMiB": 16311,
+    "driver": "591.86",
+    "systemMemoryBytes": 33684291584,
+    "ffmpegAvailable": false
+  },
+  "inputReadiness": {
+    "rightsClearedAvatarFixture": false,
+    "rightsClearedSpeechFixture": false,
+    "upstreamInternetTestDataUsed": false,
+    "reason": "No explicitly consented likeness and speech fixtures were placed in scope."
+  },
+  "result": {
+    "state": "BLOCKED_AT_SAFE_PREFLIGHT",
+    "modelWeightsDownloaded": false,
+    "inferenceExecuted": false,
+    "mp4Generated": false,
+    "lipSyncQuality": "NOT_MEASURED",
+    "identityConsistency": "NOT_MEASURED",
+    "throughput720p": "NOT_MEASURED",
+    "throughput1080p": "NOT_MEASURED",
+    "peakGpuMemoryMiB": null,
+    "longFormStability": "NOT_MEASURED",
+    "clipBoundaryQuality": "NOT_MEASURED",
+    "concurrency": "NOT_MEASURED"
+  },
+  "authority": {
+    "identityVerified": false,
+    "likenessConsentEstablished": false,
+    "providerApproved": false,
+    "productionReady": false,
+    "productContractChanged": false
+  },
+  "recommendation": "WATCH"
+}
