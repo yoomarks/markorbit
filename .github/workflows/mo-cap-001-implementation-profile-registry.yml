@@ -7,11 +7,17 @@ on:
       - '.github/workflows/mo-cap-001-implementation-profile-registry.yml'
       - 'services/capability-engine/src/implementation-profile-registry.ts'
       - 'services/capability-engine/src/implementation-profile-registry-postgres.ts'
+      - 'services/capability-engine/src/workspace-implementation-preference.ts'
+      - 'services/capability-engine/src/workspace-implementation-preference-postgres.ts'
+      - 'services/capability-engine/src/governed-runtime-bootstrap.ts'
+      - 'services/capability-engine/src/main.ts'
       - 'services/capability-engine/tests/implementation-profile-registry*.test.ts'
+      - 'services/capability-engine/tests/workspace-implementation-preference*.test.ts'
       - 'services/capability-engine/package.json'
       - 'packages/contracts/src/capability-runtime.ts'
       - 'infrastructure/persistence/migration-owners.json'
       - 'infrastructure/persistence/migrations/0066_capability_engine_implementation_profile_registry.sql'
+      - 'infrastructure/persistence/migrations/0105_capability_engine_workspace_implementation_preferences.sql'
 
 permissions:
   contents: read
