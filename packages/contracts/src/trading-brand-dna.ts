@@ -5,9 +5,26 @@ import {
   type TradingAiProvenanceV1
 } from './trading-ai-provenance.js';
 import type { TradingStandardStudioRunId } from './trading-studio-usage.js';
+import type {
+  TradingCommercialDirectionId,
+  TradingCommercialDirectionVersionV1
+} from './trading-commercial-direction.js';
+import type {
+  TradingDirectionSelectionId,
+  TradingDirectionSelectionV1
+} from './trading-direction-selection.js';
+import {
+  assertTradingStudioVisualQualityReviewV1,
+  type TradingStudioVisualAssetId,
+  type TradingStudioVisualAssetV1,
+  type TradingStudioVisualQualityReviewId,
+  type TradingStudioVisualQualityReviewV1,
+  type TradingVisualCreativeRole
+} from './trading-asset-classification.js';
 import type { TrademarkAssetId } from './trademark-asset-workspace.js';
 
 export type TradingBrandDnaId = `trading-ai-derived_brand-dna_${string}`;
+export type TradingBrandBibleId = `trading-ai-derived_brand-bible_${string}`;
 
 export interface TradingBrandIpPotentialV1 {
   summary: string;
@@ -38,6 +55,37 @@ export interface TradingBrandDnaV1 {
   benchmarkCapabilities: readonly string[];
   constraints: readonly string[];
   provenance: Readonly<TradingAiProvenanceV1>;
+  createdAt: string;
+}
+
+export interface TradingBrandBibleVisualInputV1 {
+  studioVisualAsset: Readonly<ProductLoopExactReference<TradingStudioVisualAssetId>>;
+  qualityReview: Readonly<ProductLoopExactReference<TradingStudioVisualQualityReviewId>>;
+  creativeRole: TradingVisualCreativeRole;
+}
+
+/** Durable private creative guidance from one exact selected direction and reviewed visual set. */
+export interface TradingBrandBibleV1 {
+  schemaVersion: 1;
+  brandBibleId: TradingBrandBibleId;
+  workspaceId: string;
+  version: number;
+  trademarkAsset: Readonly<ProductLoopExactReference<TrademarkAssetId>>;
+  aiProfile: Readonly<ProductLoopExactReference<TradingAiProfileId>>;
+  brandDna: Readonly<ProductLoopExactReference<TradingBrandDnaId>>;
+  directionSelection: Readonly<ProductLoopExactReference<TradingDirectionSelectionId>>;
+  commercialDirection: Readonly<ProductLoopExactReference<TradingCommercialDirectionId>>;
+  visualInputs: readonly Readonly<TradingBrandBibleVisualInputV1>[];
+  markUsageRules: readonly string[];
+  visualSystem: readonly string[];
+  colorSystem: readonly string[];
+  typographySystem: readonly string[];
+  imageryGuidance: readonly string[];
+  prohibitedRepresentations: readonly string[];
+  provenance: Readonly<TradingAiProvenanceV1>;
+  visibility: 'PRIVATE';
+  publicationEligibility: 'NOT_ELIGIBLE';
+  aiConceptLabel: true;
   createdAt: string;
 }
 
@@ -144,5 +192,130 @@ export function assertTradingBrandDnaV1(brandDna: Readonly<TradingBrandDnaV1>): 
   if (brandDna.createdAt !== brandDna.provenance.createdAt)
     throw new TradingBrandDnaValidationError(
       'tradingBrandDna.createdAt must match its provenance timestamp.'
+    );
+}
+
+function sameReference(
+  left: Readonly<ProductLoopExactReference>,
+  right: Readonly<ProductLoopExactReference>
+): boolean {
+  return left.id === right.id && left.version === right.version;
+}
+
+export interface TradingBrandBibleResolvedVisualInputV1 {
+  asset: Readonly<TradingStudioVisualAssetV1>;
+  qualityReview: Readonly<TradingStudioVisualQualityReviewV1>;
+}
+
+/** Validates Deep Build inputs and guidance without executing generation or approving a Showcase. */
+export function assertTradingBrandBibleV1(
+  bible: Readonly<TradingBrandBibleV1>,
+  selection: Readonly<TradingDirectionSelectionV1>,
+  direction: Readonly<TradingCommercialDirectionVersionV1>,
+  brandDna: Readonly<TradingBrandDnaV1>,
+  resolvedVisualInputs: readonly Readonly<TradingBrandBibleResolvedVisualInputV1>[]
+): void {
+  if (bible.schemaVersion !== 1)
+    throw new TradingBrandDnaValidationError('tradingBrandBible.schemaVersion must be 1.');
+  if (!/^trading-ai-derived_brand-bible_[A-Za-z0-9_-]+$/u.test(bible.brandBibleId))
+    throw new TradingBrandDnaValidationError('tradingBrandBible.brandBibleId is invalid.');
+  required(bible.workspaceId, 'tradingBrandBible.workspaceId');
+  exactVersion(bible.version, 'tradingBrandBible.version');
+  if (
+    selection.status !== 'CURRENT' ||
+    selection.workspaceId !== bible.workspaceId ||
+    !sameReference(bible.directionSelection, {
+      id: selection.directionSelectionId,
+      version: selection.version
+    }) ||
+    !sameReference(bible.commercialDirection, selection.selectedDirection) ||
+    bible.commercialDirection.id !== direction.commercialDirectionId ||
+    bible.commercialDirection.version !== direction.version
+  )
+    throw new TradingBrandDnaValidationError(
+      'Brand Bible must reference the exact current human-selected DirectionVersion.'
+    );
+  if (
+    brandDna.workspaceId !== bible.workspaceId ||
+    !sameReference(bible.brandDna, { id: brandDna.brandDnaId, version: brandDna.version }) ||
+    !sameReference(bible.trademarkAsset, brandDna.trademarkAsset) ||
+    !sameReference(bible.aiProfile, brandDna.aiProfile) ||
+    !direction.aiProfile ||
+    !sameReference(bible.aiProfile, direction.aiProfile)
+  )
+    throw new TradingBrandDnaValidationError(
+      'Brand Bible must reference the exact BrandDNA, AI Profile and Trademark Asset.'
+    );
+  if (!bible.visualInputs.length || bible.visualInputs.length !== resolvedVisualInputs.length)
+    throw new TradingBrandDnaValidationError(
+      'Brand Bible requires its complete quality-reviewed visual input set.'
+    );
+  bible.visualInputs.forEach((input, index) => {
+    const resolved = resolvedVisualInputs[index];
+    if (
+      !resolved ||
+      !sameReference(input.studioVisualAsset, {
+        id: resolved.asset.studioVisualAssetId,
+        version: resolved.asset.version
+      }) ||
+      !sameReference(input.qualityReview, {
+        id: resolved.qualityReview.visualQualityReviewId,
+        version: resolved.qualityReview.version
+      }) ||
+      input.creativeRole !== resolved.asset.creativeRole
+    )
+      throw new TradingBrandDnaValidationError(
+        'Brand Bible visual inputs must resolve to their exact asset, review and creative role.'
+      );
+    assertTradingStudioVisualQualityReviewV1(resolved.qualityReview, resolved.asset);
+    if (
+      resolved.asset.workspaceId !== bible.workspaceId ||
+      !sameReference(resolved.asset.commercialDirection, bible.commercialDirection) ||
+      resolved.qualityReview.status === 'FAIL'
+    )
+      throw new TradingBrandDnaValidationError(
+        'Brand Bible visual inputs must be quality-passed assets from the selected direction.'
+      );
+  });
+  if (!bible.visualInputs.some((input) => input.creativeRole === 'HERO'))
+    throw new TradingBrandDnaValidationError('Brand Bible requires a quality-passed HERO visual.');
+  for (const field of [
+    'markUsageRules',
+    'visualSystem',
+    'colorSystem',
+    'typographySystem',
+    'imageryGuidance',
+    'prohibitedRepresentations'
+  ] as const)
+    contentList(bible[field], `tradingBrandBible.${field}`);
+  assertTradingAiProvenanceV1(bible.provenance);
+  if (
+    bible.provenance.derivedObject.id !== bible.brandBibleId ||
+    bible.provenance.derivedObject.version !== bible.version ||
+    bible.provenance.truthClass !== 'AI_CONCEPT' ||
+    !sameReference(bible.provenance.trademarkAsset, bible.trademarkAsset) ||
+    bible.createdAt !== bible.provenance.createdAt
+  )
+    throw new TradingBrandDnaValidationError(
+      'Brand Bible provenance must identify this exact private AI Concept.'
+    );
+  for (const reference of [
+    bible.brandDna,
+    bible.directionSelection,
+    bible.commercialDirection,
+    ...bible.visualInputs.flatMap((input) => [input.studioVisualAsset, input.qualityReview])
+  ]) {
+    if (!hasExactSource(bible.provenance, reference))
+      throw new TradingBrandDnaValidationError(
+        'Brand Bible provenance must include every exact Deep Build input.'
+      );
+  }
+  if (
+    bible.visibility !== 'PRIVATE' ||
+    bible.publicationEligibility !== 'NOT_ELIGIBLE' ||
+    bible.aiConceptLabel !== true
+  )
+    throw new TradingBrandDnaValidationError(
+      'Brand Bible must remain a private, publication-ineligible AI Concept.'
     );
 }
