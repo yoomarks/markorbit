@@ -211,6 +211,74 @@ describe('Implementation Profile registry and binding core', () => {
     });
   });
 
+  it('lets trusted Workspace preference override the global default for approved eligible implementations', async () => {
+    const registry = new InMemoryImplementationProfileRegistryV1([
+      profile(),
+      profile({
+        implementationProfileId: 'implementation-profile_openai',
+        implementationKey: 'ai:openai:managed-v1',
+        createdAt: '2026-08-25T01:00:01.000Z'
+      })
+    ]);
+    const selector = new GovernedImplementationProfileSelectorV1(
+      registry,
+      {
+        policyVersion: 'selection.global.v1',
+        admittedImplementationKinds: ['AI_ASSISTED_SERVICE'],
+        preferredImplementationKeys: ['ai:deepseek:managed-v1']
+      },
+      {
+        resolve(candidate) {
+          if (candidate.workspaceId !== 'workspace_test') return Promise.resolve(undefined);
+          return Promise.resolve({
+            policyVersion: 'selection.workspace-test.v1',
+            preferredImplementationKeys: ['ai:openai:managed-v1']
+          });
+        }
+      }
+    );
+
+    await expect(selector.select(request, definition)).resolves.toMatchObject({
+      profile: { implementationKey: 'ai:openai:managed-v1' },
+      policyVersion: 'selection.workspace-test.v1'
+    });
+    await expect(
+      selector.select(
+        {
+          ...request,
+          capabilityRequestId: 'capreq_other',
+          caller: { ...request.caller, workspaceId: 'workspace_other' }
+        },
+        definition
+      )
+    ).resolves.toMatchObject({
+      profile: { implementationKey: 'ai:deepseek:managed-v1' },
+      policyVersion: 'selection.global.v1'
+    });
+  });
+
+  it('fails closed when an explicit Workspace preference cannot select an eligible approved profile', async () => {
+    const registry = new InMemoryImplementationProfileRegistryV1([profile()]);
+    const selector = new GovernedImplementationProfileSelectorV1(
+      registry,
+      {
+        policyVersion: 'selection.global.v1',
+        admittedImplementationKinds: ['AI_ASSISTED_SERVICE'],
+        preferredImplementationKeys: ['ai:deepseek:managed-v1']
+      },
+      {
+        resolve() {
+          return Promise.resolve({
+            policyVersion: 'selection.workspace-test.v1',
+            preferredImplementationKeys: ['ai:workspace-private:not-approved']
+          });
+        }
+      }
+    );
+
+    await expect(selector.select(request, definition)).resolves.toBeUndefined();
+  });
+
   it('does not let trusted policy resurrect a retired, disallowed or schema-mismatched profile', async () => {
     const registry = new InMemoryImplementationProfileRegistryV1([
       profile(),

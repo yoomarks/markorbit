@@ -45,6 +45,23 @@ export interface GovernedImplementationSelectionPolicyV1 {
   preferredImplementationKeys?: readonly string[];
 }
 
+export interface GovernedWorkspaceImplementationPreferenceV1 {
+  policyVersion: string;
+  preferredImplementationKeys: readonly string[];
+}
+
+export interface WorkspaceImplementationPreferenceContextV1 {
+  workspaceId: string;
+  capabilityId: string;
+  capabilityVersion: string;
+}
+
+export interface WorkspaceImplementationPreferenceResolverV1 {
+  resolve(
+    context: Readonly<WorkspaceImplementationPreferenceContextV1>
+  ): Promise<Readonly<GovernedWorkspaceImplementationPreferenceV1> | undefined>;
+}
+
 export interface ImplementationProfileRegistryV1 {
   register(value: unknown): Readonly<ImplementationProfile>;
   findCurrent(implementationProfileId: string): Readonly<ImplementationProfile> | undefined;
@@ -432,7 +449,8 @@ export class GovernedImplementationProfileSelectorV1 implements ImplementationPr
 
   constructor(
     private readonly registry: Readonly<ImplementationProfileRegistryV1>,
-    policy: Readonly<GovernedImplementationSelectionPolicyV1>
+    policy: Readonly<GovernedImplementationSelectionPolicyV1>,
+    private readonly workspacePreferences?: Readonly<WorkspaceImplementationPreferenceResolverV1>
   ) {
     this.policyVersion = text(policy.policyVersion, 'selectionPolicy.policyVersion', 300);
     this.admittedKinds = new Set(normalizedImplementationKinds(policy.admittedImplementationKinds));
@@ -448,7 +466,7 @@ export class GovernedImplementationProfileSelectorV1 implements ImplementationPr
     }
   }
 
-  select(
+  async select(
     request: Readonly<CapabilityRequestV2>,
     definition: Readonly<RuntimeCapabilityDefinition>
   ): Promise<GovernedImplementationSelection | undefined> {
@@ -456,6 +474,35 @@ export class GovernedImplementationProfileSelectorV1 implements ImplementationPr
       .listCurrent(definition.capabilityId)
       .filter((profile) => profileEligible(profile, request, definition, this.admittedKinds));
     if (eligible.length === 0) return Promise.resolve(undefined);
+
+    const workspacePreference = await this.workspacePreferences?.resolve({
+      workspaceId: request.caller.workspaceId,
+      capabilityId: definition.capabilityId,
+      capabilityVersion: definition.capabilityVersion
+    });
+    if (workspacePreference) {
+      const workspacePolicyVersion = text(
+        workspacePreference.policyVersion,
+        'workspaceSelectionPolicy.policyVersion',
+        300
+      );
+      const workspacePreferredImplementationKeys = normalizedStringList(
+        workspacePreference.preferredImplementationKeys,
+        'workspaceSelectionPolicy.preferredImplementationKeys'
+      );
+      for (const implementationKey of workspacePreferredImplementationKeys) {
+        const selected = eligible.find(
+          (profile) => profile.implementationKey === implementationKey
+        );
+        if (selected) {
+          return Promise.resolve({
+            profile: structuredClone(selected),
+            policyVersion: workspacePolicyVersion
+          });
+        }
+      }
+      return Promise.resolve(undefined);
+    }
 
     if (this.preferredImplementationKeys.length > 0) {
       for (const implementationKey of this.preferredImplementationKeys) {

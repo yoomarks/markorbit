@@ -151,6 +151,21 @@ Implementation Profiles are the controlled bridge between stable Capability mean
 
 Changing OpenAI/Anthropic/Gemini models, Gmail/Graph connectors or another Tool does not by itself create a new Capability. Material changes to outcome meaning, risk or review burden require the appropriate implementation/capability version and re-evaluation path.
 
+#### 5.3.1 Workspace-local implementation resolution
+
+The trusted Workspace context may specialize implementation selection without changing the stable Capability contract. The selector may consult a server-side Workspace preference source before the MO-global default, but only among Implementation Profiles that are already approved and eligible for the exact Capability/version, schemas, caller product and risk envelope.
+
+Rules:
+
+- browser/product callers cannot submit provider, model, connector or implementation keys as selection authority;
+- an absent Workspace preference falls back to the governed MO-global selection policy;
+- an explicit Workspace preference that cannot select an eligible approved profile fails closed rather than silently bypassing the local policy;
+- the selected policy/version remains part of binding provenance;
+- Workspace specialization does not mutate Capability canon, create professional authority, or weaken review/approval requirements;
+- Team, User and Matter-level specialization, persistence and user-facing management remain future bounded work and are not implied by this hook.
+
+This is the minimum runtime seam required for Orbit-local specialization. It is not a second Capability runtime, plugin platform or marketplace.
+
 ### 5.4 Cross-product admission rule
 
 A foundation Capability must not be called reusable merely because one product can invoke it.
