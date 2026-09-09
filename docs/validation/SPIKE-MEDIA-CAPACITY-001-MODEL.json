@@ -1,0 +1,89 @@
+{
+  "schemaVersion": 1,
+  "spikeId": "SPIKE-MEDIA-CAPACITY-001",
+  "capturedAt": "2026-09-09T07:05:00.000Z",
+  "sourceEvidence": [
+    {
+      "spikeId": "SPIKE-VOICE-001",
+      "repositoryCommit": "1fcb10260021324f2a7646b3a78e31db15349945",
+      "evidencePath": "docs/validation/SPIKE-VOICE-001-EVIDENCE.json",
+      "gitBlob": "47a985e4327838b047737e05cd4a55489a4e4c1b",
+      "recommendation": "WATCH",
+      "executionState": "BLOCKED_BEFORE_MODEL_LOAD"
+    },
+    {
+      "spikeId": "SPIKE-AVATAR-001",
+      "repositoryCommit": "5cf1d98ebf264b77404ba400b38b3b84bd49133d",
+      "evidencePath": "docs/validation/SPIKE-AVATAR-001-EVIDENCE.json",
+      "gitBlob": "4825c476d90e6207306bfe9e97e37f9313fd3832",
+      "recommendation": "WATCH",
+      "executionState": "BLOCKED_AT_SAFE_PREFLIGHT"
+    }
+  ],
+  "referenceHardware": {
+    "gpu": "NVIDIA GeForce RTX 5060 Ti",
+    "gpuMemoryMiB": 16311,
+    "driver": "591.86",
+    "powerLimitWatts": 180,
+    "hardwareAcquisitionCost": null
+  },
+  "normalization": {
+    "realTimeFactorFormula": "wallClockSeconds / outputMediaSeconds",
+    "outputMinutesPerGpuHourFormula": "60 / realTimeFactor",
+    "gpuCostPerOutputMinuteFormula": "gpuHourlyCost * realTimeFactor / 60",
+    "pipelineLatencyFormula": "voiceWallClockSeconds + avatarWallClockSeconds + orchestrationOverheadSeconds",
+    "pipelineCapacityRule": "minimum(measuredVoiceCapacity, measuredAvatarCapacity)",
+    "concurrencyRule": "use measured completed jobs only; do not scale linearly from VRAM or model size"
+  },
+  "voice": {
+    "realTimeFactor": null,
+    "coldLatencyMs": null,
+    "warmLatencyMs": null,
+    "peakGpuMemoryMiB": null,
+    "measuredConcurrency": null,
+    "outputMinutesPerGpuHour": null,
+    "quality": "NOT_MEASURED",
+    "licenseRisk": "TRANSITIVE_AND_COMMERCIAL_REVIEW_REQUIRED"
+  },
+  "avatar": {
+    "realTimeFactor720p": null,
+    "realTimeFactor1080p": null,
+    "peakGpuMemoryMiB": null,
+    "measuredConcurrency": null,
+    "outputMinutesPerGpuHour720p": null,
+    "outputMinutesPerGpuHour1080p": null,
+    "quality": "NOT_MEASURED",
+    "licenseRisk": "TRANSITIVE_MODEL_AND_LIKENESS_RIGHTS_REVIEW_REQUIRED"
+  },
+  "cost": {
+    "gpuHourlyCost": null,
+    "voiceGpuCostPerOutputMinute": null,
+    "avatarGpuCostPerOutputMinute720p": null,
+    "avatarGpuCostPerOutputMinute1080p": null,
+    "currency": null,
+    "reason": "No measured RTF and no authorized infrastructure price input."
+  },
+  "combinedPipeline": {
+    "measured": false,
+    "pipelineLatencySeconds": null,
+    "outputMinutesPerGpuHour": null,
+    "safeConcurrentJobs": null,
+    "capacityCommitmentAllowed": false,
+    "slaAllowed": false
+  },
+  "uncertainty": [
+    "Voice runtime failed before model load.",
+    "Avatar runtime did not start without rights-cleared fixtures and required dependencies.",
+    "No concurrency, long-form, thermal, recovery, queue, or orchestration observation exists.",
+    "No approved GPU hourly price or operations allocation exists."
+  ],
+  "authority": {
+    "invoiceCreated": false,
+    "capacityCommitted": false,
+    "providerApproved": false,
+    "productionSlaCreated": false,
+    "gpuProcurementAuthorized": false,
+    "billingModelChanged": false
+  },
+  "recommendation": "WATCH"
+}
