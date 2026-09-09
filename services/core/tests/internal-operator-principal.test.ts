@@ -4,6 +4,7 @@ import {
   createEnvironmentCognitiveReadGrantSourceV1,
   createEnvironmentDataReadGrantSourceV1,
   createEnvironmentExecutionAdminReadGrantSourceV1,
+  createEnvironmentGovernanceAdminReadGrantSourceV1,
   createEnvironmentKnowledgeReadGrantSourceV1,
   createEnvironmentSystemAdminReadGrantSourceV1,
   createEnvironmentWorkspaceAdminReadGrantSourceV1,
@@ -11,6 +12,7 @@ import {
   type CognitiveReadGrantSourceV1,
   type DataReadGrantSourceV1,
   type ExecutionAdminReadGrantSourceV1,
+  type GovernanceAdminReadGrantSourceV1,
   type KnowledgeReadGrantSourceV1,
   type LiteAdminReadGrantSourceV1,
   type SystemAdminReadGrantSourceV1,
@@ -20,6 +22,7 @@ import {
   StaticCognitiveReadGrantSourceV1,
   StaticDataReadGrantSourceV1,
   StaticExecutionAdminReadGrantSourceV1,
+  StaticGovernanceAdminReadGrantSourceV1,
   StaticKnowledgeReadGrantSourceV1,
   StaticLiteAdminReadGrantSourceV1,
   StaticSystemAdminReadGrantSourceV1,
@@ -69,7 +72,10 @@ function resolver(
   ),
   systemAdminReadGrants: SystemAdminReadGrantSourceV1 = new StaticSystemAdminReadGrantSourceV1([
     userId
-  ])
+  ]),
+  governanceAdminReadGrants: GovernanceAdminReadGrantSourceV1 = new StaticGovernanceAdminReadGrantSourceV1(
+    [userId]
+  )
 ) {
   const resolveSession = vi.fn(() => Promise.resolve(session));
   const inspectAccount = vi.fn(() => Promise.resolve(inspected));
@@ -86,7 +92,8 @@ function resolver(
       workspaceAdminManageGrants,
       liteAdminReadGrants,
       executionAdminReadGrants,
-      systemAdminReadGrants
+      systemAdminReadGrants,
+      governanceAdminReadGrants
     })
   };
 }
@@ -159,6 +166,17 @@ describe('explicit Control Plane read Internal Operator grant resolution', () =>
       sessionId: session.sessionId,
       userId,
       capabilities: ['system-admin:read'],
+      sessionExpiresAt: session.sessionExpiresAt
+    });
+  });
+
+  it('issues a Governance-Admin-only principal only for an exact explicit Governance grant', async () => {
+    const { service } = resolver();
+    await expect(service.resolve('raw-session-token', 'governance-admin:read')).resolves.toEqual({
+      kind: 'INTERNAL_OPERATOR',
+      sessionId: session.sessionId,
+      userId,
+      capabilities: ['governance-admin:read'],
       sessionExpiresAt: session.sessionExpiresAt
     });
   });
@@ -494,6 +512,12 @@ describe('explicit Control Plane read Internal Operator grant resolution', () =>
         grants: [{ userId, capabilities: ['system-admin:read'] }]
       })
     );
+    const governanceAdmin = createEnvironmentGovernanceAdminReadGrantSourceV1(
+      JSON.stringify({
+        schemaVersion: 1,
+        grants: [{ userId, capabilities: ['governance-admin:read'] }]
+      })
+    );
     const knowledge = createEnvironmentKnowledgeReadGrantSourceV1(
       JSON.stringify({
         schemaVersion: 1,
@@ -521,6 +545,8 @@ describe('explicit Control Plane read Internal Operator grant resolution', () =>
     await expect(executionAdmin.hasGrant(otherUserId)).resolves.toBe(false);
     await expect(systemAdmin.hasGrant(userId)).resolves.toBe(true);
     await expect(systemAdmin.hasGrant(otherUserId)).resolves.toBe(false);
+    await expect(governanceAdmin.hasGrant(userId)).resolves.toBe(true);
+    await expect(governanceAdmin.hasGrant(otherUserId)).resolves.toBe(false);
     await expect(knowledge.hasGrant(userId)).resolves.toBe(true);
     await expect(knowledge.hasGrant(otherUserId)).resolves.toBe(false);
     await expect(workspaceAdmin.hasGrant(userId)).resolves.toBe(true);

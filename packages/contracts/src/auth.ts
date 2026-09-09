@@ -62,13 +62,16 @@ export const EXECUTION_ADMIN_CAPABILITIES = ['execution-admin:read'] as const;
 export type ExecutionAdminCapability = (typeof EXECUTION_ADMIN_CAPABILITIES)[number];
 export const SYSTEM_ADMIN_CAPABILITIES = ['system-admin:read'] as const;
 export type SystemAdminCapability = (typeof SYSTEM_ADMIN_CAPABILITIES)[number];
+export const GOVERNANCE_ADMIN_CAPABILITIES = ['governance-admin:read'] as const;
+export type GovernanceAdminCapability = (typeof GOVERNANCE_ADMIN_CAPABILITIES)[number];
 export const INTERNAL_OPERATOR_CAPABILITIES = [
   ...COMMERCIAL_ADMIN_CAPABILITIES,
   ...CONTROL_PLANE_CAPABILITIES,
   ...WORKSPACE_ADMIN_CAPABILITIES,
   ...LITE_ADMIN_CAPABILITIES,
   ...EXECUTION_ADMIN_CAPABILITIES,
-  ...SYSTEM_ADMIN_CAPABILITIES
+  ...SYSTEM_ADMIN_CAPABILITIES,
+  ...GOVERNANCE_ADMIN_CAPABILITIES
 ] as const;
 export type InternalOperatorCapability = (typeof INTERNAL_OPERATOR_CAPABILITIES)[number];
 export interface CommercialAdminAccountView {
