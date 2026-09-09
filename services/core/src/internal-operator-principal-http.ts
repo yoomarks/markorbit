@@ -240,6 +240,29 @@ export function createInternalOperatorPrincipalRoutesV1(
           return translate(error);
         }
       }
+    },
+    {
+      method: 'POST',
+      path: '/internal/super-admin/core/operator-principals/resolve',
+      async handle(request) {
+        if (
+          !validateInternalServiceSecret(
+            options.internalServiceSecret,
+            request.headers['x-markorbit-internal-authorization']
+          )
+        )
+          throw new HttpError(
+            401,
+            'INTERNAL_SERVICE_UNAUTHORIZED',
+            'Internal service identity is invalid.'
+          );
+        const token = exactAdminResolutionRequest(request, 'Core Admin');
+        try {
+          return json(200, await options.resolver.resolve(token, 'core-admin:read'));
+        } catch (error) {
+          return translate(error);
+        }
+      }
     }
   ];
 }

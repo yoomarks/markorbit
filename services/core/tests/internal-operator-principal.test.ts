@@ -2,6 +2,7 @@ import { AuthenticationError, type CommercialAdminAccountView } from '@markorbit
 import { describe, expect, it, vi } from 'vitest';
 import {
   createEnvironmentCognitiveReadGrantSourceV1,
+  createEnvironmentCoreAdminReadGrantSourceV1,
   createEnvironmentDataReadGrantSourceV1,
   createEnvironmentExecutionAdminReadGrantSourceV1,
   createEnvironmentGovernanceAdminReadGrantSourceV1,
@@ -10,6 +11,7 @@ import {
   createEnvironmentWorkspaceAdminReadGrantSourceV1,
   createEnvironmentWorkspaceAdminManageGrantSourceV1,
   type CognitiveReadGrantSourceV1,
+  type CoreAdminReadGrantSourceV1,
   type DataReadGrantSourceV1,
   type ExecutionAdminReadGrantSourceV1,
   type GovernanceAdminReadGrantSourceV1,
@@ -20,6 +22,7 @@ import {
   type WorkspaceAdminManageGrantSourceV1,
   InternalOperatorPrincipalResolverV1,
   StaticCognitiveReadGrantSourceV1,
+  StaticCoreAdminReadGrantSourceV1,
   StaticDataReadGrantSourceV1,
   StaticExecutionAdminReadGrantSourceV1,
   StaticGovernanceAdminReadGrantSourceV1,
@@ -70,6 +73,7 @@ function resolver(
   executionAdminReadGrants: ExecutionAdminReadGrantSourceV1 = new StaticExecutionAdminReadGrantSourceV1(
     [userId]
   ),
+  coreAdminReadGrants: CoreAdminReadGrantSourceV1 = new StaticCoreAdminReadGrantSourceV1([userId]),
   systemAdminReadGrants: SystemAdminReadGrantSourceV1 = new StaticSystemAdminReadGrantSourceV1([
     userId
   ]),
@@ -92,6 +96,7 @@ function resolver(
       workspaceAdminManageGrants,
       liteAdminReadGrants,
       executionAdminReadGrants,
+      coreAdminReadGrants,
       systemAdminReadGrants,
       governanceAdminReadGrants
     })
@@ -159,6 +164,17 @@ describe('explicit Control Plane read Internal Operator grant resolution', () =>
     });
   });
 
+  it('issues a Core-Admin-only principal only for an exact explicit Core grant', async () => {
+    const { service } = resolver();
+    await expect(service.resolve('raw-session-token', 'core-admin:read')).resolves.toEqual({
+      kind: 'INTERNAL_OPERATOR',
+      sessionId: session.sessionId,
+      userId,
+      capabilities: ['core-admin:read'],
+      sessionExpiresAt: session.sessionExpiresAt
+    });
+  });
+
   it('issues a System-Admin-only principal only for an exact explicit System grant', async () => {
     const { service } = resolver();
     await expect(service.resolve('raw-session-token', 'system-admin:read')).resolves.toEqual({
@@ -202,6 +218,23 @@ describe('explicit Control Plane read Internal Operator grant resolution', () =>
       userId,
       capabilities: ['workspace-admin:manage'],
       sessionExpiresAt: session.sessionExpiresAt
+    });
+  });
+
+  it('does not let INTERNAL or unrelated admin authority imply Core Admin read', async () => {
+    const { service } = resolver(
+      new StaticCognitiveReadGrantSourceV1([userId]),
+      account(),
+      new StaticDataReadGrantSourceV1([userId]),
+      new StaticKnowledgeReadGrantSourceV1([userId]),
+      new StaticWorkspaceAdminReadGrantSourceV1([userId]),
+      new StaticWorkspaceAdminManageGrantSourceV1([userId]),
+      new StaticLiteAdminReadGrantSourceV1([userId]),
+      new StaticExecutionAdminReadGrantSourceV1([userId]),
+      new StaticCoreAdminReadGrantSourceV1([otherUserId])
+    );
+    await expect(service.resolve('raw-session-token', 'core-admin:read')).rejects.toMatchObject({
+      code: 'PERMISSION_DENIED'
     });
   });
 
@@ -486,6 +519,38 @@ describe('explicit Control Plane read Internal Operator grant resolution', () =>
     ).rejects.toMatchObject({ code: 'AUTHENTICATION_SERVICE_UNAVAILABLE' });
   });
 
+  it('fails closed when Core Admin grant truth is missing or malformed', async () => {
+    const prefix = [
+      new StaticCognitiveReadGrantSourceV1([userId]),
+      account(),
+      new StaticDataReadGrantSourceV1([userId]),
+      new StaticKnowledgeReadGrantSourceV1([userId]),
+      new StaticWorkspaceAdminReadGrantSourceV1([userId]),
+      new StaticWorkspaceAdminManageGrantSourceV1([userId]),
+      new StaticLiteAdminReadGrantSourceV1([userId]),
+      new StaticExecutionAdminReadGrantSourceV1([userId])
+    ] as const;
+    const missing = resolver(
+      ...prefix,
+      createEnvironmentCoreAdminReadGrantSourceV1(undefined)
+    ).service;
+    await expect(missing.resolve('raw-session-token', 'core-admin:read')).rejects.toMatchObject({
+      code: 'AUTHENTICATION_SERVICE_UNAVAILABLE'
+    });
+    const malformed = resolver(
+      ...prefix,
+      createEnvironmentCoreAdminReadGrantSourceV1(
+        JSON.stringify({
+          schemaVersion: 1,
+          grants: [{ userId, capabilities: ['system-admin:read'] }]
+        })
+      )
+    ).service;
+    await expect(malformed.resolve('raw-session-token', 'core-admin:read')).rejects.toMatchObject({
+      code: 'AUTHENTICATION_SERVICE_UNAVAILABLE'
+    });
+  });
+
   it('accepts only strict exact-user grant configuration for each read plane', async () => {
     const cognitive = createEnvironmentCognitiveReadGrantSourceV1(
       JSON.stringify({
@@ -504,6 +569,12 @@ describe('explicit Control Plane read Internal Operator grant resolution', () =>
       JSON.stringify({
         schemaVersion: 1,
         grants: [{ userId, capabilities: ['execution-admin:read'] }]
+      })
+    );
+    const coreAdmin = createEnvironmentCoreAdminReadGrantSourceV1(
+      JSON.stringify({
+        schemaVersion: 1,
+        grants: [{ userId, capabilities: ['core-admin:read'] }]
       })
     );
     const systemAdmin = createEnvironmentSystemAdminReadGrantSourceV1(
@@ -543,6 +614,8 @@ describe('explicit Control Plane read Internal Operator grant resolution', () =>
     await expect(data.hasGrant(otherUserId)).resolves.toBe(false);
     await expect(executionAdmin.hasGrant(userId)).resolves.toBe(true);
     await expect(executionAdmin.hasGrant(otherUserId)).resolves.toBe(false);
+    await expect(coreAdmin.hasGrant(userId)).resolves.toBe(true);
+    await expect(coreAdmin.hasGrant(otherUserId)).resolves.toBe(false);
     await expect(systemAdmin.hasGrant(userId)).resolves.toBe(true);
     await expect(systemAdmin.hasGrant(otherUserId)).resolves.toBe(false);
     await expect(governanceAdmin.hasGrant(userId)).resolves.toBe(true);

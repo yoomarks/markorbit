@@ -1,6 +1,7 @@
 import {
   AuthenticationError,
   type ControlPlaneCapability,
+  type CoreAdminCapability,
   type ExecutionAdminCapability,
   type GovernanceAdminCapability,
   type InternalOperatorPrincipal,
@@ -40,6 +41,10 @@ const executionAdminPrincipal = {
   ...cognitivePrincipal,
   capabilities: ['execution-admin:read' as const]
 };
+const coreAdminPrincipal = {
+  ...cognitivePrincipal,
+  capabilities: ['core-admin:read' as const]
+};
 const systemAdminPrincipal = {
   ...cognitivePrincipal,
   capabilities: ['system-admin:read' as const]
@@ -60,6 +65,7 @@ type ResolverFunction = (
     | WorkspaceAdminCapability
     | LiteAdminCapability
     | ExecutionAdminCapability
+    | CoreAdminCapability
     | SystemAdminCapability
     | GovernanceAdminCapability
 ) => Promise<Readonly<InternalOperatorPrincipal>>;
@@ -238,6 +244,29 @@ function workspaceManageRoute(
   };
 }
 
+function coreRequest(
+  body: unknown = { token: 'raw-session-token' },
+  includeAuthorization = true
+): JsonRequest {
+  return {
+    method: 'POST',
+    path: '/internal/super-admin/core/operator-principals/resolve',
+    params: {},
+    query: {},
+    headers: includeAuthorization ? { 'x-markorbit-internal-authorization': secret } : {},
+    body
+  };
+}
+function coreRoute(resolve: ResolverFunction = vi.fn(() => Promise.resolve(coreAdminPrincipal))) {
+  return {
+    resolve,
+    route: createInternalOperatorPrincipalRoutesV1({
+      resolver: { resolve },
+      internalServiceSecret: secret
+    })[7]!
+  };
+}
+
 describe('Control Plane Internal Operator resolver HTTP boundary', () => {
   it('preserves legacy token-only cognitive resolution', async () => {
     const { resolve, route: resolverRoute } = route();
@@ -310,6 +339,16 @@ describe('Control Plane Internal Operator resolver HTTP boundary', () => {
     expect(resolve).toHaveBeenCalledWith('raw-session-token', 'execution-admin:read');
   });
 
+  it('resolves exact Core Admin read only through its dedicated internal route', async () => {
+    const resolve = vi.fn(() => Promise.resolve(coreAdminPrincipal));
+    const { route: resolverRoute } = coreRoute(resolve);
+    await expect(resolverRoute.handle(coreRequest())).resolves.toEqual({
+      status: 200,
+      body: coreAdminPrincipal
+    });
+    expect(resolve).toHaveBeenCalledWith('raw-session-token', 'core-admin:read');
+  });
+
   it('resolves exact System Admin read only through its dedicated internal route', async () => {
     const resolve = vi.fn(() => Promise.resolve(systemAdminPrincipal));
     const { route: resolverRoute } = systemRoute(resolve);
@@ -339,6 +378,29 @@ describe('Control Plane Internal Operator resolver HTTP boundary', () => {
       body: workspaceAdminManagePrincipal
     });
     expect(resolve).toHaveBeenCalledWith('raw-session-token', 'workspace-admin:manage');
+  });
+
+  it.each([
+    { token: 'raw-session-token', requiredCapability: 'core-admin:read' },
+    { token: 'raw-session-token', capabilities: ['core-admin:read'] },
+    { token: 'raw-session-token', principal: coreAdminPrincipal },
+    { token: 'raw-session-token', extra: true }
+  ])('rejects Core Admin authority manufacture on the dedicated route', async (body) => {
+    const { resolve, route: resolverRoute } = coreRoute();
+    await expect(resolverRoute.handle(coreRequest(body))).rejects.toMatchObject({
+      status: 400,
+      code: 'INVALID_REQUEST'
+    });
+    expect(resolve).not.toHaveBeenCalled();
+  });
+
+  it('requires internal service identity on the dedicated Core Admin resolver', async () => {
+    const { resolve, route: resolverRoute } = coreRoute();
+    await expect(resolverRoute.handle(coreRequest(undefined, false))).rejects.toMatchObject({
+      status: 401,
+      code: 'INTERNAL_SERVICE_UNAUTHORIZED'
+    });
+    expect(resolve).not.toHaveBeenCalled();
   });
 
   it.each([

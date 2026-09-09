@@ -60,6 +60,8 @@ export const LITE_ADMIN_CAPABILITIES = ['lite-admin:read'] as const;
 export type LiteAdminCapability = (typeof LITE_ADMIN_CAPABILITIES)[number];
 export const EXECUTION_ADMIN_CAPABILITIES = ['execution-admin:read'] as const;
 export type ExecutionAdminCapability = (typeof EXECUTION_ADMIN_CAPABILITIES)[number];
+export const CORE_ADMIN_CAPABILITIES = ['core-admin:read'] as const;
+export type CoreAdminCapability = (typeof CORE_ADMIN_CAPABILITIES)[number];
 export const SYSTEM_ADMIN_CAPABILITIES = ['system-admin:read'] as const;
 export type SystemAdminCapability = (typeof SYSTEM_ADMIN_CAPABILITIES)[number];
 export const GOVERNANCE_ADMIN_CAPABILITIES = ['governance-admin:read'] as const;
@@ -70,6 +72,7 @@ export const INTERNAL_OPERATOR_CAPABILITIES = [
   ...WORKSPACE_ADMIN_CAPABILITIES,
   ...LITE_ADMIN_CAPABILITIES,
   ...EXECUTION_ADMIN_CAPABILITIES,
+  ...CORE_ADMIN_CAPABILITIES,
   ...SYSTEM_ADMIN_CAPABILITIES,
   ...GOVERNANCE_ADMIN_CAPABILITIES
 ] as const;
