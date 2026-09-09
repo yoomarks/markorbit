@@ -116,6 +116,20 @@ describe('commercial admin authority contract', () => {
     expect(parsed.capabilities).not.toContain('commercial-admin:operate');
   });
 
+  it('round-trips bounded Governance Admin read without implying other authority', () => {
+    const principal: InternalOperatorPrincipal = {
+      kind: 'INTERNAL_OPERATOR',
+      sessionId: 'session_governance_admin_1',
+      userId: 'user_governance_admin_1',
+      capabilities: ['governance-admin:read'],
+      sessionExpiresAt: '2099-01-01T00:00:00.000Z'
+    };
+    const parsed = parseInternalOperatorPrincipal(encodeInternalOperatorPrincipal(principal));
+    expect(parsed).toEqual(principal);
+    expect(parsed.capabilities).not.toContain('system-admin:read');
+    expect(parsed.capabilities).not.toContain('commercial-admin:read');
+  });
+
   it('keeps commercial account derivation from automatically granting Control Plane reads', () => {
     const capabilities = commercialAdminCapabilitiesForAccount(account('INTERNAL', 'ACTIVE'));
     expect(capabilities).not.toContain('control-plane:cognitive:read');
@@ -123,6 +137,7 @@ describe('commercial admin authority contract', () => {
     expect(capabilities).not.toContain('control-plane:knowledge:read');
     expect(capabilities).not.toContain('workspace-admin:read');
     expect(capabilities).not.toContain('workspace-admin:manage');
+    expect(capabilities).not.toContain('governance-admin:read');
   });
 
   it('defines Control Plane operator authority as bounded read-only vocabulary', () => {
@@ -131,6 +146,7 @@ describe('commercial admin authority contract', () => {
     expect(INTERNAL_OPERATOR_CAPABILITIES).toContain('control-plane:knowledge:read');
     expect(INTERNAL_OPERATOR_CAPABILITIES).toContain('workspace-admin:read');
     expect(INTERNAL_OPERATOR_CAPABILITIES).toContain('workspace-admin:manage');
+    expect(INTERNAL_OPERATOR_CAPABILITIES).toContain('governance-admin:read');
     expect(
       INTERNAL_OPERATOR_CAPABILITIES.filter((capability) =>
         capability.startsWith('control-plane:cognitive:')
@@ -151,6 +167,11 @@ describe('commercial admin authority contract', () => {
         capability.startsWith('workspace-admin:')
       )
     ).toEqual(['workspace-admin:read', 'workspace-admin:manage']);
+    expect(
+      INTERNAL_OPERATOR_CAPABILITIES.filter((capability) =>
+        capability.startsWith('governance-admin:')
+      )
+    ).toEqual(['governance-admin:read']);
   });
 
   it.each([
@@ -160,7 +181,9 @@ describe('commercial admin authority contract', () => {
     'control-plane:knowledge:operate',
     'control-plane:knowledge:write',
     'workspace-admin:operate',
-    'workspace-admin:write'
+    'workspace-admin:write',
+    'governance-admin:operate',
+    'governance-admin:write'
   ])('rejects browser-invented or unknown internal operator capability %s', (capability) => {
     const value = Buffer.from(
       JSON.stringify({

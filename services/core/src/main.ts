@@ -24,6 +24,7 @@ import {
   createEnvironmentCognitiveReadGrantSourceV1,
   createEnvironmentDataReadGrantSourceV1,
   createEnvironmentExecutionAdminReadGrantSourceV1,
+  createEnvironmentGovernanceAdminReadGrantSourceV1,
   createEnvironmentKnowledgeReadGrantSourceV1,
   createEnvironmentLiteAdminReadGrantSourceV1,
   createEnvironmentSystemAdminReadGrantSourceV1,
@@ -98,7 +99,8 @@ const internalOperatorPrincipalResolver = new InternalOperatorPrincipalResolverV
   workspaceAdminManageGrants: createEnvironmentWorkspaceAdminManageGrantSourceV1(),
   liteAdminReadGrants: createEnvironmentLiteAdminReadGrantSourceV1(),
   executionAdminReadGrants: createEnvironmentExecutionAdminReadGrantSourceV1(),
-  systemAdminReadGrants: createEnvironmentSystemAdminReadGrantSourceV1()
+  systemAdminReadGrants: createEnvironmentSystemAdminReadGrantSourceV1(),
+  governanceAdminReadGrants: createEnvironmentGovernanceAdminReadGrantSourceV1()
 });
 const accountOnboarding = new AccountOnboardingService(
   new PostgresAccountOnboardingRepository(database)

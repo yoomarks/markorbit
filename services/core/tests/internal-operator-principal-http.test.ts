@@ -2,6 +2,7 @@ import {
   AuthenticationError,
   type ControlPlaneCapability,
   type ExecutionAdminCapability,
+  type GovernanceAdminCapability,
   type InternalOperatorPrincipal,
   type LiteAdminCapability,
   type SystemAdminCapability,
@@ -43,6 +44,10 @@ const systemAdminPrincipal = {
   ...cognitivePrincipal,
   capabilities: ['system-admin:read' as const]
 };
+const governanceAdminPrincipal = {
+  ...cognitivePrincipal,
+  capabilities: ['governance-admin:read' as const]
+};
 const workspaceAdminManagePrincipal = {
   ...cognitivePrincipal,
   capabilities: ['workspace-admin:manage' as const]
@@ -56,6 +61,7 @@ type ResolverFunction = (
     | LiteAdminCapability
     | ExecutionAdminCapability
     | SystemAdminCapability
+    | GovernanceAdminCapability
 ) => Promise<Readonly<InternalOperatorPrincipal>>;
 
 function request(
@@ -181,6 +187,31 @@ function systemRoute(
   };
 }
 
+function governanceRequest(
+  body: unknown = { token: 'raw-session-token' },
+  includeAuthorization = true
+): JsonRequest {
+  return {
+    method: 'POST',
+    path: '/internal/super-admin/governance/operator-principals/resolve',
+    params: {},
+    query: {},
+    headers: includeAuthorization ? { 'x-markorbit-internal-authorization': secret } : {},
+    body
+  };
+}
+function governanceRoute(
+  resolve: ResolverFunction = vi.fn(() => Promise.resolve(governanceAdminPrincipal))
+) {
+  return {
+    resolve,
+    route: createInternalOperatorPrincipalRoutesV1({
+      resolver: { resolve },
+      internalServiceSecret: secret
+    })[5]!
+  };
+}
+
 function workspaceManageRequest(
   body: unknown = { token: 'raw-session-token' },
   includeAuthorization = true
@@ -203,7 +234,7 @@ function workspaceManageRoute(
     route: createInternalOperatorPrincipalRoutesV1({
       resolver: { resolve },
       internalServiceSecret: secret
-    })[5]!
+    })[6]!
   };
 }
 
@@ -287,6 +318,16 @@ describe('Control Plane Internal Operator resolver HTTP boundary', () => {
       body: systemAdminPrincipal
     });
     expect(resolve).toHaveBeenCalledWith('raw-session-token', 'system-admin:read');
+  });
+
+  it('resolves exact Governance Admin read only through its dedicated internal route', async () => {
+    const resolve = vi.fn(() => Promise.resolve(governanceAdminPrincipal));
+    const { route: resolverRoute } = governanceRoute(resolve);
+    await expect(resolverRoute.handle(governanceRequest())).resolves.toEqual({
+      status: 200,
+      body: governanceAdminPrincipal
+    });
+    expect(resolve).toHaveBeenCalledWith('raw-session-token', 'governance-admin:read');
   });
 
   it('resolves exact Workspace Admin manage only through its dedicated internal route', async () => {
