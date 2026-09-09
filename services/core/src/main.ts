@@ -22,6 +22,7 @@ import { GovernedHumanActionReceiptService } from './governed-human-action-recei
 import { createRuntime } from './index.js';
 import {
   createEnvironmentCognitiveReadGrantSourceV1,
+  createEnvironmentCoreAdminReadGrantSourceV1,
   createEnvironmentDataReadGrantSourceV1,
   createEnvironmentExecutionAdminReadGrantSourceV1,
   createEnvironmentGovernanceAdminReadGrantSourceV1,
@@ -99,6 +100,7 @@ const internalOperatorPrincipalResolver = new InternalOperatorPrincipalResolverV
   workspaceAdminManageGrants: createEnvironmentWorkspaceAdminManageGrantSourceV1(),
   liteAdminReadGrants: createEnvironmentLiteAdminReadGrantSourceV1(),
   executionAdminReadGrants: createEnvironmentExecutionAdminReadGrantSourceV1(),
+  coreAdminReadGrants: createEnvironmentCoreAdminReadGrantSourceV1(),
   systemAdminReadGrants: createEnvironmentSystemAdminReadGrantSourceV1(),
   governanceAdminReadGrants: createEnvironmentGovernanceAdminReadGrantSourceV1()
 });

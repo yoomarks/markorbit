@@ -21,6 +21,7 @@ import type { AuthenticationService } from './auth.js';
 import { uuidV7 } from './auth.js';
 import { createBrainCognitiveReadRoutesV1 } from './brain-cognitive-read-http.js';
 import { createInternalOperatorPrincipalRoutesV1 } from './internal-operator-principal-http.js';
+import { createCoreAdminRoutesV1 } from './core-admin-http.js';
 import { createSystemAdminRoutesV1 } from './system-admin-http.js';
 import { createGovernanceAdminRoutesV1 } from './governance-admin-http.js';
 import type { InternalOperatorPrincipalResolverV1 } from './internal-operator-principal.js';
@@ -163,6 +164,7 @@ export function createRuntime(options: CoreRuntimeOptions = {}) {
           internalServiceSecret: secret
         })
       : [];
+  const coreAdminRoutes = secret ? createCoreAdminRoutesV1({ internalServiceSecret: secret }) : [];
   const systemAdminRoutes = secret
     ? createSystemAdminRoutesV1({ internalServiceSecret: secret })
     : [];
@@ -729,6 +731,7 @@ export function createRuntime(options: CoreRuntimeOptions = {}) {
   routes.push(
     ...currentWorkspaceAuthorityRoutes,
     ...internalOperatorPrincipalRoutes,
+    ...coreAdminRoutes,
     ...systemAdminRoutes,
     ...governanceAdminRoutes,
     ...workspaceAdminPortfolioRoutes,
