@@ -3,8 +3,11 @@ import { noTradingAiAuthorityConsequencesV1 } from '../src/trading-ai-provenance
 import {
   assertTradingBrandBibleV1,
   assertTradingBrandDnaV1,
+  assertTradingShowcaseV1,
+  noTradingShowcaseAuthorityConsequencesV1,
   type TradingBrandBibleV1,
-  type TradingBrandDnaV1
+  type TradingBrandDnaV1,
+  type TradingShowcaseV1
 } from '../src/trading-brand-dna.js';
 import { noTradingStudioVisualQualityAuthorityConsequencesV1 } from '../src/trading-asset-classification.js';
 import type {
@@ -94,8 +97,12 @@ const heroAsset = {
   studioVisualAssetId: 'trading-ai-derived_visual-asset_hero-1',
   workspaceId: 'workspace-1',
   version: 1,
+  classification: 'STUDIO_VISUAL_ASSET',
   commercialDirection: { id: 'trading-ai-derived_commercial-direction_mark-1', version: 2 },
-  creativeRole: 'HERO'
+  creativeRole: 'HERO',
+  visibility: 'PRIVATE',
+  publicationEligibility: 'NOT_ELIGIBLE',
+  aiConceptLabel: true
 } as unknown as TradingStudioVisualAssetV1;
 
 const heroReview = (): TradingStudioVisualQualityReviewV1 => ({
@@ -172,6 +179,30 @@ const brandBible = (): TradingBrandBibleV1 => ({
   publicationEligibility: 'NOT_ELIGIBLE',
   aiConceptLabel: true,
   createdAt: '2026-09-07T12:06:00.000Z'
+});
+
+const showcase = (): TradingShowcaseV1 => ({
+  schemaVersion: 1,
+  showcaseId: 'trading-showcase_mark-1',
+  workspaceId: 'workspace-1',
+  version: 1,
+  brandBible: { id: 'trading-ai-derived_brand-bible_mark-1', version: 1 },
+  template: { templateId: 'showcase-template_standard', version: '1.0.0' },
+  panels: [
+    {
+      slotId: 'hero',
+      studioVisualAsset: { id: 'trading-ai-derived_visual-asset_hero-1', version: 1 },
+      qualityReview: { id: 'trading-studio-visual-quality-review_hero-1', version: 1 },
+      creativeRole: 'HERO',
+      selectionMethod: 'EXPLICIT_HUMAN_ACTION',
+      aiConceptLabel: true
+    }
+  ],
+  status: 'SHOWCASE_READY',
+  visibility: 'PRIVATE',
+  publicationEligibility: 'NOT_ELIGIBLE',
+  authorityConsequences: noTradingShowcaseAuthorityConsequencesV1,
+  createdAt: '2026-09-07T12:07:00.000Z'
 });
 
 describe('Lite Trading BrandDNA V1 contract', () => {
@@ -290,5 +321,77 @@ describe('Lite Trading Brand Bible V1 contract', () => {
         resolved()
       )
     ).toThrow(/every exact Deep Build input/u);
+  });
+});
+
+describe('Lite Trading Showcase V1 contract', () => {
+  const resolved = () => [{ asset: heroAsset, qualityReview: heroReview() }];
+
+  it('durably pins an exact Brand Bible, template and human-selected passed visual set', () => {
+    expect(() => assertTradingShowcaseV1(showcase(), brandBible(), resolved())).not.toThrow();
+    expect(showcase().brandBible.version).toBe(1);
+    expect(showcase().template.version).toBe('1.0.0');
+  });
+
+  it('rejects visuals not admitted by the pinned Brand Bible or failed by QA', () => {
+    expect(() =>
+      assertTradingShowcaseV1(showcase(), { ...brandBible(), visualInputs: [] }, resolved())
+    ).toThrow(/admitted by the Brand Bible/u);
+    expect(() =>
+      assertTradingShowcaseV1(showcase(), brandBible(), [
+        {
+          asset: heroAsset,
+          qualityReview: {
+            ...heroReview(),
+            status: 'FAIL',
+            findings: [{ code: 'DRIFT', message: 'Mark drifted.' }]
+          }
+        }
+      ])
+    ).toThrow(/quality-passed AI Concepts/u);
+  });
+
+  it('requires a distinct explicitly selected HERO panel', () => {
+    expect(() =>
+      assertTradingShowcaseV1(
+        {
+          ...showcase(),
+          panels: [{ ...showcase().panels[0]!, creativeRole: 'BRAND_WORLD' }]
+        },
+        {
+          ...brandBible(),
+          visualInputs: [{ ...brandBible().visualInputs[0]!, creativeRole: 'BRAND_WORLD' }]
+        },
+        [{ asset: { ...heroAsset, creativeRole: 'BRAND_WORLD' }, qualityReview: heroReview() }]
+      )
+    ).toThrow(/HERO panel/u);
+    expect(() =>
+      assertTradingShowcaseV1(
+        {
+          ...showcase(),
+          panels: [showcase().panels[0]!, { ...showcase().panels[0]!, slotId: 'secondary' }]
+        },
+        brandBible(),
+        [...resolved(), ...resolved()]
+      )
+    ).toThrow(/must be distinct/u);
+  });
+
+  it('remains private and creates no Listing, publication or truth authority', () => {
+    expect(() =>
+      assertTradingShowcaseV1(
+        {
+          ...showcase(),
+          authorityConsequences: {
+            ...noTradingShowcaseAuthorityConsequencesV1,
+            listingCreated: true
+          }
+        } as unknown as TradingShowcaseV1,
+        brandBible(),
+        resolved()
+      )
+    ).toThrow(/listingCreated must be false/u);
+    expect(showcase().publicationEligibility).toBe('NOT_ELIGIBLE');
+    expect(showcase().panels[0]?.aiConceptLabel).toBe(true);
   });
 });

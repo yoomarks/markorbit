@@ -25,6 +25,7 @@ import type { TrademarkAssetId } from './trademark-asset-workspace.js';
 
 export type TradingBrandDnaId = `trading-ai-derived_brand-dna_${string}`;
 export type TradingBrandBibleId = `trading-ai-derived_brand-bible_${string}`;
+export type TradingShowcaseId = `trading-showcase_${string}`;
 
 export interface TradingBrandIpPotentialV1 {
   summary: string;
@@ -86,6 +87,43 @@ export interface TradingBrandBibleV1 {
   visibility: 'PRIVATE';
   publicationEligibility: 'NOT_ELIGIBLE';
   aiConceptLabel: true;
+  createdAt: string;
+}
+
+export interface TradingShowcaseTemplateReferenceV1 {
+  templateId: string;
+  version: number | string;
+}
+
+export interface TradingShowcasePanelV1 extends TradingBrandBibleVisualInputV1 {
+  slotId: string;
+  selectionMethod: 'EXPLICIT_HUMAN_ACTION';
+  aiConceptLabel: true;
+}
+
+export const noTradingShowcaseAuthorityConsequencesV1 = Object.freeze({
+  listingCreated: false,
+  listingPublished: false,
+  marketplacePublicationCreated: false,
+  trademarkTruthMutated: false,
+  sourceAssetPublished: false
+});
+export type TradingShowcaseAuthorityConsequencesV1 =
+  typeof noTradingShowcaseAuthorityConsequencesV1;
+
+/** Durable private presentation of exact creative outputs; never a Listing or publication grant. */
+export interface TradingShowcaseV1 {
+  schemaVersion: 1;
+  showcaseId: TradingShowcaseId;
+  workspaceId: string;
+  version: number;
+  brandBible: Readonly<ProductLoopExactReference<TradingBrandBibleId>>;
+  template: Readonly<TradingShowcaseTemplateReferenceV1>;
+  panels: readonly Readonly<TradingShowcasePanelV1>[];
+  status: 'SHOWCASE_READY';
+  visibility: 'PRIVATE';
+  publicationEligibility: 'NOT_ELIGIBLE';
+  authorityConsequences: TradingShowcaseAuthorityConsequencesV1;
   createdAt: string;
 }
 
@@ -207,6 +245,8 @@ export interface TradingBrandBibleResolvedVisualInputV1 {
   qualityReview: Readonly<TradingStudioVisualQualityReviewV1>;
 }
 
+export type TradingShowcaseResolvedPanelV1 = TradingBrandBibleResolvedVisualInputV1;
+
 /** Validates Deep Build inputs and guidance without executing generation or approving a Showcase. */
 export function assertTradingBrandBibleV1(
   bible: Readonly<TradingBrandBibleV1>,
@@ -318,4 +358,100 @@ export function assertTradingBrandBibleV1(
     throw new TradingBrandDnaValidationError(
       'Brand Bible must remain a private, publication-ineligible AI Concept.'
     );
+}
+
+/** Validates a reopenable composition without creating a Listing or publication authority. */
+export function assertTradingShowcaseV1(
+  showcase: Readonly<TradingShowcaseV1>,
+  bible: Readonly<TradingBrandBibleV1>,
+  resolvedPanels: readonly Readonly<TradingShowcaseResolvedPanelV1>[]
+): void {
+  if (showcase.schemaVersion !== 1)
+    throw new TradingBrandDnaValidationError('tradingShowcase.schemaVersion must be 1.');
+  if (!/^trading-showcase_[A-Za-z0-9_-]+$/u.test(showcase.showcaseId))
+    throw new TradingBrandDnaValidationError('tradingShowcase.showcaseId is invalid.');
+  required(showcase.workspaceId, 'tradingShowcase.workspaceId');
+  exactVersion(showcase.version, 'tradingShowcase.version');
+  if (
+    bible.workspaceId !== showcase.workspaceId ||
+    !sameReference(showcase.brandBible, { id: bible.brandBibleId, version: bible.version })
+  )
+    throw new TradingBrandDnaValidationError(
+      'Showcase must reference the exact Brand Bible in the same Workspace.'
+    );
+  required(showcase.template.templateId, 'tradingShowcase.template.templateId');
+  exactVersion(showcase.template.version, 'tradingShowcase.template.version');
+  if (!showcase.panels.length || showcase.panels.length !== resolvedPanels.length)
+    throw new TradingBrandDnaValidationError('Showcase requires its complete resolved panel set.');
+
+  const slotIds = new Set<string>();
+  const assetReferences = new Set<string>();
+  showcase.panels.forEach((panel, index) => {
+    required(panel.slotId, `tradingShowcase.panels[${index}].slotId`);
+    const assetReference = `${panel.studioVisualAsset.id}@${panel.studioVisualAsset.version}`;
+    if (slotIds.has(panel.slotId) || assetReferences.has(assetReference))
+      throw new TradingBrandDnaValidationError(
+        'Showcase panel slots and exact Studio Visual Asset references must be distinct.'
+      );
+    slotIds.add(panel.slotId);
+    assetReferences.add(assetReference);
+
+    const resolved = resolvedPanels[index];
+    if (
+      !resolved ||
+      !sameReference(panel.studioVisualAsset, {
+        id: resolved.asset.studioVisualAssetId,
+        version: resolved.asset.version
+      }) ||
+      !sameReference(panel.qualityReview, {
+        id: resolved.qualityReview.visualQualityReviewId,
+        version: resolved.qualityReview.version
+      }) ||
+      panel.creativeRole !== resolved.asset.creativeRole
+    )
+      throw new TradingBrandDnaValidationError(
+        'Showcase panels must resolve to their exact asset, review and creative role.'
+      );
+    const admittedByBible = bible.visualInputs.some(
+      (input) =>
+        sameReference(input.studioVisualAsset, panel.studioVisualAsset) &&
+        sameReference(input.qualityReview, panel.qualityReview) &&
+        input.creativeRole === panel.creativeRole
+    );
+    assertTradingStudioVisualQualityReviewV1(resolved.qualityReview, resolved.asset);
+    if (
+      !admittedByBible ||
+      resolved.asset.workspaceId !== showcase.workspaceId ||
+      resolved.asset.classification !== 'STUDIO_VISUAL_ASSET' ||
+      resolved.asset.visibility !== 'PRIVATE' ||
+      resolved.asset.publicationEligibility !== 'NOT_ELIGIBLE' ||
+      resolved.asset.aiConceptLabel !== true ||
+      resolved.qualityReview.status === 'FAIL'
+    )
+      throw new TradingBrandDnaValidationError(
+        'Showcase panels must use private, quality-passed AI Concepts admitted by the Brand Bible.'
+      );
+    if (panel.selectionMethod !== 'EXPLICIT_HUMAN_ACTION' || panel.aiConceptLabel !== true)
+      throw new TradingBrandDnaValidationError(
+        'Showcase panels require explicit human selection and an AI Concept label.'
+      );
+  });
+  if (!showcase.panels.some((panel) => panel.creativeRole === 'HERO'))
+    throw new TradingBrandDnaValidationError('Showcase requires a HERO panel.');
+  if (
+    showcase.status !== 'SHOWCASE_READY' ||
+    showcase.visibility !== 'PRIVATE' ||
+    showcase.publicationEligibility !== 'NOT_ELIGIBLE'
+  )
+    throw new TradingBrandDnaValidationError(
+      'Showcase must remain ready, private and publication-ineligible.'
+    );
+  for (const [key, value] of Object.entries(showcase.authorityConsequences)) {
+    if (value !== false)
+      throw new TradingBrandDnaValidationError(
+        `tradingShowcase.authorityConsequences.${key} must be false.`
+      );
+  }
+  if (Number.isNaN(Date.parse(showcase.createdAt)))
+    throw new TradingBrandDnaValidationError('tradingShowcase.createdAt must be an ISO timestamp.');
 }
