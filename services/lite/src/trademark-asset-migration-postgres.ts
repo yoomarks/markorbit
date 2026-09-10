@@ -319,20 +319,20 @@ export class PostgresTrademarkAssetMigrationRunStore implements TrademarkAssetMi
          WHERE lite_trademark_asset_migration_runs.fingerprint_sha256=EXCLUDED.fingerprint_sha256
            AND lite_trademark_asset_migration_runs.total=EXCLUDED.total
            AND lite_trademark_asset_migration_runs.chunk_count=EXCLUDED.chunk_count
-           AND lite_trademark_asset_migration_runs.document_json->'rowKeys'=EXCLUDED.document_json->'rowKeys'
+           AND (lite_trademark_asset_migration_runs.document_json->'rowKeys')=(EXCLUDED.document_json->'rowKeys')
            AND EXCLUDED.updated_at>=lite_trademark_asset_migration_runs.updated_at
            AND EXCLUDED.next_chunk_index<=lite_trademark_asset_migration_runs.next_chunk_index+1
            AND (
              (
                lite_trademark_asset_migration_runs.next_chunk_index<EXCLUDED.next_chunk_index
-               AND EXCLUDED.document_json->'items' @> lite_trademark_asset_migration_runs.document_json->'items'
+               AND (EXCLUDED.document_json->'items') @> (lite_trademark_asset_migration_runs.document_json->'items')
              )
              OR (
                lite_trademark_asset_migration_runs.next_chunk_index=EXCLUDED.next_chunk_index
                AND lite_trademark_asset_migration_runs.created=EXCLUDED.created
                AND lite_trademark_asset_migration_runs.duplicates=EXCLUDED.duplicates
                AND lite_trademark_asset_migration_runs.rejected=EXCLUDED.rejected
-               AND lite_trademark_asset_migration_runs.document_json->'items'=EXCLUDED.document_json->'items'
+               AND (lite_trademark_asset_migration_runs.document_json->'items')=(EXCLUDED.document_json->'items')
              )
            )
          RETURNING workspace_id`,
