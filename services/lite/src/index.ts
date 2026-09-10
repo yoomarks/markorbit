@@ -26,6 +26,7 @@ export * from './trading-direction-selection.js';
 export * from './trading-studio-http.js';
 export * from './trademark-asset-management-signal.js';
 export * from './trademark-asset-management-recommendation.js';
+export * from './workspace-trademark-change-interpretation.js';
 export * from './trademark-asset-management-handoff.js';
 export * from './trademark-asset-management-disposition.js';
 export * from './trademark-service-work-package.js';
