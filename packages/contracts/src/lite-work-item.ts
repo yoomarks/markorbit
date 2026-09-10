@@ -90,8 +90,7 @@ export interface LiteWorkItemSystemPreparedSourceV1 {
 }
 
 export type LiteWorkItemSourceV1 =
-  | Readonly<LiteWorkItemManualSourceV1>
-  | Readonly<LiteWorkItemSystemPreparedSourceV1>;
+  Readonly<LiteWorkItemManualSourceV1> | Readonly<LiteWorkItemSystemPreparedSourceV1>;
 
 export interface LiteWorkItemCustomerRelationshipReferenceV1 {
   owner: 'MARKREG';
@@ -208,8 +207,7 @@ export const noLiteWorkItemAuthorityConsequencesV1 = Object.freeze({
   officialTruthCreated: false,
   workCompletionRepresentsExternalSuccess: false
 });
-export type LiteWorkItemAuthorityConsequencesV1 =
-  typeof noLiteWorkItemAuthorityConsequencesV1;
+export type LiteWorkItemAuthorityConsequencesV1 = typeof noLiteWorkItemAuthorityConsequencesV1;
 
 export interface LiteWorkItemV1 {
   schemaVersion: 1;
@@ -269,7 +267,9 @@ const sourceOwnerByKind: Readonly<Record<LiteWorkItemSourceKind, LiteWorkItemSou
   DATA_ENGINE_OBSERVATION: 'DATA_ENGINE'
 };
 
-const allowedStatusTransitions: Readonly<Record<LiteWorkItemStatus, readonly LiteWorkItemStatus[]>> = {
+const allowedStatusTransitions: Readonly<
+  Record<LiteWorkItemStatus, readonly LiteWorkItemStatus[]>
+> = {
   OPEN: ['WAITING_FOR_CLIENT', 'WAITING_FOR_PROVIDER', 'COMPLETED', 'CANCELLED'],
   WAITING_FOR_CLIENT: ['OPEN', 'COMPLETED', 'CANCELLED'],
   WAITING_FOR_PROVIDER: ['OPEN', 'COMPLETED', 'CANCELLED'],
@@ -350,9 +350,7 @@ function assertTimestampOrder(
   laterField: string
 ): void {
   if (Date.parse(earlier) > Date.parse(later))
-    throw new LiteWorkItemContractValidationError(
-      `${earlierField} cannot be after ${laterField}.`
-    );
+    throw new LiteWorkItemContractValidationError(`${earlierField} cannot be after ${laterField}.`);
 }
 
 function parseSourceReference(value: unknown, field: string): LiteWorkItemSourceReferenceV1 {
@@ -703,14 +701,17 @@ function parseObservedDateCandidate(
     field
   );
   if (item.legalDeadlineCertified !== false)
-    throw new LiteWorkItemContractValidationError(
-      `${field}.legalDeadlineCertified must be false.`
-    );
+    throw new LiteWorkItemContractValidationError(`${field}.legalDeadlineCertified must be false.`);
   if (item.officialTruthVerified !== false)
     throw new LiteWorkItemContractValidationError(`${field}.officialTruthVerified must be false.`);
   const source = parseSourceReference(item.source, `${field}.source`);
   const observedAt = timestamp(item.observedAt, `${field}.observedAt`);
-  assertTimestampOrder(source.observedAt, observedAt, `${field}.source.observedAt`, `${field}.observedAt`);
+  assertTimestampOrder(
+    source.observedAt,
+    observedAt,
+    `${field}.source.observedAt`,
+    `${field}.observedAt`
+  );
   return {
     label: text(item.label, `${field}.label`, 300),
     candidateAt: timestamp(item.candidateAt, `${field}.candidateAt`),
@@ -765,18 +766,12 @@ function parseInternalTiming(value: unknown): LiteWorkItemInternalTimingV1 {
 
 function parseAuthority(value: unknown): Readonly<LiteWorkItemAuthorityConsequencesV1> {
   const item = record(value, 'authorityConsequences');
-  exactKeys(
-    item,
-    Object.keys(noLiteWorkItemAuthorityConsequencesV1),
-    'authorityConsequences'
-  );
+  exactKeys(item, Object.keys(noLiteWorkItemAuthorityConsequencesV1), 'authorityConsequences');
   for (const key of Object.keys(noLiteWorkItemAuthorityConsequencesV1) as Array<
     keyof LiteWorkItemAuthorityConsequencesV1
   >) {
     if (item[key] !== false)
-      throw new LiteWorkItemContractValidationError(
-        `authorityConsequences.${key} must be false.`
-      );
+      throw new LiteWorkItemContractValidationError(`authorityConsequences.${key} must be false.`);
   }
   return noLiteWorkItemAuthorityConsequencesV1;
 }
@@ -796,11 +791,17 @@ function assertLifecycle(
     throw new LiteWorkItemContractValidationError(
       'waitingSinceAt must be present exactly for waiting statuses.'
     );
-  if (status === 'COMPLETED' && (completedAt === null || cancelledAt !== null || archivedAt !== null))
+  if (
+    status === 'COMPLETED' &&
+    (completedAt === null || cancelledAt !== null || archivedAt !== null)
+  )
     throw new LiteWorkItemContractValidationError(
       'COMPLETED Work Item requires completedAt only among terminal timestamps.'
     );
-  if (status === 'CANCELLED' && (cancelledAt === null || completedAt !== null || archivedAt !== null))
+  if (
+    status === 'CANCELLED' &&
+    (cancelledAt === null || completedAt !== null || archivedAt !== null)
+  )
     throw new LiteWorkItemContractValidationError(
       'CANCELLED Work Item requires cancelledAt only among terminal timestamps.'
     );
@@ -812,7 +813,9 @@ function assertLifecycle(
       'Open or waiting Work Item cannot carry terminal or archive state.'
     );
   if (status !== 'ARCHIVED' && archivedFrom !== null)
-    throw new LiteWorkItemContractValidationError('archivedFrom is valid only for ARCHIVED Work Item.');
+    throw new LiteWorkItemContractValidationError(
+      'archivedFrom is valid only for ARCHIVED Work Item.'
+    );
   if (status === 'ARCHIVED') {
     if (archivedAt === null || archivedFrom === null)
       throw new LiteWorkItemContractValidationError(
@@ -839,7 +842,8 @@ function assertLifecycle(
   }
   if (archivedAt !== null) {
     const terminalAt = archivedFrom === 'COMPLETED' ? completedAt : cancelledAt;
-    if (terminalAt !== null) assertTimestampOrder(terminalAt, archivedAt, 'terminalAt', 'archivedAt');
+    if (terminalAt !== null)
+      assertTimestampOrder(terminalAt, archivedAt, 'terminalAt', 'archivedAt');
   }
 }
 
@@ -850,10 +854,7 @@ export function isLiteWorkItemStatusTransitionAllowedV1(
   return allowedStatusTransitions[from].includes(to);
 }
 
-export function parseLiteWorkItemV1(
-  value: unknown,
-  expectedWorkspaceId?: string
-): LiteWorkItemV1 {
+export function parseLiteWorkItemV1(value: unknown, expectedWorkspaceId?: string): LiteWorkItemV1 {
   const item = record(value, 'liteWorkItem');
   exactKeys(
     item,
@@ -933,9 +934,7 @@ export function parseLiteWorkItemV1(
     ...(assigneePrincipalId ? { assigneePrincipalId } : {}),
     source: parseSource(item.source, createdAt),
     relatedReferences: parseRelatedReferences(item.relatedReferences, workspaceId),
-    certifiedDeadlineReferences: parseCertifiedDeadlineReferences(
-      item.certifiedDeadlineReferences
-    ),
+    certifiedDeadlineReferences: parseCertifiedDeadlineReferences(item.certifiedDeadlineReferences),
     observedDateCandidates: parseObservedDateCandidates(item.observedDateCandidates),
     internalTiming: parseInternalTiming(item.internalTiming),
     waitingSinceAt,
