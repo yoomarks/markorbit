@@ -172,9 +172,7 @@ suite('PostgreSQL Lite Agency Trademark Asset migration run store', () => {
       storeB.save({
         ...persistedAfterRestart!,
         items: persistedAfterRestart!.items.map((item, index) =>
-          index === 0
-            ? { ...item, trademarkAssetId: 'trademark-asset_tampered' }
-            : item
+          index === 0 ? { ...item, trademarkAssetId: 'trademark-asset_tampered' } : item
         ),
         updatedAt: '2026-09-10T03:00:00.000Z'
       })
