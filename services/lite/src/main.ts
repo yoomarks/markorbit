@@ -21,6 +21,8 @@ import {
   PostgresDailySignalReader
 } from './daily-orbit.js';
 import { createDailyWorkspaceRoutes } from './daily-workspace-http.js';
+import { createLiteWorkItemRoutes } from './lite-work-item-http.js';
+import { PostgresLiteWorkItemStore } from './lite-work-item.js';
 import { DailyWorkspaceSnapshotService } from './daily-workspace-snapshot.js';
 import {
   HttpCoreDailyKnowledgeSourceAuthority,
@@ -119,6 +121,7 @@ const trademarkAssetManagementDispositions = new PostgresTrademarkAssetManagemen
   pool
 );
 const trademarkServiceWorkPackages = new PostgresTrademarkServiceWorkPackageStore(database, pool);
+const liteWorkItemStore = new PostgresLiteWorkItemStore(database, pool);
 
 const productLoopSourceAuthority: ProductLoopSourceAuthority = {
   async resolve(workspaceId, locator) {
@@ -335,6 +338,10 @@ const runtime = createServiceRuntime(serviceManifest, {
     ...createDailyWorkspaceRoutes({
       internalServiceSecret,
       service: dailyWorkspaceSnapshotService
+    }),
+    ...createLiteWorkItemRoutes({
+      internalServiceSecret,
+      store: liteWorkItemStore
     }),
     ...createLiteProductLoopRoutes({
       internalServiceSecret,
