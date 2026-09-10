@@ -68,6 +68,7 @@ export * from './managed-communication-foundation.js';
 export * from './managed-communication-gmail.js';
 export * from './managed-communication-http.js';
 export * from './managed-communication-inbound.js';
+export * from './managed-communication-microsoft-graph.js';
 export * from './milestone-capability-request-fixture.js';
 export * from './official-fee-reference-http-reader.js';
 export * from './private-reflection-candidate-http.js';
