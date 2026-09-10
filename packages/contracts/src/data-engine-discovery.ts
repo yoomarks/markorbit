@@ -405,3 +405,5 @@ export function parseCnPreliminaryPublicationDiscoveryEnvelopeV2(
   }
   return { ...envelope, payload };
 }
+
+export * from './data-engine-applicant-discovery.js';
