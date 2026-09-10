@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   assertTradingAssetClassificationV1,
+  assertTradingListingAssetAdmissionV1,
   assertTradingListingAssetCommercialIntentV1,
   assertRequestTradingStudioVisualRetryCommandV1,
   assertTradingStudioVisualAssetV1,
@@ -17,6 +18,10 @@ import { noTradingAiAuthorityConsequencesV1 } from '../src/trading-ai-provenance
 import type { TradingAiProfileV1 } from '../src/trading-ai-profile.js';
 import type { TradingCommercialDirectionVersionV1 } from '../src/trading-commercial-direction.js';
 import type { TradingDirectionSelectionV1 } from '../src/trading-direction-selection.js';
+import {
+  noTradingShowcaseAuthorityConsequencesV1,
+  type TradingShowcaseV1
+} from '../src/trading-brand-dna.js';
 
 const sourceAsset = (): TradingSourceAssetV1 => ({
   schemaVersion: 1,
@@ -44,9 +49,25 @@ const listingAsset = (): TradingListingAssetV1 => ({
   contentClass: 'AI_CONCEPT',
   provenanceReferences: ['source-asset_contract-1@1', 'generation-run_contract-1@2'],
   publicationApprovalReference: 'asset-publication-approval_contract-1',
+  admission: {
+    schemaVersion: 1,
+    admissionId: 'trading-listing-asset-admission_contract-1',
+    source: {
+      workspaceId: 'workspace-contract-1',
+      studioVisualAsset: { id: 'trading-ai-derived_visual-asset_contract-1', version: 1 },
+      qualityReview: { id: 'trading-studio-visual-quality-review_contract-1', version: 1 },
+      showcase: { id: 'trading-showcase_contract-1', version: 1 },
+      showcasePanelSlotId: 'hero'
+    },
+    publicRepresentationApproval: {
+      method: 'EXPLICIT_HUMAN_ACTION',
+      approvalReference: 'asset-publication-approval_contract-1',
+      approvedAt: '2026-09-07T12:08:00.000Z'
+    }
+  },
   visibility: 'LISTING_PUBLIC',
   aiConceptLabel: true,
-  createdAt: '2026-09-07T12:05:00.000Z',
+  createdAt: '2026-09-07T12:08:01.000Z',
   authorityConsequences: noTradingAssetClassificationAuthorityConsequencesV1
 });
 
@@ -177,6 +198,37 @@ const failedQualityReview = (): TradingStudioVisualQualityReviewV1 => ({
   authorityConsequences: noTradingStudioVisualQualityAuthorityConsequencesV1
 });
 
+const passedQualityReview = (): TradingStudioVisualQualityReviewV1 => ({
+  ...failedQualityReview(),
+  status: 'PASS',
+  findings: [],
+  retryDisposition: 'RETRY_FORBIDDEN'
+});
+
+const showcase = (): TradingShowcaseV1 => ({
+  schemaVersion: 1,
+  showcaseId: 'trading-showcase_contract-1',
+  workspaceId: 'workspace-contract-1',
+  version: 1,
+  brandBible: { id: 'trading-ai-derived_brand-bible_contract-1', version: 1 },
+  template: { templateId: 'showcase-template_standard', version: '1.0.0' },
+  panels: [
+    {
+      slotId: 'hero',
+      studioVisualAsset: { id: 'trading-ai-derived_visual-asset_contract-1', version: 1 },
+      qualityReview: { id: 'trading-studio-visual-quality-review_contract-1', version: 1 },
+      creativeRole: 'HERO',
+      selectionMethod: 'EXPLICIT_HUMAN_ACTION',
+      aiConceptLabel: true
+    }
+  ],
+  status: 'SHOWCASE_READY',
+  visibility: 'PRIVATE',
+  publicationEligibility: 'NOT_ELIGIBLE',
+  authorityConsequences: noTradingShowcaseAuthorityConsequencesV1,
+  createdAt: '2026-09-07T12:07:00.000Z'
+});
+
 const retryCommand = (): RequestTradingStudioVisualRetryCommandV1 => ({
   schemaVersion: 1,
   studioVisualAssetId: 'trading-ai-derived_visual-asset_contract-1',
@@ -224,6 +276,97 @@ describe('Lite Trading asset classification V1 contract', () => {
     expect(() =>
       assertTradingAssetClassificationV1({ ...listingAsset(), publicationApprovalReference: '' })
     ).toThrow(/publicationApprovalReference/u);
+  });
+
+  it('requires typed explicit-human admission for an AI Concept public representation', () => {
+    const asset = listingAsset();
+    expect(() =>
+      assertTradingListingAssetAdmissionV1(
+        asset,
+        studioVisualAsset(),
+        passedQualityReview(),
+        showcase()
+      )
+    ).not.toThrow();
+    expect(() =>
+      assertTradingAssetClassificationV1({
+        ...asset,
+        admission: undefined
+      } as unknown as TradingListingAssetV1)
+    ).toThrow(/exact Studio\/Showcase admission/u);
+    expect(() =>
+      assertTradingAssetClassificationV1({
+        ...asset,
+        admission: {
+          ...asset.admission!,
+          publicRepresentationApproval: {
+            ...asset.admission!.publicRepresentationApproval,
+            method: 'AUTOMATIC'
+          }
+        }
+      } as unknown as TradingListingAssetV1)
+    ).toThrow(/explicit human approval/u);
+  });
+
+  it('binds admission to the exact passed Studio visual and exact Showcase panel', () => {
+    const asset = listingAsset();
+    expect(() =>
+      assertTradingListingAssetAdmissionV1(
+        asset,
+        studioVisualAsset(),
+        failedQualityReview(),
+        showcase()
+      )
+    ).toThrow(/quality-passed Studio Visual Asset/u);
+    expect(() =>
+      assertTradingListingAssetAdmissionV1(
+        {
+          ...asset,
+          admission: {
+            ...asset.admission!,
+            source: { ...asset.admission!.source, showcasePanelSlotId: 'missing' }
+          }
+        },
+        studioVisualAsset(),
+        passedQualityReview(),
+        showcase()
+      )
+    ).toThrow(/exact explicitly selected Showcase panel/u);
+    expect(() =>
+      assertTradingListingAssetAdmissionV1(
+        {
+          ...asset,
+          admission: {
+            ...asset.admission!,
+            source: {
+              ...asset.admission!.source,
+              studioVisualAsset: { ...asset.admission!.source.studioVisualAsset, version: 2 }
+            }
+          }
+        },
+        studioVisualAsset(),
+        passedQualityReview(),
+        showcase()
+      )
+    ).toThrow(/exact Studio visual, quality review, Showcase and Trademark Asset/u);
+  });
+
+  it('does not let QA PASS, Showcase selection or AI generation substitute for public approval', () => {
+    const asset = listingAsset();
+    expect(passedQualityReview().authorityConsequences.humanApprovalCreated).toBe(false);
+    expect(showcase().authorityConsequences.sourceAssetPublished).toBe(false);
+    expect(() =>
+      assertTradingAssetClassificationV1({
+        ...asset,
+        admission: {
+          ...asset.admission!,
+          publicRepresentationApproval: {
+            ...asset.admission!.publicRepresentationApproval,
+            approvalReference: 'different-approval'
+          }
+        }
+      })
+    ).toThrow(/must match publicationApprovalReference/u);
   });
 
   it('preserves the AI concept label on public concept assets', () => {
