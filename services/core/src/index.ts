@@ -776,3 +776,6 @@ export * from './official-fee-reference-store.js';
 export * from './official-fee-reference-store-postgres.js';
 export * from './us-trademark-mark-representation-method-authority.js';
 export * from './us-trademark-mark-representation-method-http.js';
+export * from './oauth-credential.js';
+export * from './oauth-credential-crypto.js';
+export * from './oauth-credential-postgres.js';

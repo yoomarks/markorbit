@@ -12,6 +12,7 @@ import type {
 } from '../src/managed-communication-exact-evidence.js';
 import type { ManagedCommunicationSendRequestV1 } from '../src/managed-communication-exchange.js';
 import {
+  CoreBackedMicrosoftGraphAccessTokenProviderV1,
   MICROSOFT_GRAPH_MANAGED_COMMUNICATION_PROVIDER,
   MicrosoftGraphManagedCommunicationClientV1,
   MicrosoftGraphManagedCommunicationError,
@@ -609,5 +610,75 @@ describe('Microsoft Graph Managed Communication provider adapter', () => {
       expect(error).toBeInstanceOf(MicrosoftGraphManagedCommunicationError);
       expect(error).toMatchObject({ code: 'TRANSPORT_FAILURE', retryable: true });
     }
+  });
+});
+
+describe('Core-backed Microsoft Graph access token compatibility', () => {
+  it('delegates exact credential resolution to Core without owning refresh-token material', async () => {
+    const credential = {
+      owner: 'CORE_IDENTITY' as const,
+      credentialBindingId: 'oauth-credential-binding_graph-core-1' as const,
+      version: 3
+    };
+    const resolveAccessToken = vi.fn(() =>
+      Promise.resolve({
+        accessToken: 'core-issued-access-token',
+        expiresAt: '2026-09-11T02:00:00.000Z',
+        credentialBindingId: credential.credentialBindingId,
+        bindingVersion: credential.version
+      })
+    );
+    const tokenProvider = new CoreBackedMicrosoftGraphAccessTokenProviderV1(
+      { resolveAccessToken },
+      credential,
+      'workspace_graph_core',
+      providerAccountRef,
+      ['Mail.Read']
+    );
+    const fetchImpl = vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
+      expect(new Headers(init?.headers).get('authorization')).toBe(
+        'Bearer core-issued-access-token'
+      );
+      return Promise.resolve(json(graphProfile()));
+    }) as typeof fetch;
+    const client = new MicrosoftGraphManagedCommunicationClientV1(tokenProvider, fetchImpl);
+
+    await expect(client.profile()).resolves.toEqual({
+      id: 'graph-user-1',
+      providerAccountRef
+    });
+    expect(resolveAccessToken).toHaveBeenCalledWith({
+      credential,
+      expectedWorkspaceId: 'workspace_graph_core',
+      expectedProvider: MICROSOFT_GRAPH_MANAGED_COMMUNICATION_PROVIDER,
+      expectedExternalAccountRef: providerAccountRef,
+      requiredScopes: ['Mail.Read']
+    });
+    expect(JSON.stringify(tokenProvider)).not.toContain('refresh');
+  });
+
+  it('fails closed if Core returns a different credential binding lineage', async () => {
+    const tokenProvider = new CoreBackedMicrosoftGraphAccessTokenProviderV1(
+      {
+        resolveAccessToken: () =>
+          Promise.resolve({
+            accessToken: 'core-issued-access-token',
+            expiresAt: '2026-09-11T02:00:00.000Z',
+            credentialBindingId: 'oauth-credential-binding_other',
+            bindingVersion: 1
+          })
+      },
+      {
+        owner: 'CORE_IDENTITY',
+        credentialBindingId: 'oauth-credential-binding_expected',
+        version: 1
+      },
+      'workspace_graph_core',
+      providerAccountRef,
+      ['Mail.Read']
+    );
+    await expect(tokenProvider.accessToken()).rejects.toMatchObject({
+      code: 'AUTHENTICATION_FAILURE'
+    });
   });
 });
