@@ -239,17 +239,17 @@ There is intentionally no `ADMITTED_PROFESSIONAL_CAPABILITY` row in V0 unless a 
 
 ## 8. Foundation dependency layer
 
-| Foundation / substrate | Current planning status | How the trademark tree may depend on it | What it does not prove |
-| --- | --- | --- | --- |
-| Capability Runtime + Implementation Profile | Current foundation | governed binding/invocation, Workspace-local specialization | no professional outcome by itself |
-| `managed-ai-execution` | Current foundation; Workspace specialization proved by #1074 | bounded AI-assisted research/drafting/reasoning | no legal conclusion, filing, send or official truth |
-| Managed Communication | Current foundation contract/runtime line | client/provider/authority communication when separately authorized | draft/transport is not professional approval or delivery truth |
-| Governed Document Understanding | Foundation roadmap **HOLD** | future document/evidence extraction dependency | not available professional coverage today |
-| Governed Retrieval | Foundation roadmap **HOLD** | future cross-source search/retrieval dependency | not trademark search/clearance by itself |
-| Execution / Protected Action | Current cross-owner substrate | filing/payment/provider/contact/publication handoff | execution attempt does not equal official acceptance |
-| Data Engine / Knowledge | Source owners | authoritative facts / sourced knowledge and provenance | source data is not professional conclusion |
-| Brain Methods | Current bounded methods | typed, attributable reasoning support | Method != Capability; Brain output != canonical truth |
-| Social / Media | bounded owner surfaces / planning | content rights, distribution, platform observation | platform activity != trademark/business/legal truth |
+| Foundation / substrate                      | Current planning status                                      | How the trademark tree may depend on it                            | What it does not prove                                         |
+| ------------------------------------------- | ------------------------------------------------------------ | ------------------------------------------------------------------ | -------------------------------------------------------------- |
+| Capability Runtime + Implementation Profile | Current foundation                                           | governed binding/invocation, Workspace-local specialization        | no professional outcome by itself                              |
+| `managed-ai-execution`                      | Current foundation; Workspace specialization proved by #1074 | bounded AI-assisted research/drafting/reasoning                    | no legal conclusion, filing, send or official truth            |
+| Managed Communication                       | Current foundation contract/runtime line                     | client/provider/authority communication when separately authorized | draft/transport is not professional approval or delivery truth |
+| Governed Document Understanding             | Foundation roadmap **HOLD**                                  | future document/evidence extraction dependency                     | not available professional coverage today                      |
+| Governed Retrieval                          | Foundation roadmap **HOLD**                                  | future cross-source search/retrieval dependency                    | not trademark search/clearance by itself                       |
+| Execution / Protected Action                | Current cross-owner substrate                                | filing/payment/provider/contact/publication handoff                | execution attempt does not equal official acceptance           |
+| Data Engine / Knowledge                     | Source owners                                                | authoritative facts / sourced knowledge and provenance             | source data is not professional conclusion                     |
+| Brain Methods                               | Current bounded methods                                      | typed, attributable reasoning support                              | Method != Capability; Brain output != canonical truth          |
+| Social / Media                              | bounded owner surfaces / planning                            | content rights, distribution, platform observation                 | platform activity != trademark/business/legal truth            |
 
 ## 9. Admission rule for a future trademark Capability
 
