@@ -121,7 +121,8 @@ describe('Lite Daily Workspace snapshot', () => {
         todayItems: [],
         recentFeedback: [],
         feedbackPendingPackages: [],
-        work: { assignedToMe: [], unassigned: [] }
+        work: { assignedToMe: [], unassigned: [] },
+        calendar: []
       },
       partial: false,
       warnings: [],
@@ -135,15 +136,27 @@ describe('Lite Daily Workspace snapshot', () => {
     const result = await service({ withoutWork: true }).snapshot(workspaceId, userId);
     expect(result.partial).toBe(false);
     expect(result.move).not.toHaveProperty('work');
+    expect(result.move).not.toHaveProperty('calendar');
   });
 
   it('queries exact active assigned/unassigned owner buckets and preserves owner ordering and WAITING', async () => {
     const assigned = workItem('assigned', {
       assigneePrincipalId: userId,
       status: 'WAITING_FOR_PROVIDER',
-      waitingSinceAt: generatedAt
+      waitingSinceAt: generatedAt,
+      internalTiming: {
+        timeClass: 'LITE_INTERNAL_OPERATIONAL',
+        internalDueAt: '2026-09-12T09:00:00.000Z',
+        certifiedLegalDeadline: false
+      }
     });
-    const unassigned = workItem('unassigned');
+    const unassigned = workItem('unassigned', {
+      internalTiming: {
+        timeClass: 'LITE_INTERNAL_OPERATIONAL',
+        followUpAt: '2026-09-13T10:00:00.000Z',
+        certifiedLegalDeadline: false
+      }
+    });
     const work = vi.fn(
       (_requestedWorkspaceId: string, options: Readonly<DailyWorkspaceWorkListOptions>) =>
         Promise.resolve(options.assigneePrincipalId === null ? [unassigned] : [assigned])
@@ -164,6 +177,20 @@ describe('Lite Daily Workspace snapshot', () => {
     });
     expect(result.move.work?.assignedToMe).toEqual([assigned]);
     expect(result.move.work?.unassigned).toEqual([unassigned]);
+    expect(result.move.calendar).toEqual([
+      expect.objectContaining({
+        liteWorkItemId: assigned.liteWorkItemId,
+        kind: 'INTERNAL_DUE',
+        timestamp: '2026-09-12T09:00:00.000Z',
+        certifiedLegalDeadline: false
+      }),
+      expect.objectContaining({
+        liteWorkItemId: unassigned.liteWorkItemId,
+        kind: 'FOLLOW_UP',
+        timestamp: '2026-09-13T10:00:00.000Z',
+        certifiedLegalDeadline: false
+      })
+    ]);
     expect(result.move.work?.assignedToMe[0]).toBe(assigned);
     expect(result.move.work?.assignedToMe[0]?.authorityConsequences).toEqual(
       noLiteWorkItemAuthorityConsequencesV1
@@ -182,6 +209,7 @@ describe('Lite Daily Workspace snapshot', () => {
     expect(result.move.todayItems).toEqual([]);
     expect(result.move.recentFeedback).toEqual([]);
     expect(result.move.work).toEqual({ assignedToMe: [], unassigned: [] });
+    expect(result.move.calendar).toEqual([]);
     expect(result.executionAuthorized).toBe(false);
   });
 
@@ -198,10 +226,18 @@ describe('Lite Daily Workspace snapshot', () => {
     expect(result.move.recentFeedback).toEqual([]);
     expect(result.move.feedbackPendingPackages).toEqual([]);
     expect(result.move.work).toEqual({ assignedToMe: [], unassigned: [] });
+    expect(result.move.calendar).toEqual([]);
   });
 
   it('preserves the successful Work bucket and reports aggregate plus bucket-specific outage warnings', async () => {
-    const assigned = workItem('assigned', { assigneePrincipalId: userId });
+    const assigned = workItem('assigned', {
+      assigneePrincipalId: userId,
+      internalTiming: {
+        timeClass: 'LITE_INTERNAL_OPERATIONAL',
+        remindAt: '2026-09-11T08:00:00.000Z',
+        certifiedLegalDeadline: false
+      }
+    });
     const result = await service({
       work: (_requestedWorkspaceId, options) =>
         options.assigneePrincipalId === null
@@ -215,6 +251,13 @@ describe('Lite Daily Workspace snapshot', () => {
       'WORK_ITEMS_UNASSIGNED_UNAVAILABLE'
     ]);
     expect(result.move.work).toEqual({ assignedToMe: [assigned], unassigned: [] });
+    expect(result.move.calendar).toEqual([
+      expect.objectContaining({
+        liteWorkItemId: assigned.liteWorkItemId,
+        kind: 'REMINDER',
+        timestamp: '2026-09-11T08:00:00.000Z'
+      })
+    ]);
   });
 
   it('does not represent both Work bucket failures as healthy empty Work', async () => {
@@ -229,6 +272,7 @@ describe('Lite Daily Workspace snapshot', () => {
       'WORK_ITEMS_UNASSIGNED_UNAVAILABLE'
     ]);
     expect(result.move.work).toEqual({ assignedToMe: [], unassigned: [] });
+    expect(result.move.calendar).toEqual([]);
   });
 
   it('remains usable as a Work-centric partial snapshot when SEE/CREATE and MOVE both fail', async () => {

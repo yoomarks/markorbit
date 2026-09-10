@@ -90,7 +90,8 @@ describe('Lite Daily Workspace HTTP boundary', () => {
         todayItems: [],
         recentFeedback: [],
         feedbackPendingPackages: [],
-        work: { assignedToMe: [], unassigned: [] }
+        work: { assignedToMe: [], unassigned: [] },
+        calendar: []
       },
       executionAuthorized: false,
       externalPublishExecuted: false,
