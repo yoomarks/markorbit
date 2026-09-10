@@ -177,7 +177,7 @@ function digest(bytes: Uint8Array): string {
 function graphUrl(pathOrUrl: string): string {
   const url = pathOrUrl.startsWith('https://')
     ? new URL(pathOrUrl)
-    : new URL(pathOrUrl, `${GRAPH_BASE}/`);
+    : new URL(`${GRAPH_BASE}${pathOrUrl.startsWith('/') ? pathOrUrl : `/${pathOrUrl}`}`);
   if (url.origin !== GRAPH_ORIGIN || !url.pathname.startsWith('/v1.0/')) {
     throw new MicrosoftGraphManagedCommunicationError(
       'INVALID_DELTA',
@@ -187,7 +187,10 @@ function graphUrl(pathOrUrl: string): string {
   return url.toString();
 }
 
-function statusError(status: number, deltaRequest: boolean): MicrosoftGraphManagedCommunicationError {
+function statusError(
+  status: number,
+  deltaRequest: boolean
+): MicrosoftGraphManagedCommunicationError {
   if (deltaRequest && (status === 404 || status === 410)) {
     return new MicrosoftGraphManagedCommunicationError(
       'INVALID_DELTA',
@@ -253,7 +256,9 @@ function participant(
   };
 }
 
-function participants(message: GraphMessage): readonly Readonly<ManagedCommunicationParticipantV1>[] {
+function participants(
+  message: GraphMessage
+): readonly Readonly<ManagedCommunicationParticipantV1>[] {
   const values: ManagedCommunicationParticipantV1[] = [];
   const sender = participant('SENDER', message.from);
   if (sender) values.push(sender);
@@ -432,9 +437,7 @@ export class MicrosoftGraphManagedCommunicationClientV1 {
       userPrincipalName?: unknown;
     }>;
     const account =
-      typeof value.mail === 'string' && value.mail.trim()
-        ? value.mail
-        : value.userPrincipalName;
+      typeof value.mail === 'string' && value.mail.trim() ? value.mail : value.userPrincipalName;
     return Object.freeze({
       id: required(value.id, 'microsoftGraph.profile.id', 500),
       providerAccountRef: required(account, 'microsoftGraph.profile.providerAccountRef', 500)
@@ -568,7 +571,7 @@ export class MicrosoftGraphManagedCommunicationClientV1 {
   private async json(pathOrUrl: string, init: RequestInit = {}, deltaRequest = false) {
     const response = await this.response(pathOrUrl, init, deltaRequest);
     try {
-      return await response.json();
+      return (await response.json()) as unknown;
     } catch (error) {
       throw new MicrosoftGraphManagedCommunicationError(
         deltaRequest ? 'INVALID_DELTA' : 'INVALID_RESPONSE',
@@ -589,16 +592,14 @@ export class MicrosoftGraphManagedCommunicationClientV1 {
   }
 }
 
-export class MicrosoftGraphManagedCommunicationSenderV1
-  implements ManagedCommunicationProviderSenderV1
-{
+export class MicrosoftGraphManagedCommunicationSenderV1 implements ManagedCommunicationProviderSenderV1 {
   constructor(
     private readonly client: MicrosoftGraphManagedCommunicationClientV1,
     private readonly resolveReply?: MicrosoftGraphProviderReplyResolverV1,
     private readonly now: () => string = () => new Date().toISOString()
   ) {}
 
-  prepare(
+  async prepare(
     request: Readonly<ManagedCommunicationSendRequestV1>,
     context: Readonly<ManagedCommunicationProviderSendContextV1>
   ): Promise<Readonly<ManagedCommunicationPreparedProviderSendV1>> {
@@ -608,63 +609,61 @@ export class MicrosoftGraphManagedCommunicationSenderV1
         'Microsoft Graph sender received a non-Microsoft account binding.'
       );
     }
-    const patch = graphDraftPatch(request);
-    return Promise.resolve(
-      Object.freeze({
-        dispatch: async () => {
-          const profile = await this.client.profile();
-          if (
-            profile.providerAccountRef.toLowerCase() !==
-            context.account.providerAccountRef.toLowerCase()
-          ) {
+    const patch = await Promise.resolve().then(() => graphDraftPatch(request));
+    return Object.freeze({
+      dispatch: async () => {
+        const profile = await this.client.profile();
+        if (
+          profile.providerAccountRef.toLowerCase() !==
+          context.account.providerAccountRef.toLowerCase()
+        ) {
+          throw new MicrosoftGraphManagedCommunicationError(
+            'ACCOUNT_MISMATCH',
+            'Microsoft Graph authenticated mailbox does not match the durable account binding.'
+          );
+        }
+
+        let draft: GraphMessage;
+        if (request.replyToThreadRef) {
+          if (!this.resolveReply) {
             throw new MicrosoftGraphManagedCommunicationError(
-              'ACCOUNT_MISMATCH',
-              'Microsoft Graph authenticated mailbox does not match the durable account binding.'
+              'INVALID_RESPONSE',
+              'Microsoft Graph reply dispatch requires exact durable provider message resolution.'
             );
           }
-
-          let draft: GraphMessage;
-          if (request.replyToThreadRef) {
-            if (!this.resolveReply) {
-              throw new MicrosoftGraphManagedCommunicationError(
-                'INVALID_RESPONSE',
-                'Microsoft Graph reply dispatch requires exact durable provider message resolution.'
-              );
-            }
-            const reply = await this.resolveReply({
-              workspaceId: context.workspaceId,
-              accountRef: context.account.accountRef,
-              threadRef: request.replyToThreadRef
-            });
-            if (!reply) {
-              throw new MicrosoftGraphManagedCommunicationError(
-                'NOT_FOUND',
-                'Microsoft Graph reply source message could not be resolved durably.'
-              );
-            }
-            draft = await this.client.createReply(reply.providerMessageId);
-            const draftId = required(draft.id, 'microsoftGraph.replyDraft.id', 500);
-            draft = await this.client.updateDraft(draftId, patch);
-          } else {
-            draft = await this.client.createDraft(patch);
-          }
-
-          const providerMessageId = required(draft.id, 'microsoftGraph.send.draft.id', 500);
-          const providerThreadId = required(
-            draft.conversationId,
-            'microsoftGraph.send.conversationId',
-            500
-          );
-          await this.client.sendDraft(providerMessageId);
-          return Object.freeze({
-            providerMessageId,
-            providerThreadId,
-            providerReceiptRef: `msgraph://me/messages/${providerMessageId}`,
-            acceptedAt: canonicalTimestamp(this.now(), 'microsoftGraph.send.acceptedAt')
+          const reply = await this.resolveReply({
+            workspaceId: context.workspaceId,
+            accountRef: context.account.accountRef,
+            threadRef: request.replyToThreadRef
           });
+          if (!reply) {
+            throw new MicrosoftGraphManagedCommunicationError(
+              'NOT_FOUND',
+              'Microsoft Graph reply source message could not be resolved durably.'
+            );
+          }
+          draft = await this.client.createReply(reply.providerMessageId);
+          const draftId = required(draft.id, 'microsoftGraph.replyDraft.id', 500);
+          draft = await this.client.updateDraft(draftId, patch);
+        } else {
+          draft = await this.client.createDraft(patch);
         }
-      })
-    );
+
+        const providerMessageId = required(draft.id, 'microsoftGraph.send.draft.id', 500);
+        const providerThreadId = required(
+          draft.conversationId,
+          'microsoftGraph.send.conversationId',
+          500
+        );
+        await this.client.sendDraft(providerMessageId);
+        return Object.freeze({
+          providerMessageId,
+          providerThreadId,
+          providerReceiptRef: `msgraph://me/messages/${providerMessageId}`,
+          acceptedAt: canonicalTimestamp(this.now(), 'microsoftGraph.send.acceptedAt')
+        });
+      }
+    });
   }
 
   async send(
@@ -714,7 +713,8 @@ export class MicrosoftGraphManagedCommunicationInboundV1 {
     );
     const initialized = checkpoint === undefined;
     const roundStart = canonicalTimestamp(now(), 'microsoftGraph.sync.observedAt');
-    const startUrl = checkpoint?.providerCursor ?? this.options.client.initialInboxDeltaUrl(roundStart);
+    const startUrl =
+      checkpoint?.providerCursor ?? this.options.client.initialInboxDeltaUrl(roundStart);
     const delta = await this.collectDelta(startUrl);
     let imported = 0;
     for (const providerMessageId of delta.messageIds) {
@@ -751,7 +751,9 @@ export class MicrosoftGraphManagedCommunicationInboundV1 {
         continue;
       }
       if (page['@odata.deltaLink']) {
-        finalDeltaLink = graphUrl(required(page['@odata.deltaLink'], 'microsoftGraph.delta.deltaLink'));
+        finalDeltaLink = graphUrl(
+          required(page['@odata.deltaLink'], 'microsoftGraph.delta.deltaLink')
+        );
         break;
       }
       throw new MicrosoftGraphManagedCommunicationError(
@@ -802,10 +804,14 @@ export class MicrosoftGraphManagedCommunicationInboundV1 {
       accountRef: this.options.accountRef,
       messageId: ids.messageId
     });
-    const observedAt = existingEvidence?.observedAt ?? canonicalTimestamp(now(), 'microsoftGraph.observedAt');
+    const observedAt =
+      existingEvidence?.observedAt ?? canonicalTimestamp(now(), 'microsoftGraph.observedAt');
     const bodyContent = full.body?.content?.trim();
     const bodyType = full.body?.contentType?.toLowerCase();
-    const attachments = await this.attachments(exactProviderMessageId, full.hasAttachments === true);
+    const attachments = await this.attachments(
+      exactProviderMessageId,
+      full.hasAttachments === true
+    );
     const occurredAt = full.receivedDateTime
       ? canonicalTimestamp(full.receivedDateTime, 'microsoftGraph.message.receivedDateTime')
       : observedAt;
