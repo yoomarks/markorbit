@@ -78,7 +78,7 @@ function importer(
 }
 
 function createdImporter() {
-  return vi.fn(async (input: Readonly<BulkInput>) => ownerResult(input));
+  return vi.fn((input: Readonly<BulkInput>) => Promise.resolve(ownerResult(input)));
 }
 
 describe('Lite Agency Workspace large Trademark Asset migration orchestration', () => {
@@ -139,13 +139,15 @@ describe('Lite Agency Workspace large Trademark Asset migration orchestration', 
 
   it('preserves duplicate and rejected outcomes with global indices', async () => {
     let callIndex = 0;
-    const bulkImport = vi.fn(async (input: Readonly<BulkInput>) => {
+    const bulkImport = vi.fn((input: Readonly<BulkInput>) => {
       const currentCall = callIndex++;
-      return ownerResult(input, (localIndex) => {
-        if (currentCall === 0 && localIndex === 1) return 'DUPLICATE';
-        if (currentCall === 1 && localIndex === 0) return 'REJECTED';
-        return 'CREATED';
-      });
+      return Promise.resolve(
+        ownerResult(input, (localIndex) => {
+          if (currentCall === 0 && localIndex === 1) return 'DUPLICATE';
+          if (currentCall === 1 && localIndex === 0) return 'REJECTED';
+          return 'CREATED';
+        })
+      );
     });
     const service = new TrademarkAssetMigrationOrchestrator({ bulkImport });
 
@@ -163,13 +165,13 @@ describe('Lite Agency Workspace large Trademark Asset migration orchestration', 
   it('uses deterministic chunk keys for safe whole-run replay', async () => {
     const attemptedBatchKeys: string[] = [];
     let failSecondChunkOnce = true;
-    const bulkImport = vi.fn(async (input: Readonly<BulkInput>) => {
+    const bulkImport = vi.fn((input: Readonly<BulkInput>) => {
       attemptedBatchKeys.push(input.batchKey);
       if (input.batchKey === 'retryable-run:chunk:1' && failSecondChunkOnce) {
         failSecondChunkOnce = false;
-        throw new Error('transient owner failure');
+        return Promise.reject(new Error('transient owner failure'));
       }
-      return ownerResult(input);
+      return Promise.resolve(ownerResult(input));
     });
     const service = new TrademarkAssetMigrationOrchestrator({ bulkImport });
     const input = {
@@ -193,9 +195,9 @@ describe('Lite Agency Workspace large Trademark Asset migration orchestration', 
   });
 
   it('fails closed on an inconsistent owner result', async () => {
-    const invalidOwner = importer(async (input) => {
-      return { ...ownerResult(input), total: input.items.length + 1 };
-    });
+    const invalidOwner = importer((input) =>
+      Promise.resolve({ ...ownerResult(input), total: input.items.length + 1 })
+    );
     const service = new TrademarkAssetMigrationOrchestrator(invalidOwner);
 
     await expect(
