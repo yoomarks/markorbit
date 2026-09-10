@@ -1,4 +1,5 @@
 import { createHash } from 'node:crypto';
+import type { ExternalOAuthCredentialRefV1 } from '@markorbit/contracts/oauth-credential';
 import type {
   ManagedCommunicationAttachmentRefV1,
   ManagedCommunicationMessageV1,
@@ -96,6 +97,54 @@ export class MicrosoftGraphManagedCommunicationError extends Error {
 
 export interface MicrosoftGraphAccessTokenProviderV1 {
   accessToken(): Promise<string>;
+}
+
+export interface CoreOAuthAccessTokenResolverV1 {
+  resolveAccessToken(
+    input: Readonly<{
+      credential: Readonly<ExternalOAuthCredentialRefV1>;
+      expectedWorkspaceId: string;
+      expectedProvider: string;
+      expectedExternalAccountRef: string;
+      requiredScopes: readonly string[];
+    }>
+  ): Promise<
+    Readonly<{
+      accessToken: string;
+      expiresAt: string;
+      credentialBindingId: string;
+      bindingVersion: number;
+    }>
+  >;
+}
+
+export class CoreBackedMicrosoftGraphAccessTokenProviderV1 implements MicrosoftGraphAccessTokenProviderV1 {
+  constructor(
+    private readonly resolver: CoreOAuthAccessTokenResolverV1,
+    private readonly credential: Readonly<ExternalOAuthCredentialRefV1>,
+    private readonly expectedWorkspaceId: string,
+    private readonly expectedExternalAccountRef: string,
+    private readonly requiredScopes: readonly string[]
+  ) {}
+
+  async accessToken(): Promise<string> {
+    const resolved = await this.resolver.resolveAccessToken({
+      credential: this.credential,
+      expectedWorkspaceId: this.expectedWorkspaceId,
+      expectedProvider: MICROSOFT_GRAPH_MANAGED_COMMUNICATION_PROVIDER,
+      expectedExternalAccountRef: this.expectedExternalAccountRef,
+      requiredScopes: this.requiredScopes
+    });
+    if (
+      resolved.credentialBindingId !== this.credential.credentialBindingId ||
+      resolved.bindingVersion !== this.credential.version
+    )
+      throw new MicrosoftGraphManagedCommunicationError(
+        'AUTHENTICATION_FAILURE',
+        'Core OAuth credential resolution did not preserve the exact binding reference.'
+      );
+    return configured(resolved.accessToken, 'microsoftGraph.coreOAuth.accessToken', 20_000);
+  }
 }
 
 export type MicrosoftGraphRefreshTokenConfigV1 = Readonly<{

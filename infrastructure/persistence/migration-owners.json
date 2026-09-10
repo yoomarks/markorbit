@@ -72,7 +72,8 @@
     "core_official_fee_reference": "@markorbit/core-service",
     "markreg_matter_intelligence_commands": "@markorbit/markreg-service",
     "markreg_production_fee_facts": "@markorbit/markreg-service",
-    "lite_work_items": "@markorbit/lite-service"
+    "lite_work_items": "@markorbit/lite-service",
+    "core_oauth_credentials": "@markorbit/core-service"
   },
   "migrations": {
     "0018_identity_workspace_membership": "@markorbit/core-service",
@@ -165,6 +166,7 @@
     "0105_capability_engine_workspace_implementation_preferences": "@markorbit/capability-engine",
     "0106_lite_trademark_asset_migration_runs": "@markorbit/lite-service",
     "0107_lite_trading_listings": "@markorbit/lite-service",
-    "0108_lite_work_items": "@markorbit/lite-service"
+    "0108_lite_work_items": "@markorbit/lite-service",
+    "0109_core_oauth_credentials": "@markorbit/core-service"
   }
 }
