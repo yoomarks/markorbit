@@ -182,9 +182,9 @@ describe('Lite Work Item V1', () => {
       preparationFingerprintSha256: hashB,
       idempotencyKey: 'work-item:today-recommendation_follow-up-001:v3'
     });
-    expect(parsed.source.sourceClass === 'SYSTEM_PREPARED' && parsed.source.sourceReferences).toHaveLength(
-      2
-    );
+    expect(
+      parsed.source.sourceClass === 'SYSTEM_PREPARED' && parsed.source.sourceReferences
+    ).toHaveLength(2);
 
     expect(() =>
       parseLiteWorkItemV1({
