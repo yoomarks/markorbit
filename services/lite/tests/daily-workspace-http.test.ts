@@ -7,7 +7,7 @@ import {
   type DailyWorkspaceTodaySnapshot
 } from '../src/daily-workspace-snapshot.js';
 
-const secret = 'lite-daily-workspace-http-secret-0123456789';
+const secret = 'x'.repeat(32);
 const workspaceId = '73737373-7373-4737-8737-737373737373';
 const principal: WorkspacePrincipal = {
   kind: 'WORKSPACE',
@@ -48,7 +48,8 @@ function service() {
   return new DailyWorkspaceSnapshotService(
     { snapshot: () => Promise.resolve(orbit) },
     { listToday: () => Promise.resolve(today) },
-    () => '2026-08-24T00:00:00.000Z'
+    () => '2026-08-24T00:00:00.000Z',
+    { list: () => Promise.resolve([]) }
   );
 }
 
@@ -85,7 +86,12 @@ describe('Lite Daily Workspace HTTP boundary', () => {
       workspaceId,
       subjectUserId: principal.userId,
       see: { preferenceSource: 'NONE', orbitItems: [] },
-      move: { todayItems: [], recentFeedback: [], feedbackPendingPackages: [] },
+      move: {
+        todayItems: [],
+        recentFeedback: [],
+        feedbackPendingPackages: [],
+        work: { assignedToMe: [], unassigned: [] }
+      },
       executionAuthorized: false,
       externalPublishExecuted: false,
       officialTruthCreated: false
