@@ -6,7 +6,9 @@ import type { TrademarkAssetId } from '@markorbit/contracts/trademark-asset-work
 import { describe, expect, it, vi } from 'vitest';
 import type { BulkImportTrademarkAssetsInput } from '../src/trademark-asset-portfolio.js';
 import {
+  InMemoryTrademarkAssetMigrationRunStore,
   MAX_LARGE_TRADEMARK_ASSET_MIGRATION_ITEMS,
+  TrademarkAssetMigrationInterruptedError,
   TrademarkAssetMigrationOrchestrator,
   type TrademarkAssetBulkImporter,
   type TrademarkAssetMigrationAdmissionItem
@@ -241,5 +243,137 @@ describe('Lite Agency Workspace large Trademark Asset migration orchestration', 
       code: 'INVALID_INPUT'
     });
     expect(bulkImport).not.toHaveBeenCalled();
+  });
+});
+
+describe('Lite Agency Workspace reviewable Trademark Asset migration', () => {
+  function reviewRows(total: number) {
+    return Array.from({ length: total }, (_, index) => ({
+      rowKey: `source-row-${String(index).padStart(5, '0')}`,
+      item: normalizedItem(index)
+    }));
+  }
+
+  it('previews a deterministic large-run chunk plan without Asset admission', async () => {
+    const bulkImport = createdImporter();
+    const service = new TrademarkAssetMigrationOrchestrator({ bulkImport });
+    const preview = await service.preview({
+      workspaceId,
+      migrationKey: 'review-2501',
+      rows: reviewRows(2_501)
+    });
+
+    expect(bulkImport).not.toHaveBeenCalled();
+    expect(preview).toMatchObject({ total: 2_501, chunkCount: 26 });
+    expect(preview.chunks[0]).toMatchObject({ chunkIndex: 0, startIndex: 0, endExclusive: 100 });
+    expect(preview.chunks[25]).toMatchObject({
+      chunkIndex: 25,
+      startIndex: 2_500,
+      endExclusive: 2_501,
+      rowKeys: ['source-row-02500']
+    });
+  });
+
+  it('requires preview before commit', async () => {
+    const bulkImport = createdImporter();
+    const service = new TrademarkAssetMigrationOrchestrator({ bulkImport });
+    await expect(
+      service.commit({ workspaceId, migrationKey: 'needs-preview', rows: reviewRows(1) })
+    ).rejects.toMatchObject({ code: 'PREVIEW_REQUIRED' });
+    expect(bulkImport).not.toHaveBeenCalled();
+  });
+
+  it('keeps rowKey attached to owner outcomes after commit', async () => {
+    const bulkImport = vi.fn((input: Readonly<BulkInput>) =>
+      Promise.resolve(
+        ownerResult(input, (index) => {
+          if (index === 1) return 'DUPLICATE';
+          if (index === 2) return 'REJECTED';
+          return 'CREATED';
+        })
+      )
+    );
+    const service = new TrademarkAssetMigrationOrchestrator({ bulkImport });
+    const input = { workspaceId, migrationKey: 'row-results', rows: reviewRows(3) } as const;
+
+    await service.preview(input);
+    const result = await service.commit(input);
+
+    expect(result).toMatchObject({ total: 3, created: 1, duplicates: 1, rejected: 1 });
+    expect(result.items[0]).toMatchObject({ rowKey: 'source-row-00000', status: 'CREATED' });
+    expect(result.items[1]).toMatchObject({ rowKey: 'source-row-00001', status: 'DUPLICATE' });
+    expect(result.items[2]).toMatchObject({ rowKey: 'source-row-00002', status: 'REJECTED' });
+    expect(result.officialTruthVerifiedByLite).toBe(false);
+    expect(result.matterCreatedAutomatically).toBe(false);
+  });
+  it('fails closed when a reviewed migration key is reused with reordered rows', async () => {
+    const bulkImport = createdImporter();
+    const service = new TrademarkAssetMigrationOrchestrator({ bulkImport });
+    const rows = reviewRows(2);
+    await service.preview({ workspaceId, migrationKey: 'review-order-lock', rows });
+
+    await expect(
+      service.commit({
+        workspaceId,
+        migrationKey: 'review-order-lock',
+        rows: [rows[1]!, rows[0]!]
+      })
+    ).rejects.toMatchObject({ code: 'RUN_MISMATCH' });
+    expect(bulkImport).not.toHaveBeenCalled();
+  });
+
+  it('persists trustworthy progress and resumes from the first incomplete chunk', async () => {
+    const store = new InMemoryTrademarkAssetMigrationRunStore();
+    const attemptedBatchKeys: string[] = [];
+    let failSecondChunkOnce = true;
+    const bulkImport = vi.fn((input: Readonly<BulkInput>) => {
+      attemptedBatchKeys.push(input.batchKey);
+      if (input.batchKey === 'resume-run:chunk:1' && failSecondChunkOnce) {
+        failSecondChunkOnce = false;
+        return Promise.reject(Object.assign(new Error('temporary owner outage'), { status: 503 }));
+      }
+      return Promise.resolve(ownerResult(input));
+    });
+    const input = { workspaceId, migrationKey: 'resume-run', rows: reviewRows(201) } as const;
+    const first = new TrademarkAssetMigrationOrchestrator({ bulkImport }, store);
+    await first.preview(input);
+
+    const interrupted = await first.commit(input).catch((error: unknown) => error);
+    expect(interrupted).toBeInstanceOf(TrademarkAssetMigrationInterruptedError);
+    expect(interrupted).toMatchObject({
+      code: 'OWNER_INTERRUPTED',
+      retryable: true,
+      progress: { status: 'INTERRUPTED', nextChunkIndex: 1, created: 100, total: 201 }
+    });
+    expect((await first.progress(workspaceId, 'resume-run'))?.items).toHaveLength(100);
+
+    const resumed = new TrademarkAssetMigrationOrchestrator({ bulkImport }, store);
+    const result = await resumed.commit(input);
+    expect(attemptedBatchKeys).toEqual([
+      'resume-run:chunk:0',
+      'resume-run:chunk:1',
+      'resume-run:chunk:1',
+      'resume-run:chunk:2'
+    ]);
+    expect(result).toMatchObject({ total: 201, created: 201, duplicates: 0, rejected: 0 });
+    expect(result.items[100]).toMatchObject({ rowKey: 'source-row-00100', importIndex: 100 });
+    expect((await resumed.progress(workspaceId, 'resume-run'))?.status).toBe('COMPLETED');
+  });
+  it('fails closed on a corrupt owner result during reviewed commit', async () => {
+    const bulkImport = vi.fn((input: Readonly<BulkInput>) =>
+      Promise.resolve({ ...ownerResult(input), total: input.items.length + 1 })
+    );
+    const service = new TrademarkAssetMigrationOrchestrator({ bulkImport });
+    const input = {
+      workspaceId,
+      migrationKey: 'review-corrupt-owner',
+      rows: reviewRows(1)
+    } as const;
+    await service.preview(input);
+
+    await expect(service.commit(input)).rejects.toMatchObject({ code: 'OWNER_RESULT_INVALID' });
+    expect((await service.progress(workspaceId, 'review-corrupt-owner'))?.status).toBe(
+      'INTERRUPTED'
+    );
   });
 });
