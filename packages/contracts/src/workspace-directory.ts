@@ -24,8 +24,7 @@ export const workspaceDirectoryOperationalRoles = [
   'INTERNAL_OWNER',
   'OTHER'
 ] as const;
-export type WorkspaceDirectoryOperationalRole =
-  (typeof workspaceDirectoryOperationalRoles)[number];
+export type WorkspaceDirectoryOperationalRole = (typeof workspaceDirectoryOperationalRoles)[number];
 
 export const workspaceDirectoryContactPointKinds = ['EMAIL', 'PHONE', 'ADDRESS'] as const;
 export type WorkspaceDirectoryContactPointKind =
@@ -38,8 +37,7 @@ export const workspaceDirectoryLocalSourceKinds = [
   'DATA_ENGINE',
   'OTHER_LOCAL_SOURCE'
 ] as const;
-export type WorkspaceDirectoryLocalSourceKind =
-  (typeof workspaceDirectoryLocalSourceKinds)[number];
+export type WorkspaceDirectoryLocalSourceKind = (typeof workspaceDirectoryLocalSourceKinds)[number];
 
 export const workspaceDirectoryExternalIdentityKinds = [
   'APPLICANT_IDENTITY',
@@ -220,9 +218,7 @@ function stringArray(
     throw new WorkspaceDirectoryContractValidationError(
       `${field} must be an array with at most ${maximumItems} items.`
     );
-  const result = value.map((item, index) =>
-    text(item, `${field}[${index}]`, maximumItemLength)
-  );
+  const result = value.map((item, index) => text(item, `${field}[${index}]`, maximumItemLength));
   if (new Set(result).size !== result.length)
     throw new WorkspaceDirectoryContractValidationError(`${field} must not contain duplicates.`);
   return result;
@@ -269,11 +265,7 @@ function parseCustomerRelationshipReference(
 ): WorkspaceDirectoryCustomerRelationshipReferenceV1 {
   const field = 'customerRelationship';
   const item = record(value, field);
-  exactKeys(
-    item,
-    ['owner', 'kind', 'workspaceId', 'customerRelationshipId', 'version'],
-    field
-  );
+  exactKeys(item, ['owner', 'kind', 'workspaceId', 'customerRelationshipId', 'version'], field);
   if (item.owner !== 'MARKREG' || item.kind !== 'CUSTOMER_RELATIONSHIP')
     throw new WorkspaceDirectoryContractValidationError(
       'customerRelationship owner/kind is invalid.'
@@ -283,11 +275,7 @@ function parseCustomerRelationshipReference(
     throw new WorkspaceDirectoryContractValidationError(
       'customerRelationship Workspace does not match Directory entry Workspace.'
     );
-  const id = text(
-    item.customerRelationshipId,
-    'customerRelationship.customerRelationshipId',
-    240
-  );
+  const id = text(item.customerRelationshipId, 'customerRelationship.customerRelationshipId', 240);
   if (!customerRelationshipIdPattern.test(id))
     throw new WorkspaceDirectoryContractValidationError(
       'customerRelationship.customerRelationshipId is invalid.'
@@ -347,11 +335,7 @@ function parseExternalIdentityReference(
     throw new WorkspaceDirectoryContractValidationError(
       `${field}.managedTrademarkRelationshipEstablishedByDirectory must be false.`
     );
-  const referenceVersion = optionalText(
-    item.referenceVersion,
-    `${field}.referenceVersion`,
-    240
-  );
+  const referenceVersion = optionalText(item.referenceVersion, `${field}.referenceVersion`, 240);
   const label = optionalText(item.label, `${field}.label`, 300);
   const jurisdiction = optionalText(item.jurisdiction, `${field}.jurisdiction`, 80);
   return {
@@ -404,9 +388,7 @@ function parseExternalIdentityReferences(
   return value.map((reference, index) => parseExternalIdentityReference(reference, index));
 }
 
-function parseAuthority(
-  value: unknown
-): Readonly<WorkspaceDirectoryAuthorityConsequencesV1> {
+function parseAuthority(value: unknown): Readonly<WorkspaceDirectoryAuthorityConsequencesV1> {
   const item = record(value, 'authorityConsequences');
   exactKeys(
     item,
@@ -462,7 +444,9 @@ export function parseWorkspaceDirectoryEntryV1(
 
   const workspaceId = text(item.workspaceId, 'workspaceId', 240);
   if (expectedWorkspaceId !== undefined && workspaceId !== expectedWorkspaceId)
-    throw new WorkspaceDirectoryContractValidationError('Directory entry Workspace does not match.');
+    throw new WorkspaceDirectoryContractValidationError(
+      'Directory entry Workspace does not match.'
+    );
 
   const status = oneOf(item.status, workspaceDirectoryEntryStatuses, 'status');
   const createdAt = timestamp(item.createdAt, 'createdAt');
@@ -498,7 +482,12 @@ export function parseWorkspaceDirectoryEntryV1(
     contactPoints: parseContactPoints(item.contactPoints),
     ...(item.customerRelationship === undefined
       ? {}
-      : { customerRelationship: parseCustomerRelationshipReference(item.customerRelationship, workspaceId) }),
+      : {
+          customerRelationship: parseCustomerRelationshipReference(
+            item.customerRelationship,
+            workspaceId
+          )
+        }),
     ...(item.provider === undefined ? {} : { provider: parseProviderReference(item.provider) }),
     externalIdentityReferences: parseExternalIdentityReferences(item.externalIdentityReferences),
     provenance,
