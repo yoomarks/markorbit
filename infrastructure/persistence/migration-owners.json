@@ -162,6 +162,7 @@
     "0103_lite_trading_ai_profiles": "@markorbit/lite-service",
     "0104_lite_trading_brand_dna": "@markorbit/lite-service",
     "0105_capability_engine_workspace_implementation_preferences": "@markorbit/capability-engine",
-    "0106_lite_trademark_asset_migration_runs": "@markorbit/lite-service"
+    "0106_lite_trademark_asset_migration_runs": "@markorbit/lite-service",
+    "0107_lite_trading_listings": "@markorbit/lite-service"
   }
 }
