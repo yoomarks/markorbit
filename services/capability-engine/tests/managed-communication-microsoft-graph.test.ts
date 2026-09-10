@@ -190,10 +190,10 @@ describe('Microsoft Graph Managed Communication provider adapter', () => {
     await expect(provider.accessToken()).resolves.toBe('access-token-result');
     await expect(provider.accessToken()).resolves.toBe('access-token-result');
     expect(requests).toHaveLength(1);
-    expect(requests[0]?.url).toBe(
-      'https://login.microsoftonline.com/common/oauth2/v2.0/token'
-    );
-    expect(String(requests[0]?.body)).toContain('refresh_token=refresh-token-test-only');
+    expect(requests[0]?.url).toBe('https://login.microsoftonline.com/common/oauth2/v2.0/token');
+    const tokenBody = requests[0]?.body;
+    if (typeof tokenBody !== 'string') throw new TypeError('Expected OAuth form body text.');
+    expect(tokenBody).toContain('refresh_token=refresh-token-test-only');
   });
 
   it('prepares outbound mail with zero Microsoft network activity, then creates and sends an immutable draft on dispatch', async () => {
@@ -243,11 +243,10 @@ describe('Microsoft Graph Managed Communication provider adapter', () => {
   it('uses exact provider message resolution for replies and fails closed when it is unavailable', async () => {
     const missingClient = new MicrosoftGraphManagedCommunicationClientV1(
       tokenProvider(),
-      vi.fn(() => Promise.resolve(json(graphProfile()))) as typeof fetch
+      vi.fn(() => Promise.resolve(json(graphProfile())))
     );
-    const missingSender = new MicrosoftGraphManagedCommunicationSenderV1(
-      missingClient,
-      () => Promise.resolve(undefined)
+    const missingSender = new MicrosoftGraphManagedCommunicationSenderV1(missingClient, () =>
+      Promise.resolve(undefined)
     );
     const preparedMissing = await missingSender.prepare(
       sendRequest({ replyToThreadRef: 'commthread_missing' }),
@@ -266,7 +265,9 @@ describe('Microsoft Graph Managed Communication provider adapter', () => {
       calls.push(url);
       if (url.includes('/v1.0/me?$select=')) return Promise.resolve(json(graphProfile()));
       if (url.endsWith('/messages/source-message-1/createReply')) {
-        return Promise.resolve(json({ id: 'reply-draft-1', conversationId: 'conversation-1' }, 201));
+        return Promise.resolve(
+          json({ id: 'reply-draft-1', conversationId: 'conversation-1' }, 201)
+        );
       }
       if (url.endsWith('/messages/reply-draft-1')) {
         return Promise.resolve(json({ id: 'reply-draft-1', conversationId: 'conversation-1' }));
@@ -458,9 +459,7 @@ describe('Microsoft Graph Managed Communication provider adapter', () => {
     });
     await expect(inbound.syncOnce()).resolves.toMatchObject({ imported: 0 });
     expect(exactEvidence.admissions).toHaveLength(2);
-    expect(exactEvidence.admissions[0]!.observedAt).toBe(
-      exactEvidence.admissions[1]!.observedAt
-    );
+    expect(exactEvidence.admissions[0]!.observedAt).toBe(exactEvidence.admissions[1]!.observedAt);
   });
 
   it('does not advance the durable checkpoint when message admission fails', async () => {
@@ -515,7 +514,7 @@ describe('Microsoft Graph Managed Communication provider adapter', () => {
   ] as const)('classifies Graph HTTP %s explicitly', async (status, code, retryable) => {
     const client = new MicrosoftGraphManagedCommunicationClientV1(
       tokenProvider(),
-      vi.fn(() => Promise.resolve(json({ error: 'test' }, status))) as typeof fetch
+      vi.fn(() => Promise.resolve(json({ error: 'test' }, status)))
     );
     await expect(client.profile()).rejects.toMatchObject({ code, retryable });
   });
@@ -550,18 +549,16 @@ describe('Microsoft Graph Managed Communication provider adapter', () => {
       code: 'INVALID_DELTA',
       retryable: false
     });
-    expect((await foundation.latestCheckpoint(workspaceId, accountRef))?.providerCursor).toBe(cursor);
+    expect((await foundation.latestCheckpoint(workspaceId, accountRef))?.providerCursor).toBe(
+      cursor
+    );
   });
 
   it('fails closed when the authenticated Microsoft mailbox differs from the durable account binding', async () => {
     const foundation = await registeredFoundation();
     const client = new MicrosoftGraphManagedCommunicationClientV1(
       tokenProvider(),
-      vi.fn(() =>
-        Promise.resolve(
-          json({ id: 'graph-user-other', mail: 'different@example.test' })
-        )
-      ) as typeof fetch
+      vi.fn(() => Promise.resolve(json({ id: 'graph-user-other', mail: 'different@example.test' })))
     );
     const inbound = new MicrosoftGraphManagedCommunicationInboundV1({
       client,
@@ -603,7 +600,7 @@ describe('Microsoft Graph Managed Communication provider adapter', () => {
   it('marks transport failures retryable', async () => {
     const client = new MicrosoftGraphManagedCommunicationClientV1(
       tokenProvider(),
-      vi.fn(() => Promise.reject(new Error('socket reset'))) as typeof fetch
+      vi.fn(() => Promise.reject(new Error('socket reset')))
     );
     try {
       await client.profile();
