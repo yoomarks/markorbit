@@ -6,6 +6,10 @@ import type {
   PublishPackage
 } from '@markorbit/contracts/product-loop';
 import { DailyOrbitError, type DailyOrbitService, type DailyOrbitSnapshot } from './daily-orbit.js';
+import {
+  projectLiteWorkItemsToCalendarV1,
+  type LiteWorkItemCalendarEntryV1
+} from './work-item-calendar.js';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const ACTIVE_WORK_ITEM_STATUSES = [
@@ -80,6 +84,7 @@ export interface DailyWorkspaceSnapshot {
       assignedToMe: ReadonlyArray<Readonly<LiteWorkItemV1>>;
       unassigned: ReadonlyArray<Readonly<LiteWorkItemV1>>;
     };
+    calendar?: ReadonlyArray<Readonly<LiteWorkItemCalendarEntryV1>>;
   };
   partial: boolean;
   warnings: readonly string[];
@@ -251,6 +256,9 @@ export class DailyWorkspaceSnapshotService {
     }
 
     const workAvailable = assignedWork !== undefined || unassignedWork !== undefined;
+    const calendar = this.work
+      ? projectLiteWorkItemsToCalendarV1([...(assignedWork ?? []), ...(unassignedWork ?? [])])
+      : undefined;
     if (!orbit && !today && !workAvailable) {
       throw new DailyWorkspaceSnapshotError(
         'DEPENDENCY_UNAVAILABLE',
@@ -280,7 +288,8 @@ export class DailyWorkspaceSnapshotService {
               work: {
                 assignedToMe: assignedWork ?? [],
                 unassigned: unassignedWork ?? []
-              }
+              },
+              calendar: calendar ?? []
             }
           : {})
       },
