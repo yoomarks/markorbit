@@ -1239,4 +1239,5 @@ export * from './avatar-capability.js';
 export * from './media-plan.js';
 export * from './domain-pack.js';
 export * from './external-capability-exposure.js';
+export * from './workspace-watch.js';
 export * from './oauth-credential.js';
