@@ -7,7 +7,6 @@ import { describe, expect, it, vi } from 'vitest';
 import type { BulkImportTrademarkAssetsInput } from '../src/trademark-asset-portfolio.js';
 import {
   MAX_LARGE_TRADEMARK_ASSET_MIGRATION_ITEMS,
-  TrademarkAssetMigrationOrchestrationError,
   TrademarkAssetMigrationOrchestrator,
   type TrademarkAssetBulkImporter,
   type TrademarkAssetMigrationAdmissionItem
@@ -205,7 +204,7 @@ describe('Lite Agency Workspace large Trademark Asset migration orchestration', 
         migrationKey: 'bad-owner-result',
         items: [normalizedItem(0)]
       })
-    ).rejects.toMatchObject<Partial<TrademarkAssetMigrationOrchestrationError>>({
+    ).rejects.toMatchObject({
       code: 'OWNER_RESULT_INVALID'
     });
   });
@@ -216,7 +215,7 @@ describe('Lite Agency Workspace large Trademark Asset migration orchestration', 
 
     await expect(
       service.migrate({ workspaceId, migrationKey: 'empty', items: [] })
-    ).rejects.toMatchObject<Partial<TrademarkAssetMigrationOrchestrationError>>({
+    ).rejects.toMatchObject({
       code: 'INVALID_INPUT'
     });
 
@@ -226,7 +225,7 @@ describe('Lite Agency Workspace large Trademark Asset migration orchestration', 
         migrationKey: 'x'.repeat(261),
         items: [normalizedItem(0)]
       })
-    ).rejects.toMatchObject<Partial<TrademarkAssetMigrationOrchestrationError>>({
+    ).rejects.toMatchObject({
       code: 'INVALID_INPUT'
     });
 
@@ -236,7 +235,7 @@ describe('Lite Agency Workspace large Trademark Asset migration orchestration', 
     );
     await expect(
       service.migrate({ workspaceId, migrationKey: 'too-many', items: tooManyItems })
-    ).rejects.toMatchObject<Partial<TrademarkAssetMigrationOrchestrationError>>({
+    ).rejects.toMatchObject({
       code: 'INVALID_INPUT'
     });
     expect(bulkImport).not.toHaveBeenCalled();
