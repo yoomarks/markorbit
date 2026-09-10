@@ -1,6 +1,7 @@
 import type { ProductLoopExactReference } from './product-loop.js';
 import type { MarkOrbitId } from './index.js';
 import type { ManagedAiRetryDisposition } from './managed-ai-execution.js';
+import type { TradingShowcaseId, TradingShowcaseV1 } from './trading-brand-dna.js';
 import type {
   TradingAiProfileId,
   TradingAiProfileV1,
@@ -35,6 +36,29 @@ export type TradingSourceAssetOrigin = (typeof tradingSourceAssetOrigins)[number
 
 export const tradingListingAssetContentClasses = ['EXISTING_ASSET', 'AI_CONCEPT'] as const;
 export type TradingListingAssetContentClass = (typeof tradingListingAssetContentClasses)[number];
+
+export type TradingListingAssetAdmissionId = `trading-listing-asset-admission_${string}`;
+
+export interface TradingListingAssetAdmissionSourceV1 {
+  workspaceId: string;
+  studioVisualAsset: Readonly<ProductLoopExactReference<TradingStudioVisualAssetId>>;
+  qualityReview: Readonly<ProductLoopExactReference<TradingStudioVisualQualityReviewId>>;
+  showcase: Readonly<ProductLoopExactReference<TradingShowcaseId>>;
+  showcasePanelSlotId: string;
+}
+
+export interface TradingListingAssetPublicRepresentationApprovalV1 {
+  method: 'EXPLICIT_HUMAN_ACTION';
+  approvalReference: string;
+  approvedAt: string;
+}
+
+export interface TradingListingAssetAdmissionV1 {
+  schemaVersion: 1;
+  admissionId: TradingListingAssetAdmissionId;
+  source: Readonly<TradingListingAssetAdmissionSourceV1>;
+  publicRepresentationApproval: Readonly<TradingListingAssetPublicRepresentationApprovalV1>;
+}
 
 export const tradingVisualCreativeRoles = [
   'HERO',
@@ -90,6 +114,7 @@ export interface TradingListingAssetV1 extends TradingAssetBaseV1 {
   contentClass: TradingListingAssetContentClass;
   provenanceReferences: readonly string[];
   publicationApprovalReference: string;
+  admission?: Readonly<TradingListingAssetAdmissionV1>;
   visibility: 'LISTING_PUBLIC';
   aiConceptLabel: boolean;
   commercialDirection?: Readonly<ProductLoopExactReference<TradingCommercialDirectionId>>;
@@ -215,6 +240,71 @@ function timestamp(value: string, field: string): void {
     throw new TradingAssetClassificationValidationError(`${field} must be an ISO timestamp.`);
 }
 
+function assertListingAssetAdmissionShape(
+  admission: Readonly<TradingListingAssetAdmissionV1>,
+  publicationApprovalReference: string
+): void {
+  if (admission.schemaVersion !== 1)
+    throw new TradingAssetClassificationValidationError(
+      'tradingAsset.admission.schemaVersion must be 1.'
+    );
+  if (!/^trading-listing-asset-admission_[A-Za-z0-9_-]+$/u.test(admission.admissionId))
+    throw new TradingAssetClassificationValidationError(
+      'tradingAsset.admission.admissionId is invalid.'
+    );
+  required(admission.source.workspaceId, 'tradingAsset.admission.source.workspaceId');
+  if (
+    !/^trading-ai-derived_visual-asset_[A-Za-z0-9_-]+$/u.test(admission.source.studioVisualAsset.id)
+  )
+    throw new TradingAssetClassificationValidationError(
+      'tradingAsset.admission.source.studioVisualAsset must identify a Studio Visual Asset.'
+    );
+  positiveVersion(
+    admission.source.studioVisualAsset.version,
+    'tradingAsset.admission.source.studioVisualAsset.version'
+  );
+  if (
+    !/^trading-studio-visual-quality-review_[A-Za-z0-9_-]+$/u.test(
+      admission.source.qualityReview.id
+    )
+  )
+    throw new TradingAssetClassificationValidationError(
+      'tradingAsset.admission.source.qualityReview must identify a Visual Quality Review.'
+    );
+  positiveVersion(
+    admission.source.qualityReview.version,
+    'tradingAsset.admission.source.qualityReview.version'
+  );
+  if (!/^trading-showcase_[A-Za-z0-9_-]+$/u.test(admission.source.showcase.id))
+    throw new TradingAssetClassificationValidationError(
+      'tradingAsset.admission.source.showcase must identify a Showcase.'
+    );
+  positiveVersion(
+    admission.source.showcase.version,
+    'tradingAsset.admission.source.showcase.version'
+  );
+  required(
+    admission.source.showcasePanelSlotId,
+    'tradingAsset.admission.source.showcasePanelSlotId'
+  );
+  if (admission.publicRepresentationApproval.method !== 'EXPLICIT_HUMAN_ACTION')
+    throw new TradingAssetClassificationValidationError(
+      'Listing Asset public representation requires explicit human approval.'
+    );
+  required(
+    admission.publicRepresentationApproval.approvalReference,
+    'tradingAsset.admission.publicRepresentationApproval.approvalReference'
+  );
+  timestamp(
+    admission.publicRepresentationApproval.approvedAt,
+    'tradingAsset.admission.publicRepresentationApproval.approvedAt'
+  );
+  if (admission.publicRepresentationApproval.approvalReference !== publicationApprovalReference)
+    throw new TradingAssetClassificationValidationError(
+      'Listing Asset admission approval must match publicationApprovalReference.'
+    );
+}
+
 /** Enforces the classification boundary without creating, approving or publishing either asset. */
 export function assertTradingAssetClassificationV1(asset: Readonly<TradingAssetReferenceV1>): void {
   if (asset.schemaVersion !== 1)
@@ -310,6 +400,13 @@ export function assertTradingAssetClassificationV1(asset: Readonly<TradingAssetR
       'Listing Assets require provenanceReferences.'
     );
   required(asset.publicationApprovalReference, 'tradingAsset.publicationApprovalReference');
+  if (asset.contentClass === 'AI_CONCEPT') {
+    if (!asset.admission)
+      throw new TradingAssetClassificationValidationError(
+        'AI Concept Listing Assets require exact Studio/Showcase admission.'
+      );
+    assertListingAssetAdmissionShape(asset.admission, asset.publicationApprovalReference);
+  }
   if (asset.aiConceptLabel !== (asset.contentClass === 'AI_CONCEPT'))
     throw new TradingAssetClassificationValidationError(
       'AI Concept Listing Assets must retain an explicit AI concept label.'
@@ -524,5 +621,80 @@ export function assertTradingListingAssetCommercialIntentV1(
   )
     throw new TradingAssetClassificationValidationError(
       'Commercial-intent Listing Assets require at least one commercial-intent semantic.'
+    );
+}
+
+/**
+ * Proves that one AI Concept Listing Asset was admitted from the exact quality-passed private
+ * Studio visual selected in one exact private Showcase panel. The human approval admits only this
+ * public representation; it does not publish a Listing or mutate Trademark Truth.
+ */
+export function assertTradingListingAssetAdmissionV1(
+  asset: Readonly<TradingListingAssetV1>,
+  studioVisual: Readonly<TradingStudioVisualAssetV1>,
+  qualityReview: Readonly<TradingStudioVisualQualityReviewV1>,
+  showcase: Readonly<TradingShowcaseV1>
+): void {
+  assertTradingAssetClassificationV1(asset);
+  if (asset.contentClass !== 'AI_CONCEPT' || !asset.admission)
+    throw new TradingAssetClassificationValidationError(
+      'Studio/Showcase admission applies only to AI Concept Listing Assets.'
+    );
+  assertTradingAssetClassificationV1(studioVisual);
+  assertTradingStudioVisualQualityReviewV1(qualityReview, studioVisual);
+
+  const { source, publicRepresentationApproval } = asset.admission;
+  if (
+    source.workspaceId !== studioVisual.workspaceId ||
+    showcase.workspaceId !== studioVisual.workspaceId ||
+    !sameReference(source.studioVisualAsset, {
+      id: studioVisual.studioVisualAssetId,
+      version: studioVisual.version
+    }) ||
+    !sameReference(source.qualityReview, {
+      id: qualityReview.visualQualityReviewId,
+      version: qualityReview.version
+    }) ||
+    !sameReference(source.showcase, { id: showcase.showcaseId, version: showcase.version }) ||
+    !sameReference(asset.trademarkAsset, studioVisual.trademarkAsset)
+  )
+    throw new TradingAssetClassificationValidationError(
+      'Listing Asset admission must bind the exact Studio visual, quality review, Showcase and Trademark Asset.'
+    );
+
+  if (qualityReview.status === 'FAIL')
+    throw new TradingAssetClassificationValidationError(
+      'Listing Asset admission requires a quality-passed Studio Visual Asset.'
+    );
+
+  const panel = showcase.panels.find(
+    (candidate) => candidate.slotId === source.showcasePanelSlotId
+  );
+  if (
+    !panel ||
+    !sameReference(panel.studioVisualAsset, source.studioVisualAsset) ||
+    !sameReference(panel.qualityReview, source.qualityReview) ||
+    panel.selectionMethod !== 'EXPLICIT_HUMAN_ACTION' ||
+    panel.aiConceptLabel !== true
+  )
+    throw new TradingAssetClassificationValidationError(
+      'Listing Asset admission source must be the exact explicitly selected Showcase panel.'
+    );
+
+  if (
+    showcase.visibility !== 'PRIVATE' ||
+    showcase.publicationEligibility !== 'NOT_ELIGIBLE' ||
+    Object.values(showcase.authorityConsequences).some((value) => value !== false)
+  )
+    throw new TradingAssetClassificationValidationError(
+      'Showcase selection remains private and cannot create publication authority.'
+    );
+
+  if (
+    Date.parse(publicRepresentationApproval.approvedAt) < Date.parse(qualityReview.reviewedAt) ||
+    Date.parse(publicRepresentationApproval.approvedAt) < Date.parse(showcase.createdAt)
+  )
+    throw new TradingAssetClassificationValidationError(
+      'Public representation approval must follow the exact QA and Showcase evidence it approves.'
     );
 }
