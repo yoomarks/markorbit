@@ -13,7 +13,9 @@ export const dataEngineResourceKinds = [
   'TRADEMARK_CHANGE_FEED',
   'RECORDED_ASSIGNMENT_FACTS',
   'TTAB_PROCEEDING_FACTS',
-  'PRELIMINARY_PUBLICATION_FACT_DISCOVERY'
+  'PRELIMINARY_PUBLICATION_FACT_DISCOVERY',
+  'APPLICANT_IDENTITY_DISCOVERY',
+  'APPLICANT_PORTFOLIO_DISCOVERY'
 ] as const;
 export type DataEngineResourceKind = (typeof dataEngineResourceKinds)[number];
 
