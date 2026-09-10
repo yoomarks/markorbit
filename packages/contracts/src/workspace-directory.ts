@@ -205,7 +205,7 @@ function positiveInteger(value: unknown, field: string): number {
 function oneOf<T extends readonly string[]>(value: unknown, allowed: T, field: string): T[number] {
   if (typeof value !== 'string' || !allowed.some((candidate) => candidate === value))
     throw new WorkspaceDirectoryContractValidationError(`${field} is invalid.`);
-  return value as T[number];
+  return value;
 }
 
 function stringArray(
