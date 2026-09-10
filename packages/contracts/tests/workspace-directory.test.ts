@@ -207,9 +207,9 @@ describe('Workspace Directory V1', () => {
   });
 
   it('rejects unknown top-level and nested fields rather than creating hidden CRM or authority semantics', () => {
-    expect(() =>
-      parseWorkspaceDirectoryEntryV1({ ...organizationInput, leadScore: 99 })
-    ).toThrow('unsupported fields');
+    expect(() => parseWorkspaceDirectoryEntryV1({ ...organizationInput, leadScore: 99 })).toThrow(
+      'unsupported fields'
+    );
 
     expect(() =>
       parseWorkspaceDirectoryEntryV1({
@@ -288,7 +288,10 @@ describe('Workspace Directory V1', () => {
     expect(archived.authorityConsequences.officialTruthCreated).toBe(false);
 
     expect(() =>
-      parseWorkspaceDirectoryEntryV1({ ...offlineCounselInput, status: 'ARCHIVED' })
+      parseWorkspaceDirectoryEntryV1({
+        ...offlineCounselInput,
+        status: 'ARCHIVED'
+      })
     ).toThrow('ARCHIVED Directory entry requires archivedAt');
     expect(() =>
       parseWorkspaceDirectoryEntryV1({
