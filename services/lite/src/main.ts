@@ -278,16 +278,21 @@ const dailyOrbitService = new DailyOrbitService(
   undefined,
   new PostgresDailyOrbitVisibilityProvider(pool)
 );
-const dailyWorkspaceSnapshotService = new DailyWorkspaceSnapshotService(dailyOrbitService, {
-  async listToday(workspaceId) {
-    const [snapshot, recentFeedback, feedbackPendingPackages] = await Promise.all([
-      journeyService.listToday(workspaceId),
-      feedbackStore.listRecent(workspaceId),
-      feedbackStore.listPendingPackages(workspaceId)
-    ]);
-    return { ...snapshot, recentFeedback, feedbackPendingPackages };
-  }
-});
+const dailyWorkspaceSnapshotService = new DailyWorkspaceSnapshotService(
+  dailyOrbitService,
+  {
+    async listToday(workspaceId) {
+      const [snapshot, recentFeedback, feedbackPendingPackages] = await Promise.all([
+        journeyService.listToday(workspaceId),
+        feedbackStore.listRecent(workspaceId),
+        feedbackStore.listPendingPackages(workspaceId)
+      ]);
+      return { ...snapshot, recentFeedback, feedbackPendingPackages };
+    }
+  },
+  undefined,
+  liteWorkItemStore
+);
 const visualBridgeStore = new PostgresVisualBridgeStore(database, pool);
 const contentKitService = new ContentKitService(
   dailyOrbitService,
