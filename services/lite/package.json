@@ -9,7 +9,7 @@
     "test": "vitest run",
     "test:conversion-analytics:postgres": "vitest run tests/conversion-analytics-postgres.test.ts",
     "test:preference-feedback:postgres": "vitest run tests/preference-feedback-postgres.test.ts",
-    "test:trademark-asset:postgres": "vitest run tests/trademark-asset-postgres.test.ts && vitest run tests/trademark-asset-portfolio-postgres.test.ts && vitest run tests/trademark-asset-commerce-postgres.test.ts && vitest run tests/trademark-asset-marketplace-reference-postgres.test.ts && vitest run tests/trademark-asset-refresh-postgres.test.ts && vitest run tests/trading-studio-run-postgres.test.ts && vitest run tests/trading-ai-profile-postgres.test.ts && vitest run tests/trademark-service-work-package-postgres.test.ts",
+    "test:trademark-asset:postgres": "vitest run tests/trademark-asset-postgres.test.ts && vitest run tests/trademark-asset-portfolio-postgres.test.ts && vitest run tests/trademark-asset-commerce-postgres.test.ts && vitest run tests/trademark-asset-marketplace-reference-postgres.test.ts && vitest run tests/trademark-asset-refresh-postgres.test.ts && vitest run tests/trading-studio-run-postgres.test.ts && vitest run tests/trading-ai-profile-postgres.test.ts && vitest run tests/trademark-service-work-package-postgres.test.ts && vitest run tests/trademark-asset-migration-postgres.test.ts",
     "typecheck": "tsc --noEmit",
     "lint": "eslint src tests"
   },

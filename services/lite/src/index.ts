@@ -14,6 +14,7 @@ export * from './trademark-asset.js';
 export * from './trademark-asset-view.js';
 export * from './trademark-asset-portfolio.js';
 export * from './trademark-asset-migration.js';
+export * from './trademark-asset-migration-postgres.js';
 export * from './trademark-asset-attention.js';
 export * from './trademark-asset-refresh.js';
 export * from './trading-studio-run.js';
