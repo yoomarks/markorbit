@@ -1,8 +1,7 @@
 import type { ManagedCommunicationMessageV1 } from '@markorbit/contracts/managed-communication';
 import type {
   TrademarkAsset,
-  TrademarkAssetExternalIdentifier,
-  TrademarkAssetId
+  TrademarkAssetExternalIdentifier
 } from '@markorbit/contracts/trademark-asset-workspace';
 import { describe, expect, it, vi } from 'vitest';
 import {
@@ -31,7 +30,7 @@ function asset(
 ): TrademarkAsset {
   return {
     schemaVersion: 1,
-    trademarkAssetId: `trademark-asset_${suffix}` as TrademarkAssetId,
+    trademarkAssetId: `trademark-asset_${suffix}`,
     workspaceId: options.workspaceId ?? workspaceId,
     version: 1,
     identity: { jurisdiction: 'US', markText: options.markText ?? `MARK ${suffix}` },
@@ -91,7 +90,7 @@ function fixture(
   assets: readonly TrademarkAsset[],
   associations: readonly CommunicationLinkThreadAssociationEvidence[] = []
 ) {
-  const read = vi.fn(() => Promise.resolve(assets));
+  const read = vi.fn(() => Promise.resolve({ assets, completeForExactResolution: true }));
   const lookup = vi.fn(() => Promise.resolve(associations));
   return {
     read,
@@ -304,7 +303,9 @@ describe('Lite deterministic Communication Link candidate resolver V0', () => {
   });
 
   it('preserves unresolved when no deterministic evidence exists', async () => {
-    const { resolver } = fixture([asset('unrelated', [identifier('APPLICATION_NUMBER', '99999999')])]);
+    const { resolver } = fixture([
+      asset('unrelated', [identifier('APPLICATION_NUMBER', '99999999')])
+    ]);
 
     const resolved = await resolver.resolve({
       workspaceId,
@@ -326,9 +327,7 @@ describe('Lite deterministic Communication Link candidate resolver V0', () => {
     });
 
     expect(resolved.state).toBe('UNRESOLVED');
-    expect(resolved.boundedMaterial.textBodyChars).toBe(
-      COMMUNICATION_LINK_MESSAGE_LIMITS.textBody
-    );
+    expect(resolved.boundedMaterial.textBodyChars).toBe(COMMUNICATION_LINK_MESSAGE_LIMITS.textBody);
   });
 
   it('keeps every authority consequence false for prepared candidates', async () => {
@@ -354,11 +353,27 @@ describe('Lite deterministic Communication Link candidate resolver V0', () => {
     });
   });
 
+  it('fails closed when Asset context is incomplete for exact resolution', async () => {
+    const target = asset('partial', [identifier('APPLICATION_NUMBER', '98123456')]);
+    const read = vi.fn(() =>
+      Promise.resolve({ assets: [target], completeForExactResolution: false })
+    );
+    const lookup = vi.fn(() => Promise.resolve([]));
+    const resolver = new CommunicationLinkCandidateResolver({ read }, { lookup });
+
+    await expect(
+      resolver.resolve({ workspaceId, message: message({ subject: 'Application 98123456' }) })
+    ).rejects.toMatchObject({ code: 'ASSET_CONTEXT_INCOMPLETE' });
+    expect(lookup).not.toHaveBeenCalled();
+  });
+
   it('fails closed when an injected Asset reader violates the bounded context limit', async () => {
     const assets = Array.from({ length: COMMUNICATION_LINK_MAX_ASSET_CONTEXT + 1 }, (_, index) =>
       asset(`overflow-${index}`)
     );
-    const { resolver } = fixture(assets);
+    const read = vi.fn(() => Promise.resolve({ assets, completeForExactResolution: true }));
+    const lookup = vi.fn(() => Promise.resolve([]));
+    const resolver = new CommunicationLinkCandidateResolver({ read }, { lookup });
 
     await expect(resolver.resolve({ workspaceId, message: message() })).rejects.toMatchObject({
       code: 'ASSET_CONTEXT_LIMIT_EXCEEDED'

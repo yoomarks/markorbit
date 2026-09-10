@@ -25,13 +25,8 @@ export const communicationLinkUnsupportedMatching = [
 export type CommunicationLinkUnsupportedMatching =
   (typeof communicationLinkUnsupportedMatching)[number];
 
-export type CommunicationLinkResolutionState =
-  | 'MATCH_CANDIDATE'
-  | 'AMBIGUOUS'
-  | 'UNRESOLVED';
-export type CommunicationLinkResolutionMethod =
-  | 'EXACT_IDENTIFIER'
-  | 'CONFIRMED_THREAD_INHERITANCE';
+export type CommunicationLinkResolutionState = 'MATCH_CANDIDATE' | 'AMBIGUOUS' | 'UNRESOLVED';
+export type CommunicationLinkResolutionMethod = 'EXACT_IDENTIFIER' | 'CONFIRMED_THREAD_INHERITANCE';
 export type CommunicationLinkConfidenceClass = 'DETERMINISTIC_EXACT' | 'CONFIRMED_CONTEXT';
 export type CommunicationLinkEvidenceField = 'SUBJECT' | 'TEXT_BODY' | 'HTML_DERIVED_TEXT';
 
@@ -70,14 +65,11 @@ export interface CommunicationLinkThreadCandidate {
 }
 
 export type CommunicationLinkCandidate =
-  | CommunicationLinkExactCandidate
-  | CommunicationLinkThreadCandidate;
+  CommunicationLinkExactCandidate | CommunicationLinkThreadCandidate;
 
 export type CommunicationLinkThreadAssociationStatus = 'CONFIRMED' | 'SUGGESTED' | 'REJECTED';
 export type CommunicationLinkThreadConfirmationAuthority =
-  | 'HUMAN'
-  | 'DETERMINISTIC'
-  | 'AI_SUGGESTION';
+  'HUMAN' | 'DETERMINISTIC' | 'AI_SUGGESTION';
 
 export interface CommunicationLinkThreadAssociationEvidence {
   associationReference: string;
@@ -89,11 +81,16 @@ export interface CommunicationLinkThreadAssociationEvidence {
   target: Readonly<ProductLoopExactReference<TrademarkAssetId>>;
 }
 
+export interface CommunicationLinkAssetContext {
+  assets: ReadonlyArray<Readonly<TrademarkAsset>>;
+  completeForExactResolution: boolean;
+}
+
 export interface CommunicationLinkAssetContextReader {
   read(input: {
     workspaceId: string;
     limit: number;
-  }): Promise<ReadonlyArray<Readonly<TrademarkAsset>>>;
+  }): Promise<Readonly<CommunicationLinkAssetContext>>;
 }
 
 export interface CommunicationLinkThreadAssociationLookup {
@@ -150,7 +147,7 @@ export interface CommunicationLinkResolutionResult {
 
 export class CommunicationLinkResolverError extends Error {
   constructor(
-    readonly code: 'INVALID_INPUT' | 'ASSET_CONTEXT_LIMIT_EXCEEDED',
+    readonly code: 'INVALID_INPUT' | 'ASSET_CONTEXT_LIMIT_EXCEEDED' | 'ASSET_CONTEXT_INCOMPLETE',
     message: string
   ) {
     super(message);
@@ -180,7 +177,9 @@ function htmlToText(html: string): string {
     .replace(/&#39;/gu, "'");
 }
 
-function messageReference(message: Readonly<ManagedCommunicationMessageV1>): CommunicationLinkMessageReference {
+function messageReference(
+  message: Readonly<ManagedCommunicationMessageV1>
+): CommunicationLinkMessageReference {
   return {
     accountRef: message.accountRef,
     messageId: message.messageId,
@@ -229,7 +228,10 @@ function exactPattern(value: string): RegExp | undefined {
   return new RegExp(`(?<![A-Z0-9])${pattern}(?![A-Z0-9])`, 'iu');
 }
 
-function fieldMatches(text: string, identifier: Readonly<TrademarkAssetExternalIdentifier>): boolean {
+function fieldMatches(
+  text: string,
+  identifier: Readonly<TrademarkAssetExternalIdentifier>
+): boolean {
   const pattern = exactPattern(identifier.value);
   return pattern === undefined ? false : pattern.test(text.normalize('NFKC'));
 }
@@ -341,18 +343,25 @@ export class CommunicationLinkCandidateResolver {
     }
     const reference = messageReference(input.message);
     const searched = searchMaterial(input.message);
-    const assets = await this.assets.read({
+    const assetContext = await this.assets.read({
       workspaceId,
       limit: COMMUNICATION_LINK_MAX_ASSET_CONTEXT
     });
-    if (assets.length > COMMUNICATION_LINK_MAX_ASSET_CONTEXT) {
+    if (assetContext.assets.length > COMMUNICATION_LINK_MAX_ASSET_CONTEXT) {
       throw new CommunicationLinkResolverError(
         'ASSET_CONTEXT_LIMIT_EXCEEDED',
         `asset context must contain at most ${COMMUNICATION_LINK_MAX_ASSET_CONTEXT} assets.`
       );
     }
 
-    const exact = exactCandidates(workspaceId, assets, searched.material, reference);
+    if (!assetContext.completeForExactResolution) {
+      throw new CommunicationLinkResolverError(
+        'ASSET_CONTEXT_INCOMPLETE',
+        'asset context must be complete for deterministic exact resolution.'
+      );
+    }
+
+    const exact = exactCandidates(workspaceId, assetContext.assets, searched.material, reference);
     if (exact.length > 0) {
       return result(workspaceId, reference, searched.boundedMaterial, exact);
     }
