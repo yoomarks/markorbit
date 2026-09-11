@@ -12,6 +12,7 @@ import type {
   TrademarkAssetManagementSignalSeverity
 } from '@markorbit/contracts/trademark-asset-management';
 import type { TrademarkAssetSourceReference } from '@markorbit/contracts/trademark-asset-workspace';
+import { isCompleteTrademarkAssetSourceReadState } from './trademark-asset-observation-admission.js';
 import type { TrademarkAssetRefreshRun } from './trademark-asset-refresh.js';
 
 const DAY_MS = 86_400_000;
@@ -174,6 +175,28 @@ export function deriveTrademarkAssetManagementSignals(
           .map((fact) => fact.kind)
           .sort()
           .join(',')}`
+      )
+    );
+  }
+
+  const incompleteReads = (refresh?.sourceReadStates ?? []).filter(
+    (read) => !isCompleteTrademarkAssetSourceReadState(read.state)
+  );
+  if (incompleteReads.length > 0) {
+    result.push(
+      signal(
+        view,
+        'SOURCE_FRESHNESS',
+        'NOTICE',
+        `Source read state requires verification: ${incompleteReads
+          .map((read) => `${read.owner}=${read.state}`)
+          .join(', ')}. Unavailable or uncovered input is not treated as an empty source result.`,
+        refresh?.observations.filter((source) =>
+          incompleteReads.some((read) => read.owner === source.owner)
+        ) ?? [],
+        refresh,
+        generatedAt,
+        `read-state:${incompleteReads.map((read) => `${read.owner}:${read.state}`).join('|')}`
       )
     );
   }

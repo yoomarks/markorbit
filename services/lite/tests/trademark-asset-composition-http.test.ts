@@ -49,7 +49,8 @@ function route() {
     get: getAsset
   } as unknown as PostgresLiteTrademarkAssetStore;
   const refreshLedger = {
-    listRecent: vi.fn(() => Promise.resolve([]))
+    listRecent: vi.fn(() => Promise.resolve([])),
+    listCurrentAdmittedClaims: vi.fn(() => Promise.resolve([]))
   } as unknown as PostgresTrademarkAssetRefreshLedger;
   const value = createTrademarkAssetCompositionRoutes({
     internalServiceSecret,

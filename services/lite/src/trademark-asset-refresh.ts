@@ -4,6 +4,7 @@ import {
   type TrademarkAssetManagementChangeReference
 } from '@markorbit/contracts/trademark-asset-management';
 import {
+  isTrademarkAssetSourceOwnerKindPair,
   trademarkAssetFreshnessStates,
   trademarkAssetSourceKinds,
   trademarkAssetSourceOwners,
@@ -13,6 +14,14 @@ import {
 } from '@markorbit/contracts/trademark-asset-workspace';
 import type { QueryClient } from '@markorbit/persistence';
 import type { LiteTransactionHost } from './content-preparation.js';
+import {
+  isCompleteTrademarkAssetSourceReadState,
+  materializeTrademarkAssetAdmittedClaimsV1,
+  materializeTrademarkAssetSourceReadStatesV1,
+  type TrademarkAssetAdmittedClaimV1,
+  type TrademarkAssetClaimAdmissionInputV1,
+  type TrademarkAssetSourceScopeReadV1
+} from './trademark-asset-observation-admission.js';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const SHA256 = /^[0-9a-f]{64}$/;
@@ -24,6 +33,8 @@ export interface RefreshTrademarkAssetCommand {
   trademarkAssetId: TrademarkAssetId;
   sourceOwnerScope: readonly TrademarkAssetSourceOwner[];
   observations: ReadonlyArray<Readonly<TrademarkAssetSourceReference>>;
+  sourceReadStates?: ReadonlyArray<Readonly<TrademarkAssetSourceScopeReadV1>>;
+  admittedClaims?: ReadonlyArray<Readonly<TrademarkAssetClaimAdmissionInputV1>>;
   idempotencyKey: string;
 }
 
@@ -34,6 +45,8 @@ export interface TrademarkAssetRefreshRun {
   trademarkAssetId: TrademarkAssetId;
   sourceOwnerScope: readonly TrademarkAssetSourceOwner[];
   observations: ReadonlyArray<Readonly<TrademarkAssetSourceReference>>;
+  sourceReadStates?: ReadonlyArray<Readonly<TrademarkAssetSourceScopeReadV1>>;
+  admittedClaims?: ReadonlyArray<Readonly<TrademarkAssetAdmittedClaimV1>>;
   changes: ReadonlyArray<Readonly<TrademarkAssetManagementChangeReference>>;
   refreshedAt: string;
   officialTruthVerifiedByLite: false;
@@ -124,6 +137,13 @@ function cleanSourceReference(
   if (!trademarkAssetSourceKinds.includes(source.kind)) {
     throw new TrademarkAssetRefreshError('INVALID_INPUT', 'Unknown observation kind.', 400);
   }
+  if (!isTrademarkAssetSourceOwnerKindPair(source.owner, source.kind)) {
+    throw new TrademarkAssetRefreshError(
+      'INVALID_INPUT',
+      `Observation owner ${source.owner} cannot use source kind ${source.kind}.`,
+      400
+    );
+  }
   if (!trademarkAssetFreshnessStates.includes(source.freshness)) {
     throw new TrademarkAssetRefreshError('INVALID_INPUT', 'Unknown observation freshness.', 400);
   }
@@ -194,12 +214,19 @@ function cleanObservations(
       );
     }
     const key = sourceKey(cleaned);
-    if (byKey.has(key)) {
-      throw new TrademarkAssetRefreshError(
-        'INVALID_INPUT',
-        `Refresh contains more than one current observation for ${key}.`,
-        400
-      );
+    const previous = byKey.get(key);
+    if (previous) {
+      if (
+        comparisonFingerprint(previous) !== comparisonFingerprint(cleaned) ||
+        previous.observedAt !== cleaned.observedAt
+      ) {
+        throw new TrademarkAssetRefreshError(
+          'INVALID_INPUT',
+          `Refresh contains more than one current observation for ${key}.`,
+          400
+        );
+      }
+      continue;
     }
     byKey.set(key, cleaned);
   }
@@ -285,13 +312,46 @@ export class PostgresTrademarkAssetRefreshLedger {
     const workspaceId = cleanWorkspaceId(command.workspaceId);
     const trademarkAssetId = cleanAssetId(command.trademarkAssetId);
     const sourceOwnerScope = cleanScope(command.sourceOwnerScope);
-    const observations = cleanObservations(command.observations, sourceOwnerScope);
+    let admittedClaims: readonly TrademarkAssetAdmittedClaimV1[];
+    try {
+      admittedClaims = materializeTrademarkAssetAdmittedClaimsV1({
+        workspaceId,
+        trademarkAssetId,
+        ...(command.admittedClaims === undefined ? {} : { claims: command.admittedClaims })
+      });
+    } catch (error) {
+      throw new TrademarkAssetRefreshError(
+        'INVALID_INPUT',
+        error instanceof Error ? error.message : 'Admitted claim is invalid.',
+        400
+      );
+    }
+    const observations = cleanObservations(
+      [...command.observations, ...admittedClaims.map((claim) => claim.source)],
+      sourceOwnerScope
+    );
+    let sourceReadStates: readonly TrademarkAssetSourceScopeReadV1[];
+    try {
+      sourceReadStates = materializeTrademarkAssetSourceReadStatesV1({
+        scope: sourceOwnerScope,
+        observations,
+        ...(command.sourceReadStates === undefined ? {} : { readStates: command.sourceReadStates })
+      });
+    } catch (error) {
+      throw new TrademarkAssetRefreshError(
+        'INVALID_INPUT',
+        error instanceof Error ? error.message : 'Source read state is invalid.',
+        400
+      );
+    }
     const idempotencyKey = cleanText(command.idempotencyKey, 'idempotencyKey', 300);
     const requestFingerprintSha256 = fingerprint({
       workspaceId,
       trademarkAssetId,
       sourceOwnerScope,
-      observations
+      observations,
+      sourceReadStates,
+      admittedClaims
     });
 
     try {
@@ -327,38 +387,23 @@ export class PostgresTrademarkAssetRefreshLedger {
           throw new TrademarkAssetRefreshError('NOT_FOUND', 'Trademark Asset was not found.', 404);
         }
 
-        const priorRun = await client.query(
-          `SELECT refresh_run_id
-             FROM lite_trademark_asset_refresh_runs
-            WHERE workspace_id=$1
-              AND trademark_asset_id=$2
-              AND source_owner_scope @> $3::jsonb
-            ORDER BY refreshed_at DESC, refresh_run_id DESC
-            LIMIT 1`,
-          [workspaceId, trademarkAssetId, JSON.stringify(sourceOwnerScope)]
-        );
-        const priorRunRow = priorRun.rows[0] as Row | undefined;
-        const previousRunId =
-          typeof priorRunRow?.refresh_run_id === 'string' ? priorRunRow.refresh_run_id : undefined;
-        const previousRows = previousRunId
-          ? await client.query(
-              `SELECT source_reference_json
-                 FROM lite_trademark_asset_refresh_observations
-                WHERE workspace_id=$1 AND refresh_run_id=$2
-                  AND source_owner = ANY($3::text[])
-                ORDER BY source_key ASC`,
-              [workspaceId, previousRunId, sourceOwnerScope]
-            )
-          : { rows: [] as Row[] };
-
-        const previous = new Map<string, TrademarkAssetSourceReference>();
-        for (const row of previousRows.rows as Row[]) {
-          const source = rowSource(row);
-          previous.set(sourceKey(source), source);
-        }
-        const current = new Map(observations.map((source) => [sourceKey(source), source] as const));
         const refreshedAt = new Date(this.now()).toISOString();
-        const changes = detectChanges(previous, current, refreshedAt);
+        const changes: TrademarkAssetManagementChangeReference[] = [];
+        for (const readState of sourceReadStates) {
+          if (!isCompleteTrademarkAssetSourceReadState(readState.state)) continue;
+          const previous = await this.previousCompleteObservations(
+            client,
+            workspaceId,
+            trademarkAssetId,
+            readState.owner
+          );
+          const current = new Map(
+            observations
+              .filter((source) => source.owner === readState.owner)
+              .map((source) => [sourceKey(source), source] as const)
+          );
+          changes.push(...detectChanges(previous, current, refreshedAt));
+        }
         const refreshRunId =
           `trademark-asset-refresh_${randomUUID()}` as TrademarkAssetRefreshRunId;
         const result: TrademarkAssetRefreshRun = {
@@ -368,6 +413,8 @@ export class PostgresTrademarkAssetRefreshLedger {
           trademarkAssetId,
           sourceOwnerScope,
           observations,
+          sourceReadStates,
+          admittedClaims,
           changes,
           refreshedAt,
           officialTruthVerifiedByLite: false,
@@ -458,6 +505,90 @@ export class PostgresTrademarkAssetRefreshLedger {
       throw new TrademarkAssetRefreshError(
         'PERSISTENCE_UNAVAILABLE',
         'Trademark Asset refresh ledger is unavailable.',
+        503,
+        true,
+        { cause: error instanceof Error ? error : undefined }
+      );
+    }
+  }
+
+  private async latestCompleteRunForOwner(
+    client: QueryClient,
+    workspaceId: string,
+    trademarkAssetId: TrademarkAssetId,
+    owner: TrademarkAssetSourceOwner
+  ): Promise<Row | undefined> {
+    const result = await client.query<Row>(
+      `SELECT refresh_run_id,result_json
+         FROM lite_trademark_asset_refresh_runs
+        WHERE workspace_id=$1 AND trademark_asset_id=$2
+          AND source_owner_scope @> $3::jsonb
+          AND (
+            NOT (result_json ? 'sourceReadStates')
+            OR EXISTS (
+              SELECT 1
+                FROM jsonb_array_elements(COALESCE(result_json->'sourceReadStates','[]'::jsonb)) AS rs
+               WHERE rs->>'owner'=$4 AND rs->>'state' IN ('OBSERVED','EMPTY')
+            )
+          )
+        ORDER BY refreshed_at DESC, refresh_run_id DESC
+        LIMIT 1`,
+      [workspaceId, trademarkAssetId, JSON.stringify([owner]), owner]
+    );
+    return result.rows[0];
+  }
+
+  private async previousCompleteObservations(
+    client: QueryClient,
+    workspaceId: string,
+    trademarkAssetId: TrademarkAssetId,
+    owner: TrademarkAssetSourceOwner
+  ): Promise<Map<string, TrademarkAssetSourceReference>> {
+    const run = await this.latestCompleteRunForOwner(client, workspaceId, trademarkAssetId, owner);
+    if (!run || typeof run.refresh_run_id !== 'string') return new Map();
+    const rows = await client.query<Row>(
+      `SELECT source_reference_json
+         FROM lite_trademark_asset_refresh_observations
+        WHERE workspace_id=$1 AND refresh_run_id=$2 AND source_owner=$3
+        ORDER BY source_key ASC`,
+      [workspaceId, run.refresh_run_id, owner]
+    );
+    const result = new Map<string, TrademarkAssetSourceReference>();
+    for (const row of rows.rows) {
+      const source = rowSource(row);
+      result.set(sourceKey(source), source);
+    }
+    return result;
+  }
+
+  async listCurrentAdmittedClaims(
+    workspaceIdValue: string,
+    trademarkAssetIdValue: TrademarkAssetId
+  ): Promise<readonly TrademarkAssetAdmittedClaimV1[]> {
+    const workspaceId = cleanWorkspaceId(workspaceIdValue);
+    const trademarkAssetId = cleanAssetId(trademarkAssetIdValue);
+    try {
+      const claims: TrademarkAssetAdmittedClaimV1[] = [];
+      for (const owner of ['MANAGED_COMMUNICATION', 'WORKSPACE_USER'] as const) {
+        const run = await this.latestCompleteRunForOwner(
+          this.query,
+          workspaceId,
+          trademarkAssetId,
+          owner
+        );
+        const payload = run?.result_json as Partial<TrademarkAssetRefreshRun> | undefined;
+        if (payload?.admittedClaims === undefined) continue;
+        for (const claim of payload.admittedClaims) {
+          if (claim.source.owner === owner) claims.push(clone(claim));
+        }
+      }
+      return claims.sort((a, b) =>
+        `${a.source.owner}:${a.claimId}`.localeCompare(`${b.source.owner}:${b.claimId}`)
+      );
+    } catch (error) {
+      throw new TrademarkAssetRefreshError(
+        'PERSISTENCE_UNAVAILABLE',
+        'Trademark Asset admitted-claim history is unavailable.',
         503,
         true,
         { cause: error instanceof Error ? error : undefined }

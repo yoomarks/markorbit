@@ -259,4 +259,92 @@ suite('PostgreSQL M11-WP02 Trademark Asset refresh ledger', () => {
       })
     ).rejects.toMatchObject({ code: 'NOT_FOUND' });
   });
+  it('does not manufacture removal for unavailable reads and resumes from the last complete read', async () => {
+    const asset = await admitAsset();
+    await ledger().refresh({
+      workspaceId,
+      trademarkAssetId: asset.trademarkAssetId,
+      sourceOwnerScope: ['DATA_ENGINE'],
+      observations: [dataObservation('1')],
+      idempotencyKey: 'availability-observed'
+    });
+
+    const unavailable = await ledger().refresh({
+      workspaceId,
+      trademarkAssetId: asset.trademarkAssetId,
+      sourceOwnerScope: ['DATA_ENGINE'],
+      observations: [],
+      sourceReadStates: [{ owner: 'DATA_ENGINE', state: 'UNAVAILABLE' }],
+      idempotencyKey: 'availability-unavailable'
+    });
+    expect(unavailable.changes).toEqual([]);
+    expect(unavailable.sourceReadStates).toEqual([{ owner: 'DATA_ENGINE', state: 'UNAVAILABLE' }]);
+
+    const empty = await ledger().refresh({
+      workspaceId,
+      trademarkAssetId: asset.trademarkAssetId,
+      sourceOwnerScope: ['DATA_ENGINE'],
+      observations: [],
+      sourceReadStates: [{ owner: 'DATA_ENGINE', state: 'EMPTY' }],
+      idempotencyKey: 'availability-empty'
+    });
+    expect(empty.changes).toHaveLength(1);
+    expect(empty.changes[0]).toMatchObject({ kind: 'OBSERVATION_REMOVED' });
+    expect(empty.changes[0]?.sourceReferences[0]?.sourceVersion).toBe('1');
+  });
+
+  it('restores reviewed communication and Workspace-confirmed claims after restart', async () => {
+    const asset = await admitAsset();
+    const communicationSource = {
+      owner: 'MANAGED_COMMUNICATION',
+      kind: 'MANAGED_COMMUNICATION_MESSAGE',
+      sourceId: 'managed-message_pg-1165',
+      sourceVersion: '3',
+      sourceFingerprintSha256: 'd'.repeat(64),
+      observedAt: '2026-09-11T11:00:00.000Z',
+      freshness: 'CURRENT'
+    } as const;
+    await ledger().refresh({
+      workspaceId,
+      trademarkAssetId: asset.trademarkAssetId,
+      sourceOwnerScope: ['MANAGED_COMMUNICATION', 'WORKSPACE_USER'],
+      observations: [],
+      admittedClaims: [
+        {
+          claimClass: 'COMMUNICATION_CLAIM',
+          claimId: 'claim_pg-email-status',
+          factKind: 'APPLICATION_STATUS',
+          value: 'REGISTERED',
+          source: communicationSource,
+          consequential: true,
+          reviewedByPrincipalId: 'user_pg-reviewer',
+          reviewedAt: '2026-09-11T11:05:00.000Z'
+        },
+        {
+          claimClass: 'WORKSPACE_USER_CONFIRMATION',
+          claimId: 'claim_pg-certificate',
+          factKind: 'REGISTRATION_DATE',
+          value: '2026-09-01',
+          consequential: true,
+          confirmedByPrincipalId: 'user_pg-agent',
+          confirmedAt: '2026-09-11T11:06:00.000Z'
+        }
+      ],
+      idempotencyKey: 'claims-persisted'
+    });
+
+    const restarted = new PostgresTrademarkAssetRefreshLedger(database, database.getPool(), now);
+    const restored = await restarted.listCurrentAdmittedClaims(workspaceId, asset.trademarkAssetId);
+    expect(restored).toHaveLength(2);
+    expect(restored.map((claim) => claim.claimClass).sort()).toEqual([
+      'COMMUNICATION_CLAIM',
+      'WORKSPACE_USER_CONFIRMATION'
+    ]);
+    for (const claim of restored) {
+      expect(claim.officialTruthVerifiedByLite).toBe(false);
+      expect(claim.customerInstructionEstablished).toBe(false);
+      expect(claim.legalConclusionCreated).toBe(false);
+      expect(claim.admissionFingerprintSha256).toMatch(/^[0-9a-f]{64}$/);
+    }
+  });
 });

@@ -13,6 +13,7 @@ import { HttpError, json, type JsonRequest, type JsonRoute } from '@markorbit/se
 import { deriveTrademarkAssetAttention } from './trademark-asset-attention.js';
 import { deriveTrademarkAssetManagementSignals } from './trademark-asset-management-signal.js';
 import { prepareTrademarkAssetManagementRecommendations } from './trademark-asset-management-recommendation.js';
+import { factContributionsFromAdmittedClaims } from './trademark-asset-observation-admission.js';
 import type { PostgresTrademarkAssetRefreshLedger } from './trademark-asset-refresh.js';
 import type { PostgresLiteTrademarkAssetStore } from './trademark-asset.js';
 import {
@@ -161,10 +162,17 @@ export function createTrademarkAssetCompositionRoutes(
         const trademarkAssetId = request.params.trademarkAssetId! as TrademarkAssetId;
         const anchor = await options.assets.get(principal.workspaceId, trademarkAssetId);
         const composedAt = now();
-        const view = composeTrademarkAssetView({ anchor, facts: factsOf(request), composedAt });
-        const latestRefresh = (
-          await options.refreshLedger.listRecent(principal.workspaceId, trademarkAssetId, 1)
-        )[0];
+        const [latestRefresh, admittedClaims] = await Promise.all([
+          options.refreshLedger
+            .listRecent(principal.workspaceId, trademarkAssetId, 1)
+            .then((runs) => runs[0]),
+          options.refreshLedger.listCurrentAdmittedClaims(principal.workspaceId, trademarkAssetId)
+        ]);
+        const view = composeTrademarkAssetView({
+          anchor,
+          facts: [...factsOf(request), ...factContributionsFromAdmittedClaims(admittedClaims)],
+          composedAt
+        });
         const managementSignals = deriveTrademarkAssetManagementSignals(
           view,
           latestRefresh,
