@@ -558,6 +558,7 @@ suite('PostgreSQL M11-WP07 Trademark Asset management disposition recovery', () 
   it.each([
     ['unsupported kind', 'kind', 'UNSUPPORTED'],
     ['Workspace User owner', 'owner', 'WORKSPACE_USER'],
+    ['Managed Communication owner', 'owner', 'MANAGED_COMMUNICATION'],
     ['unsupported owner', 'owner', 'UNSUPPORTED']
   ] as const)('fails closed for workflow reference %s', async (_label, field, value) => {
     await expectMalformedDurableDocument(

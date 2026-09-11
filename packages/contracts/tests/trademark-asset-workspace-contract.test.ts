@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import {
   aiGuideSuggestionKinds,
+  isTrademarkAssetSourceOwnerKindPair,
   noAutomaticTrademarkAssetConsequences,
+  parseTrademarkAssetSourceOwnerKind,
   trademarkAssetAiGuideAuthority,
   trademarkAssetAttentionDimensions,
   trademarkAssetAttentionSeverities,
@@ -10,6 +12,7 @@ import {
   trademarkAssetIdentifierKinds,
   trademarkAssetRelationKinds,
   trademarkAssetSourceKinds,
+  trademarkAssetSourceKindsByOwner,
   trademarkAssetSourceOwners,
   trademarkAssetWorkspaceRelationshipKinds,
   type AiGuideContext,
@@ -188,6 +191,45 @@ describe('M10 Trademark Asset Workspace contracts', () => {
     expect(aiGuideSuggestionKinds).toContain('PREPARE_OWNER_ACTION_CANDIDATE');
   });
 
+  it('keeps Managed Communication and Workspace confirmation source kinds owner-bound', () => {
+    expect(trademarkAssetSourceKindsByOwner.MANAGED_COMMUNICATION).toEqual([
+      'MANAGED_COMMUNICATION_MESSAGE'
+    ]);
+    expect(trademarkAssetSourceKindsByOwner.WORKSPACE_USER).toContain('WORKSPACE_CONFIRMATION');
+    expect(
+      isTrademarkAssetSourceOwnerKindPair('MANAGED_COMMUNICATION', 'MANAGED_COMMUNICATION_MESSAGE')
+    ).toBe(true);
+    expect(isTrademarkAssetSourceOwnerKindPair('WORKSPACE_USER', 'WORKSPACE_CONFIRMATION')).toBe(
+      true
+    );
+    expect(
+      ['MARKREG', 'EXECUTION', 'KNOWLEDGE', 'DATA_ENGINE', 'MARKETPLACE', 'WORKSPACE_USER'].some(
+        (owner) => isTrademarkAssetSourceOwnerKindPair(owner, 'MANAGED_COMMUNICATION_MESSAGE')
+      )
+    ).toBe(false);
+    expect(
+      isTrademarkAssetSourceOwnerKindPair('MANAGED_COMMUNICATION', 'WORKSPACE_CONFIRMATION')
+    ).toBe(false);
+    expect(isTrademarkAssetSourceOwnerKindPair('WORKSPACE_USER', 'WORKSPACE_NOTE')).toBe(true);
+    expect(isTrademarkAssetSourceOwnerKindPair('DATA_ENGINE', 'DATA_ENGINE_TRADEMARK_RECORD')).toBe(
+      true
+    );
+    expect(isTrademarkAssetSourceOwnerKindPair('UNKNOWN_OWNER', 'WORKSPACE_CONFIRMATION')).toBe(
+      false
+    );
+    expect(
+      parseTrademarkAssetSourceOwnerKind('MANAGED_COMMUNICATION', 'MANAGED_COMMUNICATION_MESSAGE')
+    ).toEqual({
+      owner: 'MANAGED_COMMUNICATION',
+      kind: 'MANAGED_COMMUNICATION_MESSAGE'
+    });
+    expect(() =>
+      parseTrademarkAssetSourceOwnerKind('DATA_ENGINE', 'MANAGED_COMMUNICATION_MESSAGE')
+    ).toThrow(/owner\/kind/);
+    expect(() =>
+      parseTrademarkAssetSourceOwnerKind('WORKSPACE_USER', 'MANAGED_COMMUNICATION_MESSAGE')
+    ).toThrow(/owner\/kind/);
+  });
   it('keeps the durable Asset ID independent from mutable external identifiers', () => {
     expect(asset.trademarkAssetId).toBe('trademark-asset_m10-wp02');
     expect(asset.externalIdentifiers[0]?.value).toBe('98123456');
