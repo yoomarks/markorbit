@@ -32,6 +32,7 @@ export * from './workspace-trademark-change-interpretation.js';
 export * from './trademark-asset-management-handoff.js';
 export * from './trademark-asset-management-disposition.js';
 export * from './trademark-service-work-package.js';
+export * from './trademark-service-workbench-http.js';
 export * from './trademark-service-requirement-composition.js';
 export * from './trademark-service-readiness.js';
 export * from './trademark-service-candidate-matching.js';

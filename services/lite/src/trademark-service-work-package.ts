@@ -1,6 +1,7 @@
 import { createHash, randomUUID } from 'node:crypto';
 import {
   trademarkServiceIntentKinds,
+  type TrademarkServiceCommunicationDraft,
   type TrademarkServiceIntent,
   type TrademarkServiceWorkPackage,
   type TrademarkServiceWorkPackageId
@@ -51,6 +52,20 @@ export interface UpdateTrademarkServiceWorkPackageContextCommand {
   managementRecommendationReference?: string;
   intent: Readonly<TrademarkServiceIntent>;
   idempotencyKey: string;
+}
+
+export interface SaveReviewedTrademarkServiceCommunicationDraftCommand {
+  workspaceId: string;
+  workPackageId: TrademarkServiceWorkPackageId;
+  expectedVersion: number;
+  draft: Readonly<TrademarkServiceCommunicationDraft>;
+  idempotencyKey: string;
+}
+
+export interface ReviewedTrademarkServiceCommunicationDraftSnapshot {
+  workPackage: Readonly<{ id: TrademarkServiceWorkPackageId; version: number }>;
+  draft: Readonly<TrademarkServiceCommunicationDraft>;
+  draftFingerprintSha256: string;
 }
 
 const clone = <T>(value: T): T => structuredClone(value);
@@ -185,6 +200,90 @@ function ensureVersion(value: number): void {
       400
     );
   }
+}
+
+function cleanReviewedCommunicationDraft(
+  value: Readonly<TrademarkServiceCommunicationDraft>
+): TrademarkServiceCommunicationDraft {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    throw new TrademarkServiceWorkPackagePersistenceError(
+      'INVALID_INPUT',
+      'draft must be an object.',
+      400
+    );
+  }
+  const preparationId = cleanText(value.preparationId, 'draft.preparationId', 300);
+  if (!preparationId.startsWith('trademark-service-preparation_')) {
+    throw new TrademarkServiceWorkPackagePersistenceError(
+      'INVALID_INPUT',
+      'draft.preparationId is invalid.',
+      400
+    );
+  }
+  if (value.kind !== 'CLIENT_INFORMATION_REQUEST') {
+    throw new TrademarkServiceWorkPackagePersistenceError(
+      'INVALID_INPUT',
+      'Only reviewed client information request drafts may be persisted here.',
+      400
+    );
+  }
+  if (value.sent !== false || value.externalContactAuthorized !== false) {
+    throw new TrademarkServiceWorkPackagePersistenceError(
+      'INVALID_INPUT',
+      'Reviewed draft persistence cannot mark a draft sent or authorize external contact.',
+      400
+    );
+  }
+  const recipientReference = optionalText(
+    value.recipientReference,
+    'draft.recipientReference',
+    1000
+  );
+  return {
+    preparationId: preparationId as TrademarkServiceCommunicationDraft['preparationId'],
+    kind: 'CLIENT_INFORMATION_REQUEST',
+    subject: cleanText(value.subject, 'draft.subject', 2000),
+    body: cleanText(value.body, 'draft.body', 100000),
+    ...(recipientReference ? { recipientReference } : {}),
+    sent: false,
+    externalContactAuthorized: false
+  };
+}
+
+export function trademarkServiceCommunicationDraftFingerprintSha256(
+  value: Readonly<TrademarkServiceCommunicationDraft>
+): string {
+  return fingerprint(cleanReviewedCommunicationDraft(value));
+}
+
+function reviewedDraftSnapshot(
+  workPackage: Readonly<TrademarkServiceWorkPackage>,
+  preparationIdInput: string
+): ReviewedTrademarkServiceCommunicationDraftSnapshot {
+  const preparationId = cleanText(preparationIdInput, 'preparationId', 300);
+  const matches = workPackage.communicationDrafts.filter(
+    (draft) => draft.preparationId === preparationId
+  );
+  if (matches.length === 0) {
+    throw new TrademarkServiceWorkPackagePersistenceError(
+      'NOT_FOUND',
+      'Reviewed communication draft was not found in this Work Package version.',
+      404
+    );
+  }
+  if (matches.length !== 1) {
+    throw new TrademarkServiceWorkPackagePersistenceError(
+      'PERSISTENCE_UNAVAILABLE',
+      'Reviewed communication draft state is ambiguous.',
+      503
+    );
+  }
+  const draft = cleanReviewedCommunicationDraft(matches[0]!);
+  return {
+    workPackage: { id: workPackage.workPackageId, version: workPackage.version },
+    draft,
+    draftFingerprintSha256: trademarkServiceCommunicationDraftFingerprintSha256(draft)
+  };
 }
 
 const rowPackage = (row: Row | undefined): TrademarkServiceWorkPackage | undefined =>
@@ -415,11 +514,135 @@ export class PostgresTrademarkServiceWorkPackageStore {
     }
   }
 
+  async saveReviewedCommunicationDraft(
+    command: Readonly<SaveReviewedTrademarkServiceCommunicationDraftCommand>
+  ): Promise<TrademarkServiceWorkPackage> {
+    const workspaceId = cleanWorkspaceId(command.workspaceId);
+    const workPackageId = cleanWorkPackageId(command.workPackageId);
+    ensureVersion(command.expectedVersion);
+    const draft = cleanReviewedCommunicationDraft(command.draft);
+    const idempotencyKey = cleanText(command.idempotencyKey, 'idempotencyKey', 300);
+    const requestFingerprint = fingerprint({
+      workspaceId,
+      workPackageId,
+      expectedVersion: command.expectedVersion,
+      draft
+    });
+
+    try {
+      return await this.database.transact(async (client) => {
+        await client.query('SELECT pg_advisory_xact_lock(hashtextextended($1,0))', [
+          `${workspaceId}:trademark-service-work-package:${workPackageId}`
+        ]);
+        const replay = await client.query(
+          `SELECT request_fingerprint_sha256,result_json
+             FROM lite_trademark_service_work_package_commands
+            WHERE workspace_id=$1 AND idempotency_key=$2`,
+          [workspaceId, idempotencyKey]
+        );
+        const prior = replay.rows[0] as Row | undefined;
+        if (prior) return this.replay(prior, requestFingerprint);
+
+        const currentResult = await client.query(
+          `SELECT document_json
+             FROM lite_trademark_service_work_packages
+            WHERE workspace_id=$1 AND work_package_id=$2 FOR UPDATE`,
+          [workspaceId, workPackageId]
+        );
+        const current = rowPackage(currentResult.rows[0] as Row | undefined);
+        if (!current) this.notFound();
+        if (current.version !== command.expectedVersion) {
+          throw new TrademarkServiceWorkPackagePersistenceError(
+            'VERSION_CONFLICT',
+            'Service Work Package changed since the reviewed draft was prepared.',
+            409
+          );
+        }
+
+        const matchingIndexes = current.communicationDrafts
+          .map((candidate, index) => (candidate.preparationId === draft.preparationId ? index : -1))
+          .filter((index) => index >= 0);
+        if (matchingIndexes.length > 1) {
+          throw new TrademarkServiceWorkPackagePersistenceError(
+            'PERSISTENCE_UNAVAILABLE',
+            'Reviewed communication draft state is ambiguous.',
+            503
+          );
+        }
+        const communicationDrafts = [...current.communicationDrafts];
+        const existingIndex = matchingIndexes[0];
+        if (existingIndex === undefined) communicationDrafts.push(draft);
+        else communicationDrafts[existingIndex] = draft;
+
+        const timestamp = new Date(this.now()).toISOString();
+        const updated: TrademarkServiceWorkPackage = {
+          ...current,
+          version: current.version + 1,
+          communicationDrafts,
+          updatedAt: timestamp,
+          parallelMatterLifecycleCreated: false,
+          officialTruthCreated: false,
+          protectedActionAuthorized: false
+        };
+        await client.query(
+          `UPDATE lite_trademark_service_work_packages
+              SET version=$3,document_fingerprint_sha256=$4,document_json=$5::jsonb,updated_at=$6
+            WHERE workspace_id=$1 AND work_package_id=$2`,
+          [
+            workspaceId,
+            workPackageId,
+            updated.version,
+            fingerprint(updated),
+            JSON.stringify(updated),
+            timestamp
+          ]
+        );
+        await this.persistVersion(client, updated, timestamp);
+        await this.persistCommand(
+          client,
+          workspaceId,
+          idempotencyKey,
+          'SAVE_REVIEWED_COMMUNICATION_DRAFT',
+          requestFingerprint,
+          updated,
+          timestamp
+        );
+        return clone(updated);
+      });
+    } catch (error) {
+      if (error instanceof TrademarkServiceWorkPackagePersistenceError) throw error;
+      throw this.unavailable(error);
+    }
+  }
+
   async get(
     workspaceIdInput: string,
     workPackageIdInput: string
   ): Promise<TrademarkServiceWorkPackage> {
     return this.read(workspaceIdInput, workPackageIdInput);
+  }
+
+  async getCurrentReviewedCommunicationDraft(
+    workspaceIdInput: string,
+    workPackageIdInput: string,
+    preparationId: string
+  ): Promise<ReviewedTrademarkServiceCommunicationDraftSnapshot> {
+    return reviewedDraftSnapshot(
+      await this.get(workspaceIdInput, workPackageIdInput),
+      preparationId
+    );
+  }
+
+  async getReviewedCommunicationDraftVersion(
+    workspaceIdInput: string,
+    workPackageIdInput: string,
+    version: number,
+    preparationId: string
+  ): Promise<ReviewedTrademarkServiceCommunicationDraftSnapshot> {
+    return reviewedDraftSnapshot(
+      await this.getVersion(workspaceIdInput, workPackageIdInput, version),
+      preparationId
+    );
   }
 
   async getVersion(
@@ -510,7 +733,7 @@ export class PostgresTrademarkServiceWorkPackageStore {
     client: QueryClient,
     workspaceId: string,
     idempotencyKey: string,
-    commandType: 'CREATE_WORK_PACKAGE' | 'UPDATE_CONTEXT',
+    commandType: 'CREATE_WORK_PACKAGE' | 'UPDATE_CONTEXT' | 'SAVE_REVIEWED_COMMUNICATION_DRAFT',
     requestFingerprint: string,
     workPackage: TrademarkServiceWorkPackage,
     createdAt: string

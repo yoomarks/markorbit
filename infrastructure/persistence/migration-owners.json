@@ -175,6 +175,7 @@
     "0111_core_governed_human_action_receipts_trading_publish": "@markorbit/core-service",
     "0112_lite_communication_links": "@markorbit/lite-service",
     "0113_lite_workspace_directory": "@markorbit/lite-service",
-    "0114_lite_intake_staging": "@markorbit/lite-service"
+    "0114_lite_intake_staging": "@markorbit/lite-service",
+    "0115_lite_trademark_service_reviewed_communication_draft": "@markorbit/lite-service"
   }
 }

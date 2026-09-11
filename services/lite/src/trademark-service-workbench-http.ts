@@ -1,6 +1,7 @@
 import { timingSafeEqual } from 'node:crypto';
 import { parseInternalWorkspacePrincipal, type WorkspacePrincipal } from '@markorbit/contracts';
 import type {
+  TrademarkServiceCommunicationDraft,
   TrademarkServiceIntent,
   TrademarkServiceWorkPackage
 } from '@markorbit/contracts/trademark-service-workbench';
@@ -169,6 +170,57 @@ export function createTrademarkServiceWorkbenchRoutes(
             idempotencyKey: key
           });
           return json(201, { workPackage });
+        } catch (error) {
+          return mapError(error);
+        }
+      }
+    },
+    {
+      method: 'POST',
+      path: '/v1/trademark-service-work-packages/:workPackageId/reviewed-communication-drafts',
+      handle: async (request) => {
+        const principal = principalOf(request, options.internalServiceSecret, 'review:perform');
+        const body = bodyRecord(request);
+        const key = request.headers['idempotency-key'];
+        if (!key?.trim())
+          throw new HttpError(400, 'INVALID_REQUEST', 'Idempotency-Key header is required.');
+        if (
+          body.reviewedByPrincipalId !== undefined ||
+          body.reviewedByUserId !== undefined ||
+          body.userId !== undefined
+        )
+          throw new HttpError(
+            400,
+            'ACTOR_SPOOF_REJECTED',
+            'Reviewer identity comes from the authenticated Principal.'
+          );
+        try {
+          const workPackage = await options.workPackages.saveReviewedCommunicationDraft({
+            workspaceId: principal.workspaceId,
+            workPackageId: request.params
+              .workPackageId! as TrademarkServiceWorkPackage['workPackageId'],
+            expectedVersion: positiveVersion(body.expectedWorkPackageVersion),
+            draft: body.draft as TrademarkServiceCommunicationDraft,
+            idempotencyKey: key
+          });
+          return json(201, { workPackage });
+        } catch (error) {
+          return mapError(error);
+        }
+      }
+    },
+    {
+      method: 'GET',
+      path: '/v1/trademark-service-work-packages/:workPackageId/reviewed-communication-drafts/:preparationId',
+      handle: async (request) => {
+        const principal = principalOf(request, options.internalServiceSecret, 'workspace:read');
+        try {
+          const reviewedDraft = await options.workPackages.getCurrentReviewedCommunicationDraft(
+            principal.workspaceId,
+            request.params.workPackageId!,
+            request.params.preparationId!
+          );
+          return json(200, { reviewedDraft });
         } catch (error) {
           return mapError(error);
         }
