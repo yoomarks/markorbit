@@ -75,7 +75,8 @@
     "lite_work_items": "@markorbit/lite-service",
     "core_oauth_credentials": "@markorbit/core-service",
     "lite_workspace_watch_targets": "@markorbit/lite-service",
-    "lite_communication_links": "@markorbit/lite-service"
+    "lite_communication_links": "@markorbit/lite-service",
+    "lite_workspace_directory": "@markorbit/lite-service"
   },
   "migrations": {
     "0018_identity_workspace_membership": "@markorbit/core-service",
@@ -172,6 +173,7 @@
     "0109_core_oauth_credentials": "@markorbit/core-service",
     "0110_lite_workspace_watch_targets": "@markorbit/lite-service",
     "0111_core_governed_human_action_receipts_trading_publish": "@markorbit/core-service",
-    "0112_lite_communication_links": "@markorbit/lite-service"
+    "0112_lite_communication_links": "@markorbit/lite-service",
+    "0113_lite_workspace_directory": "@markorbit/lite-service"
   }
 }
