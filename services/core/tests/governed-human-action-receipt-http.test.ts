@@ -148,3 +148,43 @@ describe('governed human-action receipt internal HTTP boundary', () => {
     ).rejects.toMatchObject({ code, status, retryable });
   });
 });
+
+describe('Trading Listing Publish receipt internal HTTP admission', () => {
+  it('admits the exact TRADING_LISTING_PUBLISH kind without broadening request fields', async () => {
+    const trading: MaterializeGovernedHumanActionReceiptRequest = {
+      ...command,
+      kind: 'TRADING_LISTING_PUBLISH',
+      mutationRoute:
+        '/api/execution/protected-external-actions/trading-listing-publish/authorizations',
+      reviewedActionDigest: 'd'.repeat(64),
+      idempotencyKey: 'trading-listing-publish-1'
+    };
+    const materialize = vi.fn((input: Readonly<MaterializeGovernedHumanActionReceiptRequest>) =>
+      Promise.resolve({ ...receipt, ...input })
+    );
+    const f = routes({ materialize });
+    const response = await f.result[0]!.handle(
+      request('/internal/auth/governed-human-actions/receipts', trading)
+    );
+    expect(response.status).toBe(200);
+    expect(materialize).toHaveBeenCalledWith(trading);
+  });
+
+  it('continues to reject unowned generic or Social publish action kinds', async () => {
+    const f = routes();
+    for (const kind of ['EXTERNAL_ACTION', 'SOCIAL_PUBLISH']) {
+      await expect(
+        f.result[0]!.handle(
+          request('/internal/auth/governed-human-actions/receipts', {
+            ...command,
+            kind
+          })
+        )
+      ).rejects.toMatchObject({
+        status: 400,
+        code: 'INVALID_GOVERNED_HUMAN_ACTION_REQUEST'
+      });
+    }
+    expect(f.materializeOrResolve).not.toHaveBeenCalled();
+  });
+});

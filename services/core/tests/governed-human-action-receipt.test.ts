@@ -237,3 +237,74 @@ describe('governed human-action receipt authority', () => {
     });
   });
 });
+
+describe('Trading Listing Publish HUMAN_USER receipt domain', () => {
+  const tradingCommand = (): MaterializeGovernedHumanActionReceiptRequest => ({
+    ...command(),
+    kind: 'TRADING_LISTING_PUBLISH',
+    mutationRoute:
+      '/api/execution/protected-external-actions/trading-listing-publish/authorizations',
+    idempotencyKey: 'trading-listing-publish-1',
+    reviewedActionDigest: 'd'.repeat(64)
+  });
+
+  it('materializes only the exact bounded Trading publish action without downstream authority', async () => {
+    const f = service();
+    const receipt = await f.service.materializeOrResolve(tradingCommand());
+    expect(receipt).toMatchObject({
+      kind: 'TRADING_LISTING_PUBLISH',
+      mutationRoute:
+        '/api/execution/protected-external-actions/trading-listing-publish/authorizations',
+      reviewedActionDigest: 'd'.repeat(64),
+      source: 'CORE',
+      actorKind: 'HUMAN_USER'
+    });
+    for (const field of ['executionReleaseId', 'executionId', 'published', 'filingId', 'paymentId'])
+      expect(receipt).not.toHaveProperty(field);
+  });
+
+  it.each([
+    '/api/execution/protected-external-actions/trading-listing-publish/authorizations/extra',
+    '/api/execution/protected-external-actions/social-publish/authorizations',
+    '/api/mgsn/governed-network/selections'
+  ])('rejects Trading publish on a non-canonical route: %s', async (mutationRoute) => {
+    const f = service();
+    await expect(
+      f.service.materializeOrResolve({ ...tradingCommand(), mutationRoute })
+    ).rejects.toMatchObject({
+      code: 'INVALID_GOVERNED_HUMAN_ACTION_REQUEST',
+      status: 400
+    });
+  });
+
+  it('cannot replay the same idempotency key across governed action domains', async () => {
+    const store = new MemoryStore();
+    const f = service({ store });
+    await f.service.materializeOrResolve(tradingCommand());
+    await expect(
+      f.service.materializeOrResolve({
+        ...command(),
+        idempotencyKey: 'trading-listing-publish-1'
+      })
+    ).rejects.toMatchObject({
+      code: 'GOVERNED_HUMAN_ACTION_REPLAY_CONFLICT',
+      status: 409
+    });
+  });
+
+  it('requires the exact stored Trading principal binding during current validation', async () => {
+    const store = new MemoryStore();
+    const f = service({ store });
+    const receipt = await f.service.materializeOrResolve(tradingCommand());
+    await expect(
+      f.service.validateCurrent({
+        ...tradingCommand(),
+        receiptId: receipt.receiptId,
+        principalReference: 'core-workspace-principal:spoofed-lineage'
+      })
+    ).rejects.toMatchObject({
+      code: 'GOVERNED_HUMAN_ACTION_REPLAY_CONFLICT',
+      status: 409
+    });
+  });
+});
