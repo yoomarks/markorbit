@@ -263,3 +263,46 @@ describe('Governed Gateway action framework', () => {
     ).rejects.toMatchObject({ status: 400, code: 'BROWSER_GOVERNED_AUTHORITY_FORBIDDEN' });
   });
 });
+
+describe('Trading Listing Publish governed Gateway composition', () => {
+  it('binds the exact Trading publish route and trusted action digest into a Core receipt request', async () => {
+    const materialize = vi.fn((input: GovernedHumanActionReceiptMaterializationV1) =>
+      Promise.resolve(receipt(input))
+    );
+    const path = '/api/execution/protected-external-actions/trading-listing-publish/authorizations';
+    const result = await authorizeGovernedWorkspaceMutation(
+      request({ listingId: 'listing-840', expectedVersion: 7 }, {}, path),
+      options(client({ materializeGovernedHumanActionReceipt: materialize })),
+      {
+        permission: 'workspace:manage',
+        idempotency: 'REQUIRED',
+        humanAction: 'TRADING_LISTING_PUBLISH'
+      }
+    );
+
+    const input = materialize.mock.calls[0]![0];
+    expect(input).toMatchObject({
+      workspaceId,
+      userId,
+      membershipId,
+      kind: 'TRADING_LISTING_PUBLISH',
+      mutationRoute: path,
+      idempotencyKey: 'key-840',
+      authenticatedAt
+    });
+    expect(input.reviewedActionDigest).toMatch(/^[0-9a-f]{64}$/);
+    const envelope = JSON.parse(
+      Buffer.from(result.humanActionEnvelope!, 'base64url').toString('utf8')
+    ) as Record<string, unknown>;
+    expect(envelope).toMatchObject({
+      kind: 'TRADING_LISTING_PUBLISH',
+      actorKind: 'HUMAN_USER',
+      workspaceId,
+      userId,
+      membershipId,
+      payloadIdentityAuthoritative: false
+    });
+    expect(envelope).not.toHaveProperty('executionReleaseId');
+    expect(envelope).not.toHaveProperty('published');
+  });
+});

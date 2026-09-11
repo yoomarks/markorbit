@@ -6,7 +6,13 @@ import {
 } from './current-workspace-authority.js';
 import { uuidV7 } from './auth.js';
 
-export const GOVERNED_HUMAN_ACTION_KINDS = ['PROVIDER_SELECTION', 'CONTROLLED_HANDOFF'] as const;
+export const GOVERNED_HUMAN_ACTION_KINDS = [
+  'PROVIDER_SELECTION',
+  'CONTROLLED_HANDOFF',
+  'TRADING_LISTING_PUBLISH'
+] as const;
+export const TRADING_LISTING_PUBLISH_AUTHORIZATION_ROUTE =
+  '/api/execution/protected-external-actions/trading-listing-publish/authorizations' as const;
 export type GovernedHumanActionKind = (typeof GOVERNED_HUMAN_ACTION_KINDS)[number];
 
 export type GovernedHumanActionReceiptErrorCode =
@@ -77,7 +83,9 @@ const bounded = (value: string, max: number) => value.length > 0 && value.length
 function validRoute(kind: GovernedHumanActionKind, route: string): boolean {
   const selection = /^\/api\/mgsn\/governed-network\/selections(?:\/[A-Za-z0-9._:-]+\/revoke)?$/u;
   const handoff = /^\/api\/mgsn\/governed-network\/handoffs(?:\/[A-Za-z0-9._:-]+\/revoke)?$/u;
-  return (kind === 'PROVIDER_SELECTION' ? selection : handoff).test(route);
+  if (kind === 'PROVIDER_SELECTION') return selection.test(route);
+  if (kind === 'CONTROLLED_HANDOFF') return handoff.test(route);
+  return route === TRADING_LISTING_PUBLISH_AUTHORIZATION_ROUTE;
 }
 
 function validateBinding(value: Readonly<GovernedHumanActionReceiptBinding>): void {

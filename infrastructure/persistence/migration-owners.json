@@ -169,6 +169,7 @@
     "0107_lite_trading_listings": "@markorbit/lite-service",
     "0108_lite_work_items": "@markorbit/lite-service",
     "0109_core_oauth_credentials": "@markorbit/core-service",
-    "0110_lite_workspace_watch_targets": "@markorbit/lite-service"
+    "0110_lite_workspace_watch_targets": "@markorbit/lite-service",
+    "0111_core_governed_human_action_receipts_trading_publish": "@markorbit/core-service"
   }
 }

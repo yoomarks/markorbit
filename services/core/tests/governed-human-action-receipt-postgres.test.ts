@@ -74,11 +74,17 @@ integration('PostgreSQL governed human-action receipt authority', () => {
       .query(
         'DROP TABLE IF EXISTS core_governed_human_action_receipts,knowledge_v2_deliveries,knowledge_intake_contents,knowledge_intakes,password_credentials,account_profiles,sessions,workspace_memberships,workspaces,users CASCADE; DROP SCHEMA IF EXISTS markorbit_persistence CASCADE'
       );
+    const allMigrations = await coreMigrations();
     await migrate(
       database.getPool(),
       'core_governed_human_action_receipts',
-      await coreMigrations()
+      allMigrations.filter((migration) => migration.version <= '0095')
     );
+    const historicalStore = new PostgresGovernedHumanActionReceiptStore(database);
+    const historical = await historicalStore.materializeOrResolve(receipt());
+    await migrate(database.getPool(), 'core_governed_human_action_receipts', allMigrations);
+    await expect(historicalStore.findById(historical.receiptId)).resolves.toEqual(historical);
+    await cleanup();
   });
 
   afterAll(async () => database.close());
@@ -134,5 +140,29 @@ integration('PostgreSQL governed human-action receipt authority', () => {
     expect(names).not.toContain('payload');
     expect(names).not.toContain('contact');
     expect(names).not.toContain('handoff_fields');
+  });
+  it('persists a Trading Listing Publish receipt across reconnect after migration 0111', async () => {
+    await cleanup();
+    const trading = receipt({
+      receiptId: '018f0000-0000-7000-8000-000000000106',
+      authorityReference: 'core-governed-human-action-receipt:018f0000-0000-7000-8000-000000000106',
+      affirmativeHumanActionEvidenceReference:
+        'core-governed-human-action-evidence:018f0000-0000-7000-8000-000000000106',
+      kind: 'TRADING_LISTING_PUBLISH',
+      mutationRoute:
+        '/api/execution/protected-external-actions/trading-listing-publish/authorizations',
+      reviewedActionDigest: 'd'.repeat(64),
+      idempotencyKey: 'durable-trading-publish-1'
+    });
+    const firstStore = new PostgresGovernedHumanActionReceiptStore(database);
+    const created = await firstStore.materializeOrResolve(trading);
+
+    await database.close();
+    database = new ManagedDatabase(config());
+    await database.start();
+
+    const restartedStore = new PostgresGovernedHumanActionReceiptStore(database);
+    await expect(restartedStore.findById(created.receiptId)).resolves.toEqual(created);
+    await expect(restartedStore.materializeOrResolve(trading)).resolves.toEqual(created);
   });
 });
