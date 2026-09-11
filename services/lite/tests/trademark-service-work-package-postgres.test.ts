@@ -2,7 +2,10 @@ import path from 'node:path';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { ManagedDatabase, loadMigrationsForOwner, migrate } from '@markorbit/persistence';
 import { PostgresLiteTrademarkAssetStore } from '../src/trademark-asset.js';
-import { PostgresTrademarkServiceWorkPackageStore } from '../src/trademark-service-work-package.js';
+import {
+  PostgresTrademarkServiceWorkPackageStore,
+  trademarkServiceCommunicationDraftFingerprintSha256
+} from '../src/trademark-service-work-package.js';
 
 const url = process.env.LITE_TRADEMARK_ASSET_TEST_DATABASE_URL;
 const required = process.env.LITE_TRADEMARK_ASSET_POSTGRES_TEST_REQUIRED === '1';
@@ -33,6 +36,16 @@ const renewalIntent = {
   legalConclusionCreated: false,
   serviceAvailabilityVerified: false,
   legalDeadlineCertified: false
+} as const;
+
+const reviewedClientDraft = {
+  preparationId: 'trademark-service-preparation_reviewed-client-request',
+  kind: 'CLIENT_INFORMATION_REQUEST',
+  subject: 'Information needed to continue',
+  body: 'Please confirm the applicant name and provide the signed document.',
+  recipientReference: 'workspace-directory-entry_client-primary',
+  sent: false,
+  externalContactAuthorized: false
 } as const;
 
 suite('PostgreSQL M12-WP02 durable Trademark Service Work Package', () => {
@@ -68,20 +81,12 @@ suite('PostgreSQL M12-WP02 durable Trademark Service Work Package', () => {
       .query(
         'CREATE TABLE IF NOT EXISTS workspaces (workspace_id uuid PRIMARY KEY, name text NOT NULL, slug text NOT NULL UNIQUE)'
       );
-    const existingWorkPackageTable = await database
-      .getPool()
-      .query("SELECT to_regclass('public.lite_trademark_service_work_packages') AS table_name");
-    const existingWorkPackageTableName = (
-      existingWorkPackageTable.rows[0] as { table_name?: string | null } | undefined
-    )?.table_name;
-    if (!existingWorkPackageTableName) {
-      const liteMigrations = await loadMigrationsForOwner(
-        migrationsDirectory,
-        migrationOwners,
-        '@markorbit/lite-service'
-      );
-      await migrate(database.getPool(), 'lite_trademark_service_work_package_test', liteMigrations);
-    }
+    const liteMigrations = await loadMigrationsForOwner(
+      migrationsDirectory,
+      migrationOwners,
+      '@markorbit/lite-service'
+    );
+    await migrate(database.getPool(), 'lite_trademark_service_work_package_test', liteMigrations);
     await database.getPool().query(
       `INSERT INTO workspaces (workspace_id,name,slug) VALUES
        ($1,'Service Workbench Test','service-workbench-test'),
@@ -269,5 +274,134 @@ suite('PostgreSQL M12-WP02 durable Trademark Service Work Package', () => {
     });
     const restarted = workPackageStore();
     expect(await restarted.get(workspaceId, created.workPackageId)).toEqual(created);
+  });
+
+  it('durably owns reviewed client drafts with exact history, CAS and drift fingerprints', async () => {
+    const asset = await admitAsset();
+    const store = workPackageStore();
+    const created = await store.create({
+      workspaceId,
+      asset: { id: asset.trademarkAssetId, version: asset.version },
+      intent: renewalIntent,
+      createdByUserId: 'user_m12-wp02',
+      idempotencyKey: 'reviewed-draft-create'
+    });
+
+    await expect(
+      store.getCurrentReviewedCommunicationDraft(
+        workspaceId,
+        created.workPackageId,
+        reviewedClientDraft.preparationId
+      )
+    ).rejects.toMatchObject({ code: 'NOT_FOUND' });
+
+    const saveCommand = {
+      workspaceId,
+      workPackageId: created.workPackageId,
+      expectedVersion: 1,
+      draft: reviewedClientDraft,
+      idempotencyKey: 'save-reviewed-client-draft'
+    } as const;
+    const saved = await store.saveReviewedCommunicationDraft(saveCommand);
+    expect(saved.version).toBe(2);
+    expect(saved.communicationDrafts).toEqual([reviewedClientDraft]);
+    expect(saved.communicationDrafts[0]).toMatchObject({
+      sent: false,
+      externalContactAuthorized: false
+    });
+    expect(saved.protectedActionAuthorized).toBe(false);
+
+    const fingerprintV2 = trademarkServiceCommunicationDraftFingerprintSha256(reviewedClientDraft);
+    expect(fingerprintV2).toMatch(/^[0-9a-f]{64}$/);
+    expect(await store.saveReviewedCommunicationDraft(saveCommand)).toEqual(saved);
+    await expect(
+      store.saveReviewedCommunicationDraft({
+        ...saveCommand,
+        draft: { ...reviewedClientDraft, body: 'Different body.' }
+      })
+    ).rejects.toMatchObject({ code: 'IDEMPOTENCY_CONFLICT' });
+
+    const restarted = workPackageStore();
+    expect(
+      await restarted.getCurrentReviewedCommunicationDraft(
+        workspaceId,
+        created.workPackageId,
+        reviewedClientDraft.preparationId
+      )
+    ).toEqual({
+      workPackage: { id: created.workPackageId, version: 2 },
+      draft: reviewedClientDraft,
+      draftFingerprintSha256: fingerprintV2
+    });
+    expect(
+      await restarted.getReviewedCommunicationDraftVersion(
+        workspaceId,
+        created.workPackageId,
+        2,
+        reviewedClientDraft.preparationId
+      )
+    ).toMatchObject({ draftFingerprintSha256: fingerprintV2 });
+    await expect(
+      restarted.getReviewedCommunicationDraftVersion(
+        workspaceId,
+        created.workPackageId,
+        1,
+        reviewedClientDraft.preparationId
+      )
+    ).rejects.toMatchObject({ code: 'NOT_FOUND' });
+
+    const revisedDraft = {
+      ...reviewedClientDraft,
+      subject: 'Updated information request',
+      body: 'Please confirm the applicant name only.',
+      recipientReference: 'workspace-directory-entry_client-updated'
+    } as const;
+    const revised = await restarted.saveReviewedCommunicationDraft({
+      workspaceId,
+      workPackageId: created.workPackageId,
+      expectedVersion: 2,
+      draft: revisedDraft,
+      idempotencyKey: 'replace-reviewed-client-draft'
+    });
+    expect(revised.version).toBe(3);
+    expect(revised.communicationDrafts).toHaveLength(1);
+    const fingerprintV3 = trademarkServiceCommunicationDraftFingerprintSha256(revisedDraft);
+    expect(fingerprintV3).not.toBe(fingerprintV2);
+    expect(
+      await restarted.getReviewedCommunicationDraftVersion(
+        workspaceId,
+        created.workPackageId,
+        2,
+        reviewedClientDraft.preparationId
+      )
+    ).toMatchObject({ draft: reviewedClientDraft, draftFingerprintSha256: fingerprintV2 });
+    expect(
+      await restarted.getCurrentReviewedCommunicationDraft(
+        workspaceId,
+        created.workPackageId,
+        reviewedClientDraft.preparationId
+      )
+    ).toMatchObject({
+      workPackage: { version: 3 },
+      draft: revisedDraft,
+      draftFingerprintSha256: fingerprintV3
+    });
+
+    await expect(
+      restarted.saveReviewedCommunicationDraft({
+        workspaceId,
+        workPackageId: created.workPackageId,
+        expectedVersion: 2,
+        draft: { ...revisedDraft, body: 'Stale edit.' },
+        idempotencyKey: 'stale-reviewed-client-draft'
+      })
+    ).rejects.toMatchObject({ code: 'VERSION_CONFLICT' });
+    await expect(
+      restarted.getCurrentReviewedCommunicationDraft(
+        otherWorkspaceId,
+        created.workPackageId,
+        reviewedClientDraft.preparationId
+      )
+    ).rejects.toMatchObject({ code: 'NOT_FOUND' });
   });
 });
