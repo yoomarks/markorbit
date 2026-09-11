@@ -246,8 +246,10 @@ function parseProvenance(value: unknown, field: string): WorkspaceDirectoryLocal
   };
 }
 
-function parseContactPoint(value: unknown, index: number): WorkspaceDirectoryContactPointV1 {
-  const field = `contactPoints[${index}]`;
+export function parseWorkspaceDirectoryContactPointV1(
+  value: unknown,
+  field = 'workspaceDirectoryContactPoint'
+): WorkspaceDirectoryContactPointV1 {
   const item = record(value, field);
   exactKeys(item, ['kind', 'value', 'label', 'provenance'], field);
   const label = optionalText(item.label, `${field}.label`, 120);
@@ -375,7 +377,9 @@ function parseContactPoints(
     throw new WorkspaceDirectoryContractValidationError(
       'contactPoints must be an array with at most 50 items.'
     );
-  return value.map((contactPoint, index) => parseContactPoint(contactPoint, index));
+  return value.map((contactPoint, index) =>
+    parseWorkspaceDirectoryContactPointV1(contactPoint, `contactPoints[${index}]`)
+  );
 }
 
 function parseExternalIdentityReferences(
