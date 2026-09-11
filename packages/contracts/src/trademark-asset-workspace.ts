@@ -10,6 +10,7 @@ export const trademarkAssetSourceOwners = [
   'KNOWLEDGE',
   'DATA_ENGINE',
   'MARKETPLACE',
+  'MANAGED_COMMUNICATION',
   'WORKSPACE_USER'
 ] as const;
 export type TrademarkAssetSourceOwner = (typeof trademarkAssetSourceOwners)[number];
@@ -22,10 +23,48 @@ export const trademarkAssetSourceKinds = [
   'KNOWLEDGE_SOURCE',
   'DATA_ENGINE_TRADEMARK_RECORD',
   'MARKETPLACE_LISTING',
+  'MANAGED_COMMUNICATION_MESSAGE',
   'WORKSPACE_ADMISSION',
-  'WORKSPACE_NOTE'
+  'WORKSPACE_NOTE',
+  'WORKSPACE_CONFIRMATION'
 ] as const;
 export type TrademarkAssetSourceKind = (typeof trademarkAssetSourceKinds)[number];
+export const trademarkAssetSourceKindsByOwner = {
+  MARKREG: ['MARKREG_MATTER', 'MARKREG_LIFECYCLE_PROJECTION', 'MARKREG_ORDER'],
+  EXECUTION: ['EXECUTION_EVIDENCE'],
+  KNOWLEDGE: ['KNOWLEDGE_SOURCE'],
+  DATA_ENGINE: ['DATA_ENGINE_TRADEMARK_RECORD'],
+  MARKETPLACE: ['MARKETPLACE_LISTING'],
+  MANAGED_COMMUNICATION: ['MANAGED_COMMUNICATION_MESSAGE'],
+  WORKSPACE_USER: ['WORKSPACE_ADMISSION', 'WORKSPACE_NOTE', 'WORKSPACE_CONFIRMATION']
+} as const satisfies Readonly<
+  Record<TrademarkAssetSourceOwner, readonly TrademarkAssetSourceKind[]>
+>;
+
+/** Fail closed when a source kind is attached to the wrong source owner. */
+export function isTrademarkAssetSourceOwnerKindPair(owner: string, kind: string): boolean {
+  if (!trademarkAssetSourceOwners.includes(owner as TrademarkAssetSourceOwner)) return false;
+  if (!trademarkAssetSourceKinds.includes(kind as TrademarkAssetSourceKind)) return false;
+  return (
+    trademarkAssetSourceKindsByOwner[owner as TrademarkAssetSourceOwner] as readonly string[]
+  ).includes(kind);
+}
+export function parseTrademarkAssetSourceOwnerKind(
+  owner: unknown,
+  kind: unknown
+): { owner: TrademarkAssetSourceOwner; kind: TrademarkAssetSourceKind } {
+  if (
+    typeof owner !== 'string' ||
+    typeof kind !== 'string' ||
+    !isTrademarkAssetSourceOwnerKindPair(owner, kind)
+  ) {
+    throw new TypeError('Invalid Trademark Asset source owner/kind pair.');
+  }
+  return {
+    owner: owner as TrademarkAssetSourceOwner,
+    kind: kind as TrademarkAssetSourceKind
+  };
+}
 
 export const trademarkAssetFreshnessStates = [
   'CURRENT',
@@ -68,7 +107,7 @@ export interface TrademarkAssetExternalIdentifier {
 /**
  * Exact source pointer used by Lite to explain where an Asset claim came from.
  * Source references are evidence/projection pointers; they do not promote Lite into
- * the owning registry, Matter, lifecycle, Execution, Knowledge, Marketplace or Data Engine domain.
+ * the owning registry, Matter, lifecycle, Execution, Knowledge, Marketplace, Data Engine or Managed Communication domain.
  */
 export interface TrademarkAssetSourceReference {
   owner: TrademarkAssetSourceOwner;
@@ -113,7 +152,7 @@ export type TrademarkAssetRelationKind = (typeof trademarkAssetRelationKinds)[nu
 
 export interface TrademarkAssetRelation {
   kind: TrademarkAssetRelationKind;
-  owner: Exclude<TrademarkAssetSourceOwner, 'WORKSPACE_USER'>;
+  owner: Exclude<TrademarkAssetSourceOwner, 'WORKSPACE_USER' | 'MANAGED_COMMUNICATION'>;
   referenceId: string;
   referenceVersion?: string;
 }
