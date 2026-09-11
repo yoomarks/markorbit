@@ -52,3 +52,5 @@ export * from './preference-http.js';
 export * from './visual-bridge.js';
 export * from './visual-bridge-http.js';
 export * from './http.js';
+export * from './workspace-watch.js';
+export * from './workspace-watch-http.js';
