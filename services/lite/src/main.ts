@@ -25,6 +25,8 @@ import { createLiteWorkItemRoutes } from './lite-work-item-http.js';
 import { PostgresLiteWorkItemStore } from './lite-work-item.js';
 import { createWorkspaceWatchRoutes } from './workspace-watch-http.js';
 import { PostgresWorkspaceWatchStore } from './workspace-watch.js';
+import { createWorkspaceDirectoryRoutes } from './workspace-directory-http.js';
+import { PostgresWorkspaceDirectoryStore } from './workspace-directory.js';
 import { createCommunicationLinkRoutes } from './communication-link-http.js';
 import { CommunicationLinkService, PostgresCommunicationLinkStore } from './communication-link.js';
 import {
@@ -132,6 +134,7 @@ const trademarkAssetManagementDispositions = new PostgresTrademarkAssetManagemen
 const trademarkServiceWorkPackages = new PostgresTrademarkServiceWorkPackageStore(database, pool);
 const liteWorkItemStore = new PostgresLiteWorkItemStore(database, pool);
 const workspaceWatchStore = new PostgresWorkspaceWatchStore(database, pool);
+const workspaceDirectoryStore = new PostgresWorkspaceDirectoryStore(database, pool);
 const communicationLinkStore = new PostgresCommunicationLinkStore(database, pool);
 const communicationLinkService = new CommunicationLinkService(
   communicationLinkStore,
@@ -370,6 +373,10 @@ const runtime = createServiceRuntime(serviceManifest, {
     ...createWorkspaceWatchRoutes({
       internalServiceSecret,
       store: workspaceWatchStore
+    }),
+    ...createWorkspaceDirectoryRoutes({
+      internalServiceSecret,
+      store: workspaceDirectoryStore
     }),
     ...createCommunicationLinkRoutes({
       internalServiceSecret,
