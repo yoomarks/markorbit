@@ -29,6 +29,9 @@ import { createWorkspaceDirectoryRoutes } from './workspace-directory-http.js';
 import { PostgresWorkspaceDirectoryStore } from './workspace-directory.js';
 import { createCommunicationLinkRoutes } from './communication-link-http.js';
 import { CommunicationLinkService, PostgresCommunicationLinkStore } from './communication-link.js';
+import { createLiteIntakeStagingRoutes } from './lite-intake-staging-http.js';
+import { HttpLiteIntakeProductionIntakeClient } from './lite-intake-staging-markreg.js';
+import { LiteIntakeStagingService, PostgresLiteIntakeStagingStore } from './lite-intake-staging.js';
 import {
   HttpManagedCommunicationLinkSourceReader,
   HttpMarkRegCommunicationLinkTargetReader,
@@ -136,6 +139,11 @@ const liteWorkItemStore = new PostgresLiteWorkItemStore(database, pool);
 const workspaceWatchStore = new PostgresWorkspaceWatchStore(database, pool);
 const workspaceDirectoryStore = new PostgresWorkspaceDirectoryStore(database, pool);
 const communicationLinkStore = new PostgresCommunicationLinkStore(database, pool);
+const liteIntakeStagingStore = new PostgresLiteIntakeStagingStore(database, pool);
+const liteIntakeStagingService = new LiteIntakeStagingService(
+  liteIntakeStagingStore,
+  new HttpLiteIntakeProductionIntakeClient(markRegUrl, internalServiceSecret)
+);
 const communicationLinkService = new CommunicationLinkService(
   communicationLinkStore,
   new ProductionCommunicationLinkOwnerValidator(
@@ -381,6 +389,10 @@ const runtime = createServiceRuntime(serviceManifest, {
     ...createCommunicationLinkRoutes({
       internalServiceSecret,
       service: communicationLinkService
+    }),
+    ...createLiteIntakeStagingRoutes({
+      internalServiceSecret,
+      service: liteIntakeStagingService
     }),
     ...createLiteProductLoopRoutes({
       internalServiceSecret,
