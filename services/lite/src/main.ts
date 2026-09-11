@@ -25,6 +25,13 @@ import { createLiteWorkItemRoutes } from './lite-work-item-http.js';
 import { PostgresLiteWorkItemStore } from './lite-work-item.js';
 import { createWorkspaceWatchRoutes } from './workspace-watch-http.js';
 import { PostgresWorkspaceWatchStore } from './workspace-watch.js';
+import { createCommunicationLinkRoutes } from './communication-link-http.js';
+import { CommunicationLinkService, PostgresCommunicationLinkStore } from './communication-link.js';
+import {
+  HttpManagedCommunicationLinkSourceReader,
+  HttpMarkRegCommunicationLinkTargetReader,
+  ProductionCommunicationLinkOwnerValidator
+} from './communication-link-owner-validation.js';
 import { DailyWorkspaceSnapshotService } from './daily-workspace-snapshot.js';
 import {
   HttpCoreDailyKnowledgeSourceAuthority,
@@ -125,6 +132,15 @@ const trademarkAssetManagementDispositions = new PostgresTrademarkAssetManagemen
 const trademarkServiceWorkPackages = new PostgresTrademarkServiceWorkPackageStore(database, pool);
 const liteWorkItemStore = new PostgresLiteWorkItemStore(database, pool);
 const workspaceWatchStore = new PostgresWorkspaceWatchStore(database, pool);
+const communicationLinkStore = new PostgresCommunicationLinkStore(database, pool);
+const communicationLinkService = new CommunicationLinkService(
+  communicationLinkStore,
+  new ProductionCommunicationLinkOwnerValidator(
+    new HttpManagedCommunicationLinkSourceReader(capabilityEngineUrl, internalServiceSecret),
+    trademarkAssetStore,
+    new HttpMarkRegCommunicationLinkTargetReader(markRegUrl, internalServiceSecret)
+  )
+);
 
 const productLoopSourceAuthority: ProductLoopSourceAuthority = {
   async resolve(workspaceId, locator) {
@@ -354,6 +370,10 @@ const runtime = createServiceRuntime(serviceManifest, {
     ...createWorkspaceWatchRoutes({
       internalServiceSecret,
       store: workspaceWatchStore
+    }),
+    ...createCommunicationLinkRoutes({
+      internalServiceSecret,
+      service: communicationLinkService
     }),
     ...createLiteProductLoopRoutes({
       internalServiceSecret,
