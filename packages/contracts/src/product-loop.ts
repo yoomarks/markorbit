@@ -710,11 +710,14 @@ export const preparedActionHandoffStates = [
 ] as const;
 export type PreparedActionHandoffState = (typeof preparedActionHandoffStates)[number];
 
+export const preparedActionHandoffOwners = ['LITE', 'MARKREG', 'MANAGED_COMMUNICATION'] as const;
+export type PreparedActionHandoffOwner = (typeof preparedActionHandoffOwners)[number];
+
 export interface PreparedActionHandoffResult {
   schemaVersion: 1;
   preparedAction: Readonly<ProductLoopExactReference<PreparedActionId>>;
   target: ProductLoopHandoffTarget;
-  owner: 'LITE' | 'MARKREG';
+  owner: PreparedActionHandoffOwner;
   ownerRecord: Readonly<ProductLoopExactReference>;
   completedAt: string;
   consequences: Readonly<ProductLoopAuthorityConsequences>;
