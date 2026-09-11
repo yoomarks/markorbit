@@ -13,6 +13,7 @@ import {
   opportunityCandidateStatuses,
   opportunityQualificationOutcomes,
   parseClientNotificationHandoffPlanV1,
+  preparedActionHandoffOwners,
   preparedActionKinds,
   productLoopAiAuthority,
   productLoopErrorCodes,
@@ -365,6 +366,8 @@ describe('PLC-WP-01 Product loop contract', () => {
       'MARKREG_INTAKE',
       'MANAGED_COMMUNICATION_CLIENT_NOTIFICATION'
     ]);
+    expect(preparedActionHandoffOwners).toEqual(['LITE', 'MARKREG', 'MANAGED_COMMUNICATION']);
+    expect(preparedActionHandoffOwners).not.toContain('EXTERNAL_ACTION');
     expect(productLoopSourceOwners).toContain('KNOWLEDGE');
     expect(productLoopSourceKinds).toContain('KNOWLEDGE_READY_PACKAGE');
 
