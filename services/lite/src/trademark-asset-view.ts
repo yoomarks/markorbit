@@ -33,6 +33,10 @@ export interface TrademarkAssetFactContribution {
   value: TrademarkAssetObservedFactValue;
   source: Readonly<TrademarkAssetSourceReference>;
   consequential?: boolean;
+  admission?: Readonly<{
+    claimClass: 'COMMUNICATION_CLAIM' | 'WORKSPACE_USER_CONFIRMATION';
+    admissionFingerprintSha256: string;
+  }>;
 }
 
 export interface TrademarkAssetContextSignalContribution {
@@ -90,10 +94,13 @@ function assertSourceReference(source: Readonly<TrademarkAssetSourceReference>):
 
 function assertFactOwner(
   kind: TrademarkAssetObservedFactKind,
-  owner: TrademarkAssetSourceOwner
+  owner: TrademarkAssetSourceOwner,
+  admission: TrademarkAssetFactContribution['admission']
 ): void {
   if (owner === 'DATA_ENGINE' && dataEngineFactKinds.has(kind)) return;
   if (owner === 'MARKREG' && markRegFactKinds.has(kind)) return;
+  if (owner === 'MANAGED_COMMUNICATION' && admission?.claimClass === 'COMMUNICATION_CLAIM') return;
+  if (owner === 'WORKSPACE_USER' && admission?.claimClass === 'WORKSPACE_USER_CONFIRMATION') return;
 
   throw new TrademarkAssetCompositionError(
     'FACT_OWNER_MISMATCH',
@@ -191,7 +198,7 @@ export function composeTrademarkAssetView(
 
   const facts = (input.facts ?? []).map<TrademarkAssetObservedFact>((contribution) => {
     assertSourceReference(contribution.source);
-    assertFactOwner(contribution.kind, contribution.source.owner);
+    assertFactOwner(contribution.kind, contribution.source.owner, contribution.admission);
     return {
       kind: contribution.kind,
       value: contribution.value,
