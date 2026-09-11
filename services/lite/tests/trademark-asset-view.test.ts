@@ -59,6 +59,24 @@ const knowledgeSource = {
   freshness: 'CURRENT'
 } as const;
 
+const managedCommunicationSource = {
+  owner: 'MANAGED_COMMUNICATION',
+  kind: 'MANAGED_COMMUNICATION_MESSAGE',
+  sourceId: 'message_graph_123',
+  sourceVersion: '1',
+  observedAt: '2026-08-19T01:45:00.000Z',
+  freshness: 'CURRENT'
+} as const;
+
+const workspaceConfirmationSource = {
+  owner: 'WORKSPACE_USER',
+  kind: 'WORKSPACE_CONFIRMATION',
+  sourceId: 'confirmation_123',
+  sourceVersion: '1',
+  observedAt: '2026-08-19T01:50:00.000Z',
+  freshness: 'CURRENT'
+} as const;
+
 describe('M10 WP03 Trademark Asset View composition', () => {
   it('composes facts and contextual signals without conflating them', () => {
     const view = composeTrademarkAssetView({
@@ -165,6 +183,21 @@ describe('M10 WP03 Trademark Asset View composition', () => {
       });
     } catch (error) {
       expect(error).toMatchObject({ code: 'FACT_OWNER_MISMATCH' });
+    }
+  });
+
+  it('admits the new source vocabulary without granting factual authority', () => {
+    for (const source of [managedCommunicationSource, workspaceConfirmationSource]) {
+      try {
+        composeTrademarkAssetView({
+          anchor,
+          composedAt: '2026-08-19T02:15:00.000Z',
+          facts: [{ kind: 'APPLICATION_STATUS', value: 'REGISTERED', source }]
+        });
+        throw new Error('Expected factual authority rejection.');
+      } catch (error) {
+        expect(error).toMatchObject({ code: 'FACT_OWNER_MISMATCH' });
+      }
     }
   });
 

@@ -7,11 +7,12 @@ import type {
   TrademarkAssetObservedFactValue,
   TrademarkAssetView
 } from '@markorbit/contracts/trademark-asset-composition';
-import type {
-  TrademarkAsset,
-  TrademarkAssetFreshnessState,
-  TrademarkAssetSourceOwner,
-  TrademarkAssetSourceReference
+import {
+  isTrademarkAssetSourceOwnerKindPair,
+  type TrademarkAsset,
+  type TrademarkAssetFreshnessState,
+  type TrademarkAssetSourceOwner,
+  type TrademarkAssetSourceReference
 } from '@markorbit/contracts/trademark-asset-workspace';
 
 export type TrademarkAssetCompositionErrorCode =
@@ -47,15 +48,6 @@ export interface ComposeTrademarkAssetViewInput {
   composedAt: string;
 }
 
-const ownerKinds: Readonly<Record<TrademarkAssetSourceOwner, readonly string[]>> = {
-  MARKREG: ['MARKREG_MATTER', 'MARKREG_LIFECYCLE_PROJECTION', 'MARKREG_ORDER'],
-  EXECUTION: ['EXECUTION_EVIDENCE'],
-  KNOWLEDGE: ['KNOWLEDGE_SOURCE'],
-  DATA_ENGINE: ['DATA_ENGINE_TRADEMARK_RECORD'],
-  MARKETPLACE: ['MARKETPLACE_LISTING'],
-  WORKSPACE_USER: ['WORKSPACE_ADMISSION', 'WORKSPACE_NOTE']
-};
-
 const dataEngineFactKinds = new Set<TrademarkAssetObservedFactKind>([
   'APPLICATION_STATUS',
   'APPLICATION_DATE',
@@ -81,8 +73,7 @@ function assertIsoTimestamp(value: string, label: string): void {
 }
 
 function assertSourceReference(source: Readonly<TrademarkAssetSourceReference>): void {
-  const allowedKinds = ownerKinds[source.owner];
-  if (!allowedKinds.includes(source.kind)) {
+  if (!isTrademarkAssetSourceOwnerKindPair(source.owner, source.kind)) {
     throw new TrademarkAssetCompositionError(
       'SOURCE_OWNER_KIND_MISMATCH',
       `Source owner ${source.owner} cannot use source kind ${source.kind}.`

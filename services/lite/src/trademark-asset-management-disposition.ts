@@ -363,13 +363,17 @@ function persistedDisposition(row: Row): TrademarkAssetManagementDisposition {
     if (
       !trademarkAssetRelationKinds.includes(workflowKind as TrademarkAssetRelationKind) ||
       !trademarkAssetSourceOwners.includes(workflowOwner as TrademarkAssetSourceOwner) ||
-      workflowOwner === 'WORKSPACE_USER'
+      workflowOwner === 'WORKSPACE_USER' ||
+      workflowOwner === 'MANAGED_COMMUNICATION'
     ) {
       corrupt('Persisted management disposition workflow reference is malformed.');
     }
     validatedWorkflowReference = {
       kind: workflowKind as TrademarkAssetRelationKind,
-      owner: workflowOwner as Exclude<TrademarkAssetSourceOwner, 'WORKSPACE_USER'>,
+      owner: workflowOwner as Exclude<
+        TrademarkAssetSourceOwner,
+        'WORKSPACE_USER' | 'MANAGED_COMMUNICATION'
+      >,
       referenceId,
       ...(referenceVersion === undefined ? {} : { referenceVersion })
     };
