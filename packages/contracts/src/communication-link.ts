@@ -343,7 +343,10 @@ function targetBase(value: JsonRecord, workspaceId: string, owner: 'LITE' | 'MAR
   }
 }
 
-function parseTarget(value: unknown, workspaceId: string): CommunicationLinkTargetReferenceV1 {
+export function parseCommunicationLinkTargetReferenceV1(
+  value: unknown,
+  workspaceId: string
+): CommunicationLinkTargetReferenceV1 {
   const target = record(value, 'communicationLink.target');
   const targetKind = oneOf(
     target.targetKind,
@@ -584,7 +587,7 @@ export function parseCommunicationLinkV1(
   }
   const version = positiveInteger(link.version, 'communicationLink.version');
   const source = parseSource(link.source);
-  const target = parseTarget(link.target, workspaceId);
+  const target = parseCommunicationLinkTargetReferenceV1(link.target, workspaceId);
   const decision = parseDecision(link.decision, source, target);
   const lifecycle = oneOf(
     link.lifecycle,

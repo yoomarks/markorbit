@@ -1,12 +1,18 @@
 import { describe, expect, it } from 'vitest';
 import type { RecommendedAction } from '../src/evidence-lifecycle.js';
 import {
+  assertClientNotificationPreparedActionConfirmationV1,
+  clientNotificationConfirmationFingerprintSha256V1,
+  clientNotificationReviewedContentFingerprintSha256V1,
+  ClientNotificationHandoffContractError,
   contentDraftStatuses,
   contentOpportunityStatuses,
   contentReviewOutcomes,
   noAutomaticProductLoopConsequences,
+  noClientNotificationPreparationAuthorityConsequencesV1,
   opportunityCandidateStatuses,
   opportunityQualificationOutcomes,
+  parseClientNotificationHandoffPlanV1,
   preparedActionKinds,
   productLoopAiAuthority,
   productLoopErrorCodes,
@@ -16,6 +22,7 @@ import {
   productLoopSourceOwners,
   todayRecommendationKinds,
   todayRecommendationStatuses,
+  type ClientNotificationHandoffPlanV1,
   type ContentDraft,
   type ContentOpportunity,
   type ContentReviewDecision,
@@ -24,6 +31,7 @@ import {
   type OpportunityCandidate,
   type OpportunityQualificationDecision,
   type PreparedAction,
+  type PreparedActionConfirmation,
   type ProductLoopUseFeedback,
   type PublishPackage,
   type TodayRecommendation
@@ -80,6 +88,135 @@ const preparedAction = {
   createdAt: '2026-08-11T07:47:00.000Z',
   updatedAt: '2026-08-11T07:47:00.000Z'
 } as const satisfies PreparedAction;
+
+function makeClientNotificationPlan(): ClientNotificationHandoffPlanV1 {
+  const base = {
+    schemaVersion: 1 as const,
+    kind: 'CLIENT_NOTIFICATION_HANDOFF' as const,
+    workspaceId,
+    sourceDraft: {
+      owner: 'LITE' as const,
+      kind: 'TRADEMARK_SERVICE_COMMUNICATION_DRAFT' as const,
+      workPackage: { id: 'trademark-service-work-package_contract-01', version: 2 },
+      preparationId: 'trademark-service-preparation_contract-01',
+      draftKind: 'CLIENT_INFORMATION_REQUEST' as const,
+      draftFingerprintSha256: shaA
+    },
+    accountRef: 'graph-account_contract-01',
+    channel: 'EMAIL' as const,
+    sender: { role: 'SENDER' as const, address: 'agent@example.com', displayName: 'Agent' },
+    recipients: [
+      {
+        participant: { role: 'TO' as const, address: 'client@example.com', displayName: 'Client' },
+        source: {
+          kind: 'WORKSPACE_DIRECTORY_CONTACT' as const,
+          directoryEntry: {
+            owner: 'LITE' as const,
+            kind: 'WORKSPACE_DIRECTORY_ENTRY' as const,
+            workspaceId,
+            workspaceDirectoryEntryId: 'workspace-directory-entry_contract-01' as const,
+            version: 3
+          },
+          contactPoint: {
+            kind: 'EMAIL' as const,
+            value: 'client@example.com',
+            label: 'client',
+            provenance: {
+              sourceKind: 'WORKSPACE_USER' as const,
+              sourceReference: 'workspace-user_contact-01',
+              capturedAt: '2026-08-11T07:46:30.000Z'
+            }
+          }
+        }
+      },
+      {
+        participant: { role: 'CC' as const, address: 'copy@example.com' },
+        source: { kind: 'MANUAL_ENTRY' as const }
+      }
+    ],
+    subject: 'Information needed for the trademark matter',
+    body: 'Please provide the requested information.',
+    attachments: [
+      {
+        attachmentRef: 'attachment_contract-01',
+        fileName: 'request.pdf',
+        mediaType: 'application/pdf',
+        sizeBytes: 42,
+        sha256: shaB
+      }
+    ],
+    relatedWorkItem: {
+      owner: 'LITE' as const,
+      kind: 'WORK_ITEM' as const,
+      workspaceId,
+      workItemId: 'work-item_contract-01',
+      version: 5
+    },
+    relatedBusinessRefs: [
+      {
+        targetKind: 'TRADEMARK_ASSET' as const,
+        owner: 'LITE' as const,
+        workspaceId,
+        trademarkAssetId: 'trademark-asset_contract-01' as const,
+        version: 4
+      }
+    ]
+  };
+  const reviewedContentFingerprintSha256 = clientNotificationReviewedContentFingerprintSha256V1({
+    subject: base.subject,
+    body: base.body,
+    attachments: base.attachments
+  });
+  const confirmable: Omit<
+    ClientNotificationHandoffPlanV1,
+    'confirmationFingerprintSha256' | 'authorityConsequences'
+  > = { ...base, reviewedContentFingerprintSha256 };
+  return {
+    ...confirmable,
+    confirmationFingerprintSha256: clientNotificationConfirmationFingerprintSha256V1(confirmable),
+    authorityConsequences: noClientNotificationPreparationAuthorityConsequencesV1
+  };
+}
+
+function withCurrentClientNotificationFingerprint(
+  plan: ClientNotificationHandoffPlanV1
+): ClientNotificationHandoffPlanV1 {
+  const { confirmationFingerprintSha256: _ignored, authorityConsequences, ...confirmable } = plan;
+  void _ignored;
+  return {
+    ...plan,
+    confirmationFingerprintSha256: clientNotificationConfirmationFingerprintSha256V1(confirmable),
+    authorityConsequences
+  };
+}
+
+function makeClientNotificationPreparedAction(
+  plan: ClientNotificationHandoffPlanV1 = makeClientNotificationPlan()
+): PreparedAction {
+  return {
+    ...preparedAction,
+    preparedActionId: 'prepared-action_client-notification-01',
+    kind: 'PREPARE_CLIENT_NOTIFICATION',
+    handoffTarget: 'MANAGED_COMMUNICATION_CLIENT_NOTIFICATION',
+    clientNotificationPlan: plan,
+    preparedActionFingerprintSha256: shaB
+  };
+}
+
+function makeClientNotificationConfirmation(action: PreparedAction): PreparedActionConfirmation {
+  const plan = action.clientNotificationPlan;
+  if (!plan) throw new TypeError('clientNotificationPlan is required.');
+  return {
+    schemaVersion: 1,
+    preparedAction: { id: action.preparedActionId, version: action.version },
+    expectedPreparedActionFingerprintSha256: action.preparedActionFingerprintSha256,
+    confirmedByPrincipalId: principalId,
+    confirmedAt: '2026-08-11T07:47:30.000Z',
+    acknowledgedEffect: 'Send this exact reviewed email through Managed Communication.',
+    expectedClientNotificationPlanFingerprintSha256: plan.confirmationFingerprintSha256,
+    protectedActionAuthorized: false
+  };
+}
 
 const contentOpportunity = {
   schemaVersion: 1,
@@ -221,10 +358,12 @@ describe('PLC-WP-01 Product loop contract', () => {
       'SUPERSEDED'
     ]);
     expect(preparedActionKinds).toContain('START_MARKREG_INTAKE');
+    expect(preparedActionKinds).toContain('PREPARE_CLIENT_NOTIFICATION');
     expect(productLoopHandoffTargets).toEqual([
       'LITE_CONTENT_PREPARATION',
       'MARKREG_FORMAL_TRADEMARK_SERVICE_OPPORTUNITY',
-      'MARKREG_INTAKE'
+      'MARKREG_INTAKE',
+      'MANAGED_COMMUNICATION_CLIENT_NOTIFICATION'
     ]);
     expect(productLoopSourceOwners).toContain('KNOWLEDGE');
     expect(productLoopSourceKinds).toContain('KNOWLEDGE_READY_PACKAGE');
@@ -263,6 +402,120 @@ describe('PLC-WP-01 Product loop contract', () => {
     expect(review.publishesExternally).toBe(false);
     expect(publishPackage.status).toBe('PREPARED');
     expect(publishPackage.externalPublishExecuted).toBe(false);
+  });
+
+  it('binds one reviewed client-notification plan without granting send authority', () => {
+    const plan = makeClientNotificationPlan();
+    const parsed = parseClientNotificationHandoffPlanV1(plan);
+    const action = makeClientNotificationPreparedAction(plan);
+    const confirmation = makeClientNotificationConfirmation(action);
+
+    expect(parsed.accountRef).toBe('graph-account_contract-01');
+    expect(parsed.recipients[0]?.source.kind).toBe('WORKSPACE_DIRECTORY_CONTACT');
+    expect(parsed.authorityConsequences.externalMessageSent).toBe(false);
+    expect(parsed.authorityConsequences.customerContactAuthorized).toBe(false);
+    expect(parsed.authorityConsequences.legalNoticeEffective).toBe(false);
+    expect(parsed.authorityConsequences.productLoop.officialTruthCreated).toBe(false);
+    expect(action.executionAuthorized).toBe(false);
+    expect(confirmation.protectedActionAuthorized).toBe(false);
+    expect(assertClientNotificationPreparedActionConfirmationV1(action, confirmation)).toEqual(
+      parsed
+    );
+  });
+
+  it('fails closed on unsupported keys, wildcard recipients and authoritative consequences', () => {
+    const plan = makeClientNotificationPlan();
+    expect(() =>
+      parseClientNotificationHandoffPlanV1({ ...plan, unsupportedAuthority: true })
+    ).toThrow(ClientNotificationHandoffContractError);
+
+    const wildcardRecipient = {
+      ...plan,
+      recipients: [
+        {
+          participant: { role: 'TO' as const, address: '*@example.com' },
+          source: { kind: 'MANUAL_ENTRY' as const }
+        }
+      ]
+    };
+    expect(() => parseClientNotificationHandoffPlanV1(wildcardRecipient)).toThrow(
+      ClientNotificationHandoffContractError
+    );
+
+    const authoritative = {
+      ...plan,
+      authorityConsequences: {
+        ...plan.authorityConsequences,
+        externalMessageSent: true
+      }
+    };
+    expect(() => parseClientNotificationHandoffPlanV1(authoritative)).toThrow(
+      ClientNotificationHandoffContractError
+    );
+  });
+
+  it('invalidates frozen content, account, recipient and business-reference drift', () => {
+    const plan = makeClientNotificationPlan();
+    const directoryRecipient = plan.recipients[0]!;
+    if (directoryRecipient.source.kind !== 'WORKSPACE_DIRECTORY_CONTACT') {
+      throw new Error('Expected a Workspace Directory recipient fixture.');
+    }
+
+    const driftedPlans = [
+      { ...plan, subject: `${plan.subject} changed` },
+      { ...plan, accountRef: 'graph-account_contract-02' },
+      {
+        ...plan,
+        recipients: [
+          {
+            ...directoryRecipient,
+            participant: { ...directoryRecipient.participant, address: 'changed@example.com' },
+            source: {
+              ...directoryRecipient.source,
+              contactPoint: {
+                ...directoryRecipient.source.contactPoint,
+                value: 'changed@example.com'
+              }
+            }
+          },
+          ...plan.recipients.slice(1)
+        ]
+      },
+      {
+        ...plan,
+        relatedBusinessRefs: [
+          {
+            targetKind: 'TRADEMARK_ASSET' as const,
+            owner: 'LITE' as const,
+            workspaceId,
+            trademarkAssetId: 'trademark-asset_contract-01' as const,
+            version: 5
+          }
+        ]
+      }
+    ];
+
+    for (const drifted of driftedPlans) {
+      expect(() => parseClientNotificationHandoffPlanV1(drifted)).toThrow(
+        ClientNotificationHandoffContractError
+      );
+    }
+  });
+
+  it('requires human confirmation to match the exact current client-notification plan', () => {
+    const originalPlan = makeClientNotificationPlan();
+    const originalAction = makeClientNotificationPreparedAction(originalPlan);
+    const originalConfirmation = makeClientNotificationConfirmation(originalAction);
+    const changedPlan = withCurrentClientNotificationFingerprint({
+      ...originalPlan,
+      accountRef: 'graph-account_contract-02'
+    });
+    const changedAction = makeClientNotificationPreparedAction(changedPlan);
+
+    expect(() => parseClientNotificationHandoffPlanV1(changedPlan)).not.toThrow();
+    expect(() =>
+      assertClientNotificationPreparedActionConfirmationV1(changedAction, originalConfirmation)
+    ).toThrow(ClientNotificationHandoffContractError);
   });
 
   it('records manual use feedback without fabricating external execution or verification', () => {

@@ -159,7 +159,10 @@ function isoTimestamp(value: unknown, field: string): string {
   return cleaned;
 }
 
-function parseParticipant(value: unknown, field: string): ManagedCommunicationParticipantV1 {
+export function parseManagedCommunicationParticipantV1(
+  value: unknown,
+  field = 'managedCommunicationParticipant'
+): ManagedCommunicationParticipantV1 {
   const record = asRecord(value, field);
   exactKeys(record, ['role', 'address', 'displayName'], field);
   const displayName = optionalString(record.displayName, `${field}.displayName`, 300);
@@ -170,7 +173,10 @@ function parseParticipant(value: unknown, field: string): ManagedCommunicationPa
   };
 }
 
-function parseAttachment(value: unknown, field: string): ManagedCommunicationAttachmentRefV1 {
+export function parseManagedCommunicationAttachmentRefV1(
+  value: unknown,
+  field = 'managedCommunicationAttachment'
+): ManagedCommunicationAttachmentRefV1 {
   const record = asRecord(value, field);
   exactKeys(record, ['attachmentRef', 'fileName', 'mediaType', 'sizeBytes', 'sha256'], field);
   const fileName = optionalString(record.fileName, `${field}.fileName`, 500);
@@ -299,7 +305,10 @@ export function parseManagedCommunicationMessageV1(value: unknown): ManagedCommu
     );
   }
   const participants = record.participants.map((item, index) =>
-    parseParticipant(item, `managedCommunicationMessage.participants[${index}]`)
+    parseManagedCommunicationParticipantV1(
+      item,
+      `managedCommunicationMessage.participants[${index}]`
+    )
   );
   if (participants.filter((participant) => participant.role === 'SENDER').length !== 1) {
     throw new ManagedCommunicationContractError(
@@ -312,7 +321,10 @@ export function parseManagedCommunicationMessageV1(value: unknown): ManagedCommu
     );
   }
   const attachments = record.attachments.map((item, index) =>
-    parseAttachment(item, `managedCommunicationMessage.attachments[${index}]`)
+    parseManagedCommunicationAttachmentRefV1(
+      item,
+      `managedCommunicationMessage.attachments[${index}]`
+    )
   );
   const subject = optionalString(record.subject, 'managedCommunicationMessage.subject', 1000);
   const textBody = optionalString(
