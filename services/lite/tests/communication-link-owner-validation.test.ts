@@ -148,17 +148,26 @@ describe('Communication Link owner currentness validation', () => {
       ).validate(principal, target)
     ).rejects.toMatchObject({ code: 'TARGET_VERSION_STALE' });
   });
-  it('validates current Trademark Asset locally and fails Directory while owner runtime is absent', async () => {
+  it('validates current Lite-owned Trademark Asset and Workspace Directory targets', async () => {
     const sourceReader = { validate: vi.fn().mockResolvedValue(undefined) };
     const assets = {
       get: vi
         .fn()
         .mockResolvedValue({ workspaceId, trademarkAssetId: 'trademark-asset_1', version: 3 })
     };
+    const directory = {
+      getLatest: vi.fn().mockResolvedValue({
+        workspaceId,
+        workspaceDirectoryEntryId: 'workspace-directory-entry_1',
+        version: 1,
+        status: 'ACTIVE'
+      })
+    };
     const markreg = { validate: vi.fn().mockResolvedValue(undefined) };
     const validator = new ProductionCommunicationLinkOwnerValidator(
       sourceReader as never,
       assets,
+      directory,
       markreg as never
     );
     await expect(
@@ -202,7 +211,21 @@ describe('Communication Link owner currentness validation', () => {
         },
         principal
       })
-    ).rejects.toMatchObject({ code: 'TARGET_OWNER_UNAVAILABLE', retryable: true });
+    ).resolves.toBeUndefined();
+    await expect(
+      validator.validateCreate({
+        workspaceId,
+        source,
+        target: {
+          targetKind: 'WORKSPACE_DIRECTORY_ENTRY',
+          owner: 'LITE',
+          workspaceId,
+          workspaceDirectoryEntryId: 'workspace-directory-entry_1',
+          version: 2
+        },
+        principal
+      })
+    ).rejects.toMatchObject({ code: 'TARGET_VERSION_STALE' });
   });
   it('does not collapse owner unavailable into target not found', async () => {
     const fetcher = vi.fn().mockResolvedValue(response({ code: 'PERSISTENCE_UNAVAILABLE' }, 503));

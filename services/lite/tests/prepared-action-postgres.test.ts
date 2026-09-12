@@ -1,5 +1,7 @@
 import path from 'node:path';
+import { createHash } from 'node:crypto';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import type { WorkspacePrincipal } from '@markorbit/contracts';
 import { ManagedDatabase, loadMigrationsForOwner, migrate } from '@markorbit/persistence';
 import {
   clientNotificationConfirmationFingerprintSha256V1,
@@ -22,6 +24,16 @@ import {
   PreparedActionJourneyService,
   type PreparedActionHandoffAuthority
 } from '../src/prepared-action.js';
+import {
+  clientNotificationManagedCommunicationSendCommandV1,
+  type ManagedCommunicationClientNotificationSender
+} from '../src/client-notification-handoff.js';
+import { ClientNotificationFollowupService } from '../src/client-notification-followup.js';
+import {
+  CommunicationLinkService,
+  PostgresCommunicationLinkStore
+} from '../src/communication-link.js';
+import { PostgresLiteWorkItemStore } from '../src/lite-work-item.js';
 
 const url = process.env.LITE_TODAY_TEST_DATABASE_URL;
 const required = process.env.LITE_TODAY_POSTGRES_TEST_REQUIRED === '1';
@@ -33,6 +45,16 @@ const suite = url ? describe : describe.skip;
 const workspaceId = '25252525-2525-4252-8252-252525252525';
 const otherWorkspaceId = '26262626-2626-4262-8262-262626262626';
 const principalId = '11111111-1111-4111-8111-111111111111';
+const principal: WorkspacePrincipal = {
+  kind: 'WORKSPACE',
+  sessionId: 'session_pg-notice',
+  userId: principalId,
+  workspaceId,
+  membershipId: 'membership_pg-notice',
+  role: 'WORKSPACE_ADMIN',
+  permissions: ['workspace:read', 'matter:manage'],
+  sessionExpiresAt: '2026-09-13T12:00:00.000Z'
+};
 const sourceFingerprint = 'a'.repeat(64);
 
 function sequence<T extends string>(prefix: string) {
@@ -124,6 +146,11 @@ suite('PostgreSQL Lite Today Prepared Action journey', () => {
     tick = 0;
     await database.getPool().query(
       `TRUNCATE
+        lite_communication_link_commands,
+        lite_communication_link_heads,
+        lite_communication_link_versions,
+        lite_work_item_commands,
+        lite_work_items,
         lite_prepared_action_commands,
         lite_prepared_action_handoff_results,
         lite_prepared_action_confirmations,
@@ -209,6 +236,13 @@ suite('PostgreSQL Lite Today Prepared Action journey', () => {
         body,
         attachments
       }),
+      relatedWorkItem: {
+        owner: 'LITE' as const,
+        kind: 'WORK_ITEM' as const,
+        workspaceId,
+        workItemId: 'lite-work-item_pg-notice' as const,
+        version: 1
+      },
       relatedBusinessRefs: [
         {
           targetKind: 'WORKSPACE_DIRECTORY_ENTRY' as const,
@@ -298,7 +332,27 @@ suite('PostgreSQL Lite Today Prepared Action journey', () => {
     expect((count.rows[0] as { count?: number } | undefined)?.count).toBe(1);
   });
 
-  it('persists client-notification plan confirmation and Managed Communication handoff across restart/replay', async () => {
+  it('persists client-notification send lineage, Link and Work follow-up across restart/replay', async () => {
+    const workStore = () =>
+      new PostgresLiteWorkItemStore(
+        database,
+        database.getPool(),
+        now,
+        () => 'lite-work-item_pg-notice'
+      );
+    const work = await workStore().createManual({
+      workspaceId,
+      actorPrincipalId: principalId,
+      idempotencyKey: 'pg-notice-work-create',
+      taskType: 'GENERAL_FOLLOW_UP',
+      title: 'Wait for client reply to reviewed notification',
+      priority: 'NOTICE'
+    });
+    expect(work).toMatchObject({
+      liteWorkItemId: 'lite-work-item_pg-notice',
+      version: 1,
+      status: 'OPEN'
+    });
     const plan = notificationPlan();
     const recommendationId = 'today-recommendation_pg-notice' as TodayRecommendationId;
     const recommendationFingerprintSha256 = 'e'.repeat(64);
@@ -393,12 +447,97 @@ suite('PostgreSQL Lite Today Prepared Action journey', () => {
     });
     expect(ownerCalls).toBe(1);
 
+    const replayCommand = clientNotificationManagedCommunicationSendCommandV1(
+      journey.preparedAction,
+      plan,
+      `prepared-action-handoff:${journey.preparedAction.preparedActionId}`
+    );
+    let sendReplays = 0;
+    const sender: ManagedCommunicationClientNotificationSender = {
+      send(input) {
+        sendReplays += 1;
+        expect(input).toEqual(replayCommand);
+        return Promise.resolve({
+          schemaVersion: 1,
+          sendId: 'managed-communication-send_pg-notice',
+          workspaceId,
+          accountRef: plan.accountRef,
+          idempotencyKeySha256: createHash('sha256')
+            .update(replayCommand.idempotencyKey)
+            .digest('hex'),
+          requestFingerprintSha256: 'f'.repeat(64),
+          state: 'SENT',
+          messageId: 'message_pg-notice',
+          threadRef: 'thread_pg-notice',
+          provider: 'TEST',
+          providerMessageId: 'provider-message_pg-notice',
+          providerReceiptRef: 'provider-receipt_pg-notice',
+          acceptedAt: '2026-08-11T10:06:00.000Z',
+          authority: {
+            externalMessageSent: true,
+            customerTruthMutated: false,
+            matterTruthMutated: false,
+            legalTruthCreated: false,
+            knowledgeApproved: false,
+            professionalDecisionCreated: false
+          }
+        });
+      }
+    };
+    const linkService = () =>
+      new CommunicationLinkService(
+        new PostgresCommunicationLinkStore(
+          database,
+          database.getPool(),
+          () => '2026-08-11T10:07:00.000Z',
+          () => 'communication-link_pg-notice'
+        ),
+        { validateCreate: () => Promise.resolve() }
+      );
+    const firstFollowup = await new ClientNotificationFollowupService(
+      preparedStore(),
+      sender,
+      linkService(),
+      workStore()
+    ).reconcile(workspaceId, journey.preparedAction.preparedActionId, principal);
+    expect(firstFollowup).toMatchObject({
+      state: 'COMPLETE',
+      send: { sendId: 'managed-communication-send_pg-notice', messageId: 'message_pg-notice' },
+      links: [{ state: 'LINKED', communicationLinkId: 'communication-link_pg-notice', version: 1 }],
+      work: { state: 'WAITING_FOR_CLIENT', workItemId: 'lite-work-item_pg-notice', version: 2 }
+    });
+    expect(await workStore().get(workspaceId, 'lite-work-item_pg-notice')).toMatchObject({
+      version: 2,
+      status: 'WAITING_FOR_CLIENT'
+    });
+
     const afterRestart = new PreparedActionJourneyService(preparedStore(), authority);
     expect(
       await afterRestart.findJourney(workspaceId, journey.preparedAction.preparedActionId)
     ).toEqual(completed);
     expect(await afterRestart.confirmAndHandoff(command)).toEqual(completed);
     expect(ownerCalls).toBe(1);
+    const replayedFollowup = await new ClientNotificationFollowupService(
+      preparedStore(),
+      sender,
+      linkService(),
+      workStore()
+    ).reconcile(workspaceId, journey.preparedAction.preparedActionId, principal);
+    expect(replayedFollowup).toEqual(firstFollowup);
+    expect(sendReplays).toBe(2);
+    const durableCounts = await database.getPool().query(
+      `SELECT
+        (SELECT count(*)::int FROM lite_communication_link_versions) AS links,
+        (SELECT count(*)::int FROM lite_communication_link_commands) AS link_commands,
+        (SELECT count(*)::int FROM lite_work_items) AS work_items,
+        (SELECT count(*)::int FROM lite_work_item_commands) AS work_commands`
+    );
+    expect(durableCounts.rows[0]).toMatchObject({
+      links: 1,
+      link_commands: 1,
+      work_items: 1,
+      work_commands: 2
+    });
   });
 
   it('keeps confirmation durable when the owner is unavailable, then retries without a second confirmation', async () => {

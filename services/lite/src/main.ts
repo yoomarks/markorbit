@@ -35,6 +35,8 @@ import {
   HttpManagedCommunicationClientNotificationSender,
   ProductionClientNotificationBusinessReferenceValidator
 } from './client-notification-handoff.js';
+import { createClientNotificationFollowupRoutes } from './client-notification-followup-http.js';
+import { ClientNotificationFollowupService } from './client-notification-followup.js';
 import { createLiteIntakeStagingRoutes } from './lite-intake-staging-http.js';
 import { HttpLiteIntakeProductionIntakeClient } from './lite-intake-staging-markreg.js';
 import { LiteIntakeStagingService, PostgresLiteIntakeStagingStore } from './lite-intake-staging.js';
@@ -159,9 +161,12 @@ const communicationLinkService = new CommunicationLinkService(
   new ProductionCommunicationLinkOwnerValidator(
     new HttpManagedCommunicationLinkSourceReader(capabilityEngineUrl, internalServiceSecret),
     trademarkAssetStore,
+    workspaceDirectoryStore,
     markRegCommunicationLinkTargetReader
   )
 );
+const managedCommunicationClientNotificationSender =
+  new HttpManagedCommunicationClientNotificationSender(capabilityEngineUrl, internalServiceSecret);
 const clientNotificationHandoff = new ClientNotificationPreparedActionHandoff(
   trademarkServiceWorkPackages,
   workspaceDirectoryStore,
@@ -171,7 +176,7 @@ const clientNotificationHandoff = new ClientNotificationPreparedActionHandoff(
     trademarkAssetStore,
     markRegCommunicationLinkTargetReader
   ),
-  new HttpManagedCommunicationClientNotificationSender(capabilityEngineUrl, internalServiceSecret)
+  managedCommunicationClientNotificationSender
 );
 
 const productLoopSourceAuthority: ProductLoopSourceAuthority = {
@@ -329,6 +334,12 @@ const handoffAuthority: PreparedActionHandoffAuthority = {
 };
 
 const journeyService = new PreparedActionJourneyService(preparedActionStore, handoffAuthority);
+const clientNotificationFollowupService = new ClientNotificationFollowupService(
+  preparedActionStore,
+  managedCommunicationClientNotificationSender,
+  communicationLinkService,
+  liteWorkItemStore
+);
 const dailySignalReader = new PostgresDailySignalReader(pool);
 
 const dailyOrbitService = new DailyOrbitService(
@@ -419,6 +430,10 @@ const runtime = createServiceRuntime(serviceManifest, {
     ...createCommunicationLinkRoutes({
       internalServiceSecret,
       service: communicationLinkService
+    }),
+    ...createClientNotificationFollowupRoutes({
+      internalServiceSecret,
+      service: clientNotificationFollowupService
     }),
     ...createLiteIntakeStagingRoutes({
       internalServiceSecret,
