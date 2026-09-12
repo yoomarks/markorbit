@@ -57,7 +57,7 @@ suite('PostgreSQL M12-WP02 durable Trademark Service Work Package', () => {
     idleTimeoutMs: 2000,
     statementTimeoutMs: 5000,
     sslMode: 'disable',
-    migrationNamespace: 'lite_trademark_service_work_package_test'
+    migrationNamespace: 'lite_trademark_asset_test'
   });
   const migrationsDirectory = path.resolve('../../infrastructure/persistence/migrations');
   const migrationOwners = path.resolve('../../infrastructure/persistence/migration-owners.json');
@@ -86,7 +86,7 @@ suite('PostgreSQL M12-WP02 durable Trademark Service Work Package', () => {
       migrationOwners,
       '@markorbit/lite-service'
     );
-    await migrate(database.getPool(), 'lite_trademark_service_work_package_test', liteMigrations);
+    await migrate(database.getPool(), 'lite_trademark_asset_test', liteMigrations);
     await database.getPool().query(
       `INSERT INTO workspaces (workspace_id,name,slug) VALUES
        ($1,'Service Workbench Test','service-workbench-test'),

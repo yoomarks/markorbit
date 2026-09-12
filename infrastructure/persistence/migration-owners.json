@@ -176,6 +176,7 @@
     "0112_lite_communication_links": "@markorbit/lite-service",
     "0113_lite_workspace_directory": "@markorbit/lite-service",
     "0114_lite_intake_staging": "@markorbit/lite-service",
-    "0115_lite_trademark_service_reviewed_communication_draft": "@markorbit/lite-service"
+    "0115_lite_trademark_service_reviewed_communication_draft": "@markorbit/lite-service",
+    "0116_lite_prepared_action_client_notification_vocabulary": "@markorbit/lite-service"
   }
 }
