@@ -1,8 +1,10 @@
 import { createHash, randomUUID } from 'node:crypto';
-import type { CustomerIntent, RelationshipModel } from '@markorbit/contracts';
+import type { CustomerIntent, RelationshipModel, WorkspacePrincipal } from '@markorbit/contracts';
 import { relationshipModels } from '@markorbit/contracts';
 import {
   noAutomaticProductLoopConsequences,
+  parseClientNotificationHandoffPlanV1,
+  type ClientNotificationHandoffPlanV1,
   type FormalTrademarkServiceOpportunityId,
   type LiteTodaySnapshot,
   type OpportunityCandidateId,
@@ -31,6 +33,7 @@ export type PreparedActionJourneyErrorCode =
   | 'POLICY_DENIED'
   | 'IDEMPOTENCY_CONFLICT'
   | 'VERSION_CONFLICT'
+  | 'RECONCILIATION_REQUIRED'
   | 'DEPENDENCY_UNAVAILABLE'
   | 'PERSISTENCE_UNAVAILABLE';
 
@@ -62,6 +65,11 @@ export interface CreateFormalOpportunityActionPlan {
   proposedCustomerIntent?: Readonly<CustomerIntent>;
 }
 
+export interface PrepareClientNotificationActionPlan {
+  kind: 'PREPARE_CLIENT_NOTIFICATION';
+  clientNotificationPlan: Readonly<ClientNotificationHandoffPlanV1>;
+}
+
 export interface StartMarkRegIntakeActionPlan {
   kind: 'START_MARKREG_INTAKE';
   formalOpportunity: Readonly<{ id: FormalTrademarkServiceOpportunityId; version: number }>;
@@ -71,7 +79,10 @@ export interface StartMarkRegIntakeActionPlan {
 }
 
 export type PreparedActionPlan =
-  PrepareContentActionPlan | CreateFormalOpportunityActionPlan | StartMarkRegIntakeActionPlan;
+  | PrepareContentActionPlan
+  | CreateFormalOpportunityActionPlan
+  | PrepareClientNotificationActionPlan
+  | StartMarkRegIntakeActionPlan;
 
 export interface PrepareActionCommand {
   workspaceId: string;
@@ -88,6 +99,7 @@ export interface ConfirmPreparedActionCommand {
   confirmedByPrincipalId: string;
   acknowledgedEffect: string;
   idempotencyKey: string;
+  principal?: Readonly<WorkspacePrincipal>;
 }
 
 export interface RecordPreparedActionHandoffCommand {
@@ -102,7 +114,8 @@ export interface PreparedActionHandoffAuthority {
     action: Readonly<PreparedAction>,
     plan: Readonly<PreparedActionPlan>,
     confirmation: Readonly<PreparedActionConfirmation>,
-    idempotencyKey: string
+    idempotencyKey: string,
+    principal?: Readonly<WorkspacePrincipal>
   ): Promise<Readonly<PreparedActionHandoffResult>>;
 }
 
@@ -223,6 +236,22 @@ function normalizePlan(plan: Readonly<PreparedActionPlan>): PreparedActionPlan {
       title: cleanText(plan.title, 'plan.title', 500),
       rationale: cleanText(plan.rationale, 'plan.rationale', 4000)
     };
+  if (plan.kind === 'PREPARE_CLIENT_NOTIFICATION') {
+    try {
+      return {
+        kind: plan.kind,
+        clientNotificationPlan: parseClientNotificationHandoffPlanV1(plan.clientNotificationPlan)
+      };
+    } catch (cause) {
+      throw new PreparedActionJourneyError(
+        'INVALID_INPUT',
+        'clientNotificationPlan is invalid.',
+        422,
+        undefined,
+        { cause: cause instanceof Error ? cause : undefined }
+      );
+    }
+  }
   if (plan.kind === 'CREATE_FORMAL_TRADEMARK_SERVICE_OPPORTUNITY')
     return {
       kind: plan.kind,
@@ -278,6 +307,8 @@ function handoffTarget(plan: Readonly<PreparedActionPlan>): ProductLoopHandoffTa
   if (plan.kind === 'PREPARE_CONTENT') return 'LITE_CONTENT_PREPARATION';
   if (plan.kind === 'CREATE_FORMAL_TRADEMARK_SERVICE_OPPORTUNITY')
     return 'MARKREG_FORMAL_TRADEMARK_SERVICE_OPPORTUNITY';
+  if (plan.kind === 'PREPARE_CLIENT_NOTIFICATION')
+    return 'MANAGED_COMMUNICATION_CLIENT_NOTIFICATION';
   return 'MARKREG_INTAKE';
 }
 
@@ -286,6 +317,7 @@ function expectedRecommendationKind(
 ): TodayRecommendation['kind'] {
   if (plan.kind === 'PREPARE_CONTENT') return 'CONTENT_PREPARATION';
   if (plan.kind === 'CREATE_FORMAL_TRADEMARK_SERVICE_OPPORTUNITY') return 'OPPORTUNITY_REVIEW';
+  if (plan.kind === 'PREPARE_CLIENT_NOTIFICATION') return 'WORK_FOLLOW_UP';
   return 'MARKREG_HANDOFF';
 }
 
@@ -298,6 +330,12 @@ function actionCopy(
       summary: `Prepare a bounded Lite content-preparation line for “${recommendation.title}”.`,
       confirmationEffect:
         'Create one Lite Content Opportunity from this exact Recommendation. No external publication, customer contact, Order, Matter or filing will occur.'
+    };
+  if (plan.kind === 'PREPARE_CLIENT_NOTIFICATION')
+    return {
+      summary: `Send the exact reviewed client notification for “${recommendation.title}”.`,
+      confirmationEffect:
+        'Send one external EMAIL through Managed Communication using the exact reviewed mailbox, recipients, subject, body, attachments and business context. Sending proves provider dispatch only; it does not prove delivery, read, response, legal notice effectiveness, customer truth, filing, payment or Work completion.'
     };
   if (plan.kind === 'CREATE_FORMAL_TRADEMARK_SERVICE_OPPORTUNITY')
     return {
@@ -342,6 +380,15 @@ export class PostgresPreparedActionStore {
       'expectedRecommendationFingerprintSha256'
     );
     const plan = normalizePlan(command.plan);
+    if (
+      plan.kind === 'PREPARE_CLIENT_NOTIFICATION' &&
+      plan.clientNotificationPlan.workspaceId !== workspaceId
+    )
+      throw new PreparedActionJourneyError(
+        'INVALID_INPUT',
+        'clientNotificationPlan workspaceId must match the Prepared Action Workspace.',
+        422
+      );
     const idempotencyKey = cleanText(command.idempotencyKey, 'idempotencyKey', 300);
     const requestFingerprintSha256 = fingerprint({
       workspaceId,
@@ -408,6 +455,9 @@ export class PostgresPreparedActionStore {
           summary: copy.summary,
           confirmationEffect: copy.confirmationEffect,
           handoffTarget: handoffTarget(plan),
+          ...(plan.kind === 'PREPARE_CLIENT_NOTIFICATION'
+            ? { clientNotificationPlan: plan.clientNotificationPlan }
+            : {}),
           sources: recommendation.sources,
           confirmationRequired: true,
           executionAuthorized: false,
@@ -492,6 +542,19 @@ export class PostgresPreparedActionStore {
             'The user acknowledgement must exactly match the current confirmation effect.',
             422
           );
+        const expectedClientNotificationPlanFingerprintSha256 =
+          action.kind === 'PREPARE_CLIENT_NOTIFICATION'
+            ? action.clientNotificationPlan?.confirmationFingerprintSha256
+            : undefined;
+        if (
+          action.kind === 'PREPARE_CLIENT_NOTIFICATION' &&
+          !expectedClientNotificationPlanFingerprintSha256
+        )
+          throw new PreparedActionJourneyError(
+            'POLICY_DENIED',
+            'Client-notification Prepared Action is missing its frozen handoff plan.',
+            422
+          );
         const existing = await client.query(
           'SELECT document_json FROM lite_prepared_action_confirmations WHERE workspace_id=$1 AND prepared_action_id=$2 AND prepared_action_version=1',
           [workspaceId, actionId]
@@ -501,7 +564,9 @@ export class PostgresPreparedActionStore {
           if (
             prior.expectedPreparedActionFingerprintSha256 !== expectedFingerprint ||
             prior.confirmedByPrincipalId !== confirmedByPrincipalId ||
-            prior.acknowledgedEffect !== acknowledgedEffect
+            prior.acknowledgedEffect !== acknowledgedEffect ||
+            prior.expectedClientNotificationPlanFingerprintSha256 !==
+              expectedClientNotificationPlanFingerprintSha256
           )
             throw new PreparedActionJourneyError(
               'VERSION_CONFLICT',
@@ -517,6 +582,9 @@ export class PostgresPreparedActionStore {
           confirmedByPrincipalId,
           confirmedAt,
           acknowledgedEffect,
+          ...(expectedClientNotificationPlanFingerprintSha256
+            ? { expectedClientNotificationPlanFingerprintSha256 }
+            : {}),
           protectedActionAuthorized: false
         };
         await client.query(
@@ -708,7 +776,7 @@ export class PostgresPreparedActionStore {
     recommendation: Readonly<TodayRecommendation>,
     plan: Readonly<PreparedActionPlan>
   ): void {
-    if (plan.kind === 'PREPARE_CONTENT') return;
+    if (plan.kind === 'PREPARE_CONTENT' || plan.kind === 'PREPARE_CLIENT_NOTIFICATION') return;
     if (plan.kind === 'CREATE_FORMAL_TRADEMARK_SERVICE_OPPORTUNITY') {
       const exactCandidate = recommendation.sources.some(
         (source) =>
@@ -924,7 +992,8 @@ export class PreparedActionJourneyService {
         journey.preparedAction,
         plan,
         confirmation,
-        `prepared-action-handoff:${journey.preparedAction.preparedActionId}`
+        `prepared-action-handoff:${journey.preparedAction.preparedActionId}`,
+        command.principal
       );
     } catch (error) {
       if (error instanceof PreparedActionJourneyError) throw error;
@@ -947,7 +1016,7 @@ export class PreparedActionJourneyService {
 
 export function handoffResult(input: {
   preparedAction: PreparedAction;
-  owner: 'LITE' | 'MARKREG';
+  owner: PreparedActionHandoffResult['owner'];
   ownerRecord: Readonly<{ id: string; version: number | string }>;
   completedAt: string;
 }): PreparedActionHandoffResult {

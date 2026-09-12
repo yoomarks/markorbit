@@ -639,7 +639,8 @@ export function createLiteProductLoopRoutes(options: LiteProductLoopRouteOptions
             ),
             confirmedByPrincipalId: principal.userId,
             acknowledgedEffect: text(body.acknowledgedEffect, 'acknowledgedEffect'),
-            idempotencyKey: keyOf(request)
+            idempotencyKey: keyOf(request),
+            principal
           });
           return json(200, journey);
         } catch (error) {
