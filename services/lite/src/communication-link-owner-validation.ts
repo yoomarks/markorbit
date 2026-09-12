@@ -8,6 +8,7 @@ import type {
   CommunicationLinkTargetReferenceV1
 } from '@markorbit/contracts/communication-link';
 import type { PostgresLiteTrademarkAssetStore } from './trademark-asset.js';
+import type { PostgresWorkspaceDirectoryStore } from './workspace-directory.js';
 import {
   CommunicationLinkRuntimeError,
   type CommunicationLinkOwnerValidator
@@ -227,6 +228,7 @@ export class ProductionCommunicationLinkOwnerValidator implements CommunicationL
   constructor(
     private readonly sourceReader: HttpManagedCommunicationLinkSourceReader,
     private readonly trademarkAssets: Pick<PostgresLiteTrademarkAssetStore, 'get'>,
+    private readonly workspaceDirectory: Pick<PostgresWorkspaceDirectoryStore, 'getLatest'>,
     private readonly markRegTargets: HttpMarkRegCommunicationLinkTargetReader
   ) {}
 
@@ -246,12 +248,33 @@ export class ProductionCommunicationLinkOwnerValidator implements CommunicationL
       );
     await this.sourceReader.validate(input.workspaceId, input.source);
     if (input.target.targetKind === 'WORKSPACE_DIRECTORY_ENTRY') {
-      throw new CommunicationLinkRuntimeError(
-        'TARGET_OWNER_UNAVAILABLE',
-        'Workspace Directory owner runtime is not production-reachable yet.',
-        503,
-        true
-      );
+      try {
+        const entry = await this.workspaceDirectory.getLatest(
+          input.workspaceId,
+          input.target.workspaceDirectoryEntryId
+        );
+        if (!entry)
+          throw new CommunicationLinkRuntimeError(
+            'TARGET_NOT_FOUND',
+            'Exact Workspace Directory target was not found.',
+            404
+          );
+        if (entry.version !== input.target.version || entry.status !== 'ACTIVE')
+          throw new CommunicationLinkRuntimeError(
+            'TARGET_VERSION_STALE',
+            'Workspace Directory target is no longer current and ACTIVE.'
+          );
+      } catch (error) {
+        if (error instanceof CommunicationLinkRuntimeError) throw error;
+        throw new CommunicationLinkRuntimeError(
+          'TARGET_UNAVAILABLE',
+          'Workspace Directory owner read is unavailable.',
+          503,
+          true,
+          { cause: error instanceof Error ? error : undefined }
+        );
+      }
+      return;
     }
     if (input.target.targetKind === 'TRADEMARK_ASSET') {
       try {

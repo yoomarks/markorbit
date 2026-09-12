@@ -92,14 +92,16 @@ export interface ManagedCommunicationClientNotificationSendReceiptV1 {
   }>;
 }
 
+export interface ManagedCommunicationClientNotificationSendCommandV1 {
+  workspaceId: string;
+  idempotencyKey: string;
+  correlationId: string;
+  request: Readonly<ManagedCommunicationClientNotificationSendRequestV1>;
+}
+
 export interface ManagedCommunicationClientNotificationSender {
   send(
-    input: Readonly<{
-      workspaceId: string;
-      idempotencyKey: string;
-      correlationId: string;
-      request: Readonly<ManagedCommunicationClientNotificationSendRequestV1>;
-    }>
+    input: Readonly<ManagedCommunicationClientNotificationSendCommandV1>
   ): Promise<Readonly<ManagedCommunicationClientNotificationSendReceiptV1>>;
 }
 interface Fetcher {
@@ -122,6 +124,34 @@ function digest(value: unknown): string {
   return createHash('sha256')
     .update(JSON.stringify(stable(value)))
     .digest('hex');
+}
+
+export function clientNotificationManagedCommunicationSendCommandV1(
+  action: Readonly<PreparedAction>,
+  plan: Readonly<ClientNotificationHandoffPlanV1>,
+  handoffIdempotencyKey: string
+): Readonly<ManagedCommunicationClientNotificationSendCommandV1> {
+  const sendIdentitySha256 = digest({
+    workspaceId: plan.workspaceId,
+    preparedActionId: action.preparedActionId,
+    preparedActionVersion: action.version,
+    confirmationFingerprintSha256: plan.confirmationFingerprintSha256,
+    handoffIdempotencyKey
+  });
+  return Object.freeze({
+    workspaceId: plan.workspaceId,
+    idempotencyKey: `client-notification:${action.preparedActionId}:${sendIdentitySha256}`,
+    correlationId: `client-notification:${sendIdentitySha256}`,
+    request: Object.freeze({
+      schemaVersion: 1 as const,
+      accountRef: plan.accountRef,
+      channel: 'EMAIL' as const,
+      participants: [plan.sender, ...plan.recipients.map(({ participant }) => participant)],
+      subject: plan.subject,
+      textBody: plan.body,
+      attachments: plan.attachments
+    })
+  });
 }
 
 function same(left: unknown, right: unknown): boolean {
@@ -379,30 +409,12 @@ export class ClientNotificationPreparedActionHandoff {
     for (const target of plan.relatedBusinessRefs)
       await this.businessRefs.validate(principal, target);
 
-    const sendIdentitySha256 = digest({
-      workspaceId: plan.workspaceId,
-      preparedActionId: action.preparedActionId,
-      preparedActionVersion: action.version,
-      confirmationFingerprintSha256: plan.confirmationFingerprintSha256,
+    const sendCommand = clientNotificationManagedCommunicationSendCommandV1(
+      action,
+      plan,
       handoffIdempotencyKey
-    });
-    const ownerIdempotencyKey = `client-notification:${action.preparedActionId}:${sendIdentitySha256}`;
-    const correlationId = `client-notification:${sendIdentitySha256}`;
-    const request: ManagedCommunicationClientNotificationSendRequestV1 = {
-      schemaVersion: 1,
-      accountRef: plan.accountRef,
-      channel: 'EMAIL',
-      participants: [plan.sender, ...plan.recipients.map(({ participant }) => participant)],
-      subject: plan.subject,
-      textBody: plan.body,
-      attachments: plan.attachments
-    };
-    const receipt = await this.sender.send({
-      workspaceId: plan.workspaceId,
-      idempotencyKey: ownerIdempotencyKey,
-      correlationId,
-      request
-    });
+    );
+    const receipt = await this.sender.send(sendCommand);
     if (
       receipt.workspaceId.toLowerCase() !== plan.workspaceId.toLowerCase() ||
       receipt.accountRef !== plan.accountRef
@@ -410,7 +422,7 @@ export class ClientNotificationPreparedActionHandoff {
       return dependency('Managed Communication receipt does not match the frozen send scope.');
     if (
       receipt.idempotencyKeySha256 !==
-      createHash('sha256').update(ownerIdempotencyKey).digest('hex')
+      createHash('sha256').update(sendCommand.idempotencyKey).digest('hex')
     )
       return dependency('Managed Communication receipt does not match the stable send identity.');
 
