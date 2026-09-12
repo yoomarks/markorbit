@@ -1,3 +1,4 @@
+import type { WorkspacePrincipal } from '@markorbit/contracts';
 import type {
   FormalTrademarkServiceOpportunity,
   MarkRegIntakeHandoff,
@@ -29,6 +30,11 @@ import { createWorkspaceDirectoryRoutes } from './workspace-directory-http.js';
 import { PostgresWorkspaceDirectoryStore } from './workspace-directory.js';
 import { createCommunicationLinkRoutes } from './communication-link-http.js';
 import { CommunicationLinkService, PostgresCommunicationLinkStore } from './communication-link.js';
+import {
+  ClientNotificationPreparedActionHandoff,
+  HttpManagedCommunicationClientNotificationSender,
+  ProductionClientNotificationBusinessReferenceValidator
+} from './client-notification-handoff.js';
 import { createLiteIntakeStagingRoutes } from './lite-intake-staging-http.js';
 import { HttpLiteIntakeProductionIntakeClient } from './lite-intake-staging-markreg.js';
 import { LiteIntakeStagingService, PostgresLiteIntakeStagingStore } from './lite-intake-staging.js';
@@ -144,13 +150,28 @@ const liteIntakeStagingService = new LiteIntakeStagingService(
   liteIntakeStagingStore,
   new HttpLiteIntakeProductionIntakeClient(markRegUrl, internalServiceSecret)
 );
+const markRegCommunicationLinkTargetReader = new HttpMarkRegCommunicationLinkTargetReader(
+  markRegUrl,
+  internalServiceSecret
+);
 const communicationLinkService = new CommunicationLinkService(
   communicationLinkStore,
   new ProductionCommunicationLinkOwnerValidator(
     new HttpManagedCommunicationLinkSourceReader(capabilityEngineUrl, internalServiceSecret),
     trademarkAssetStore,
-    new HttpMarkRegCommunicationLinkTargetReader(markRegUrl, internalServiceSecret)
+    markRegCommunicationLinkTargetReader
   )
+);
+const clientNotificationHandoff = new ClientNotificationPreparedActionHandoff(
+  trademarkServiceWorkPackages,
+  workspaceDirectoryStore,
+  liteWorkItemStore,
+  new ProductionClientNotificationBusinessReferenceValidator(
+    workspaceDirectoryStore,
+    trademarkAssetStore,
+    markRegCommunicationLinkTargetReader
+  ),
+  new HttpManagedCommunicationClientNotificationSender(capabilityEngineUrl, internalServiceSecret)
 );
 
 const productLoopSourceAuthority: ProductLoopSourceAuthority = {
@@ -224,7 +245,8 @@ const handoffAuthority: PreparedActionHandoffAuthority = {
     action: Readonly<PreparedAction>,
     plan: Readonly<PreparedActionPlan>,
     confirmation: Readonly<PreparedActionConfirmation>,
-    idempotencyKey: string
+    idempotencyKey: string,
+    principal?: Readonly<WorkspacePrincipal>
   ): Promise<Readonly<PreparedActionHandoffResult>> {
     if (plan.kind === 'PREPARE_CONTENT') {
       const opportunity = await contentStore.acceptContentOpportunity({
@@ -245,6 +267,14 @@ const handoffAuthority: PreparedActionHandoffAuthority = {
         completedAt: opportunity.updatedAt
       });
     }
+    if (plan.kind === 'PREPARE_CLIENT_NOTIFICATION')
+      return clientNotificationHandoff.perform(
+        action,
+        plan,
+        confirmation,
+        idempotencyKey,
+        principal
+      );
     if (plan.kind === 'CREATE_FORMAL_TRADEMARK_SERVICE_OPPORTUNITY') {
       const response = await postMarkReg<{ formalOpportunity: FormalTrademarkServiceOpportunity }>(
         '/internal/v1/formal-opportunities',

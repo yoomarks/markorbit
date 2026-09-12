@@ -1,11 +1,15 @@
 import path from 'node:path';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { ManagedDatabase, loadMigrationsForOwner, migrate } from '@markorbit/persistence';
-import type {
-  ContentOpportunityId,
-  PreparedActionId,
-  ProductLoopSourceReference,
-  TodayRecommendationId
+import {
+  clientNotificationConfirmationFingerprintSha256V1,
+  clientNotificationReviewedContentFingerprintSha256V1,
+  noClientNotificationPreparationAuthorityConsequencesV1,
+  type ClientNotificationHandoffPlanV1,
+  type ContentOpportunityId,
+  type PreparedActionId,
+  type ProductLoopSourceReference,
+  type TodayRecommendationId
 } from '@markorbit/contracts/product-loop';
 import {
   PostgresLiteContentPreparationStore,
@@ -172,6 +176,57 @@ suite('PostgreSQL Lite Today Prepared Action journey', () => {
     return { rec, store, journey };
   }
 
+  function notificationPlan(): ClientNotificationHandoffPlanV1 {
+    const subject = 'Please confirm the reviewed trademark details';
+    const body = 'Please review the details and reply with your confirmation.';
+    const attachments = [] as const;
+    const withoutConfirmation = {
+      schemaVersion: 1 as const,
+      kind: 'CLIENT_NOTIFICATION_HANDOFF' as const,
+      workspaceId,
+      sourceDraft: {
+        owner: 'LITE' as const,
+        kind: 'TRADEMARK_SERVICE_COMMUNICATION_DRAFT' as const,
+        workPackage: { id: 'trademark-service-work-package_pg-notice', version: 2 },
+        preparationId: 'trademark-service-preparation_pg-notice',
+        draftKind: 'CLIENT_INFORMATION_REQUEST' as const,
+        draftFingerprintSha256: 'd'.repeat(64)
+      },
+      accountRef: 'mailbox_pg-notice',
+      channel: 'EMAIL' as const,
+      sender: { role: 'SENDER' as const, address: 'service@example.com' },
+      recipients: [
+        {
+          participant: { role: 'TO' as const, address: 'client@example.com' },
+          source: { kind: 'MANUAL_ENTRY' as const }
+        }
+      ],
+      subject,
+      body,
+      attachments,
+      reviewedContentFingerprintSha256: clientNotificationReviewedContentFingerprintSha256V1({
+        subject,
+        body,
+        attachments
+      }),
+      relatedBusinessRefs: [
+        {
+          targetKind: 'WORKSPACE_DIRECTORY_ENTRY' as const,
+          owner: 'LITE' as const,
+          workspaceId,
+          workspaceDirectoryEntryId: 'workspace-directory-entry_pg-notice' as const,
+          version: 1
+        }
+      ]
+    };
+    return {
+      ...withoutConfirmation,
+      confirmationFingerprintSha256:
+        clientNotificationConfirmationFingerprintSha256V1(withoutConfirmation),
+      authorityConsequences: noClientNotificationPreparationAuthorityConsequencesV1
+    };
+  }
+
   it('persists exact Prepared Action, Core Principal confirmation and one content handoff across restart/replay', async () => {
     const { journey } = await prepare();
     let ownerCalls = 0;
@@ -241,6 +296,109 @@ suite('PostgreSQL Lite Today Prepared Action journey', () => {
       .getPool()
       .query('SELECT count(*)::int AS count FROM lite_content_opportunities');
     expect((count.rows[0] as { count?: number } | undefined)?.count).toBe(1);
+  });
+
+  it('persists client-notification plan confirmation and Managed Communication handoff across restart/replay', async () => {
+    const plan = notificationPlan();
+    const recommendationId = 'today-recommendation_pg-notice' as TodayRecommendationId;
+    const recommendationFingerprintSha256 = 'e'.repeat(64);
+    const createdAt = '2026-08-11T10:05:00.000Z';
+    const notificationRecommendation = {
+      schemaVersion: 1,
+      todayRecommendationId: recommendationId,
+      workspaceId,
+      version: 1,
+      kind: 'WORK_FOLLOW_UP',
+      title: 'Send the reviewed client notification',
+      explanation: 'A human-reviewed client communication is ready for explicit confirmation.',
+      sources: [source],
+      status: 'OPEN',
+      recommendationFingerprintSha256,
+      executionAuthorized: false,
+      createdAt,
+      updatedAt: createdAt
+    };
+    await database
+      .getPool()
+      .query(
+        'INSERT INTO lite_today_recommendations (workspace_id,today_recommendation_id,version,recommendation_fingerprint_sha256,document_json,created_at,updated_at) VALUES ($1,$2,1,$3,$4::jsonb,$5,$5)',
+        [
+          workspaceId,
+          recommendationId,
+          recommendationFingerprintSha256,
+          JSON.stringify(notificationRecommendation),
+          createdAt
+        ]
+      );
+
+    const journey = await preparedStore().prepare({
+      workspaceId,
+      recommendation: { id: recommendationId, version: 1 },
+      expectedRecommendationFingerprintSha256: recommendationFingerprintSha256,
+      plan: { kind: 'PREPARE_CLIENT_NOTIFICATION', clientNotificationPlan: plan },
+      idempotencyKey: 'wp05-notification-prepare'
+    });
+    expect(journey.preparedAction).toMatchObject({
+      kind: 'PREPARE_CLIENT_NOTIFICATION',
+      handoffTarget: 'MANAGED_COMMUNICATION_CLIENT_NOTIFICATION',
+      clientNotificationPlan: plan
+    });
+
+    let ownerCalls = 0;
+    const authority: PreparedActionHandoffAuthority = {
+      perform(action, localPlan, confirmation, key) {
+        ownerCalls += 1;
+        expect(localPlan).toEqual({
+          kind: 'PREPARE_CLIENT_NOTIFICATION',
+          clientNotificationPlan: plan
+        });
+        expect(confirmation.expectedClientNotificationPlanFingerprintSha256).toBe(
+          plan.confirmationFingerprintSha256
+        );
+        expect(key).toBe(`prepared-action-handoff:${action.preparedActionId}`);
+        return Promise.resolve(
+          handoffResult({
+            preparedAction: action,
+            owner: 'MANAGED_COMMUNICATION',
+            ownerRecord: {
+              id: 'managed-communication-send_pg-notice',
+              version: 'f'.repeat(64)
+            },
+            completedAt: '2026-08-11T10:06:00.000Z'
+          })
+        );
+      }
+    };
+    const command = {
+      workspaceId,
+      preparedAction: { id: journey.preparedAction.preparedActionId, version: 1 },
+      expectedPreparedActionFingerprintSha256:
+        journey.preparedAction.preparedActionFingerprintSha256,
+      confirmedByPrincipalId: principalId,
+      acknowledgedEffect: journey.preparedAction.confirmationEffect,
+      idempotencyKey: 'wp05-notification-confirm'
+    };
+    const completed = await new PreparedActionJourneyService(
+      preparedStore(),
+      authority
+    ).confirmAndHandoff(command);
+    expect(completed.handoffState).toBe('HANDOFF_COMPLETED');
+    expect(completed.confirmation?.expectedClientNotificationPlanFingerprintSha256).toBe(
+      plan.confirmationFingerprintSha256
+    );
+    expect(completed.handoffResult).toMatchObject({
+      owner: 'MANAGED_COMMUNICATION',
+      target: 'MANAGED_COMMUNICATION_CLIENT_NOTIFICATION',
+      ownerRecord: { id: 'managed-communication-send_pg-notice', version: 'f'.repeat(64) }
+    });
+    expect(ownerCalls).toBe(1);
+
+    const afterRestart = new PreparedActionJourneyService(preparedStore(), authority);
+    expect(
+      await afterRestart.findJourney(workspaceId, journey.preparedAction.preparedActionId)
+    ).toEqual(completed);
+    expect(await afterRestart.confirmAndHandoff(command)).toEqual(completed);
+    expect(ownerCalls).toBe(1);
   });
 
   it('keeps confirmation durable when the owner is unavailable, then retries without a second confirmation', async () => {
