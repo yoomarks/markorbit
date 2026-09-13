@@ -33,12 +33,36 @@ export async function persistenceBoundaryFailures(root) {
         `Migration namespace ${namespace || '<empty>'} requires one valid declared owner.`
       );
   const migrationOwners = registry.migrations ?? {};
+  const protectedTableFamilies = registry.protectedTableFamilies ?? {};
+  for (const [prefix, owner] of Object.entries(protectedTableFamilies))
+    if (!/^[a-z][a-z0-9_]{2,127}$/u.test(prefix) || typeof owner !== 'string' || !owner)
+      failures.push(
+        `Protected table family ${prefix || '<empty>'} requires one valid declared owner.`
+      );
   const migrationFiles = (await readdir(path.join(root, 'infrastructure/persistence/migrations')))
     .filter((name) => name.endsWith('.sql'))
     .map((name) => name.slice(0, -4));
   for (const migration of migrationFiles)
     if (typeof migrationOwners[migration] !== 'string' || !migrationOwners[migration])
       failures.push(`Migration ${migration} requires one declared owner.`);
+  for (const migration of migrationFiles) {
+    const owner = migrationOwners[migration];
+    if (typeof owner !== 'string' || !owner) continue;
+    const sql = await readFile(
+      path.join(root, 'infrastructure/persistence/migrations', `${migration}.sql`),
+      'utf8'
+    );
+    for (const match of sql.matchAll(
+      /\bCREATE\s+TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?(?:"?[A-Za-z_][A-Za-z0-9_$]*"?\.)?"?([A-Za-z_][A-Za-z0-9_$]*)"?/giu
+    )) {
+      const table = match[1].toLowerCase();
+      for (const [prefix, expectedOwner] of Object.entries(protectedTableFamilies))
+        if (table.startsWith(prefix) && owner !== expectedOwner)
+          failures.push(
+            `Migration ${migration} owned by ${owner} may not create protected ${prefix}* table ${table}; owner is ${expectedOwner}.`
+          );
+    }
+  }
   for (const migration of Object.keys(migrationOwners))
     if (!migrationFiles.includes(migration))
       failures.push(`Migration owner ${migration} has no migration file.`);
