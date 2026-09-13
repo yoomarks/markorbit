@@ -180,4 +180,36 @@ describe('Communication Link durable runtime semantics', () => {
       (store as unknown as { create: ReturnType<typeof vi.fn> }).create
     ).not.toHaveBeenCalled();
   });
+
+  it('binds trusted principal identity before durable replay', async () => {
+    const existing = link('communication-link_bound-replay');
+    const replayCreate = vi.fn().mockResolvedValue(existing);
+    const store = {
+      replayCreate,
+      create: vi.fn(),
+      archive: vi.fn(),
+      getExact: vi.fn(),
+      getLatest: vi.fn(),
+      listLatest: vi.fn()
+    } as unknown as PostgresCommunicationLinkStore;
+    const validator = { validateCreate: vi.fn() };
+    const service = new CommunicationLinkService(store, validator);
+    const foreignPrincipal = {
+      ...principal,
+      workspaceId: '22222222-2222-4222-8222-222222222222'
+    } satisfies WorkspacePrincipal;
+
+    await expect(service.create(command, foreignPrincipal)).rejects.toMatchObject({
+      code: 'TARGET_NOT_FOUND',
+      status: 404
+    });
+    await expect(
+      service.create({ ...command, actorPrincipalId: 'user_forged' }, principal)
+    ).rejects.toMatchObject({
+      code: 'INVALID_INPUT',
+      status: 422
+    });
+    expect(replayCreate).not.toHaveBeenCalled();
+    expect(validator.validateCreate).not.toHaveBeenCalled();
+  });
 });

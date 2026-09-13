@@ -789,10 +789,25 @@ export class CommunicationLinkService {
     command: Readonly<CreateCommunicationLinkCommand>,
     principal: Readonly<WorkspacePrincipal>
   ): Promise<CommunicationLinkV1> {
+    const workspaceId = cleanWorkspaceId(command.workspaceId);
+    if (principal.workspaceId.trim().toLowerCase() !== workspaceId)
+      throw new CommunicationLinkRuntimeError(
+        'TARGET_NOT_FOUND',
+        'Workspace-scoped target was not found.',
+        404
+      );
+    const actorPrincipalId = cleanText(command.actorPrincipalId, 'actorPrincipalId', 240);
+    const trustedPrincipalId = cleanText(principal.userId, 'principal.userId', 240);
+    if (actorPrincipalId !== trustedPrincipalId)
+      throw new CommunicationLinkRuntimeError(
+        'INVALID_INPUT',
+        'actorPrincipalId must match the trusted Workspace Principal.',
+        422
+      );
     const replay = await this.store.replayCreate(command);
     if (replay) return replay;
     await this.validator.validateCreate({
-      workspaceId: cleanWorkspaceId(command.workspaceId),
+      workspaceId,
       source: command.source,
       target: command.target,
       principal
