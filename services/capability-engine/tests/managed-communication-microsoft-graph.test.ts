@@ -97,6 +97,20 @@ class RecordingExactEvidenceStore implements ManagedCommunicationExactEvidenceSt
   }
 }
 
+class FlakyRecordingExactEvidenceStore extends RecordingExactEvidenceStore {
+  private failuresRemaining = 1;
+
+  override admitExactEvidence(
+    input: ManagedCommunicationExactEvidenceAdmissionV1
+  ): Promise<ManagedCommunicationExactEvidenceAdmissionOutcomeV1> {
+    if (this.failuresRemaining > 0) {
+      this.failuresRemaining -= 1;
+      return Promise.reject(new Error('simulated exact evidence persistence failure'));
+    }
+    return super.admitExactEvidence(input);
+  }
+}
+
 function tokenProvider(token = 'graph-access-token-test-only') {
   return { accessToken: vi.fn(() => Promise.resolve(token)) };
 }
@@ -461,6 +475,84 @@ describe('Microsoft Graph Managed Communication provider adapter', () => {
     await expect(inbound.syncOnce()).resolves.toMatchObject({ imported: 0 });
     expect(exactEvidence.admissions).toHaveLength(2);
     expect(exactEvidence.admissions[0]!.observedAt).toBe(exactEvidence.admissions[1]!.observedAt);
+  });
+
+  it('resumes safely when exact evidence persistence fails after message admission', async () => {
+    const foundation = await registeredFoundation();
+    const exactEvidence = new FlakyRecordingExactEvidenceStore();
+    const cursor =
+      'https://graph.microsoft.com/v1.0/me/mailFolders/inbox/messages/delta?$deltatoken=before-evidence-failure';
+    await foundation.saveCheckpoint({
+      workspaceId,
+      accountRef,
+      checkpointRef: 'msgraph-delta:before-evidence-failure',
+      providerCursor: cursor,
+      observedAt,
+      now: observedAt
+    });
+    const fetchImpl = vi.fn((input: RequestInfo | URL) => {
+      const url = requestUrl(input);
+      if (url.includes('/v1.0/me?$select=')) return Promise.resolve(json(graphProfile()));
+      if (url.includes('$deltatoken=before-evidence-failure')) {
+        return Promise.resolve(
+          json({
+            value: [{ id: 'graph-message-1' }],
+            '@odata.deltaLink':
+              'https://graph.microsoft.com/v1.0/me/mailFolders/inbox/messages/delta?$deltatoken=after-evidence-recovery'
+          })
+        );
+      }
+      if (url.includes('/messages/graph-message-1?$select=')) {
+        return Promise.resolve(json({ ...inboundMessage(), hasAttachments: false }));
+      }
+      if (url.endsWith('/messages/graph-message-1/$value')) return Promise.resolve(bytes('raw'));
+      return Promise.reject(new Error(`Unexpected Graph request: ${url}`));
+    }) as typeof fetch;
+    const times = [
+      '2026-09-10T01:08:00.000Z',
+      '2026-09-10T01:08:01.000Z',
+      '2026-09-10T01:09:00.000Z',
+      '2026-09-10T01:09:01.000Z'
+    ];
+    let nowIndex = 0;
+    const inbound = new MicrosoftGraphManagedCommunicationInboundV1({
+      client: new MicrosoftGraphManagedCommunicationClientV1(tokenProvider(), fetchImpl),
+      foundation,
+      exactEvidence,
+      workspaceId,
+      accountRef,
+      now: () => times[nowIndex++] ?? '2026-09-10T01:09:02.000Z'
+    });
+
+    await expect(inbound.syncOnce()).rejects.toThrow(
+      'simulated exact evidence persistence failure'
+    );
+    expect((await foundation.latestCheckpoint(workspaceId, accountRef))?.providerCursor).toBe(
+      cursor
+    );
+
+    const ids = managedCommunicationNormalizedIdsV1({
+      workspaceId,
+      accountRef,
+      provider: MICROSOFT_GRAPH_MANAGED_COMMUNICATION_PROVIDER,
+      providerMessageId: 'graph-message-1',
+      providerThreadId: 'graph-conversation-1'
+    });
+    const storedAfterFailure = await foundation.resolveMessage(
+      workspaceId,
+      accountRef,
+      ids.messageId
+    );
+    expect(storedAfterFailure.providerObservation.observedAt).toBe('2026-09-10T01:08:01.000Z');
+
+    const recovered = await inbound.syncOnce();
+    expect(recovered).toMatchObject({ initialized: false, imported: 0 });
+    expect(recovered.providerCursor).toContain('$deltatoken=after-evidence-recovery');
+    expect(exactEvidence.admissions).toHaveLength(1);
+    expect(exactEvidence.admissions[0]!.observedAt).toBe('2026-09-10T01:08:01.000Z');
+    expect((await foundation.latestCheckpoint(workspaceId, accountRef))?.providerCursor).toContain(
+      '$deltatoken=after-evidence-recovery'
+    );
   });
 
   it('does not advance the durable checkpoint when message admission fails', async () => {
