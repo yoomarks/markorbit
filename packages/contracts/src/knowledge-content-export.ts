@@ -113,6 +113,7 @@ const patterns = {
   converterId: /^[a-z0-9]+(?:-[a-z0-9]+)*$/u,
   semver: /^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$/u
 } as const;
+const GLOBAL_PUBLIC_KNOWLEDGE_WORKSPACE_ID = 'global-public';
 
 const SOURCE_ROLES = [
   'COUNTRY_CONTEXT',
@@ -278,7 +279,8 @@ export function parseReadyPackageContentExportV1(
     typeof value.readyPackageId !== 'string' ||
     !patterns.readyPackage.test(value.readyPackageId) ||
     typeof value.knowledgeWorkspaceId !== 'string' ||
-    !patterns.workspace.test(value.knowledgeWorkspaceId) ||
+    (!patterns.workspace.test(value.knowledgeWorkspaceId) &&
+      value.knowledgeWorkspaceId !== GLOBAL_PUBLIC_KNOWLEDGE_WORKSPACE_ID) ||
     typeof value.readyPackageDigest !== 'string' ||
     !patterns.sha256.test(value.readyPackageDigest) ||
     typeof provenance.sourceId !== 'string' ||
