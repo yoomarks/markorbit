@@ -6,6 +6,7 @@ import type {
   ManagedCommunicationParticipantV1
 } from '@markorbit/contracts/managed-communication';
 import {
+  ManagedCommunicationFoundationError,
   managedCommunicationNormalizedIdsV1,
   type ManagedCommunicationFoundationStoreV1
 } from './managed-communication-foundation.js';
@@ -853,8 +854,13 @@ export class MicrosoftGraphManagedCommunicationInboundV1 {
       accountRef: this.options.accountRef,
       messageId: ids.messageId
     });
+    const existingMessage = existingEvidence
+      ? undefined
+      : await this.resolveExistingMessage(ids.messageId);
     const observedAt =
-      existingEvidence?.observedAt ?? canonicalTimestamp(now(), 'microsoftGraph.observedAt');
+      existingEvidence?.observedAt ??
+      existingMessage?.providerObservation.observedAt ??
+      canonicalTimestamp(now(), 'microsoftGraph.observedAt');
     const bodyContent = full.body?.content?.trim();
     const bodyType = full.body?.contentType?.toLowerCase();
     const attachments = await this.attachments(
@@ -912,6 +918,25 @@ export class MicrosoftGraphManagedCommunicationInboundV1 {
       now: observedAt
     });
     return normalized.disposition === 'ADMITTED' ? 1 : 0;
+  }
+
+  private async resolveExistingMessage(
+    messageId: string
+  ): Promise<Readonly<ManagedCommunicationMessageV1> | undefined> {
+    try {
+      return await this.options.foundation.resolveMessage(
+        this.options.workspaceId,
+        this.options.accountRef,
+        messageId
+      );
+    } catch (error) {
+      if (
+        error instanceof ManagedCommunicationFoundationError &&
+        error.code === 'MESSAGE_NOT_FOUND'
+      )
+        return undefined;
+      throw error;
+    }
   }
 
   private async attachments(
