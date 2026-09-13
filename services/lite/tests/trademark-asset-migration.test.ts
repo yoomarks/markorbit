@@ -18,6 +18,8 @@ type BulkInput = BulkImportTrademarkAssetsInput;
 type BulkStatus = TrademarkAssetBulkImportStatus;
 
 const workspaceId = '96969696-9696-4969-8969-969696969696';
+const sourceFingerprintA = 'a'.repeat(64);
+const sourceFingerprintB = 'b'.repeat(64);
 
 function normalizedItem(index: number): TrademarkAssetMigrationAdmissionItem {
   return {
@@ -272,6 +274,47 @@ describe('Lite Agency Workspace reviewable Trademark Asset migration', () => {
       endExclusive: 2_501,
       rowKeys: ['source-row-02500']
     });
+  });
+
+  it('binds a reviewed run to the explicit source-file fingerprint', async () => {
+    const bulkImport = createdImporter();
+    const store = new InMemoryTrademarkAssetMigrationRunStore();
+    const service = new TrademarkAssetMigrationOrchestrator({ bulkImport }, store);
+    const rows = reviewRows(2);
+    const input = {
+      workspaceId,
+      migrationKey: 'source-lineage',
+      sourceFingerprintSha256: sourceFingerprintA,
+      rows
+    } as const;
+
+    const first = await service.preview(input);
+    const replay = await service.preview(input);
+    expect(replay.fingerprint).toBe(first.fingerprint);
+    expect(replay.sourceFingerprintSha256).toBe(sourceFingerprintA);
+    expect((await service.progress(workspaceId, 'source-lineage'))?.sourceFingerprintSha256).toBe(
+      sourceFingerprintA
+    );
+
+    await expect(
+      service.commit({ ...input, sourceFingerprintSha256: sourceFingerprintB })
+    ).rejects.toMatchObject({ code: 'RUN_MISMATCH' });
+    expect(bulkImport).not.toHaveBeenCalled();
+
+    const result = await service.commit(input);
+    expect(result.sourceFingerprintSha256).toBe(sourceFingerprintA);
+  });
+
+  it('rejects a non-lowercase SHA-256 source fingerprint', async () => {
+    const service = new TrademarkAssetMigrationOrchestrator({ bulkImport: createdImporter() });
+    await expect(
+      service.preview({
+        workspaceId,
+        migrationKey: 'invalid-source-fingerprint',
+        sourceFingerprintSha256: 'A'.repeat(64),
+        rows: reviewRows(1)
+      })
+    ).rejects.toMatchObject({ code: 'INVALID_INPUT' });
   });
 
   it('requires preview before commit', async () => {

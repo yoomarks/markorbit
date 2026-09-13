@@ -126,6 +126,7 @@ export interface ReviewableTrademarkAssetMigrationRow {
 export interface ReviewableTrademarkAssetMigrationInput {
   workspaceId: string;
   migrationKey: string;
+  sourceFingerprintSha256?: string;
   rows: ReadonlyArray<Readonly<ReviewableTrademarkAssetMigrationRow>>;
 }
 
@@ -136,6 +137,7 @@ export interface TrademarkAssetMigrationPreview {
   schemaVersion: 1;
   workspaceId: string;
   migrationKey: string;
+  sourceFingerprintSha256?: string;
   fingerprint: string;
   total: number;
   chunkCount: number;
@@ -161,6 +163,7 @@ export interface ReviewableTrademarkAssetMigrationResult {
   schemaVersion: 1;
   workspaceId: string;
   migrationKey: string;
+  sourceFingerprintSha256?: string;
   fingerprint: string;
   total: number;
   created: number;
@@ -225,12 +228,14 @@ export class TrademarkAssetMigrationInterruptedError extends TrademarkAssetMigra
 type NormalizedReviewInput = Readonly<{
   workspaceId: string;
   migrationKey: string;
+  sourceFingerprintSha256?: string;
   rows: ReadonlyArray<Readonly<ReviewableTrademarkAssetMigrationRow>>;
   fingerprint: string;
   chunkCount: number;
 }>;
 
 const WORKSPACE_UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const SHA256 = /^[0-9a-f]{64}$/;
 const MAX_MIGRATION_ROW_KEY_LENGTH = 500;
 
 function migrationChunkCount(total: number): number {
@@ -253,11 +258,13 @@ function canonicalFingerprintValue(value: unknown): unknown {
 function reviewFingerprint(
   workspaceId: string,
   migrationKey: string,
-  rows: ReadonlyArray<Readonly<ReviewableTrademarkAssetMigrationRow>>
+  rows: ReadonlyArray<Readonly<ReviewableTrademarkAssetMigrationRow>>,
+  sourceFingerprintSha256?: string
 ): string {
   const payload = canonicalFingerprintValue({
     workspaceId,
     migrationKey,
+    sourceFingerprintSha256,
     rows: rows.map((row) => ({ rowKey: row.rowKey, item: row.item }))
   });
   return createHash('sha256').update(JSON.stringify(payload)).digest('hex');
@@ -279,6 +286,13 @@ function validateReviewInput(
     );
   }
   const migrationKey = cleanMigrationKey(input.migrationKey);
+  const sourceFingerprintSha256 = input.sourceFingerprintSha256;
+  if (sourceFingerprintSha256 !== undefined && !SHA256.test(sourceFingerprintSha256)) {
+    throw new TrademarkAssetMigrationOrchestrationError(
+      'INVALID_INPUT',
+      'sourceFingerprintSha256 must be a lowercase SHA-256 hex digest when supplied.'
+    );
+  }
   const seen = new Set<string>();
   const rows = input.rows.map((row) => {
     const rowKey = row.rowKey.trim();
@@ -295,8 +309,9 @@ function validateReviewInput(
   return Object.freeze({
     workspaceId,
     migrationKey,
+    ...(sourceFingerprintSha256 === undefined ? {} : { sourceFingerprintSha256 }),
     rows: Object.freeze(rows),
-    fingerprint: reviewFingerprint(workspaceId, migrationKey, rows),
+    fingerprint: reviewFingerprint(workspaceId, migrationKey, rows, sourceFingerprintSha256),
     chunkCount: migrationChunkCount(rows.length)
   });
 }
@@ -319,6 +334,7 @@ function assertMatchingRun(
   const matches =
     current.workspaceId === input.workspaceId &&
     current.migrationKey === input.migrationKey &&
+    current.sourceFingerprintSha256 === input.sourceFingerprintSha256 &&
     current.fingerprint === input.fingerprint &&
     current.total === input.rows.length &&
     current.chunkCount === input.chunkCount &&
@@ -337,6 +353,9 @@ function previewFrom(input: NormalizedReviewInput): Readonly<TrademarkAssetMigra
     schemaVersion: 1,
     workspaceId: input.workspaceId,
     migrationKey: input.migrationKey,
+    ...(input.sourceFingerprintSha256 === undefined
+      ? {}
+      : { sourceFingerprintSha256: input.sourceFingerprintSha256 }),
     fingerprint: input.fingerprint,
     total: input.rows.length,
     chunkCount: input.chunkCount,
@@ -373,6 +392,9 @@ function emptyRunSnapshot(
     schemaVersion: 1,
     workspaceId: input.workspaceId,
     migrationKey: input.migrationKey,
+    ...(input.sourceFingerprintSha256 === undefined
+      ? {}
+      : { sourceFingerprintSha256: input.sourceFingerprintSha256 }),
     fingerprint: input.fingerprint,
     status: 'PREVIEWED',
     total: input.rows.length,
@@ -396,6 +418,9 @@ function reviewResult(
     schemaVersion: 1,
     workspaceId: snapshot.workspaceId,
     migrationKey: snapshot.migrationKey,
+    ...(snapshot.sourceFingerprintSha256 === undefined
+      ? {}
+      : { sourceFingerprintSha256: snapshot.sourceFingerprintSha256 }),
     fingerprint: snapshot.fingerprint,
     total: snapshot.total,
     created: snapshot.created,
