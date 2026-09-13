@@ -19,7 +19,7 @@ async function fixture() {
     await mkdir(path.join(root, area), { recursive: true });
   await writeFile(
     path.join(root, 'infrastructure/persistence/migration-owners.json'),
-    '{"namespaces":{"alpha":"@markorbit/alpha-service","beta":"@markorbit/beta-service"},"protectedTableFamilies":{"capability_communication_":"@markorbit/capability-engine","lite_communication_link_":"@markorbit/lite-service","lite_trademark_asset":"@markorbit/lite-service","lite_work_item":"@markorbit/lite-service","lite_workspace_directory_":"@markorbit/lite-service"},"migrations":{}}'
+    '{"namespaces":{"alpha":"@markorbit/alpha-service","beta":"@markorbit/beta-service"},"protectedTableFamilies":{"capability_communication_":"@markorbit/capability-engine","lite_communication_link_":"@markorbit/lite-service","lite_intake_staging_":"@markorbit/lite-service","lite_prepared_action":"@markorbit/lite-service","lite_trademark_asset":"@markorbit/lite-service","lite_work_item":"@markorbit/lite-service","lite_workspace_directory_":"@markorbit/lite-service","lite_workspace_watch_":"@markorbit/lite-service"},"migrations":{}}'
   );
   return root;
 }
@@ -55,8 +55,13 @@ test('rejects protected Agency truth table families under the wrong migration ow
       '@markorbit/capability-engine',
       'capability_communication_shadow'
     ],
+    ['lite_communication_link_', '@markorbit/lite-service', 'lite_communication_link_shadow'],
+    ['lite_intake_staging_', '@markorbit/lite-service', 'lite_intake_staging_shadow'],
+    ['lite_prepared_action', '@markorbit/lite-service', 'lite_prepared_action_shadow'],
     ['lite_trademark_asset', '@markorbit/lite-service', 'lite_trademark_asset_shadow'],
-    ['lite_workspace_directory_', '@markorbit/lite-service', 'lite_workspace_directory_shadow']
+    ['lite_work_item', '@markorbit/lite-service', 'lite_work_item_shadow'],
+    ['lite_workspace_directory_', '@markorbit/lite-service', 'lite_workspace_directory_shadow'],
+    ['lite_workspace_watch_', '@markorbit/lite-service', 'lite_workspace_watch_shadow']
   ]) {
     const root = await fixture();
     await writeFile(

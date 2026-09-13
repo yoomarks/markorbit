@@ -81,9 +81,12 @@
   "protectedTableFamilies": {
     "capability_communication_": "@markorbit/capability-engine",
     "lite_communication_link_": "@markorbit/lite-service",
+    "lite_intake_staging_": "@markorbit/lite-service",
+    "lite_prepared_action": "@markorbit/lite-service",
     "lite_trademark_asset": "@markorbit/lite-service",
     "lite_work_item": "@markorbit/lite-service",
-    "lite_workspace_directory_": "@markorbit/lite-service"
+    "lite_workspace_directory_": "@markorbit/lite-service",
+    "lite_workspace_watch_": "@markorbit/lite-service"
   },
   "migrations": {
     "0018_identity_workspace_membership": "@markorbit/core-service",
