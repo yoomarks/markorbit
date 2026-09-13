@@ -8,6 +8,7 @@ import type { BulkImportTrademarkAssetsInput } from '../src/trademark-asset-port
 import {
   InMemoryTrademarkAssetMigrationRunStore,
   MAX_LARGE_TRADEMARK_ASSET_MIGRATION_ITEMS,
+  prepareHistoricalTrademarkAssetImport,
   TrademarkAssetMigrationInterruptedError,
   TrademarkAssetMigrationOrchestrator,
   type TrademarkAssetBulkImporter,
@@ -245,6 +246,88 @@ describe('Lite Agency Workspace large Trademark Asset migration orchestration', 
       code: 'INVALID_INPUT'
     });
     expect(bulkImport).not.toHaveBeenCalled();
+  });
+});
+
+describe('Lite Agency Workspace historical import preparation', () => {
+  it('separates READY and UNRESOLVED rows into one deterministic receipt', async () => {
+    const input = {
+      workspaceId,
+      migrationKey: 'historical-preparation',
+      sourceFingerprintSha256: sourceFingerprintA,
+      rows: [
+        { rowKey: 'row-0', state: 'READY', item: normalizedItem(0) },
+        { rowKey: 'row-1', state: 'UNRESOLVED', reason: ' applicant identity ambiguous ' },
+        { rowKey: 'row-2', state: 'READY', item: normalizedItem(2) }
+      ]
+    } as const;
+
+    const first = prepareHistoricalTrademarkAssetImport(input);
+    const replay = prepareHistoricalTrademarkAssetImport(input);
+
+    expect(replay.manifestFingerprintSha256).toBe(first.manifestFingerprintSha256);
+    expect(first).toMatchObject({
+      total: 3,
+      ready: 2,
+      unresolved: 1,
+      sourceFingerprintSha256: sourceFingerprintA,
+      officialTruthVerifiedByLite: false,
+      assetsCreatedAutomatically: false,
+      matterCreatedAutomatically: false
+    });
+    expect(first.readyRows.map((row) => row.sourceIndex)).toEqual([0, 2]);
+    expect(first.unresolvedRows).toEqual([
+      { rowKey: 'row-1', sourceIndex: 1, reason: 'applicant identity ambiguous' }
+    ]);
+    expect(first.migrationInput?.rows.map((row) => row.rowKey)).toEqual(['row-0', 'row-2']);
+
+    const bulkImport = createdImporter();
+    const orchestrator = new TrademarkAssetMigrationOrchestrator({ bulkImport });
+    await orchestrator.preview(first.migrationInput!);
+    expect(bulkImport).not.toHaveBeenCalled();
+  });
+
+  it('returns a review receipt without migration input when every row is unresolved', () => {
+    const receipt = prepareHistoricalTrademarkAssetImport({
+      workspaceId,
+      migrationKey: 'all-unresolved',
+      rows: [
+        { rowKey: 'row-0', state: 'UNRESOLVED', reason: 'missing application number' },
+        { rowKey: 'row-1', state: 'UNRESOLVED', reason: 'jurisdiction unknown' }
+      ]
+    });
+
+    expect(receipt).toMatchObject({ total: 2, ready: 0, unresolved: 2 });
+    expect(receipt.migrationInput).toBeUndefined();
+  });
+
+  it('fails closed on duplicate row keys and malformed row outcomes', () => {
+    expect(() =>
+      prepareHistoricalTrademarkAssetImport({
+        workspaceId,
+        migrationKey: 'duplicate-row-key',
+        rows: [
+          { rowKey: 'same', state: 'READY', item: normalizedItem(0) },
+          { rowKey: ' same ', state: 'UNRESOLVED', reason: 'needs review' }
+        ]
+      })
+    ).toThrow('rowKey must be unique');
+
+    expect(() =>
+      prepareHistoricalTrademarkAssetImport({
+        workspaceId,
+        migrationKey: 'bad-unresolved',
+        rows: [{ rowKey: 'row-0', state: 'UNRESOLVED', reason: '   ' }]
+      })
+    ).toThrow('reason must contain');
+
+    expect(() =>
+      prepareHistoricalTrademarkAssetImport({
+        workspaceId,
+        migrationKey: 'bad-ready',
+        rows: [{ rowKey: 'row-0', state: 'READY', item: null } as never]
+      })
+    ).toThrow('requires one normalized item');
   });
 });
 
