@@ -23,6 +23,8 @@ const suite = url ? describe : describe.skip;
 
 const workspaceId = '97979797-9797-4979-8979-979797979797';
 const otherWorkspaceId = '98989898-9898-4989-8989-989898989898';
+const sourceFingerprintA = 'a'.repeat(64);
+const sourceFingerprintB = 'b'.repeat(64);
 type BulkInput = BulkImportTrademarkAssetsInput;
 type BulkStatus = TrademarkAssetBulkImportStatus;
 
@@ -129,6 +131,30 @@ suite('PostgreSQL Lite Agency Trademark Asset migration run store', () => {
 
   afterAll(() => database.close());
 
+  it('persists explicit source-file fingerprint across restart and rejects a revised source', async () => {
+    const bulkImport = vi.fn((input: Readonly<BulkInput>) => Promise.resolve(ownerResult(input)));
+    const rows = reviewRows(1);
+    const input = {
+      workspaceId,
+      migrationKey: 'postgres-source-lineage',
+      sourceFingerprintSha256: sourceFingerprintA,
+      rows
+    } as const;
+
+    const serviceA = new TrademarkAssetMigrationOrchestrator({ bulkImport }, store());
+    await serviceA.preview(input);
+
+    const persisted = await store().load(workspaceId, 'postgres-source-lineage');
+    expect(persisted?.sourceFingerprintSha256).toBe(sourceFingerprintA);
+
+    const serviceB = new TrademarkAssetMigrationOrchestrator({ bulkImport }, store());
+    await expect(
+      serviceB.commit({ ...input, sourceFingerprintSha256: sourceFingerprintB })
+    ).rejects.toMatchObject({ code: 'RUN_MISMATCH' });
+    const completed = await serviceB.commit(input);
+    expect(completed.sourceFingerprintSha256).toBe(sourceFingerprintA);
+  });
+
   it('survives process restart and resumes from the first incomplete owner chunk', async () => {
     const attemptedBatchKeys: string[] = [];
     let failSecondChunkOnce = true;
@@ -168,6 +194,7 @@ suite('PostgreSQL Lite Agency Trademark Asset migration run store', () => {
     const storeB = store();
     const persistedAfterRestart = await storeB.load(workspaceId, 'postgres-resume');
     expect(persistedAfterRestart).toEqual(interrupted);
+    expect(persistedAfterRestart?.sourceFingerprintSha256).toBeUndefined();
     await expect(
       storeB.save({
         ...persistedAfterRestart!,

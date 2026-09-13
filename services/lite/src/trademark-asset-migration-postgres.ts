@@ -196,6 +196,13 @@ function assertSnapshot(value: unknown): asserts value is TrademarkAssetMigratio
     throw corrupt('migration run fingerprint is invalid.');
   }
   if (
+    row.sourceFingerprintSha256 !== undefined &&
+    (typeof row.sourceFingerprintSha256 !== 'string' ||
+      !FINGERPRINT.test(row.sourceFingerprintSha256))
+  ) {
+    throw corrupt('migration run sourceFingerprintSha256 is invalid.');
+  }
+  if (
     typeof status !== 'string' ||
     !STATUSES.includes(status as TrademarkAssetMigrationRunStatus)
   ) {
