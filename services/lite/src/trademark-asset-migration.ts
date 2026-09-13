@@ -130,6 +130,54 @@ export interface ReviewableTrademarkAssetMigrationInput {
   rows: ReadonlyArray<Readonly<ReviewableTrademarkAssetMigrationRow>>;
 }
 
+export type HistoricalTrademarkAssetImportSourceRow =
+  | Readonly<{
+      rowKey: string;
+      state: 'READY';
+      item: TrademarkAssetMigrationAdmissionItem;
+    }>
+  | Readonly<{
+      rowKey: string;
+      state: 'UNRESOLVED';
+      reason: string;
+    }>;
+
+export interface HistoricalTrademarkAssetImportPreparationInput {
+  workspaceId: string;
+  migrationKey: string;
+  sourceFingerprintSha256?: string;
+  rows: ReadonlyArray<HistoricalTrademarkAssetImportSourceRow>;
+}
+
+export interface HistoricalTrademarkAssetImportPreparedRow {
+  rowKey: string;
+  sourceIndex: number;
+  item: TrademarkAssetMigrationAdmissionItem;
+}
+
+export interface HistoricalTrademarkAssetImportUnresolvedRow {
+  rowKey: string;
+  sourceIndex: number;
+  reason: string;
+}
+
+export interface HistoricalTrademarkAssetImportPreparationReceipt {
+  schemaVersion: 1;
+  workspaceId: string;
+  migrationKey: string;
+  sourceFingerprintSha256?: string;
+  manifestFingerprintSha256: string;
+  total: number;
+  ready: number;
+  unresolved: number;
+  readyRows: ReadonlyArray<Readonly<HistoricalTrademarkAssetImportPreparedRow>>;
+  unresolvedRows: ReadonlyArray<Readonly<HistoricalTrademarkAssetImportUnresolvedRow>>;
+  migrationInput?: Readonly<ReviewableTrademarkAssetMigrationInput>;
+  officialTruthVerifiedByLite: false;
+  assetsCreatedAutomatically: false;
+  matterCreatedAutomatically: false;
+}
+
 export type TrademarkAssetMigrationRunStatus =
   'PREVIEWED' | 'COMMITTING' | 'INTERRUPTED' | 'COMPLETED';
 
@@ -237,6 +285,7 @@ type NormalizedReviewInput = Readonly<{
 const WORKSPACE_UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const SHA256 = /^[0-9a-f]{64}$/;
 const MAX_MIGRATION_ROW_KEY_LENGTH = 500;
+const MAX_IMPORT_UNRESOLVED_REASON_LENGTH = 2_000;
 
 function migrationChunkCount(total: number): number {
   return Math.ceil(total / TRADEMARK_ASSET_MIGRATION_CHUNK_SIZE);
@@ -253,6 +302,125 @@ function canonicalFingerprintValue(value: unknown): unknown {
     );
   }
   return value;
+}
+
+function invalidPreparationInput(message: string): never {
+  throw new TrademarkAssetMigrationOrchestrationError('INVALID_INPUT', message);
+}
+
+export function prepareHistoricalTrademarkAssetImport(
+  input: Readonly<HistoricalTrademarkAssetImportPreparationInput>
+): Readonly<HistoricalTrademarkAssetImportPreparationReceipt> {
+  if (!WORKSPACE_UUID.test(input.workspaceId)) {
+    invalidPreparationInput('workspaceId must be a UUID.');
+  }
+  if (input.rows.length < 1 || input.rows.length > MAX_LARGE_TRADEMARK_ASSET_MIGRATION_ITEMS) {
+    invalidPreparationInput(
+      `historical import preparation requires between 1 and ${MAX_LARGE_TRADEMARK_ASSET_MIGRATION_ITEMS} source rows.`
+    );
+  }
+  const workspaceId = input.workspaceId.toLowerCase();
+  const migrationKey = cleanMigrationKey(input.migrationKey);
+  const sourceFingerprintSha256 = input.sourceFingerprintSha256;
+  if (sourceFingerprintSha256 !== undefined && !SHA256.test(sourceFingerprintSha256)) {
+    invalidPreparationInput(
+      'sourceFingerprintSha256 must be a lowercase SHA-256 hex digest when supplied.'
+    );
+  }
+
+  const seen = new Set<string>();
+  const readyRows: HistoricalTrademarkAssetImportPreparedRow[] = [];
+  const unresolvedRows: HistoricalTrademarkAssetImportUnresolvedRow[] = [];
+  const manifestRows: unknown[] = [];
+  const readyKeys = new Set(['rowKey', 'state', 'item']);
+  const unresolvedKeys = new Set(['rowKey', 'state', 'reason']);
+
+  for (const [sourceIndex, sourceRow] of input.rows.entries()) {
+    if (!sourceRow || typeof sourceRow !== 'object' || Array.isArray(sourceRow)) {
+      invalidPreparationInput(`source row ${sourceIndex} must be an object.`);
+    }
+    const row = sourceRow as unknown as Record<string, unknown>;
+    const rawRowKey = row.rowKey;
+    if (typeof rawRowKey !== 'string') {
+      invalidPreparationInput(`source row ${sourceIndex} rowKey must be a string.`);
+    }
+    const rowKey = rawRowKey.trim();
+    if (!rowKey || rowKey.length > MAX_MIGRATION_ROW_KEY_LENGTH || seen.has(rowKey)) {
+      invalidPreparationInput(
+        `rowKey must be unique and contain 1 to ${MAX_MIGRATION_ROW_KEY_LENGTH} characters.`
+      );
+    }
+    seen.add(rowKey);
+
+    if (row.state === 'READY') {
+      if (Object.keys(row).some((key) => !readyKeys.has(key))) {
+        invalidPreparationInput(`READY source row ${sourceIndex} contains unsupported fields.`);
+      }
+      if (!row.item || typeof row.item !== 'object' || Array.isArray(row.item)) {
+        invalidPreparationInput(`READY source row ${sourceIndex} requires one normalized item.`);
+      }
+      const item = row.item as TrademarkAssetMigrationAdmissionItem;
+      readyRows.push(Object.freeze({ rowKey, sourceIndex, item }));
+      manifestRows.push({ rowKey, sourceIndex, state: 'READY', item });
+      continue;
+    }
+    if (row.state === 'UNRESOLVED') {
+      if (Object.keys(row).some((key) => !unresolvedKeys.has(key))) {
+        invalidPreparationInput(
+          `UNRESOLVED source row ${sourceIndex} contains unsupported fields.`
+        );
+      }
+      const reason = typeof row.reason === 'string' ? row.reason.trim() : '';
+      if (!reason || reason.length > MAX_IMPORT_UNRESOLVED_REASON_LENGTH) {
+        invalidPreparationInput(
+          `UNRESOLVED source row ${sourceIndex} reason must contain 1 to ${MAX_IMPORT_UNRESOLVED_REASON_LENGTH} characters.`
+        );
+      }
+      unresolvedRows.push(Object.freeze({ rowKey, sourceIndex, reason }));
+      manifestRows.push({ rowKey, sourceIndex, state: 'UNRESOLVED', reason });
+      continue;
+    }
+    invalidPreparationInput(`source row ${sourceIndex} state must be READY or UNRESOLVED.`);
+  }
+
+  const manifestPayload = canonicalFingerprintValue({
+    workspaceId,
+    migrationKey,
+    sourceFingerprintSha256,
+    rows: manifestRows
+  });
+  const manifestFingerprintSha256 = createHash('sha256')
+    .update(JSON.stringify(manifestPayload))
+    .digest('hex');
+  const migrationInput =
+    readyRows.length === 0
+      ? undefined
+      : Object.freeze({
+          workspaceId,
+          migrationKey,
+          ...(sourceFingerprintSha256 === undefined ? {} : { sourceFingerprintSha256 }),
+          rows: Object.freeze(
+            readyRows.map((row) => Object.freeze({ rowKey: row.rowKey, item: row.item }))
+          )
+        });
+
+  return Object.freeze({
+    schemaVersion: 1,
+    workspaceId,
+    migrationKey,
+    ...(sourceFingerprintSha256 === undefined ? {} : { sourceFingerprintSha256 }),
+    manifestFingerprintSha256,
+    total: input.rows.length,
+    ready: readyRows.length,
+    unresolved: unresolvedRows.length,
+
+    readyRows: Object.freeze(readyRows),
+    unresolvedRows: Object.freeze(unresolvedRows),
+    ...(migrationInput === undefined ? {} : { migrationInput }),
+    officialTruthVerifiedByLite: false,
+    assetsCreatedAutomatically: false,
+    matterCreatedAutomatically: false
+  });
 }
 
 function reviewFingerprint(
