@@ -6,10 +6,13 @@ on:
       - 'services/core/src/brain-asset-registry.ts'
       - 'services/core/src/brain-asset-registry-postgres.ts'
       - 'services/core/src/brain-build-runtime.ts'
+      - 'services/core/src/workspace-trademark-issue-intelligence-store.ts'
       - 'services/core/tests/brain-asset-registry-postgres.test.ts'
+      - 'services/core/tests/workspace-trademark-issue-intelligence-store-postgres.test.ts'
       - 'services/core/package.json'
       - 'packages/contracts/src/brain*.ts'
       - 'infrastructure/persistence/migrations/0071_core_brain_registry.sql'
+      - 'infrastructure/persistence/migrations/0117_core_workspace_trademark_issue_intelligence.sql'
       - 'infrastructure/persistence/migration-owners.json'
       - '.github/workflows/brain-registry-postgres-durability.yml'
   push:
@@ -18,10 +21,13 @@ on:
       - 'services/core/src/brain-asset-registry.ts'
       - 'services/core/src/brain-asset-registry-postgres.ts'
       - 'services/core/src/brain-build-runtime.ts'
+      - 'services/core/src/workspace-trademark-issue-intelligence-store.ts'
       - 'services/core/tests/brain-asset-registry-postgres.test.ts'
+      - 'services/core/tests/workspace-trademark-issue-intelligence-store-postgres.test.ts'
       - 'services/core/package.json'
       - 'packages/contracts/src/brain*.ts'
       - 'infrastructure/persistence/migrations/0071_core_brain_registry.sql'
+      - 'infrastructure/persistence/migrations/0117_core_workspace_trademark_issue_intelligence.sql'
       - 'infrastructure/persistence/migration-owners.json'
       - '.github/workflows/brain-registry-postgres-durability.yml'
 
@@ -60,9 +66,9 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - name: Build Brain dependency closure
         run: pnpm exec turbo run build --filter=@markorbit/core-service...
-      - name: Validate Brain registry source
+      - name: Validate Brain persistence source
         run: |
-          pnpm exec eslint services/core/src/brain-asset-registry.ts services/core/src/brain-asset-registry-postgres.ts services/core/tests/brain-asset-registry-postgres.test.ts
+          pnpm exec eslint services/core/src/brain-asset-registry.ts services/core/src/brain-asset-registry-postgres.ts services/core/src/workspace-trademark-issue-intelligence-store.ts services/core/tests/brain-asset-registry-postgres.test.ts services/core/tests/workspace-trademark-issue-intelligence-store-postgres.test.ts
           pnpm --filter @markorbit/core-service typecheck
       - name: Preserve Brain registry and Build Runtime regression
         run: pnpm --filter @markorbit/core-service exec vitest run tests/brain-asset-registry.test.ts tests/brain-build-registry-admission.test.ts tests/brain-build-runtime.test.ts
