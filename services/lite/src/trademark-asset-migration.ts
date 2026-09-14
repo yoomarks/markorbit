@@ -178,6 +178,38 @@ export interface HistoricalTrademarkAssetImportPreparationReceipt {
   matterCreatedAutomatically: false;
 }
 
+export type HistoricalTrademarkAssetImportRelationshipKind = Exclude<
+  TrademarkAssetMigrationAdmissionItem['workspaceRelationships'][number]['kind'],
+  'MARKETPLACE_ADDED'
+>;
+
+export interface HistoricalTrademarkAssetTabularColumnMapping {
+  jurisdiction: string;
+  markText: string;
+  applicationNumber?: string;
+  registrationNumber?: string;
+  madridIrNumber?: string;
+  internalReference?: string;
+}
+
+export interface HistoricalTrademarkAssetTabularSourceRow {
+  rowKey: string;
+  cells: readonly string[];
+}
+
+export interface HistoricalTrademarkAssetTabularMappingInput {
+  workspaceId: string;
+  migrationKey: string;
+  sourceFingerprintSha256?: string;
+  sourceArtifactId: string;
+  sourceArtifactVersion: string;
+  observedAt: string;
+  relationshipKind: HistoricalTrademarkAssetImportRelationshipKind;
+  headers: readonly string[];
+  columns: Readonly<HistoricalTrademarkAssetTabularColumnMapping>;
+  rows: ReadonlyArray<Readonly<HistoricalTrademarkAssetTabularSourceRow>>;
+}
+
 export type TrademarkAssetMigrationRunStatus =
   'PREVIEWED' | 'COMMITTING' | 'INTERRUPTED' | 'COMPLETED';
 
@@ -286,6 +318,10 @@ const WORKSPACE_UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]
 const SHA256 = /^[0-9a-f]{64}$/;
 const MAX_MIGRATION_ROW_KEY_LENGTH = 500;
 const MAX_IMPORT_UNRESOLVED_REASON_LENGTH = 2_000;
+const MAX_TABULAR_HEADERS = 200;
+const MAX_TABULAR_HEADER_LENGTH = 300;
+const MAX_SOURCE_ARTIFACT_ID_LENGTH = 440;
+const MAX_SOURCE_ARTIFACT_VERSION_LENGTH = 300;
 
 function migrationChunkCount(total: number): number {
   return Math.ceil(total / TRADEMARK_ASSET_MIGRATION_CHUNK_SIZE);
@@ -420,6 +456,257 @@ export function prepareHistoricalTrademarkAssetImport(
     officialTruthVerifiedByLite: false,
     assetsCreatedAutomatically: false,
     matterCreatedAutomatically: false
+  });
+}
+
+export function mapHistoricalTrademarkAssetTabularRows(
+  input: Readonly<HistoricalTrademarkAssetTabularMappingInput>
+): Readonly<HistoricalTrademarkAssetImportPreparationReceipt> {
+  if (
+    !Array.isArray(input.headers) ||
+    input.headers.length < 1 ||
+    input.headers.length > MAX_TABULAR_HEADERS
+  ) {
+    invalidPreparationInput(`headers must contain between 1 and ${MAX_TABULAR_HEADERS} columns.`);
+  }
+  if (
+    !Array.isArray(input.rows) ||
+    input.rows.length < 1 ||
+    input.rows.length > MAX_LARGE_TRADEMARK_ASSET_MIGRATION_ITEMS
+  ) {
+    invalidPreparationInput(
+      `tabular historical import requires between 1 and ${MAX_LARGE_TRADEMARK_ASSET_MIGRATION_ITEMS} source rows.`
+    );
+  }
+
+  const headers = input.headers.map((rawHeader, index) => {
+    if (typeof rawHeader !== 'string') {
+      invalidPreparationInput(`header ${index} must be a string.`);
+    }
+    const header = rawHeader.trim();
+    if (!header || header.length > MAX_TABULAR_HEADER_LENGTH) {
+      invalidPreparationInput(
+        `header ${index} must contain 1 to ${MAX_TABULAR_HEADER_LENGTH} characters.`
+      );
+    }
+    return header;
+  });
+
+  const headerIndex = new Map<string, number>();
+  for (const [index, header] of headers.entries()) {
+    if (headerIndex.has(header)) {
+      invalidPreparationInput(`header ${header} is duplicated after trimming.`);
+    }
+    headerIndex.set(header, index);
+  }
+
+  const allowedColumnKeys = new Set([
+    'jurisdiction',
+    'markText',
+    'applicationNumber',
+    'registrationNumber',
+    'madridIrNumber',
+    'internalReference'
+  ]);
+  const rawColumns = input.columns as unknown as Record<string, unknown>;
+  if (!rawColumns || typeof rawColumns !== 'object' || Array.isArray(rawColumns)) {
+    invalidPreparationInput('columns must be an object.');
+  }
+  if (Object.keys(rawColumns).some((key) => !allowedColumnKeys.has(key))) {
+    invalidPreparationInput('columns contains unsupported semantic fields.');
+  }
+
+  const resolved = new Map<string, number>();
+  const usedColumnIndexes = new Set<number>();
+  for (const key of allowedColumnKeys) {
+    const value = rawColumns[key];
+    if (value === undefined) continue;
+    if (typeof value !== 'string' || !value.trim()) {
+      invalidPreparationInput(`columns.${key} must name one non-empty header.`);
+    }
+    const index = headerIndex.get(value.trim());
+    if (index === undefined) {
+      invalidPreparationInput(`columns.${key} references unknown header ${value.trim()}.`);
+    }
+    if (usedColumnIndexes.has(index)) {
+      invalidPreparationInput('one source column cannot map to multiple semantic fields.');
+    }
+    resolved.set(key, index);
+    usedColumnIndexes.add(index);
+  }
+  if (!resolved.has('jurisdiction') || !resolved.has('markText')) {
+    invalidPreparationInput('columns must map jurisdiction and markText.');
+  }
+  const identifierFields = [
+    'applicationNumber',
+    'registrationNumber',
+    'madridIrNumber',
+    'internalReference'
+  ] as const;
+  if (!identifierFields.some((field) => resolved.has(field))) {
+    invalidPreparationInput('columns must map at least one exact external identifier field.');
+  }
+
+  const relationshipKind = input.relationshipKind;
+  if (!['MANAGED', 'OWNED', 'REPRESENTED'].includes(relationshipKind)) {
+    invalidPreparationInput('relationshipKind must be MANAGED, OWNED, or REPRESENTED.');
+  }
+  const sourceArtifactId =
+    typeof input.sourceArtifactId === 'string' ? input.sourceArtifactId.trim() : '';
+  if (!sourceArtifactId || sourceArtifactId.length > MAX_SOURCE_ARTIFACT_ID_LENGTH) {
+    invalidPreparationInput(
+      `sourceArtifactId must contain 1 to ${MAX_SOURCE_ARTIFACT_ID_LENGTH} characters.`
+    );
+  }
+  const sourceArtifactVersion =
+    typeof input.sourceArtifactVersion === 'string' ? input.sourceArtifactVersion.trim() : '';
+  if (!sourceArtifactVersion || sourceArtifactVersion.length > MAX_SOURCE_ARTIFACT_VERSION_LENGTH) {
+    invalidPreparationInput(
+      `sourceArtifactVersion must contain 1 to ${MAX_SOURCE_ARTIFACT_VERSION_LENGTH} characters.`
+    );
+  }
+  if (input.sourceFingerprintSha256 !== undefined && !SHA256.test(input.sourceFingerprintSha256)) {
+    invalidPreparationInput(
+      'sourceFingerprintSha256 must be a lowercase SHA-256 hex digest when supplied.'
+    );
+  }
+  const observedAt = new Date(input.observedAt);
+  if (Number.isNaN(observedAt.getTime())) {
+    invalidPreparationInput('observedAt must be a valid timestamp.');
+  }
+  const canonicalObservedAt = observedAt.toISOString();
+  const outcomes: HistoricalTrademarkAssetImportSourceRow[] = [];
+  const seenRowKeys = new Set<string>();
+  const identifierSpecs = [
+    ['applicationNumber', 'APPLICATION_NUMBER'],
+    ['registrationNumber', 'REGISTRATION_NUMBER'],
+    ['madridIrNumber', 'MADRID_IR_NUMBER'],
+    ['internalReference', 'INTERNAL_REFERENCE']
+  ] as const;
+
+  for (const [sourceIndex, rawRow] of input.rows.entries()) {
+    if (!rawRow || typeof rawRow !== 'object' || Array.isArray(rawRow)) {
+      invalidPreparationInput(`source row ${sourceIndex} must be an object.`);
+    }
+    const row = rawRow as unknown as Record<string, unknown>;
+    if (Object.keys(row).some((key) => !['rowKey', 'cells'].includes(key))) {
+      invalidPreparationInput(`source row ${sourceIndex} contains unsupported fields.`);
+    }
+    const rowKey = typeof row.rowKey === 'string' ? row.rowKey.trim() : '';
+    if (!rowKey || rowKey.length > MAX_MIGRATION_ROW_KEY_LENGTH || seenRowKeys.has(rowKey)) {
+      invalidPreparationInput(
+        `rowKey must be unique and contain 1 to ${MAX_MIGRATION_ROW_KEY_LENGTH} characters.`
+      );
+    }
+    seenRowKeys.add(rowKey);
+    if (!Array.isArray(row.cells)) {
+      invalidPreparationInput(`source row ${sourceIndex} cells must be an array.`);
+    }
+    const cells = row.cells as unknown[];
+    if (cells.length > headers.length || cells.some((cell) => typeof cell !== 'string')) {
+      outcomes.push({
+        rowKey,
+        state: 'UNRESOLVED',
+        reason: 'row cells must be strings aligned to the declared headers'
+      });
+      continue;
+    }
+    const cell = (field: string): string => {
+      const index = resolved.get(field);
+      if (index === undefined) return '';
+      const value = cells[index];
+      return typeof value === 'string' ? value.trim() : '';
+    };
+
+    const jurisdiction = cell('jurisdiction');
+    if (!jurisdiction) {
+      outcomes.push({ rowKey, state: 'UNRESOLVED', reason: 'jurisdiction is missing' });
+      continue;
+    }
+    if (jurisdiction.length > 40) {
+      outcomes.push({ rowKey, state: 'UNRESOLVED', reason: 'jurisdiction exceeds 40 characters' });
+      continue;
+    }
+    const markText = cell('markText');
+    if (!markText) {
+      outcomes.push({ rowKey, state: 'UNRESOLVED', reason: 'mark text is missing' });
+      continue;
+    }
+    if (markText.length > 500) {
+      outcomes.push({ rowKey, state: 'UNRESOLVED', reason: 'mark text exceeds 500 characters' });
+      continue;
+    }
+    const rowReferenceHash = createHash('sha256').update(rowKey).digest('hex').slice(0, 24);
+    const sourceReference = Object.freeze({
+      owner: 'WORKSPACE_USER' as const,
+      kind: 'WORKSPACE_ADMISSION' as const,
+      sourceId: `${sourceArtifactId}#row:${rowReferenceHash}`,
+      sourceVersion: sourceArtifactVersion,
+      ...(input.sourceFingerprintSha256 === undefined
+        ? {}
+        : { sourceFingerprintSha256: input.sourceFingerprintSha256 }),
+      observedAt: canonicalObservedAt,
+      freshness: 'UNKNOWN' as const
+    });
+    const externalIdentifiers: NonNullable<
+      TrademarkAssetMigrationAdmissionItem['externalIdentifiers']
+    >[number][] = [];
+    let unresolvedReason: string | undefined;
+    for (const [field, kind] of identifierSpecs) {
+      const value = cell(field);
+      if (!value) continue;
+      if (value.length > 160) {
+        unresolvedReason = `${field} exceeds 160 characters`;
+        break;
+      }
+      externalIdentifiers.push(
+        Object.freeze({
+          kind,
+          jurisdiction: jurisdiction.toUpperCase(),
+          value,
+          sourceReference,
+          officialTruthVerifiedByLite: false as const
+        })
+      );
+    }
+    if (unresolvedReason) {
+      outcomes.push({ rowKey, state: 'UNRESOLVED', reason: unresolvedReason });
+      continue;
+    }
+    if (externalIdentifiers.length === 0) {
+      outcomes.push({
+        rowKey,
+        state: 'UNRESOLVED',
+        reason: 'at least one exact external identifier is required'
+      });
+      continue;
+    }
+
+    const item: TrademarkAssetMigrationAdmissionItem = {
+      identity: {
+        jurisdiction: jurisdiction.toUpperCase(),
+        markText
+      },
+      externalIdentifiers: Object.freeze(externalIdentifiers),
+      workspaceRelationships: [
+        Object.freeze({
+          kind: relationshipKind,
+          sourceReference,
+          sourceAssetEditableByWorkspace: true
+        })
+      ],
+      sourceReferences: [sourceReference]
+    };
+    outcomes.push(Object.freeze({ rowKey, state: 'READY' as const, item }));
+  }
+
+  return prepareHistoricalTrademarkAssetImport({
+    workspaceId: input.workspaceId,
+    migrationKey: input.migrationKey,
+    ...(input.sourceFingerprintSha256 === undefined
+      ? {}
+      : { sourceFingerprintSha256: input.sourceFingerprintSha256 }),
+    rows: Object.freeze(outcomes)
   });
 }
 

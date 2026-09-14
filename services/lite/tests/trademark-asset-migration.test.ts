@@ -8,6 +8,7 @@ import type { BulkImportTrademarkAssetsInput } from '../src/trademark-asset-port
 import {
   InMemoryTrademarkAssetMigrationRunStore,
   MAX_LARGE_TRADEMARK_ASSET_MIGRATION_ITEMS,
+  mapHistoricalTrademarkAssetTabularRows,
   prepareHistoricalTrademarkAssetImport,
   TrademarkAssetMigrationInterruptedError,
   TrademarkAssetMigrationOrchestrator,
@@ -328,6 +329,159 @@ describe('Lite Agency Workspace historical import preparation', () => {
         rows: [{ rowKey: 'row-0', state: 'READY', item: null } as never]
       })
     ).toThrow('requires one normalized item');
+  });
+});
+
+describe('Lite Agency Workspace historical tabular mapping', () => {
+  const baseTabularInput = {
+    workspaceId,
+    sourceFingerprintSha256: sourceFingerprintA,
+    sourceArtifactId: 'legacy-portfolio.csv',
+    sourceArtifactVersion: 'v1',
+    observedAt: '2026-09-10T01:02:03.000Z',
+    relationshipKind: 'MANAGED' as const,
+    headers: ['Jurisdiction', 'Mark', 'Application', 'Registration', 'Madrid', 'Internal'],
+    columns: {
+      jurisdiction: 'Jurisdiction',
+      markText: 'Mark',
+      applicationNumber: 'Application',
+      registrationNumber: 'Registration',
+      madridIrNumber: 'Madrid',
+      internalReference: 'Internal'
+    }
+  } as const;
+
+  it('maps decoded rows into the existing deterministic preparation receipt', async () => {
+    const input = {
+      ...baseTabularInput,
+      migrationKey: 'historical-tabular-map',
+      rows: [
+        { rowKey: 'legacy-row-001', cells: ['us', 'ALPHA', '98123456', '', '', ''] },
+        { rowKey: 'legacy-row-002', cells: ['CN', 'BETA', '', '1234567', '1800000', 'INT-2'] },
+        { rowKey: 'legacy-row-003', cells: ['', 'GAMMA', '98123458', '', '', ''] },
+        { rowKey: 'legacy-row-004', cells: ['US', '', '98123459', '', '', ''] },
+        { rowKey: 'legacy-row-005', cells: ['US', 'DELTA', '', '', '', ''] }
+      ]
+    } as const;
+
+    const first = mapHistoricalTrademarkAssetTabularRows(input);
+    const replay = mapHistoricalTrademarkAssetTabularRows(input);
+    expect(replay.manifestFingerprintSha256).toBe(first.manifestFingerprintSha256);
+    expect(first).toMatchObject({ total: 5, ready: 2, unresolved: 3 });
+    expect(first.readyRows.map((row) => row.rowKey)).toEqual(['legacy-row-001', 'legacy-row-002']);
+    expect(first.unresolvedRows.map((row) => row.reason)).toEqual([
+      'jurisdiction is missing',
+      'mark text is missing',
+      'at least one exact external identifier is required'
+    ]);
+
+    const firstItem = first.migrationInput!.rows[0]!.item;
+    expect(firstItem.identity).toEqual({ jurisdiction: 'US', markText: 'ALPHA' });
+    expect(firstItem.externalIdentifiers).toEqual([
+      expect.objectContaining({
+        kind: 'APPLICATION_NUMBER',
+        jurisdiction: 'US',
+        value: '98123456',
+        officialTruthVerifiedByLite: false
+      })
+    ]);
+    expect(firstItem.workspaceRelationships).toEqual([
+      expect.objectContaining({ kind: 'MANAGED', sourceAssetEditableByWorkspace: true })
+    ]);
+    expect(firstItem.sourceReferences[0]).toMatchObject({
+      owner: 'WORKSPACE_USER',
+      kind: 'WORKSPACE_ADMISSION',
+      sourceVersion: 'v1',
+      sourceFingerprintSha256: sourceFingerprintA,
+      observedAt: '2026-09-10T01:02:03.000Z',
+      freshness: 'UNKNOWN'
+    });
+    expect(firstItem.sourceReferences[0]?.sourceId).toMatch(
+      /^legacy-portfolio\.csv#row:[0-9a-f]{24}$/u
+    );
+
+    const bulkImport = createdImporter();
+    const orchestrator = new TrademarkAssetMigrationOrchestrator({ bulkImport });
+    await orchestrator.preview(first.migrationInput!);
+    expect(bulkImport).not.toHaveBeenCalled();
+  });
+
+  it('keeps the reviewed relationship kind explicit and never infers Applicant/customer truth', () => {
+    const rows = [
+      {
+        rowKey: 'explicit-row',
+        cells: ['US', 'OMEGA', '98120000', '', '', '', 'Applicant Display Name']
+      }
+    ] as const;
+    const headers = [...baseTabularInput.headers, 'Applicant Name'] as const;
+    const managed = mapHistoricalTrademarkAssetTabularRows({
+      ...baseTabularInput,
+      headers,
+      migrationKey: 'explicit-managed',
+      relationshipKind: 'MANAGED',
+      rows
+    });
+    const owned = mapHistoricalTrademarkAssetTabularRows({
+      ...baseTabularInput,
+      headers,
+      migrationKey: 'explicit-owned',
+      relationshipKind: 'OWNED',
+      rows
+    });
+
+    expect(managed.migrationInput!.rows[0]!.item.workspaceRelationships[0]?.kind).toBe('MANAGED');
+    expect(owned.migrationInput!.rows[0]!.item.workspaceRelationships[0]?.kind).toBe('OWNED');
+    expect(managed.migrationInput!.rows[0]!.item).not.toHaveProperty('ownerOrClientReference');
+  });
+
+  it('fails closed on ambiguous or unknown structural column mappings', () => {
+    expect(() =>
+      mapHistoricalTrademarkAssetTabularRows({
+        ...baseTabularInput,
+        migrationKey: 'duplicate-headers',
+        headers: [' Jurisdiction ', 'Jurisdiction', 'Mark', 'Application'],
+        columns: {
+          jurisdiction: 'Jurisdiction',
+          markText: 'Mark',
+          applicationNumber: 'Application'
+        },
+        rows: [{ rowKey: 'row-1', cells: ['US', 'US', 'ALPHA', '98123456'] }]
+      })
+    ).toThrow('duplicated after trimming');
+
+    expect(() =>
+      mapHistoricalTrademarkAssetTabularRows({
+        ...baseTabularInput,
+        migrationKey: 'unknown-column',
+        columns: {
+          ...baseTabularInput.columns,
+          registrationNumber: 'Unknown Header'
+        },
+        rows: [{ rowKey: 'row-1', cells: ['US', 'ALPHA', '98123456', '', '', ''] }]
+      })
+    ).toThrow('references unknown header');
+
+    expect(() =>
+      mapHistoricalTrademarkAssetTabularRows({
+        ...baseTabularInput,
+        migrationKey: 'same-source-column',
+        columns: {
+          jurisdiction: 'Jurisdiction',
+          markText: 'Jurisdiction',
+          applicationNumber: 'Application'
+        },
+        rows: [{ rowKey: 'row-1', cells: ['US', 'ALPHA', '98123456', '', '', ''] }]
+      })
+    ).toThrow('cannot map to multiple semantic fields');
+
+    expect(() =>
+      mapHistoricalTrademarkAssetTabularRows({
+        ...baseTabularInput,
+        migrationKey: 'marketplace-not-allowed',
+        relationshipKind: 'MARKETPLACE_ADDED' as never,
+        rows: [{ rowKey: 'row-1', cells: ['US', 'ALPHA', '98123456', '', '', ''] }]
+      })
+    ).toThrow('relationshipKind must be MANAGED, OWNED, or REPRESENTED');
   });
 });
 
