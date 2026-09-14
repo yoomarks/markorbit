@@ -52,6 +52,20 @@ const body = {
   sourceFingerprintSha256,
   rows: [row]
 };
+const tabularBody = {
+  migrationKey: 'legacy-tabular-2026',
+  sourceFingerprintSha256: 'c'.repeat(64),
+  sourceArtifactId: 'legacy-portfolio.xlsx',
+  sourceArtifactVersion: 'sheet1-v1',
+  observedAt: '2026-09-14T00:00:00.000Z',
+  relationshipKind: 'REPRESENTED' as const,
+  headers: ['Jurisdiction', 'Mark', 'Application No.'],
+  columns: { jurisdiction: 'Jurisdiction', markText: 'Mark', applicationNumber: 'Application No.' },
+  rows: [
+    { rowKey: 'sheet-row-1', cells: ['US', 'ALPHA', '98123456'] },
+    { rowKey: 'sheet-row-2', cells: ['US', '', '98123457'] }
+  ]
+};
 const normalizedRows = [
   {
     ...row,
@@ -113,7 +127,10 @@ function setup() {
       (candidate) => candidate.method === method && candidate.path === path
     );
     if (!found) throw new Error(`Missing ${method} ${path}`);
-    return found;
+    return {
+      ...found,
+      handle: (request: JsonRequest) => Promise.resolve().then(() => found.handle(request))
+    };
   };
   return { service, routes, route };
 }
@@ -142,13 +159,145 @@ function request(input: {
 }
 
 describe('Trademark Asset historical migration HTTP owner boundary', () => {
-  it('registers only preview, progress and commit routes', () => {
+  it('registers only preparation, preview, progress and commit routes', () => {
     const { routes } = setup();
     expect(routes.map(({ method, path }) => `${method} ${path}`)).toEqual([
+      'POST /v1/trademark-asset-migrations/prepare-tabular',
       'POST /v1/trademark-asset-migrations/preview',
       'GET /v1/trademark-asset-migrations/:migrationKey',
       'POST /v1/trademark-asset-migrations/:migrationKey/commit'
     ]);
+  });
+
+  it('prepares decoded tabular rows deterministically without durable side effects', async () => {
+    const { route, service } = setup();
+    const prepareRoute = route('POST', '/v1/trademark-asset-migrations/prepare-tabular');
+    const first = await prepareRoute.handle(
+      request({
+        method: 'POST',
+        path: '/v1/trademark-asset-migrations/prepare-tabular',
+        body: tabularBody
+      })
+    );
+    const replay = await prepareRoute.handle(
+      request({
+        method: 'POST',
+        path: '/v1/trademark-asset-migrations/prepare-tabular',
+        body: tabularBody
+      })
+    );
+    expect(replay).toEqual(first);
+    expect(first).toMatchObject({
+      status: 200,
+      body: {
+        schemaVersion: 1,
+        workspaceId,
+        migrationKey: tabularBody.migrationKey,
+        total: 2,
+        ready: 1,
+        unresolved: 1,
+        readyRows: [
+          {
+            rowKey: 'sheet-row-1',
+            item: {
+              workspaceRelationships: [{ kind: 'REPRESENTED' }],
+              sourceReferences: [{ freshness: 'UNKNOWN' }]
+            }
+          }
+        ],
+        unresolvedRows: [{ rowKey: 'sheet-row-2' }],
+        migrationInput: { workspaceId, migrationKey: tabularBody.migrationKey },
+        officialTruthVerifiedByLite: false,
+        assetsCreatedAutomatically: false,
+        matterCreatedAutomatically: false
+      }
+    });
+    expect(service.preview).not.toHaveBeenCalled();
+    expect(service.progress).not.toHaveBeenCalled();
+    expect(service.commit).not.toHaveBeenCalled();
+  });
+
+  it('allows read-only Workspace principals to prepare decoded tabular rows', async () => {
+    const readOnly = {
+      ...principal,
+      role: 'READ_ONLY',
+      permissions: ['workspace:read']
+    } satisfies WorkspacePrincipal;
+    const { route } = setup();
+    const response = await route('POST', '/v1/trademark-asset-migrations/prepare-tabular').handle(
+      request({
+        method: 'POST',
+        path: '/v1/trademark-asset-migrations/prepare-tabular',
+        headers: { 'x-markorbit-principal': encodeInternalWorkspacePrincipal(readOnly) },
+        body: tabularBody
+      })
+    );
+    expect(response.status).toBe(200);
+  });
+
+  it.each([{ workspaceId }, { actorPrincipalId: 'spoofed' }, { assetsCreatedAutomatically: true }])(
+    'rejects server-owned tabular preparation field %j',
+    async (extra) => {
+      const { route, service } = setup();
+      await expect(
+        route('POST', '/v1/trademark-asset-migrations/prepare-tabular').handle(
+          request({
+            method: 'POST',
+            path: '/v1/trademark-asset-migrations/prepare-tabular',
+            body: { ...tabularBody, ...extra }
+          })
+        )
+      ).rejects.toMatchObject({ status: 400, code: 'OWNER_FIELD_SPOOF_REJECTED' });
+      expect(service.preview).not.toHaveBeenCalled();
+      expect(service.progress).not.toHaveBeenCalled();
+      expect(service.commit).not.toHaveBeenCalled();
+    }
+  );
+
+  it('rejects unsupported tabular preparation fields and query parameters', async () => {
+    const { route, service } = setup();
+    const prepareRoute = route('POST', '/v1/trademark-asset-migrations/prepare-tabular');
+    await expect(
+      prepareRoute.handle(
+        request({
+          method: 'POST',
+          path: '/v1/trademark-asset-migrations/prepare-tabular',
+          body: { ...tabularBody, surprise: true }
+        })
+      )
+    ).rejects.toMatchObject({ status: 400, code: 'INVALID_REQUEST' });
+    await expect(
+      prepareRoute.handle(
+        request({
+          method: 'POST',
+          path: '/v1/trademark-asset-migrations/prepare-tabular',
+          query: { extra: '1' },
+          body: tabularBody
+        })
+      )
+    ).rejects.toMatchObject({ status: 400, code: 'INVALID_REQUEST' });
+    expect(service.preview).not.toHaveBeenCalled();
+    expect(service.progress).not.toHaveBeenCalled();
+    expect(service.commit).not.toHaveBeenCalled();
+  });
+
+  it('preserves mapper INVALID_INPUT semantics for ambiguous column mappings', async () => {
+    const { route, service } = setup();
+    await expect(
+      route('POST', '/v1/trademark-asset-migrations/prepare-tabular').handle(
+        request({
+          method: 'POST',
+          path: '/v1/trademark-asset-migrations/prepare-tabular',
+          body: {
+            ...tabularBody,
+            columns: { ...tabularBody.columns, applicationNumber: 'Jurisdiction' }
+          }
+        })
+      )
+    ).rejects.toMatchObject({ status: 400, code: 'INVALID_INPUT' });
+    expect(service.preview).not.toHaveBeenCalled();
+    expect(service.progress).not.toHaveBeenCalled();
+    expect(service.commit).not.toHaveBeenCalled();
   });
 
   it('previews only inside the trusted Workspace', async () => {
