@@ -5,6 +5,7 @@ import type {
   ManagedCommunicationParticipantV1
 } from '@markorbit/contracts/managed-communication';
 import {
+  ManagedCommunicationFoundationError,
   managedCommunicationNormalizedIdsV1,
   type ManagedCommunicationFoundationStoreV1
 } from './managed-communication-foundation.js';
@@ -647,7 +648,11 @@ export class GmailManagedCommunicationInboundV1 {
       accountRef: this.options.accountRef,
       messageId: ids.messageId
     });
-    const observedAt = existingEvidence?.observedAt ?? now();
+    const existingMessage = existingEvidence
+      ? undefined
+      : await this.resolveExistingMessage(ids.messageId);
+    const observedAt =
+      existingEvidence?.observedAt ?? existingMessage?.providerObservation.observedAt ?? now();
     const textBody = textParts(payload, 'text/plain')[0];
     const htmlBody = textParts(payload, 'text/html')[0];
     const subject = header(payload.headers, 'Subject');
@@ -696,6 +701,25 @@ export class GmailManagedCommunicationInboundV1 {
       now: observedAt
     });
     return normalized.disposition === 'ADMITTED' ? 1 : 0;
+  }
+
+  private async resolveExistingMessage(
+    messageId: string
+  ): Promise<Readonly<ManagedCommunicationMessageV1> | undefined> {
+    try {
+      return await this.options.foundation.resolveMessage(
+        this.options.workspaceId,
+        this.options.accountRef,
+        messageId
+      );
+    } catch (error) {
+      if (
+        error instanceof ManagedCommunicationFoundationError &&
+        error.code === 'MESSAGE_NOT_FOUND'
+      )
+        return undefined;
+      throw error;
+    }
   }
 
   private async attachments(
