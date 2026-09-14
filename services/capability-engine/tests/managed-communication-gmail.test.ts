@@ -96,6 +96,20 @@ class RecordingExactEvidenceStore implements ManagedCommunicationExactEvidenceSt
   }
 }
 
+class FlakyRecordingExactEvidenceStore extends RecordingExactEvidenceStore {
+  private failuresRemaining = 1;
+
+  override admitExactEvidence(
+    input: ManagedCommunicationExactEvidenceAdmissionV1
+  ): Promise<ManagedCommunicationExactEvidenceAdmissionOutcomeV1> {
+    if (this.failuresRemaining > 0) {
+      this.failuresRemaining -= 1;
+      return Promise.reject(new Error('simulated exact evidence persistence failure'));
+    }
+    return super.admitExactEvidence(input);
+  }
+}
+
 function sendRequest(
   overrides: Partial<ManagedCommunicationSendRequestV1> = {}
 ): ManagedCommunicationSendRequestV1 {
@@ -522,6 +536,144 @@ describe('Gmail Managed Communication provider adapter', () => {
       );
     }
   );
+
+  it('resumes safely when exact evidence persistence fails after Gmail message admission', async () => {
+    const foundation = await foundationWithCheckpoint('300');
+    const exactEvidence = new FlakyRecordingExactEvidenceStore();
+    const fetchImpl = vi.fn((input: RequestInfo | URL) => {
+      const url = requestUrl(input);
+      if (url === 'https://oauth2.googleapis.com/token') {
+        return resolvedJson({ access_token: 'access-token-test-only', expires_in: 3600 });
+      }
+      if (url.includes('/users/me/history?')) {
+        return resolvedJson({
+          historyId: '301',
+          history: [{ messagesAdded: [{ message: { id: 'gmail-recovery-1' } }] }]
+        });
+      }
+      if (url.includes('/messages/gmail-recovery-1?format=full')) {
+        return resolvedJson({
+          id: 'gmail-recovery-1',
+          threadId: 'gmail-thread-recovery-1',
+          historyId: '301',
+          payload: {
+            mimeType: 'text/plain',
+            headers: [
+              { name: 'From', value: 'Expert <expert@example.test>' },
+              { name: 'To', value: providerAccountRef }
+            ],
+            body: { data: Buffer.from('body').toString('base64url') }
+          }
+        });
+      }
+      if (url.includes('/messages/gmail-recovery-1?format=raw')) {
+        return resolvedJson({
+          id: 'gmail-recovery-1',
+          threadId: 'gmail-thread-recovery-1',
+          raw: Buffer.from('raw').toString('base64url')
+        });
+      }
+      return Promise.reject(new Error(`Unexpected provider request: ${url}`));
+    }) as typeof fetch;
+    let timestampIndex = 0;
+    const timestamps = ['2026-09-01T14:40:00.000Z', '2026-09-01T14:41:00.000Z'];
+    const inbound = new GmailManagedCommunicationInboundV1({
+      client: new GmailManagedCommunicationClientV1(config, fetchImpl, () => 42_000),
+      foundation,
+      exactEvidence,
+      workspaceId,
+      accountRef,
+      now: () => timestamps[timestampIndex++] ?? '2026-09-01T14:42:00.000Z'
+    });
+
+    await expect(inbound.syncOnce()).rejects.toThrow(
+      'simulated exact evidence persistence failure'
+    );
+    expect((await foundation.latestCheckpoint(workspaceId, accountRef))?.providerCursor).toBe(
+      '300'
+    );
+    const ids = managedCommunicationNormalizedIdsV1({
+      workspaceId,
+      accountRef,
+      provider: GMAIL_MANAGED_COMMUNICATION_PROVIDER,
+      providerMessageId: 'gmail-recovery-1',
+      providerThreadId: 'gmail-thread-recovery-1'
+    });
+    const storedAfterFailure = await foundation.resolveMessage(
+      workspaceId,
+      accountRef,
+      ids.messageId
+    );
+    expect(storedAfterFailure.providerObservation.observedAt).toBe('2026-09-01T14:40:00.000Z');
+
+    await expect(inbound.syncOnce()).resolves.toEqual({
+      initialized: false,
+      imported: 0,
+      providerCursor: '301'
+    });
+    expect(exactEvidence.admissions).toHaveLength(1);
+    expect(exactEvidence.admissions[0]!.observedAt).toBe('2026-09-01T14:40:00.000Z');
+    expect((await foundation.latestCheckpoint(workspaceId, accountRef))?.providerCursor).toBe(
+      '301'
+    );
+  });
+
+  it('does not swallow non-absence Managed Communication owner read failures', async () => {
+    const foundation = await foundationWithCheckpoint('400');
+    const exactEvidence = new RecordingExactEvidenceStore();
+    vi.spyOn(foundation, 'resolveMessage').mockRejectedValueOnce(
+      new Error('simulated owner read failure')
+    );
+    const fetchImpl = vi.fn((input: RequestInfo | URL) => {
+      const url = requestUrl(input);
+      if (url === 'https://oauth2.googleapis.com/token') {
+        return resolvedJson({ access_token: 'access-token-test-only', expires_in: 3600 });
+      }
+      if (url.includes('/users/me/history?')) {
+        return resolvedJson({
+          historyId: '401',
+          history: [{ messagesAdded: [{ message: { id: 'gmail-owner-error-1' } }] }]
+        });
+      }
+      if (url.includes('/messages/gmail-owner-error-1?format=full')) {
+        return resolvedJson({
+          id: 'gmail-owner-error-1',
+          threadId: 'gmail-thread-owner-error-1',
+          historyId: '401',
+          payload: {
+            mimeType: 'text/plain',
+            headers: [
+              { name: 'From', value: 'Expert <expert@example.test>' },
+              { name: 'To', value: providerAccountRef }
+            ],
+            body: { data: Buffer.from('body').toString('base64url') }
+          }
+        });
+      }
+      if (url.includes('/messages/gmail-owner-error-1?format=raw')) {
+        return resolvedJson({
+          id: 'gmail-owner-error-1',
+          threadId: 'gmail-thread-owner-error-1',
+          raw: Buffer.from('raw').toString('base64url')
+        });
+      }
+      return Promise.reject(new Error(`Unexpected provider request: ${url}`));
+    }) as typeof fetch;
+    const inbound = new GmailManagedCommunicationInboundV1({
+      client: new GmailManagedCommunicationClientV1(config, fetchImpl, () => 43_000),
+      foundation,
+      exactEvidence,
+      workspaceId,
+      accountRef,
+      now: () => '2026-09-01T14:50:00.000Z'
+    });
+
+    await expect(inbound.syncOnce()).rejects.toThrow('simulated owner read failure');
+    expect(exactEvidence.admissions).toHaveLength(0);
+    expect((await foundation.latestCheckpoint(workspaceId, accountRef))?.providerCursor).toBe(
+      '400'
+    );
+  });
 
   it('keeps history checkpoint stable when Gmail raw snapshot fails non-terminally', async () => {
     const foundation = await foundationWithCheckpoint();
