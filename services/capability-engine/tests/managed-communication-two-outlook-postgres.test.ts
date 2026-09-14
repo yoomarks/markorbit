@@ -61,7 +61,9 @@ let database: ManagedDatabase;
 
 integration('two Outlook mailbox runtimes on shared Capability PostgreSQL', () => {
   beforeAll(async () => {
-    database = new ManagedDatabase(parseDatabaseConfig(databaseConfig('markorbit-two-outlook-setup')));
+    database = new ManagedDatabase(
+      parseDatabaseConfig(databaseConfig('markorbit-two-outlook-setup'))
+    );
     await database.start();
     await database.getPool().query(
       `DO $reset$
@@ -176,10 +178,7 @@ integration('two Outlook mailbox runtimes on shared Capability PostgreSQL', () =
 
       await expect(
         createManagedCommunicationRuntimeBindingsV1({
-          environment: mailboxEnvironment(
-            'agency-outlook-duplicate',
-            primary.providerAccountRef
-          ),
+          environment: mailboxEnvironment('agency-outlook-duplicate', primary.providerAccountRef),
           database: secondaryDatabase,
           query: secondaryDatabase.getPool()
         })
