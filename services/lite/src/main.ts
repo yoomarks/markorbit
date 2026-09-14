@@ -67,6 +67,9 @@ import {
   ProductPreferenceService
 } from './preference-target.js';
 import { createTrademarkAssetReadRoutes } from './trademark-asset-http.js';
+import { createTrademarkAssetMigrationRoutes } from './trademark-asset-migration-http.js';
+import { TrademarkAssetMigrationOrchestrator } from './trademark-asset-migration.js';
+import { PostgresTrademarkAssetMigrationRunStore } from './trademark-asset-migration-postgres.js';
 import { createTradingStudioReadRoutes } from './trading-studio-http.js';
 import { PostgresTradingStudioRunStore } from './trading-studio-run.js';
 import { PostgresTradingDirectionSetStore } from './trading-direction-set.js';
@@ -136,6 +139,10 @@ const trademarkAssetCommerceStore = new PostgresTrademarkAssetCommerceStore(
   trademarkAssetStore
 );
 const trademarkAssetPortfolio = new TrademarkAssetPortfolioService(pool, trademarkAssetStore);
+const trademarkAssetMigration = new TrademarkAssetMigrationOrchestrator(
+  trademarkAssetPortfolio,
+  new PostgresTrademarkAssetMigrationRunStore(pool)
+);
 const trademarkAssetRefreshLedger = new PostgresTrademarkAssetRefreshLedger(database, pool);
 const trademarkAssetAiGuide = new TrademarkAssetAiGuidePreparer();
 const trademarkAssetManagementDispositions = new PostgresTrademarkAssetManagementDispositionStore(
@@ -448,6 +455,10 @@ const runtime = createServiceRuntime(serviceManifest, {
       dailySignalStore,
       dailyOrbitService,
       useFeedbackPreferenceRecorder: preferenceService
+    }),
+    ...createTrademarkAssetMigrationRoutes({
+      internalServiceSecret,
+      service: trademarkAssetMigration
     }),
     ...createTrademarkAssetReadRoutes({
       internalServiceSecret,

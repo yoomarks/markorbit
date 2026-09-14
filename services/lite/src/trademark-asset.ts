@@ -316,6 +316,100 @@ function cleanRelationships(
     );
 }
 
+const TRADEMARK_ASSET_ADMISSION_ITEM_FIELDS = new Set([
+  'identity',
+  'externalIdentifiers',
+  'workspaceRelationships',
+  'sourceReferences',
+  'ownerOrClientReference',
+  'workspaceTags',
+  'workspaceNotes',
+  'workspacePriority',
+  'workspaceAlias'
+]);
+
+type TrademarkAssetAdmissionItem = Omit<
+  AdmitTrademarkAssetCommand,
+  'workspaceId' | 'idempotencyKey'
+>;
+type CleanTrademarkAssetAdmissionItem = Omit<
+  TrademarkAssetAdmissionItem,
+  'externalIdentifiers' | 'workspaceTags' | 'workspaceNotes'
+> & {
+  externalIdentifiers: TrademarkAssetExternalIdentifier[];
+  workspaceTags: string[];
+  workspaceNotes: string[];
+};
+
+function cleanTrademarkAssetAdmissionItem(
+  input: Readonly<TrademarkAssetAdmissionItem>
+): CleanTrademarkAssetAdmissionItem {
+  const identity = cleanIdentity(input.identity);
+  const externalIdentifiers = cleanIdentifiers(input.externalIdentifiers);
+  const workspaceRelationships = cleanRelationships(input.workspaceRelationships);
+  const sourceReferences = cleanSourceReferences(input.sourceReferences);
+  const ownerOrClientReference = optionalText(
+    input.ownerOrClientReference,
+    'ownerOrClientReference',
+    500
+  );
+  const workspaceTags = cleanStringList(input.workspaceTags, 'workspaceTags');
+  const workspaceNotes = cleanStringList(input.workspaceNotes, 'workspaceNotes');
+  const workspacePriority = optionalText(input.workspacePriority, 'workspacePriority', 100);
+  const workspaceAlias = optionalText(input.workspaceAlias, 'workspaceAlias', 300);
+  return {
+    identity,
+    externalIdentifiers,
+    workspaceRelationships,
+    sourceReferences,
+    ...(ownerOrClientReference ? { ownerOrClientReference } : {}),
+    workspaceTags,
+    workspaceNotes,
+    ...(workspacePriority ? { workspacePriority } : {}),
+    ...(workspaceAlias ? { workspaceAlias } : {})
+  };
+}
+
+export function parseTrademarkAssetAdmissionItem(value: unknown): CleanTrademarkAssetAdmissionItem {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    throw new TrademarkAssetPersistenceError(
+      'INVALID_INPUT',
+      'Trademark Asset admission item must be an object.',
+      400
+    );
+  }
+  const input = value as Row;
+  if (Object.keys(input).some((field) => !TRADEMARK_ASSET_ADMISSION_ITEM_FIELDS.has(field))) {
+    throw new TrademarkAssetPersistenceError(
+      'INVALID_INPUT',
+      'Trademark Asset admission item contains unsupported fields.',
+      400
+    );
+  }
+  if (!input.identity || typeof input.identity !== 'object' || Array.isArray(input.identity)) {
+    throw new TrademarkAssetPersistenceError('INVALID_INPUT', 'identity must be an object.', 400);
+  }
+  for (const [field, required] of [
+    ['externalIdentifiers', false],
+    ['workspaceRelationships', true],
+    ['sourceReferences', true]
+  ] as const) {
+    const arrayValue = input[field];
+    if (arrayValue === undefined && !required) continue;
+    if (
+      !Array.isArray(arrayValue) ||
+      arrayValue.some((item) => !item || typeof item !== 'object' || Array.isArray(item))
+    ) {
+      throw new TrademarkAssetPersistenceError(
+        'INVALID_INPUT',
+        `${field} must be an array of objects.`,
+        400
+      );
+    }
+  }
+  return cleanTrademarkAssetAdmissionItem(input as unknown as TrademarkAssetAdmissionItem);
+}
+
 function rowAsset(row: Row | undefined): TrademarkAsset | undefined {
   return row ? clone(row.document_json as TrademarkAsset) : undefined;
 }
@@ -343,19 +437,17 @@ export class PostgresLiteTrademarkAssetStore {
 
   async admit(command: Readonly<AdmitTrademarkAssetCommand>): Promise<TrademarkAsset> {
     const workspaceId = cleanWorkspaceId(command.workspaceId);
-    const identity = cleanIdentity(command.identity);
-    const externalIdentifiers = cleanIdentifiers(command.externalIdentifiers);
-    const workspaceRelationships = cleanRelationships(command.workspaceRelationships);
-    const sourceReferences = cleanSourceReferences(command.sourceReferences);
-    const ownerOrClientReference = optionalText(
-      command.ownerOrClientReference,
-      'ownerOrClientReference',
-      500
-    );
-    const workspaceTags = cleanStringList(command.workspaceTags, 'workspaceTags');
-    const workspaceNotes = cleanStringList(command.workspaceNotes, 'workspaceNotes');
-    const workspacePriority = optionalText(command.workspacePriority, 'workspacePriority', 100);
-    const workspaceAlias = optionalText(command.workspaceAlias, 'workspaceAlias', 300);
+    const {
+      identity,
+      externalIdentifiers,
+      workspaceRelationships,
+      sourceReferences,
+      ownerOrClientReference,
+      workspaceTags,
+      workspaceNotes,
+      workspacePriority,
+      workspaceAlias
+    } = cleanTrademarkAssetAdmissionItem(command);
     const idempotencyKey = cleanText(command.idempotencyKey, 'idempotencyKey', 300);
     const requestFingerprintSha256 = fingerprint({
       workspaceId,
