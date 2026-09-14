@@ -55,6 +55,7 @@ import {
   UsTrademarkMarkRepresentationMethodAuthorityV1,
   materializeUsTrademarkMarkRepresentationBrainAssetLifecycleV1
 } from './us-trademark-mark-representation-method-authority.js';
+import { PostgresWorkspaceTrademarkIssueIntelligenceRepository } from './workspace-trademark-issue-intelligence-store.js';
 
 const secret = process.env.MO_INTERNAL_SERVICE_SECRET;
 if (!secret) throw new Error('MO_INTERNAL_SERVICE_SECRET is required.');
@@ -140,6 +141,9 @@ const runtime = createRuntime({
   methodImprovementAdmissions,
   officialFeeReferences: new PostgresOfficialFeeReferenceStore(database),
   usTrademarkMarkRepresentationMethods,
+  workspaceTrademarkIssueIntelligence: new PostgresWorkspaceTrademarkIssueIntelligenceRepository(
+    database
+  ),
   internalServiceSecret: secret
 });
 

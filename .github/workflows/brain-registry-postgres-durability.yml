@@ -8,6 +8,16 @@ on:
       - 'services/core/src/brain-build-runtime.ts'
       - 'services/core/src/workspace-trademark-issue-intelligence-store.ts'
       - 'services/core/src/workspace-trademark-issue-intelligence-admission.ts'
+      - 'services/core/src/workspace-trademark-issue-intelligence-http.ts'
+      - 'services/core/src/index.ts'
+      - 'services/core/src/main.ts'
+      - 'services/capability-engine/src/index.ts'
+      - 'services/capability-engine/src/main.ts'
+      - 'services/core/tests/workspace-trademark-issue-intelligence-http.test.ts'
+      - 'services/capability-engine/src/workspace-trademark-issue-intelligence-http-reader.ts'
+      - 'services/capability-engine/src/workspace-trademark-issue-intelligence-readiness.ts'
+      - 'services/capability-engine/src/workspace-trademark-issue-intelligence-readiness-http.ts'
+      - 'services/capability-engine/tests/workspace-trademark-issue-intelligence-readiness.test.ts'
       - 'services/core/tests/brain-asset-registry-postgres.test.ts'
       - 'services/core/tests/workspace-trademark-issue-intelligence-store-postgres.test.ts'
       - 'services/core/tests/workspace-trademark-issue-intelligence-admission.test.ts'
@@ -25,6 +35,16 @@ on:
       - 'services/core/src/brain-build-runtime.ts'
       - 'services/core/src/workspace-trademark-issue-intelligence-store.ts'
       - 'services/core/src/workspace-trademark-issue-intelligence-admission.ts'
+      - 'services/core/src/workspace-trademark-issue-intelligence-http.ts'
+      - 'services/core/src/index.ts'
+      - 'services/core/src/main.ts'
+      - 'services/capability-engine/src/index.ts'
+      - 'services/capability-engine/src/main.ts'
+      - 'services/core/tests/workspace-trademark-issue-intelligence-http.test.ts'
+      - 'services/capability-engine/src/workspace-trademark-issue-intelligence-http-reader.ts'
+      - 'services/capability-engine/src/workspace-trademark-issue-intelligence-readiness.ts'
+      - 'services/capability-engine/src/workspace-trademark-issue-intelligence-readiness-http.ts'
+      - 'services/capability-engine/tests/workspace-trademark-issue-intelligence-readiness.test.ts'
       - 'services/core/tests/brain-asset-registry-postgres.test.ts'
       - 'services/core/tests/workspace-trademark-issue-intelligence-store-postgres.test.ts'
       - 'services/core/tests/workspace-trademark-issue-intelligence-admission.test.ts'
@@ -68,13 +88,16 @@ jobs:
       - uses: actions/setup-node@v4
         with: { node-version: 22, cache: pnpm }
       - run: pnpm install --frozen-lockfile
-      - name: Build Brain dependency closure
-        run: pnpm exec turbo run build --filter=@markorbit/core-service...
-      - name: Validate Brain persistence source
+      - name: Build Brain and Capability dependency closure
+        run: pnpm exec turbo run build --filter=@markorbit/core-service... --filter=@markorbit/capability-engine...
+      - name: Validate Brain persistence and Capability readiness source
         run: |
-          pnpm exec eslint services/core/src/brain-asset-registry.ts services/core/src/brain-asset-registry-postgres.ts services/core/src/workspace-trademark-issue-intelligence-store.ts services/core/src/workspace-trademark-issue-intelligence-admission.ts services/core/tests/brain-asset-registry-postgres.test.ts services/core/tests/workspace-trademark-issue-intelligence-store-postgres.test.ts services/core/tests/workspace-trademark-issue-intelligence-admission.test.ts
+          pnpm exec eslint services/core/src/brain-asset-registry.ts services/core/src/brain-asset-registry-postgres.ts services/core/src/workspace-trademark-issue-intelligence-store.ts services/core/src/workspace-trademark-issue-intelligence-admission.ts services/core/src/workspace-trademark-issue-intelligence-http.ts services/core/tests/brain-asset-registry-postgres.test.ts services/core/tests/workspace-trademark-issue-intelligence-store-postgres.test.ts services/core/tests/workspace-trademark-issue-intelligence-admission.test.ts services/core/tests/workspace-trademark-issue-intelligence-http.test.ts services/capability-engine/src/workspace-trademark-issue-intelligence-http-reader.ts services/capability-engine/src/workspace-trademark-issue-intelligence-readiness.ts services/capability-engine/src/workspace-trademark-issue-intelligence-readiness-http.ts services/capability-engine/tests/workspace-trademark-issue-intelligence-readiness.test.ts
           pnpm --filter @markorbit/core-service typecheck
-      - name: Preserve Brain registry, Build Runtime and intelligence admission regression
-        run: pnpm --filter @markorbit/core-service exec vitest run tests/brain-asset-registry.test.ts tests/brain-build-registry-admission.test.ts tests/brain-build-runtime.test.ts tests/workspace-trademark-issue-intelligence-admission.test.ts
+          pnpm --filter @markorbit/capability-engine typecheck
+      - name: Preserve Brain registry, admission and Capability readiness regression
+        run: |
+          pnpm --filter @markorbit/core-service exec vitest run tests/brain-asset-registry.test.ts tests/brain-build-registry-admission.test.ts tests/brain-build-runtime.test.ts tests/workspace-trademark-issue-intelligence.test.ts tests/workspace-trademark-issue-intelligence-store.test.ts tests/workspace-trademark-issue-intelligence-admission.test.ts tests/workspace-trademark-issue-intelligence-http.test.ts
+          pnpm --filter @markorbit/capability-engine exec vitest run tests/workspace-trademark-issue-intelligence-readiness.test.ts
       - name: Prove PostgreSQL restart, replay and concurrent version allocation
         run: pnpm --filter @markorbit/core-service test:brain-registry:postgres

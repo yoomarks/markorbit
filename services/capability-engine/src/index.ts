@@ -33,6 +33,8 @@ import { createReflectionDispositionProfileRoutes } from './reflection-dispositi
 import type { PostgresReflectionDispositionProfileService } from './reflection-disposition-profile.js';
 import { createRuntimeCapabilityRoutes } from './runtime-capability-http.js';
 import type { PostgresRuntimeCapabilityRegistry } from './runtime-capability-registry.js';
+import { createWorkspaceTrademarkIssueIntelligenceReadinessRoutesV1 } from './workspace-trademark-issue-intelligence-readiness-http.js';
+import type { WorkspaceTrademarkIssueIntelligenceReadinessServiceV1 } from './workspace-trademark-issue-intelligence-readiness.js';
 
 export * from './capability-audit-telemetry.js';
 export * from './capability-catalog-integrity.js';
@@ -91,6 +93,9 @@ export * from './uspto-official-fee-production-source-evidence.js';
 export * from './uspto-official-fee-reference-currentness.js';
 export * from './uspto-official-fee-resolver-pilot.js';
 export * from './uspto-official-fee-source-use.js';
+export * from './workspace-trademark-issue-intelligence-http-reader.js';
+export * from './workspace-trademark-issue-intelligence-readiness.js';
+export * from './workspace-trademark-issue-intelligence-readiness-http.js';
 
 export const serviceManifest = Object.freeze({
   name: 'capability-engine',
@@ -122,6 +127,10 @@ export interface CapabilityEngineOptions {
   >;
   productionSourceEvidenceReader?: Pick<CapabilityProductionSourceEvidenceReadServiceV1, 'read'>;
   productionSourceEvidenceReplayStore?: Pick<CapabilityRuntimeReplayStoreV1, 'inspect'>;
+  workspaceTrademarkIssueIntelligenceReadiness?: Pick<
+    WorkspaceTrademarkIssueIntelligenceReadinessServiceV1,
+    'evaluate'
+  >;
   internalServiceSecret?: string;
 }
 
@@ -147,6 +156,9 @@ export function createRuntime(options: CapabilityEngineOptions = {}) {
   }
   if (options.capabilityObservationLedger && !options.internalServiceSecret) {
     throw new Error('capabilityObservationLedger requires internalServiceSecret.');
+  }
+  if (options.workspaceTrademarkIssueIntelligenceReadiness && !options.internalServiceSecret) {
+    throw new Error('Workspace Brain intelligence readiness requires internalServiceSecret.');
   }
   if (options.privateReflectionCandidates && !options.internalServiceSecret) {
     throw new Error('privateReflectionCandidates requires internalServiceSecret.');
@@ -277,6 +289,13 @@ export function createRuntime(options: CapabilityEngineOptions = {}) {
           internalServiceSecret: options.internalServiceSecret
         })
       : [];
+  const workspaceTrademarkIssueIntelligenceReadinessRoutes =
+    options.workspaceTrademarkIssueIntelligenceReadiness && options.internalServiceSecret
+      ? createWorkspaceTrademarkIssueIntelligenceReadinessRoutesV1({
+          readiness: options.workspaceTrademarkIssueIntelligenceReadiness,
+          internalServiceSecret: options.internalServiceSecret
+        })
+      : [];
   const managedAiExecutionRoutes =
     options.managedAiExecutor && options.internalServiceSecret
       ? createManagedAiExecutionRoutesV1({
@@ -321,6 +340,7 @@ export function createRuntime(options: CapabilityEngineOptions = {}) {
         ...reflectionDispositionProfileRoutes,
         ...capabilityCenterRoutes,
         ...productionSourceEvidenceRoutes,
+        ...workspaceTrademarkIssueIntelligenceReadinessRoutes,
         ...managedAiExecutionRoutes,
         ...managedCommunicationRoutes
       ]
