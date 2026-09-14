@@ -126,6 +126,27 @@ function gmailAccount() {
   };
 }
 
+async function foundationWithCheckpoint(providerCursor = '200') {
+  const foundation = new InMemoryManagedCommunicationFoundationV1();
+  await foundation.registerAccount({
+    workspaceId,
+    accountRef,
+    channel: 'EMAIL',
+    provider: GMAIL_MANAGED_COMMUNICATION_PROVIDER,
+    providerAccountRef,
+    now: '2026-09-01T14:00:00.000Z'
+  });
+  await foundation.saveCheckpoint({
+    workspaceId,
+    accountRef,
+    checkpointRef: `gmail-history:${providerCursor}`,
+    providerCursor,
+    observedAt: '2026-09-01T14:00:00.000Z',
+    now: '2026-09-01T14:00:00.000Z'
+  });
+  return foundation;
+}
+
 describe('Gmail Managed Communication provider adapter', () => {
   it('performs no network activity until invoked and caches OAuth access tokens', async () => {
     const calls: string[] = [];
@@ -418,5 +439,139 @@ describe('Gmail Managed Communication provider adapter', () => {
     expect(persistedProjection).not.toContain(config.refreshToken);
     expect(persistedProjection).not.toContain('access-token-test-only');
     expect(persistedProjection).not.toContain('must-not-persist');
+  });
+
+  it.each(['full', 'attachment', 'raw'] as const)(
+    'advances history without admission when Gmail %s snapshot disappears with 404',
+    async (vanishedStage) => {
+      const foundation = await foundationWithCheckpoint();
+      const exactEvidence = new RecordingExactEvidenceStore();
+      const admitObservation = vi.spyOn(foundation, 'admitObservation');
+      const fetchImpl = vi.fn((input: RequestInfo | URL) => {
+        const url = requestUrl(input);
+        if (url === 'https://oauth2.googleapis.com/token') {
+          return resolvedJson({ access_token: 'access-token-test-only', expires_in: 3600 });
+        }
+        if (url.includes('/users/me/history?')) {
+          return resolvedJson({
+            historyId: '201',
+            history: [{ messagesAdded: [{ message: { id: 'gmail-vanished-1' } }] }]
+          });
+        }
+        if (url.includes('/messages/gmail-vanished-1?format=full')) {
+          if (vanishedStage === 'full') return resolvedJson({ error: 'gone' }, 404);
+          return resolvedJson({
+            id: 'gmail-vanished-1',
+            threadId: 'gmail-thread-vanished-1',
+            historyId: '201',
+            payload: {
+              mimeType: 'multipart/mixed',
+              headers: [
+                { name: 'From', value: 'Expert <expert@example.test>' },
+                { name: 'To', value: providerAccountRef }
+              ],
+              parts:
+                vanishedStage === 'attachment'
+                  ? [
+                      {
+                        partId: '1',
+                        mimeType: 'text/plain',
+                        filename: 'proof.txt',
+                        body: { attachmentId: 'attachment-vanished-1' }
+                      }
+                    ]
+                  : [
+                      {
+                        partId: '0',
+                        mimeType: 'text/plain',
+                        body: { data: Buffer.from('body').toString('base64url') }
+                      }
+                    ]
+            }
+          });
+        }
+        if (url.includes('/messages/gmail-vanished-1/attachments/attachment-vanished-1')) {
+          return resolvedJson({ error: 'gone' }, 404);
+        }
+        if (url.includes('/messages/gmail-vanished-1?format=raw')) {
+          return vanishedStage === 'raw'
+            ? resolvedJson({ error: 'gone' }, 404)
+            : resolvedJson({
+                id: 'gmail-vanished-1',
+                threadId: 'gmail-thread-vanished-1',
+                raw: Buffer.from('raw').toString('base64url')
+              });
+        }
+        return Promise.reject(new Error(`Unexpected provider request: ${url}`));
+      }) as typeof fetch;
+      const inbound = new GmailManagedCommunicationInboundV1({
+        client: new GmailManagedCommunicationClientV1(config, fetchImpl, () => 40_000),
+        foundation,
+        exactEvidence,
+        workspaceId,
+        accountRef,
+        now: () => '2026-09-01T14:30:00.000Z'
+      });
+
+      const result = await inbound.syncOnce();
+      expect(result).toEqual({ initialized: false, imported: 0, providerCursor: '201' });
+      expect(admitObservation).not.toHaveBeenCalled();
+      expect(exactEvidence.admissions).toHaveLength(0);
+      expect((await foundation.latestCheckpoint(workspaceId, accountRef))?.providerCursor).toBe(
+        '201'
+      );
+    }
+  );
+
+  it('keeps history checkpoint stable when Gmail raw snapshot fails non-terminally', async () => {
+    const foundation = await foundationWithCheckpoint();
+    const exactEvidence = new RecordingExactEvidenceStore();
+    const admitObservation = vi.spyOn(foundation, 'admitObservation');
+    const fetchImpl = vi.fn((input: RequestInfo | URL) => {
+      const url = requestUrl(input);
+      if (url === 'https://oauth2.googleapis.com/token') {
+        return resolvedJson({ access_token: 'access-token-test-only', expires_in: 3600 });
+      }
+      if (url.includes('/users/me/history?')) {
+        return resolvedJson({
+          historyId: '201',
+          history: [{ messagesAdded: [{ message: { id: 'gmail-retryable-1' } }] }]
+        });
+      }
+      if (url.includes('/messages/gmail-retryable-1?format=full')) {
+        return resolvedJson({
+          id: 'gmail-retryable-1',
+          threadId: 'gmail-thread-retryable-1',
+          historyId: '201',
+          payload: {
+            mimeType: 'text/plain',
+            headers: [
+              { name: 'From', value: 'Expert <expert@example.test>' },
+              { name: 'To', value: providerAccountRef }
+            ],
+            body: { data: Buffer.from('body').toString('base64url') }
+          }
+        });
+      }
+      if (url.includes('/messages/gmail-retryable-1?format=raw')) {
+        return resolvedJson({ error: 'unavailable' }, 503);
+      }
+      return Promise.reject(new Error(`Unexpected provider request: ${url}`));
+    }) as typeof fetch;
+    const inbound = new GmailManagedCommunicationInboundV1({
+      client: new GmailManagedCommunicationClientV1(config, fetchImpl, () => 41_000),
+      foundation,
+      exactEvidence,
+      workspaceId,
+      accountRef,
+      now: () => '2026-09-01T14:31:00.000Z'
+    });
+
+    await expect(inbound.syncOnce()).rejects.toMatchObject({ status: 503 });
+    expect(admitObservation).not.toHaveBeenCalled();
+    expect(exactEvidence.admissions).toHaveLength(0);
+    expect((await foundation.latestCheckpoint(workspaceId, accountRef))?.providerCursor).toBe(
+      '200'
+    );
   });
 });

@@ -72,6 +72,13 @@ export type GmailManagedCommunicationInboundResultV1 = Readonly<{
   providerCursor: string;
 }>;
 
+class GmailManagedCommunicationHttpError extends Error {
+  constructor(readonly status: number) {
+    super(`Gmail provider request failed with HTTP ${status}.`);
+    this.name = 'GmailManagedCommunicationHttpError';
+  }
+}
+
 function required(value: unknown, field: string, maxLength = 20_000): string {
   if (typeof value !== 'string') throw new Error(`${field} must be a string.`);
   const normalized = value.trim();
@@ -383,7 +390,7 @@ export class GmailManagedCommunicationClientV1 {
       }
     });
     if (!response.ok) {
-      throw new Error(`Gmail provider request failed with HTTP ${response.status}.`);
+      throw new GmailManagedCommunicationHttpError(response.status);
     }
     return response.json();
   }
@@ -600,16 +607,32 @@ export class GmailManagedCommunicationInboundV1 {
   }
 
   private async importInbound(messageId: string, now: () => string): Promise<number> {
-    const full = await this.options.client.message(messageId, 'full');
-    const payload = full.payload;
-    if (!payload) throw new Error('Gmail full message payload is missing.');
-    const providerMessageId = required(full.id, 'gmail.message.id', 500);
-    const providerThreadId = required(full.threadId, 'gmail.message.threadId', 500);
-    const messageParticipants = participants(payload);
-    const sender = messageParticipants.find((item) => item.role === 'SENDER');
-    if (!sender) throw new Error('Gmail inbound message does not contain a sender identity.');
-    if (sender.address.toLowerCase() === this.options.client.providerAccountRef().toLowerCase()) {
-      return 0;
+    let full: GmailMessage;
+    let payload: GmailPart;
+    let providerMessageId: string;
+    let providerThreadId: string;
+    let messageParticipants: readonly Readonly<ManagedCommunicationParticipantV1>[];
+    let messageAttachments: readonly Readonly<ManagedCommunicationAttachmentRefV1>[];
+    let rawPayload: Uint8Array;
+    try {
+      full = await this.options.client.message(messageId, 'full');
+      const fullPayload = full.payload;
+      if (!fullPayload) throw new Error('Gmail full message payload is missing.');
+      payload = fullPayload;
+      providerMessageId = required(full.id, 'gmail.message.id', 500);
+      providerThreadId = required(full.threadId, 'gmail.message.threadId', 500);
+      messageParticipants = participants(payload);
+      const sender = messageParticipants.find((item) => item.role === 'SENDER');
+      if (!sender) throw new Error('Gmail inbound message does not contain a sender identity.');
+      if (sender.address.toLowerCase() === this.options.client.providerAccountRef().toLowerCase()) {
+        return 0;
+      }
+      messageAttachments = await this.attachments(providerMessageId, payload);
+      const raw = await this.options.client.message(providerMessageId, 'raw');
+      rawPayload = base64UrlDecode(required(raw.raw, 'gmail.message.raw', 100_000_000));
+    } catch (error) {
+      if (error instanceof GmailManagedCommunicationHttpError && error.status === 404) return 0;
+      throw error;
     }
 
     const ids = managedCommunicationNormalizedIdsV1({
@@ -639,7 +662,7 @@ export class GmailManagedCommunicationInboundV1 {
       ...(subject ? { subject } : {}),
       ...(textBody ? { textBody } : {}),
       ...(htmlBody ? { htmlBody } : {}),
-      attachments: await this.attachments(providerMessageId, payload),
+      attachments: messageAttachments,
       occurredAt: occurredAt(full.internalDate, observedAt),
       providerObservation: {
         provider: GMAIL_MANAGED_COMMUNICATION_PROVIDER,
@@ -655,24 +678,10 @@ export class GmailManagedCommunicationInboundV1 {
       message,
       now: observedAt
     });
-    await this.admitRawEvidence(full, payload, normalized.message.messageId, observedAt);
-    return normalized.disposition === 'ADMITTED' ? 1 : 0;
-  }
-
-  private async admitRawEvidence(
-    full: GmailMessage,
-    payload: GmailPart,
-    messageId: string,
-    observedAt: string
-  ): Promise<void> {
-    const providerMessageId = required(full.id, 'gmail.message.id', 500);
-    const providerThreadId = required(full.threadId, 'gmail.message.threadId', 500);
-    const raw = await this.options.client.message(providerMessageId, 'raw');
-    const rawPayload = base64UrlDecode(required(raw.raw, 'gmail.message.raw', 100_000_000));
     await this.options.exactEvidence.admitExactEvidence({
       workspaceId: this.options.workspaceId,
       accountRef: this.options.accountRef,
-      messageId,
+      messageId: normalized.message.messageId,
       provider: GMAIL_MANAGED_COMMUNICATION_PROVIDER,
       providerMessageId,
       rawPayload,
@@ -686,6 +695,7 @@ export class GmailManagedCommunicationInboundV1 {
       },
       now: observedAt
     });
+    return normalized.disposition === 'ADMITTED' ? 1 : 0;
   }
 
   private async attachments(
