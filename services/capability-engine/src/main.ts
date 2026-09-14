@@ -19,8 +19,16 @@ import { DurableGovernedCapabilityRuntimeV1 } from './durable-governed-capabilit
 import { createGovernedProductionRuntimeV1 } from './governed-runtime-bootstrap.js';
 import { PostgresImplementationProfileRegistryV1 } from './implementation-profile-registry-postgres.js';
 import { createManagedAiRuntimeBindingsV1 } from './managed-ai-bootstrap.js';
-import { createManagedCommunicationRuntimeBindingsV1 } from './managed-communication-bootstrap.js';
+import {
+  createManagedCommunicationRuntimeBindingsV1,
+  resolveManagedCommunicationRuntimeConfigV1
+} from './managed-communication-bootstrap.js';
 import { createGmailManagedCommunicationSenderFromEnvironmentV1 } from './managed-communication-gmail-runtime.js';
+import { MICROSOFT_GRAPH_MANAGED_COMMUNICATION_PROVIDER } from './managed-communication-microsoft-graph.js';
+import {
+  createMicrosoftGraphManagedCommunicationProviderRuntimeFromEnvironmentV1,
+  type MicrosoftGraphManagedCommunicationProviderRuntimeV1
+} from './managed-communication-microsoft-graph-runtime.js';
 import { HttpCoreOfficialFeeReferenceReaderV1 } from './official-fee-reference-http-reader.js';
 import { CapabilityProductionSourceEvidenceReadServiceV1 } from './production-source-evidence-read.js';
 import { CurrentProductionSourceEvidenceAuthorityV1 } from './production-source-evidence-authority.js';
@@ -34,6 +42,8 @@ import { PostgresWorkspaceImplementationPreferenceStoreV1 } from './workspace-im
 const milestoneFixtureMode = process.env.MO_MILESTONE_TEST_RUNTIME === '1';
 let database: ManagedDatabase | undefined;
 let runtime: ReturnType<typeof createRuntime>;
+let managedCommunicationGraphRuntime:
+  Readonly<MicrosoftGraphManagedCommunicationProviderRuntimeV1> | undefined;
 
 if (milestoneFixtureMode) {
   runtime = createRuntime({ milestoneFixtureRequestPath: true });
@@ -127,9 +137,20 @@ if (milestoneFixtureMode) {
           )
         }
       : rawManagedAiRuntime;
-  const managedCommunicationSender = createGmailManagedCommunicationSenderFromEnvironmentV1(
-    process.env
-  );
+  const managedCommunicationConfig = resolveManagedCommunicationRuntimeConfigV1(process.env);
+  managedCommunicationGraphRuntime =
+    managedCommunicationConfig?.provider === MICROSOFT_GRAPH_MANAGED_COMMUNICATION_PROVIDER
+      ? createMicrosoftGraphManagedCommunicationProviderRuntimeFromEnvironmentV1({
+          environment: process.env,
+          database,
+          query: pool
+        })
+      : undefined;
+  const managedCommunicationSender =
+    managedCommunicationGraphRuntime?.sender ??
+    (managedCommunicationConfig?.provider === MICROSOFT_GRAPH_MANAGED_COMMUNICATION_PROVIDER
+      ? undefined
+      : createGmailManagedCommunicationSenderFromEnvironmentV1(process.env));
   const managedCommunicationRuntime = await createManagedCommunicationRuntimeBindingsV1({
     environment: process.env,
     database,
@@ -182,6 +203,7 @@ if (milestoneFixtureMode) {
 
 async function shutdown(signal: string) {
   process.stdout.write(`${runtime.manifest.name}: received ${signal}, stopping.\n`);
+  managedCommunicationGraphRuntime?.poller.stop();
   await runtime.stop();
   await database?.close();
 }
@@ -191,6 +213,15 @@ process.once('SIGTERM', () => void shutdown('SIGTERM'));
 
 try {
   await runtime.start();
+  if (managedCommunicationGraphRuntime) {
+    try {
+      await managedCommunicationGraphRuntime.poller.start();
+    } catch (error) {
+      managedCommunicationGraphRuntime.poller.stop();
+      await runtime.stop();
+      throw error;
+    }
+  }
 } catch (error) {
   await database?.close();
   throw error;
