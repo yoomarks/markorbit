@@ -68,6 +68,16 @@ describe('ReadyPackage Content Export consumer contract', () => {
     }
   );
 
+  it('accepts only the reserved Global public Workspace id outside wsp_* ids', async () => {
+    const legacy = { ...(await fixture()), knowledgeWorkspaceId: 'global-public' };
+    const governed = { ...(await governedFixture()), knowledgeWorkspaceId: 'global-public' };
+    expect(parseReadyPackageContentExportV1(legacy)).not.toBeNull();
+    expect(parseReadyPackageContentExportV1(governed)).not.toBeNull();
+    expect(
+      parseReadyPackageContentExportV1({ ...governed, knowledgeWorkspaceId: 'global-foo' })
+    ).toBe(null);
+  });
+
   it('rejects V1.1 governance whose Source identity differs from provenance', async () => {
     const value = await governedFixture();
     value.sourceGovernance.sourceId = 'src_01ARZ3NDEKTSV4RRFFQ69G5FAA';
