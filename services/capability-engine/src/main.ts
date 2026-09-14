@@ -38,6 +38,8 @@ import {
   US_TRADEMARK_MARK_REPRESENTATION_IMPLEMENTATION_PROFILE
 } from './us-trademark-mark-representation-strategy-source.js';
 import { PostgresWorkspaceImplementationPreferenceStoreV1 } from './workspace-implementation-preference-postgres.js';
+import { HttpCoreWorkspaceTrademarkIssueIntelligenceReaderV1 } from './workspace-trademark-issue-intelligence-http-reader.js';
+import { WorkspaceTrademarkIssueIntelligenceReadinessServiceV1 } from './workspace-trademark-issue-intelligence-readiness.js';
 
 const milestoneFixtureMode = process.env.MO_MILESTONE_TEST_RUNTIME === '1';
 let database: ManagedDatabase | undefined;
@@ -177,6 +179,10 @@ if (milestoneFixtureMode) {
     durableGovernedCapabilityRuntime && telemetrySink
       ? new ObservedGovernedCapabilityRuntimeV1(durableGovernedCapabilityRuntime, telemetrySink)
       : durableGovernedCapabilityRuntime;
+  const workspaceTrademarkIssueIntelligenceReadiness =
+    new WorkspaceTrademarkIssueIntelligenceReadinessServiceV1(
+      new HttpCoreWorkspaceTrademarkIssueIntelligenceReaderV1(coreUrl, internalServiceSecret)
+    );
   const productionSourceEvidenceReader = new CapabilityProductionSourceEvidenceReadServiceV1({
     replayStore,
     evidence: new CurrentProductionSourceEvidenceAuthorityV1({
@@ -194,6 +200,7 @@ if (milestoneFixtureMode) {
     reflectionDispositionProfiles,
     productionSourceEvidenceReader,
     productionSourceEvidenceReplayStore: replayStore,
+    workspaceTrademarkIssueIntelligenceReadiness,
     ...(managedAiRuntime ?? {}),
     ...(managedCommunicationRuntime ?? {}),
     ...(governedCapabilityRuntime ? { governedCapabilityRuntime } : {}),

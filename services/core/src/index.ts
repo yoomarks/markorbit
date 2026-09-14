@@ -66,6 +66,10 @@ import {
   createUsTrademarkMarkRepresentationMethodRoutesV1,
   type UsTrademarkMarkRepresentationMethodResolutionAuthorityV1
 } from './us-trademark-mark-representation-method-http.js';
+import {
+  createWorkspaceTrademarkIssueIntelligenceRoutesV1,
+  type WorkspaceTrademarkIssueIntelligenceHttpOptionsV1
+} from './workspace-trademark-issue-intelligence-http.js';
 
 export const serviceManifest = Object.freeze({
   name: 'core',
@@ -92,6 +96,7 @@ export interface CoreRuntimeOptions {
   methodImprovementAdmissions?: Pick<MethodImprovementAdmissionServiceV1, 'admit'>;
   officialFeeReferences?: Readonly<OfficialFeeReferenceResolutionAuthorityV1>;
   usTrademarkMarkRepresentationMethods?: Readonly<UsTrademarkMarkRepresentationMethodResolutionAuthorityV1>;
+  workspaceTrademarkIssueIntelligence?: WorkspaceTrademarkIssueIntelligenceHttpOptionsV1['intelligence'];
   internalServiceSecret?: string;
 }
 function body(request: JsonRequest): Record<string, unknown> {
@@ -146,6 +151,8 @@ export function createRuntime(options: CoreRuntimeOptions = {}) {
     throw new Error(
       'internalServiceSecret is required for US trademark Method current-reference reads.'
     );
+  if (options.workspaceTrademarkIssueIntelligence && !secret)
+    throw new Error('internalServiceSecret is required for Workspace Brain intelligence reads.');
   if (options.currentWorkspaceAuthority && !secret)
     throw new Error(
       'internalServiceSecret is required for current Workspace authority validation.'
@@ -224,6 +231,13 @@ export function createRuntime(options: CoreRuntimeOptions = {}) {
     options.usTrademarkMarkRepresentationMethods && secret
       ? createUsTrademarkMarkRepresentationMethodRoutesV1({
           methods: options.usTrademarkMarkRepresentationMethods,
+          internalServiceSecret: secret
+        })
+      : [];
+  const workspaceTrademarkIssueIntelligenceRoutes =
+    options.workspaceTrademarkIssueIntelligence && secret
+      ? createWorkspaceTrademarkIssueIntelligenceRoutesV1({
+          intelligence: options.workspaceTrademarkIssueIntelligence,
           internalServiceSecret: secret
         })
       : [];
@@ -741,7 +755,8 @@ export function createRuntime(options: CoreRuntimeOptions = {}) {
     ...methodOutcomeReportRoutes,
     ...methodImprovementRoutes,
     ...officialFeeReferenceRoutes,
-    ...usTrademarkMarkRepresentationMethodRoutes
+    ...usTrademarkMarkRepresentationMethodRoutes,
+    ...workspaceTrademarkIssueIntelligenceRoutes
   );
   return createServiceRuntime(
     { ...serviceManifest, port: options.port ?? serviceManifest.port },
@@ -776,6 +791,7 @@ export * from './official-fee-reference-store.js';
 export * from './official-fee-reference-store-postgres.js';
 export * from './us-trademark-mark-representation-method-authority.js';
 export * from './us-trademark-mark-representation-method-http.js';
+export * from './workspace-trademark-issue-intelligence-http.js';
 export * from './oauth-credential.js';
 export * from './oauth-credential-crypto.js';
 export * from './oauth-credential-postgres.js';
