@@ -555,6 +555,163 @@ describe('Microsoft Graph Managed Communication provider adapter', () => {
     );
   });
 
+  it('advances the checkpoint when a delta message vanishes before the full snapshot read', async () => {
+    const foundation = await registeredFoundation();
+    const exactEvidence = new RecordingExactEvidenceStore();
+    const admitObservation = vi.spyOn(foundation, 'admitObservation');
+    const cursor =
+      'https://graph.microsoft.com/v1.0/me/mailFolders/inbox/messages/delta?$deltatoken=before-full-404';
+    await foundation.saveCheckpoint({
+      workspaceId,
+      accountRef,
+      checkpointRef: 'msgraph-delta:before-full-404',
+      providerCursor: cursor,
+      observedAt,
+      now: observedAt
+    });
+    const fetchImpl = vi.fn((input: RequestInfo | URL) => {
+      const url = requestUrl(input);
+      if (url.includes('/v1.0/me?$select=')) return Promise.resolve(json(graphProfile()));
+      if (url.includes('$deltatoken=before-full-404')) {
+        return Promise.resolve(
+          json({
+            value: [{ id: 'vanished-before-full' }],
+            '@odata.deltaLink':
+              'https://graph.microsoft.com/v1.0/me/mailFolders/inbox/messages/delta?$deltatoken=after-full-404'
+          })
+        );
+      }
+      if (url.includes('/messages/vanished-before-full?$select=')) {
+        return Promise.resolve(json({ error: 'gone' }, 404));
+      }
+      return Promise.reject(new Error(`Unexpected Graph request: ${url}`));
+    }) as typeof fetch;
+    const inbound = new MicrosoftGraphManagedCommunicationInboundV1({
+      client: new MicrosoftGraphManagedCommunicationClientV1(tokenProvider(), fetchImpl),
+      foundation,
+      exactEvidence,
+      workspaceId,
+      accountRef,
+      now: () => '2026-09-10T01:10:00.000Z'
+    });
+
+    const fullMissing = await inbound.syncOnce();
+    expect(fullMissing).toMatchObject({ imported: 0 });
+    expect(fullMissing.providerCursor).toContain('$deltatoken=after-full-404');
+    expect(admitObservation).not.toHaveBeenCalled();
+    expect(exactEvidence.admissions).toHaveLength(0);
+    expect((await foundation.latestCheckpoint(workspaceId, accountRef))?.providerCursor).toContain(
+      '$deltatoken=after-full-404'
+    );
+  });
+
+  it('advances the checkpoint when MIME vanishes before any durable admission', async () => {
+    const foundation = await registeredFoundation();
+    const exactEvidence = new RecordingExactEvidenceStore();
+    const admitObservation = vi.spyOn(foundation, 'admitObservation');
+    const cursor =
+      'https://graph.microsoft.com/v1.0/me/mailFolders/inbox/messages/delta?$deltatoken=before-mime-404';
+    await foundation.saveCheckpoint({
+      workspaceId,
+      accountRef,
+      checkpointRef: 'msgraph-delta:before-mime-404',
+      providerCursor: cursor,
+      observedAt,
+      now: observedAt
+    });
+    const fetchImpl = vi.fn((input: RequestInfo | URL) => {
+      const url = requestUrl(input);
+      if (url.includes('/v1.0/me?$select=')) return Promise.resolve(json(graphProfile()));
+      if (url.includes('$deltatoken=before-mime-404')) {
+        return Promise.resolve(
+          json({
+            value: [{ id: 'graph-message-1' }],
+            '@odata.deltaLink':
+              'https://graph.microsoft.com/v1.0/me/mailFolders/inbox/messages/delta?$deltatoken=after-mime-404'
+          })
+        );
+      }
+      if (url.includes('/messages/graph-message-1?$select=')) {
+        return Promise.resolve(json({ ...inboundMessage(), hasAttachments: false }));
+      }
+      if (url.endsWith('/messages/graph-message-1/$value')) {
+        return Promise.resolve(json({ error: 'gone' }, 404));
+      }
+      return Promise.reject(new Error(`Unexpected Graph request: ${url}`));
+    }) as typeof fetch;
+    const inbound = new MicrosoftGraphManagedCommunicationInboundV1({
+      client: new MicrosoftGraphManagedCommunicationClientV1(tokenProvider(), fetchImpl),
+      foundation,
+      exactEvidence,
+      workspaceId,
+      accountRef,
+      now: () => '2026-09-10T01:11:00.000Z'
+    });
+
+    const mimeMissing = await inbound.syncOnce();
+    expect(mimeMissing).toMatchObject({ imported: 0 });
+    expect(mimeMissing.providerCursor).toContain('$deltatoken=after-mime-404');
+    expect(admitObservation).not.toHaveBeenCalled();
+    expect(exactEvidence.admissions).toHaveLength(0);
+    expect((await foundation.latestCheckpoint(workspaceId, accountRef))?.providerCursor).toContain(
+      '$deltatoken=after-mime-404'
+    );
+  });
+
+  it('keeps the checkpoint stable when a pre-admission Graph snapshot fails non-terminally', async () => {
+    const foundation = await registeredFoundation();
+    const exactEvidence = new RecordingExactEvidenceStore();
+    const admitObservation = vi.spyOn(foundation, 'admitObservation');
+    const cursor =
+      'https://graph.microsoft.com/v1.0/me/mailFolders/inbox/messages/delta?$deltatoken=before-mime-503';
+    await foundation.saveCheckpoint({
+      workspaceId,
+      accountRef,
+      checkpointRef: 'msgraph-delta:before-mime-503',
+      providerCursor: cursor,
+      observedAt,
+      now: observedAt
+    });
+    const fetchImpl = vi.fn((input: RequestInfo | URL) => {
+      const url = requestUrl(input);
+      if (url.includes('/v1.0/me?$select=')) return Promise.resolve(json(graphProfile()));
+      if (url.includes('$deltatoken=before-mime-503')) {
+        return Promise.resolve(
+          json({
+            value: [{ id: 'graph-message-1' }],
+            '@odata.deltaLink':
+              'https://graph.microsoft.com/v1.0/me/mailFolders/inbox/messages/delta?$deltatoken=must-not-advance'
+          })
+        );
+      }
+      if (url.includes('/messages/graph-message-1?$select=')) {
+        return Promise.resolve(json({ ...inboundMessage(), hasAttachments: false }));
+      }
+      if (url.endsWith('/messages/graph-message-1/$value')) {
+        return Promise.resolve(json({ error: 'temporary' }, 503));
+      }
+      return Promise.reject(new Error(`Unexpected Graph request: ${url}`));
+    }) as typeof fetch;
+    const inbound = new MicrosoftGraphManagedCommunicationInboundV1({
+      client: new MicrosoftGraphManagedCommunicationClientV1(tokenProvider(), fetchImpl),
+      foundation,
+      exactEvidence,
+      workspaceId,
+      accountRef,
+      now: () => '2026-09-10T01:12:00.000Z'
+    });
+
+    await expect(inbound.syncOnce()).rejects.toMatchObject({
+      code: 'PROVIDER_UNAVAILABLE',
+      retryable: true
+    });
+    expect(admitObservation).not.toHaveBeenCalled();
+    expect(exactEvidence.admissions).toHaveLength(0);
+    expect((await foundation.latestCheckpoint(workspaceId, accountRef))?.providerCursor).toBe(
+      cursor
+    );
+  });
+
   it('does not advance the durable checkpoint when message admission fails', async () => {
     const foundation = await registeredFoundation();
     const cursor =

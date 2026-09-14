@@ -825,22 +825,39 @@ export class MicrosoftGraphManagedCommunicationInboundV1 {
     providerAccountRef: string,
     now: () => string
   ): Promise<number> {
-    const full = await this.options.client.message(providerMessageId);
-    const exactProviderMessageId = required(full.id, 'microsoftGraph.message.id', 500);
-    const providerThreadId = required(
-      full.conversationId,
-      'microsoftGraph.message.conversationId',
-      500
-    );
-    const messageParticipants = participants(full);
-    const sender = messageParticipants.find((item) => item.role === 'SENDER');
-    if (!sender) {
-      throw new MicrosoftGraphManagedCommunicationError(
-        'INVALID_RESPONSE',
-        'Microsoft Graph inbound message does not contain a sender identity.'
+    let full: GraphMessage;
+    let exactProviderMessageId: string;
+    let providerThreadId: string;
+    let messageParticipants: ManagedCommunicationMessageV1['participants'];
+    let messageAttachments: readonly Readonly<ManagedCommunicationAttachmentRefV1>[];
+    let rawPayload: Uint8Array;
+    try {
+      full = await this.options.client.message(providerMessageId);
+      exactProviderMessageId = required(full.id, 'microsoftGraph.message.id', 500);
+      providerThreadId = required(
+        full.conversationId,
+        'microsoftGraph.message.conversationId',
+        500
       );
+      messageParticipants = participants(full);
+      const sender = messageParticipants.find((item) => item.role === 'SENDER');
+      if (!sender) {
+        throw new MicrosoftGraphManagedCommunicationError(
+          'INVALID_RESPONSE',
+          'Microsoft Graph inbound message does not contain a sender identity.'
+        );
+      }
+      if (sender.address.toLowerCase() === providerAccountRef.toLowerCase()) return 0;
+      messageAttachments = await this.attachments(
+        exactProviderMessageId,
+        full.hasAttachments === true
+      );
+      rawPayload = await this.options.client.mime(exactProviderMessageId);
+    } catch (error) {
+      if (error instanceof MicrosoftGraphManagedCommunicationError && error.code === 'NOT_FOUND')
+        return 0;
+      throw error;
     }
-    if (sender.address.toLowerCase() === providerAccountRef.toLowerCase()) return 0;
 
     const ids = managedCommunicationNormalizedIdsV1({
       workspaceId: this.options.workspaceId,
@@ -863,10 +880,6 @@ export class MicrosoftGraphManagedCommunicationInboundV1 {
       canonicalTimestamp(now(), 'microsoftGraph.observedAt');
     const bodyContent = full.body?.content?.trim();
     const bodyType = full.body?.contentType?.toLowerCase();
-    const attachments = await this.attachments(
-      exactProviderMessageId,
-      full.hasAttachments === true
-    );
     const occurredAt = full.receivedDateTime
       ? canonicalTimestamp(full.receivedDateTime, 'microsoftGraph.message.receivedDateTime')
       : observedAt;
@@ -882,7 +895,7 @@ export class MicrosoftGraphManagedCommunicationInboundV1 {
       ...(subject ? { subject } : {}),
       ...(bodyContent && bodyType === 'text' ? { textBody: bodyContent } : {}),
       ...(bodyContent && bodyType === 'html' ? { htmlBody: bodyContent } : {}),
-      attachments,
+      attachments: messageAttachments,
       occurredAt,
       providerObservation: {
         provider: MICROSOFT_GRAPH_MANAGED_COMMUNICATION_PROVIDER,
@@ -898,7 +911,6 @@ export class MicrosoftGraphManagedCommunicationInboundV1 {
       message,
       now: observedAt
     });
-    const rawPayload = await this.options.client.mime(exactProviderMessageId);
     const internetMessageId = full.internetMessageId?.trim();
     await this.options.exactEvidence.admitExactEvidence({
       workspaceId: this.options.workspaceId,
