@@ -2,8 +2,10 @@ import { timingSafeEqual } from 'node:crypto';
 import { parseInternalWorkspacePrincipal, type WorkspacePrincipal } from '@markorbit/contracts';
 import { HttpError, json, type JsonRequest, type JsonRoute } from '@markorbit/service-kit';
 import {
+  mapHistoricalTrademarkAssetTabularRows,
   TrademarkAssetMigrationInterruptedError,
   TrademarkAssetMigrationOrchestrationError,
+  type HistoricalTrademarkAssetTabularMappingInput,
   type ReviewableTrademarkAssetMigrationInput,
   type TrademarkAssetMigrationOrchestrator
 } from './trademark-asset-migration.js';
@@ -29,8 +31,20 @@ const SERVER_OWNED_FIELDS = [
   'version',
   'updatedAt',
   'officialTruthVerifiedByLite',
+  'assetsCreatedAutomatically',
   'matterCreatedAutomatically'
 ] as const;
+const TABULAR_PREPARATION_FIELDS = new Set([
+  'migrationKey',
+  'sourceFingerprintSha256',
+  'sourceArtifactId',
+  'sourceArtifactVersion',
+  'observedAt',
+  'relationshipKind',
+  'headers',
+  'columns',
+  'rows'
+]);
 function trusted(configured: string, supplied: string | undefined): boolean {
   if (Buffer.byteLength(configured) < 32)
     throw new Error('MO_INTERNAL_SERVICE_SECRET must contain at least 32 bytes.');
@@ -121,6 +135,26 @@ function reviewedRows(value: unknown): ReviewableTrademarkAssetMigrationInput['r
   });
 }
 
+function tabularPreparationInput(
+  request: JsonRequest,
+  principal: WorkspacePrincipal
+): HistoricalTrademarkAssetTabularMappingInput {
+  const body = bodyOf(request);
+  const spoofed = SERVER_OWNED_FIELDS.find((field) => body[field] !== undefined);
+  if (spoofed)
+    throw new HttpError(
+      400,
+      'OWNER_FIELD_SPOOF_REJECTED',
+      'Workspace, actor and lifecycle fields are server-owned.'
+    );
+  if (Object.keys(body).some((field) => !TABULAR_PREPARATION_FIELDS.has(field)))
+    throw new HttpError(400, 'INVALID_REQUEST', 'Request body contains unsupported fields.');
+  return {
+    workspaceId: principal.workspaceId,
+    ...(body as unknown as Omit<HistoricalTrademarkAssetTabularMappingInput, 'workspaceId'>)
+  };
+}
+
 function migrationInput(
   request: JsonRequest,
   principal: WorkspacePrincipal,
@@ -189,6 +223,22 @@ export function createTrademarkAssetMigrationRoutes(options: {
   service: MigrationService;
 }): readonly JsonRoute[] {
   return [
+    {
+      method: 'POST',
+      path: '/v1/trademark-asset-migrations/prepare-tabular',
+      handle: (request) => {
+        const principal = principalOf(request, options.internalServiceSecret, 'workspace:read');
+        noQuery(request);
+        try {
+          return json(
+            200,
+            mapHistoricalTrademarkAssetTabularRows(tabularPreparationInput(request, principal))
+          );
+        } catch (error) {
+          return mapMigrationError(error);
+        }
+      }
+    },
     {
       method: 'POST',
       path: '/v1/trademark-asset-migrations/preview',
