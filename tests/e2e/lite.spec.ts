@@ -1,5 +1,10 @@
 import { expect, test, type Locator } from '@playwright/test';
 import type { ProfessionalReviewCase } from '@markorbit/contracts';
+import type {
+  HistoricalTrademarkAssetPreparationReceipt,
+  HistoricalTrademarkAssetTabularPreparationRequest,
+  TrademarkAssetMigrationPreview
+} from '../../apps/lite-web/src/api/trademark-asset-migrations.js';
 import {
   capture,
   expectNoHorizontalOverflow,
@@ -62,7 +67,7 @@ test('Lite filters survive customer detail navigation', async ({ page }) => {
   await expect(page.getByRole('button', { name: customerActionName })).toBeFocused();
   await expect(page.getByLabel('Search customers')).toHaveValue('Northwind');
   await expect(page.getByLabel('Customer status')).toHaveValue('Active');
-  assertHealthy();
+  await assertHealthy();
 });
 
 test('Lite governed professional review preserves filters, focus, and authority boundaries @visual', async ({
@@ -195,5 +200,137 @@ test('Lite governed professional review preserves filters, focus, and authority 
   await page.getByRole('button', { name: 'Back to review queue' }).click();
   await expect(page.getByRole('button', { name: 'Open professional review' })).toBeFocused();
   await expect(page.getByLabel('Status')).toHaveValue('REVIEWED_READY_FOR_NEXT_STEP');
+  assertHealthy();
+});
+
+test('Historical migration requires separate review and commit and reloads Portfolio (fixture) @visual', async ({ page }, testInfo) => {
+  // This is UI fixture acceptance, not real-runtime import or permission evidence.
+  const assertHealthy = watchPage(page);
+  const workspaceId = '11111111-1111-4111-8111-111111111111';
+  let preparation: HistoricalTrademarkAssetPreparationReceipt;
+  let preview: TrademarkAssetMigrationPreview;
+  let previewCalls = 0;
+  let commitCalls = 0;
+  let portfolioReads = 0;
+  await page.route('**/api/auth/session', (route) => route.fulfill({
+    json: { csrfToken: 'fixture-only-csrf-token' }
+  }));
+  await page.route('**/api/lite/trademark-assets?*', (route) => {
+    portfolioReads += 1;
+    return route.fulfill({ json: { schemaVersion: 1, workspaceId, assets: [], hasMore: false, officialTruthVerifiedByLite: false } });
+  });
+  await page.route('**/api/lite/trademark-asset-migrations/**', async (route) => {
+    const path = new URL(route.request().url()).pathname;
+    const body = route.request().postDataJSON();
+    if (path.endsWith('/prepare-tabular')) {
+      const input = body as HistoricalTrademarkAssetTabularPreparationRequest;
+      const row = input.rows[0]!;
+      preparation = {
+        schemaVersion: 1,
+        workspaceId,
+        migrationKey: input.migrationKey,
+        sourceFingerprintSha256: input.sourceFingerprintSha256!,
+        manifestFingerprintSha256: 'b'.repeat(64),
+        total: 1,
+        ready: 1,
+        unresolved: 0,
+        readyRows: [{ rowKey: row.rowKey, sourceIndex: 0, item: {
+          identity: { jurisdiction: 'US', markText: 'ALPHA' },
+          externalIdentifiers: [{ kind: 'APPLICATION_NUMBER', jurisdiction: 'US', value: '000123', officialTruthVerifiedByLite: false }],
+          workspaceRelationships: [{ kind: 'MANAGED', sourceAssetEditableByWorkspace: true }],
+          sourceReferences: [{ owner: 'WORKSPACE_USER', kind: 'WORKSPACE_ADMISSION', sourceId: input.sourceArtifactId, sourceVersion: input.sourceArtifactVersion, observedAt: input.observedAt, freshness: 'UNKNOWN' }]
+        } }],
+        unresolvedRows: [],
+        officialTruthVerifiedByLite: false,
+        assetsCreatedAutomatically: false,
+        matterCreatedAutomatically: false
+      };
+      preparation = { ...preparation, migrationInput: {
+        workspaceId, migrationKey: preparation.migrationKey, sourceFingerprintSha256: preparation.sourceFingerprintSha256!,
+        rows: preparation.readyRows.map(({ rowKey, item }) => ({ rowKey, item }))
+      } };
+      await route.fulfill({ json: preparation });
+      return;
+    }
+    const { workspaceId: preparedWorkspace, ...reviewedInput } = preparation!.migrationInput!;
+    expect(preparedWorkspace).toBe(workspaceId);
+    expect(body).toEqual(reviewedInput);
+    expect(body).not.toHaveProperty('workspaceId');
+    expect(route.request().headers()['x-markorbit-workspace-id']).toBe(workspaceId);
+    expect(route.request().headers()['idempotency-key']).toBeTruthy();
+    if (path.endsWith('/preview')) {
+      previewCalls += 1;
+      preview = {
+        schemaVersion: 1,
+        workspaceId,
+        migrationKey: preparation!.migrationKey,
+        sourceFingerprintSha256: preparation!.sourceFingerprintSha256!,
+        fingerprint: 'c'.repeat(64),
+        total: 1,
+        chunkCount: 1,
+        chunks: [{ chunkIndex: 0, startIndex: 0, endExclusive: 1, rowKeys: [reviewedInput.rows[0]!.rowKey] }],
+        rows: [{ rowKey: reviewedInput.rows[0]!.rowKey, importIndex: 0 }],
+        officialTruthVerifiedByLite: false,
+        matterCreatedAutomatically: false
+      };
+      await route.fulfill({ json: preview });
+      return;
+    }
+    expect(path).toBe(`/api/lite/trademark-asset-migrations/${encodeURIComponent(preparation!.migrationKey)}/commit`);
+    commitCalls += 1;
+    await route.fulfill({ json: {
+      schemaVersion: 1,
+      workspaceId,
+      migrationKey: preparation!.migrationKey,
+      sourceFingerprintSha256: preparation!.sourceFingerprintSha256,
+      fingerprint: preview!.fingerprint,
+      total: 1,
+      chunkCount: 1,
+      created: 1,
+      duplicates: 0,
+      rejected: 0,
+      items: [{ rowKey: reviewedInput.rows[0]!.rowKey, importIndex: 0, status: 'CREATED' }],
+      officialTruthVerifiedByLite: false,
+      matterCreatedAutomatically: false
+    } });
+  });
+  await page.goto(`${urls.lite}?workspaceId=${workspaceId}#trademarks`);
+  await expect(page.getByRole('heading', { name: 'No Trademark Assets found' })).toBeVisible();
+  await page.getByRole('button', { name: 'Import historical assets' }).click();
+  const panel = page.getByTestId('historical-import-panel');
+  await panel.getByLabel('Local CSV or XLSX file').setInputFiles({
+    name: 'historical-fixture.csv',
+    mimeType: 'text/csv',
+    buffer: Buffer.from('Country,Mark,Application\nUS,ALPHA,000123\n')
+  });
+  await panel.getByLabel('Worksheet').selectOption('CSV');
+  await panel.getByLabel('Header row').fill('1');
+  await panel.getByLabel('Workspace relationship', { exact: true }).selectOption('MANAGED');
+  await panel.getByLabel('Jurisdiction · required').selectOption('Country');
+  await panel.getByLabel('Mark text · required').selectOption('Mark');
+  await panel.getByLabel('Application number', { exact: true }).selectOption('Application');
+  await panel.getByRole('button', { name: 'Prepare import review' }).click();
+  await expect(panel.getByRole('heading', { name: 'READY rows for your review' })).toBeVisible();
+  expect(previewCalls).toBe(0);
+  expect(commitCalls).toBe(0);
+  await expect(panel.getByRole('button', { name: 'Preview reviewed migration' })).toBeDisabled();
+  await panel.getByRole('checkbox', { name: /I have reviewed the READY rows/ }).check();
+  await panel.getByRole('button', { name: 'Preview reviewed migration' }).click();
+  await expect(panel.getByRole('heading', { name: 'Migration preview', exact: true })).toBeVisible();
+  expect(previewCalls).toBe(1);
+  expect(commitCalls).toBe(0);
+  await expect(panel.getByRole('button', { name: 'Commit reviewed import' })).toBeDisabled();
+  await expectNoHorizontalOverflow(page);
+  const viewport = testInfo.project.name.startsWith('mobile') ? 'mobile' : 'desktop';
+  await capture(page, `lite-historical-migration-preview-${viewport}`);
+  const readsBeforeCommit = portfolioReads;
+  await panel.getByRole('checkbox', { name: /I confirm importing these reviewed rows/ }).check();
+  await panel.getByRole('button', { name: 'Commit reviewed import' }).click();
+  await expect(panel.getByRole('heading', { name: 'Import completed' })).toBeVisible();
+  expect(commitCalls).toBe(1);
+  await expect.poll(() => portfolioReads).toBe(readsBeforeCommit + 1);
+  await expect(panel.getByRole('button', { name: 'Commit reviewed import' })).toHaveCount(0);
+  await expectNoHorizontalOverflow(page);
+  await capture(page, `lite-historical-migration-completed-${viewport}`);
   assertHealthy();
 });
