@@ -11,6 +11,7 @@ import {
   parseCreateProductionFeeFactsCommandV1,
   parseCreateProductionIntakeCommandV1
 } from '@markorbit/contracts/markreg-early-funnel';
+import type { ResolvedSiteRuntimeV1 } from '@markorbit/contracts/site';
 import { HttpError, json, type JsonRequest, type JsonRoute } from '@markorbit/service-kit';
 import { randomUUID } from 'node:crypto';
 import {
@@ -28,6 +29,8 @@ export interface GatewayMarkRegEarlyFunnelOptions {
   csrfSecret: string;
   allowedOrigins: readonly string[];
   fixtureTestRuntime?: boolean;
+  siteUrl?: string;
+  trustedProxy?: boolean;
 }
 
 const topLevelAuthorityFields = [
@@ -38,7 +41,11 @@ const topLevelAuthorityFields = [
   'membershipId',
   'subjectUserId'
 ] as const;
-const productionIntakeAuthorityFields = ['actor', ...topLevelAuthorityFields] as const;
+const productionIntakeAuthorityFields = [
+  'actor',
+  'siteSource',
+  ...topLevelAuthorityFields
+] as const;
 const productionFeeFactsForbiddenFields = [
   'actor',
   'intakeId',
@@ -339,6 +346,50 @@ export function createGatewayMarkRegEarlyFunnelRoutes(
         )
       );
     return principal;
+  };
+
+  const resolveSiteAdmission = async (request: JsonRequest): Promise<ResolvedSiteRuntimeV1> => {
+    if (!options.internalServiceSecret || !options.siteUrl)
+      throw new HttpError(
+        503,
+        'SITE_RUNTIME_UNAVAILABLE',
+        'Site admission is unavailable.',
+        true
+      );
+    const forwarded = request.headers['x-forwarded-host'];
+    const hostname = options.trustedProxy && forwarded ? forwarded : request.headers.host;
+    if (!hostname || hostname.includes(','))
+      throw new HttpError(400, 'INVALID_SITE_HOST', 'One trusted request host is required.');
+    try {
+      const response = await fetch(
+        `${options.siteUrl.replace(/\/$/u, '')}/internal/site-runtime/resolve`,
+        {
+          method: 'POST',
+          headers: {
+            'content-type': 'application/json',
+            'x-markorbit-internal-authorization': options.internalServiceSecret
+          },
+          body: JSON.stringify({ hostname, observedAt: new Date().toISOString() })
+        }
+      );
+      const value = (await response.json()) as Partial<ResolvedSiteRuntimeV1>;
+      if (!response.ok) throw new HttpError(response.status, 'SITE_ADMISSION_DENIED', 'Site admission was denied.');
+      if (
+        value.schemaVersion !== 1 ||
+        value.requestContext?.schemaVersion !== 1 ||
+        value.publicSite?.schemaVersion !== 1 ||
+        value.requestContext.siteId !== value.publicSite.siteId ||
+        value.requestContext.siteVersion !== value.publicSite.siteVersion ||
+        value.requestContext.configurationVersion !== value.publicSite.configurationVersion ||
+        value.requestContext.hostBindingVersion !== value.publicSite.hostBindingVersion ||
+        value.requestContext.normalizedHostname !== value.publicSite.hostname
+      )
+        throw new HttpError(503, 'SITE_RUNTIME_INVALID_RESPONSE', 'Site admission response is invalid.', true);
+      return value as ResolvedSiteRuntimeV1;
+    } catch (error) {
+      if (error instanceof HttpError) throw error;
+      throw new HttpError(503, 'SITE_RUNTIME_UNAVAILABLE', 'Site admission is unavailable.', true);
+    }
   };
 
   const forward = async (
@@ -680,6 +731,61 @@ export function createGatewayMarkRegEarlyFunnelRoutes(
         key,
         correlation
       );
+    }
+  };
+
+  const siteProductionIntakeRoute: JsonRoute = {
+    method: 'POST',
+    path: '/api/site/markreg/production-intakes',
+    handle: async (request) => {
+      const body = bodyRecord(request);
+      rejectProductionIntakeAuthoritySpoof(body);
+      if (Object.hasOwn(body, 'channel') || Object.hasOwn(body, 'relationshipModel'))
+        throw new HttpError(
+          400,
+          'SITE_ADMISSION_SPOOF_REJECTED',
+          'Site channel and relationship are resolved from trusted Site configuration.'
+        );
+      const key = idempotency(request, body);
+      const correlation = correlationId(request);
+      const principal = await authenticate(request);
+      const resolved = await resolveSiteAdmission(request);
+      const service = resolved.publicSite.services.find(
+        (entry) =>
+          entry.visibility === 'PUBLIC' && entry.productRef.productId === 'product_trademark'
+      );
+      if (!service)
+        throw new HttpError(409, 'SITE_SERVICE_UNAVAILABLE', 'This Site has no public MarkReg service.');
+      let command;
+      try {
+        command = parseCreateProductionIntakeCommandV1({
+          schemaVersion: body.schemaVersion,
+          input: body.input,
+          channel: service.channel,
+          relationshipModel: service.relationshipModel,
+          idempotencyKey: key,
+          correlationId: correlation,
+          siteSource: {
+            siteId: resolved.requestContext.siteId,
+            siteOwnerWorkspaceId: resolved.requestContext.workspaceId,
+            siteVersion: resolved.requestContext.siteVersion,
+            configurationVersion: resolved.requestContext.configurationVersion,
+            hostBindingId: resolved.requestContext.hostBindingId,
+            hostBindingVersion: resolved.requestContext.hostBindingVersion,
+            hostname: resolved.requestContext.normalizedHostname,
+            locale: resolved.requestContext.defaultLocale,
+            observedAt: resolved.requestContext.observedAt,
+            fingerprintSha256: resolved.requestContext.fingerprintSha256
+          }
+        });
+      } catch (error) {
+        throw new HttpError(
+          400,
+          'INVALID_PRODUCTION_INTAKE_REQUEST',
+          error instanceof Error ? error.message : 'Production Intake request is invalid.'
+        );
+      }
+      return forward(request, principal, '/internal/v1/production-intakes', command, key, correlation);
     }
   };
 
@@ -1131,6 +1237,7 @@ const matterDraftRoute: JsonRoute = {
 
   return [
     productionIntakeRoute,
+    siteProductionIntakeRoute,
     productionIntakeReadRoute,
     productionFeeFactsRoute,
     productionFeeFactsReadRoute,

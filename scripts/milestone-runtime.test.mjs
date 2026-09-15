@@ -72,6 +72,41 @@ test('waitForHealth reports runtime name and exit code', async () => {
     /fixture-downstream exited.*17/
   );
 });
+test('waitForHealth bounds an accepted request that never receives a response', async () => {
+  const sockets = new Set();
+  const server = createServer((socket) => {
+    sockets.add(socket);
+    socket.once('close', () => sockets.delete(socket));
+  });
+  await new Promise((resolvePromise) => server.listen(0, '127.0.0.1', resolvePromise));
+  const port = server.address().port;
+  try {
+    await assert.rejects(
+      waitForHealth('fixture-stalled', `http://127.0.0.1:${port}`, { exitCode: null }, 500),
+      /fixture-stalled did not become healthy/
+    );
+  } finally {
+    for (const socket of sockets) socket.destroy();
+    await new Promise((resolvePromise, reject) =>
+      server.close((error) => (error ? reject(error) : resolvePromise()))
+    );
+  }
+});
+test('waitForHealth honors caller cancellation', async () => {
+  const controller = new AbortController();
+  const reason = new Error('fixture health check cancelled');
+  setTimeout(() => controller.abort(reason), 50);
+  await assert.rejects(
+    waitForHealth(
+      'fixture-cancelled',
+      'http://127.0.0.1:1',
+      { exitCode: null },
+      2_000,
+      controller.signal
+    ),
+    reason
+  );
+});
 test('middle service failure cleans every registered child', async () => {
   const definitions = await fixtureDefinitions(6, { index: 2, behavior: 'exit', code: 23 });
   await assert.rejects(
@@ -194,24 +229,28 @@ test('durable owner mode selects PostgreSQL bootstraps while retaining bounded m
   assert.equal(gateway?.env?.MO_MILESTONE_TEST_RUNTIME, '1');
   assert.equal(gateway?.env?.MO_INTERNAL_SERVICE_SECRET, secret);
 });
-test('starts six real runtimes and releases every default port', { timeout: 60000 }, async () => {
-  const runtime = await startMilestoneRuntime({ timeoutMs: 30000 });
-  assert.equal(runtime.children.length, 6);
-  for (const url of [
-    runtime.urls.markreg,
-    runtime.urls.execution,
-    runtime.urls.gateway,
-    runtime.urls.markregWeb,
-    runtime.urls.liteWeb
-  ])
-    assert.equal(
-      (
-        await fetch(
-          url.endsWith('05') || url.endsWith('04') || url.endsWith('00') ? `${url}/health` : url
-        )
-      ).status,
-      200
-    );
-  await runtime.stop();
-  for (const port of Object.values(milestonePorts)) await assertPortAvailable(port);
-});
+test(
+  'starts six real runtimes and releases every default port',
+  { timeout: 240_000 },
+  async (context) => {
+    const runtime = await startMilestoneRuntime({ timeoutMs: 30_000, signal: context.signal });
+    assert.equal(runtime.children.length, 6);
+    for (const url of [
+      runtime.urls.markreg,
+      runtime.urls.execution,
+      runtime.urls.gateway,
+      runtime.urls.markregWeb,
+      runtime.urls.liteWeb
+    ])
+      assert.equal(
+        (
+          await fetch(
+            url.endsWith('05') || url.endsWith('04') || url.endsWith('00') ? `${url}/health` : url
+          )
+        ).status,
+        200
+      );
+    await runtime.stop();
+    for (const port of Object.values(milestonePorts)) await assertPortAvailable(port);
+  }
+);

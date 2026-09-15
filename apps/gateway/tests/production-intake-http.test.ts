@@ -84,6 +84,8 @@ function client(overrides: Partial<CoreAuthenticationClient> = {}): CoreAuthenti
 function routes(authenticationClient: CoreAuthenticationClient = client()) {
   return createGatewayMarkRegEarlyFunnelRoutes({
     markRegUrl: 'http://markreg.test',
+    siteUrl: 'http://site.test',
+    trustedProxy: true,
     authenticationClient,
     internalServiceSecret,
     csrfSecret,
@@ -168,6 +170,92 @@ describe('durable Production Intake Gateway boundary', () => {
         (candidate) => candidate.method === 'POST' && candidate.path === '/v1/markreg/intakes'
       )
     ).toHaveLength(1);
+    expect(
+      values.filter(
+        (candidate) =>
+          candidate.method === 'POST' && candidate.path === '/api/site/markreg/production-intakes'
+      )
+    ).toHaveLength(1);
+  });
+
+  it('derives Site channel and exact lineage from the trusted host before forwarding', async () => {
+    const siteRuntime = {
+      schemaVersion: 1,
+      publicSite: {
+        schemaVersion: 1,
+        siteId: 'site_pilot',
+        siteVersion: 2,
+        configurationVersion: 3,
+        hostBindingVersion: 4,
+        hostname: 'pilot.example.com',
+        services: [
+          {
+            visibility: 'PUBLIC',
+            productRef: { owner: 'MARKREG', productId: 'product_trademark', version: 7 },
+            channel: 'MARKREG_WHITE_LABEL',
+            relationshipModel: 'WHITE_LABEL'
+          }
+        ]
+      },
+      requestContext: {
+        schemaVersion: 1,
+        siteId: 'site_pilot',
+        workspaceId: 'site-owner-workspace',
+        siteVersion: 2,
+        configurationVersion: 3,
+        hostBindingId: 'site_host_pilot',
+        hostBindingVersion: 4,
+        normalizedHostname: 'pilot.example.com',
+        defaultLocale: 'en-US',
+        observedAt: '2026-09-16T00:00:00.000Z',
+        fingerprintSha256: 'b'.repeat(64)
+      }
+    };
+    const downstream = vi.fn((url: string, init: RequestInit) => {
+      if (typeof init.body !== 'string') throw new Error('expected JSON request body');
+      if (url === 'http://site.test/internal/site-runtime/resolve') {
+        expect(JSON.parse(init.body)).toMatchObject({ hostname: 'pilot.example.com' });
+        return response(200, siteRuntime);
+      }
+      expect(url).toBe('http://markreg.test/internal/v1/production-intakes');
+      const body = JSON.parse(init.body) as Record<string, unknown>;
+      expect(body).toMatchObject({
+        channel: 'MARKREG_WHITE_LABEL',
+        relationshipModel: 'WHITE_LABEL',
+        siteSource: {
+          siteId: 'site_pilot',
+          siteOwnerWorkspaceId: 'site-owner-workspace',
+          hostBindingId: 'site_host_pilot',
+          fingerprintSha256: 'b'.repeat(64)
+        }
+      });
+      return response(200, intakeEnvelope);
+    });
+    vi.stubGlobal('fetch', downstream);
+
+    const result = await route('POST', '/api/site/markreg/production-intakes').handle(
+      request(
+        'POST',
+        '/api/site/markreg/production-intakes',
+        { schemaVersion: 1, input: productionIntakeBody.input },
+        { host: 'ignored.example.com', 'x-forwarded-host': 'pilot.example.com' }
+      )
+    );
+
+    expect(result.status).toBe(200);
+    expect(downstream).toHaveBeenCalledTimes(2);
+  });
+
+  it('rejects browser attempts to select Site authority fields', async () => {
+    await expect(
+      route('POST', '/api/site/markreg/production-intakes').handle(
+        request('POST', '/api/site/markreg/production-intakes', {
+          schemaVersion: 1,
+          input: productionIntakeBody.input,
+          channel: 'MARKREG_DIRECT'
+        })
+      )
+    ).rejects.toMatchObject({ status: 400, code: 'SITE_ADMISSION_SPOOF_REJECTED' });
   });
 
   it('forwards the exact bounded Production Intake command with trusted Workspace authority', async () => {

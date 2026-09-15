@@ -489,6 +489,7 @@ describe('MarkReg early-funnel governed Gateway mutations', () => {
         .map((candidate) => `${candidate.method} ${candidate.path}`)
     ).toEqual([
       'POST /api/markreg/production-intakes',
+      'POST /api/site/markreg/production-intakes',
       'POST /api/markreg/production-intakes/:intakeId/fee-facts',
       'POST /api/markreg/production-recommendations',
       'POST /api/markreg/production-user-selections',
