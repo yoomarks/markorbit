@@ -37,6 +37,9 @@ import {
   US_TRADEMARK_MARK_REPRESENTATION_CAPABILITY_DEFINITION,
   US_TRADEMARK_MARK_REPRESENTATION_IMPLEMENTATION_PROFILE
 } from './us-trademark-mark-representation-strategy-source.js';
+import { productionWorkspaceCapabilityBindingPolicyV1 } from './workspace-capability-binding-policy.js';
+import { PostgresWorkspaceCapabilityBindingRepositoryV1 } from './workspace-capability-binding-store.js';
+import { WorkspaceCapabilityBindingServiceV1 } from './workspace-capability-binding.js';
 import { PostgresWorkspaceImplementationPreferenceStoreV1 } from './workspace-implementation-preference-postgres.js';
 import { HttpCoreWorkspaceTrademarkIssueIntelligenceReaderV1 } from './workspace-trademark-issue-intelligence-http-reader.js';
 import { WorkspaceTrademarkIssueIntelligenceReadinessServiceV1 } from './workspace-trademark-issue-intelligence-readiness.js';
@@ -183,6 +186,16 @@ if (milestoneFixtureMode) {
     new WorkspaceTrademarkIssueIntelligenceReadinessServiceV1(
       new HttpCoreWorkspaceTrademarkIssueIntelligenceReaderV1(coreUrl, internalServiceSecret)
     );
+  const workspaceCapabilityBindingRepository = new PostgresWorkspaceCapabilityBindingRepositoryV1(
+    database,
+    pool
+  );
+  const workspaceCapabilityBinding = new WorkspaceCapabilityBindingServiceV1(
+    workspaceTrademarkIssueIntelligenceReadiness,
+    productionWorkspaceCapabilityBindingPolicyV1,
+    registry,
+    workspaceCapabilityBindingRepository
+  );
   const productionSourceEvidenceReader = new CapabilityProductionSourceEvidenceReadServiceV1({
     replayStore,
     evidence: new CurrentProductionSourceEvidenceAuthorityV1({
@@ -201,6 +214,8 @@ if (milestoneFixtureMode) {
     productionSourceEvidenceReader,
     productionSourceEvidenceReplayStore: replayStore,
     workspaceTrademarkIssueIntelligenceReadiness,
+    workspaceCapabilityBinding,
+    workspaceCapabilityBindingRepository,
     ...(managedAiRuntime ?? {}),
     ...(managedCommunicationRuntime ?? {}),
     ...(governedCapabilityRuntime ? { governedCapabilityRuntime } : {}),
