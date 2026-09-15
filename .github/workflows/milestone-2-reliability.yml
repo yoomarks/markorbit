@@ -43,9 +43,12 @@ jobs:
       MILESTONE2_MIGRATIONS_REQUIRED: '1'
       MILESTONE2_RESTART_REQUIRED: '1'
       MILESTONE2_OUTAGE_REQUIRED: '1'
+      MO_MILESTONE_DURABLE_OWNERS: '1'
       MO_INTERNAL_SERVICE_SECRET: task-026-ci-internal-secret-32-bytes
       MO_CSRF_SECRET: task-026-ci-csrf-secret-32-bytes-minimum
       WEB_ORIGINS: https://test.markorbit.local
+      MARKREG_DATABASE_URL: postgresql://markorbit_test:markorbit-test-only@127.0.0.1:5432/markorbit_markreg_test
+      EXECUTION_DATABASE_URL: postgresql://markorbit_test:markorbit-test-only@127.0.0.1:5432/markorbit_execution_test
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
