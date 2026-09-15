@@ -11,6 +11,8 @@ type Mode = 'login' | 'register';
 export interface MarkregAccountEntryProps {
   api?: MarkregAccountApi;
   renderProduct?: () => ReactNode;
+  brandName?: string;
+  intro?: string;
 }
 
 function message(error: unknown) {
@@ -27,7 +29,9 @@ function message(error: unknown) {
 
 export function MarkregAccountEntry({
   api = markregAccountApi,
-  renderProduct = () => <MarkregApp />
+  renderProduct = () => <MarkregApp />,
+  brandName = 'MarkOrbit',
+  intro = 'Create a customer account, organize your applications in one workspace, and keep every step visible from order to filing preparation.'
 }: MarkregAccountEntryProps) {
   const [view, setView] = useState<View>('checking');
   const [mode, setMode] = useState<Mode>('login');
@@ -112,12 +116,9 @@ export function MarkregAccountEntry({
   return (
     <main className="markreg-account-entry">
       <section className="markreg-account-entry__intro" aria-labelledby="markreg-entry-heading">
-        <span className="markreg-account-entry__eyebrow">MarkOrbit · Trademark services</span>
+        <span className="markreg-account-entry__eyebrow">{brandName} · Trademark services</span>
         <h1 id="markreg-entry-heading">Move your trademark application forward.</h1>
-        <p>
-          Create a customer account, organize your applications in one workspace, and keep every
-          step visible from order to filing preparation.
-        </p>
+        <p>{intro}</p>
       </section>
       <Card className="markreg-account-entry__card">
         {view === 'checking' && (

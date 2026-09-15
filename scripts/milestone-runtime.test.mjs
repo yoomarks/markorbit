@@ -72,6 +72,26 @@ test('waitForHealth reports runtime name and exit code', async () => {
     /fixture-downstream exited.*17/
   );
 });
+test('waitForHealth bounds an accepted request that never receives a response', async () => {
+  const sockets = new Set();
+  const server = createServer((socket) => {
+    sockets.add(socket);
+    socket.once('close', () => sockets.delete(socket));
+  });
+  await new Promise((resolvePromise) => server.listen(0, '127.0.0.1', resolvePromise));
+  const port = server.address().port;
+  try {
+    await assert.rejects(
+      waitForHealth('fixture-stalled', `http://127.0.0.1:${port}`, { exitCode: null }, 500),
+      /fixture-stalled did not become healthy/
+    );
+  } finally {
+    for (const socket of sockets) socket.destroy();
+    await new Promise((resolvePromise, reject) =>
+      server.close((error) => (error ? reject(error) : resolvePromise()))
+    );
+  }
+});
 test('middle service failure cleans every registered child', async () => {
   const definitions = await fixtureDefinitions(6, { index: 2, behavior: 'exit', code: 23 });
   await assert.rejects(

@@ -463,6 +463,8 @@ export function createRuntime(options: GatewayOptions = {}) {
         }),
         ...createGatewayMarkRegEarlyFunnelRoutes({
           markRegUrl,
+          siteUrl: options.siteUrl ?? process.env.SITE_URL ?? 'http://127.0.0.1:4109',
+          trustedProxy: options.trustedProxy ?? process.env.MO_TRUST_PROXY === '1',
           ...(authenticationClient ? { authenticationClient } : {}),
           ...((options.internalServiceSecret ?? process.env.MO_INTERNAL_SERVICE_SECRET)
             ? {

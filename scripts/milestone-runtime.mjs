@@ -172,7 +172,9 @@ export async function waitForHealth(name, url, child, timeoutMs = 30_000) {
         `${name} exited before its health check became ready (exit ${child.exitCode}).`
       );
     try {
-      const response = await fetch(url);
+      const response = await fetch(url, {
+        signal: AbortSignal.timeout(Math.min(1_000, Math.max(1, deadline - Date.now())))
+      });
       if (response.ok) return;
     } catch {
       /* the process is still starting */
