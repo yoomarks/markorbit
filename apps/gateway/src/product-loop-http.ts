@@ -53,6 +53,17 @@ const trademarkManagementDispositionAuthoritySpoofFields = [
   'provider',
   'model'
 ] as const;
+const trademarkAssetMigrationAuthoritySpoofFields = [
+  'workspaceId',
+  'actorPrincipalId',
+  'principalId',
+  'status',
+  'version',
+  'updatedAt',
+  'officialTruthVerifiedByLite',
+  'assetsCreatedAutomatically',
+  'matterCreatedAutomatically'
+] as const;
 
 type ProductLoopSecurityMode = 'READ' | 'DURABLE_MUTATION' | 'ADVISORY_POST';
 
@@ -348,6 +359,28 @@ export function createGatewayProductLoopRoutes(
       opportunityQualificationAuthoritySpoofFields
     ),
     route('GET', '/api/lite/trademark-assets', ['workspace:read'], 'READ'),
+    route(
+      'POST',
+      '/api/lite/trademark-asset-migrations/prepare-tabular',
+      ['workspace:read'],
+      'ADVISORY_POST',
+      trademarkAssetMigrationAuthoritySpoofFields
+    ),
+    route(
+      'POST',
+      '/api/lite/trademark-asset-migrations/preview',
+      ['workspace:read'],
+      'DURABLE_MUTATION',
+      trademarkAssetMigrationAuthoritySpoofFields
+    ),
+    route('GET', '/api/lite/trademark-asset-migrations/:migrationKey', ['workspace:read'], 'READ'),
+    route(
+      'POST',
+      '/api/lite/trademark-asset-migrations/:migrationKey/commit',
+      ['matter:manage'],
+      'DURABLE_MUTATION',
+      trademarkAssetMigrationAuthoritySpoofFields
+    ),
     route('GET', '/api/lite/trading/studio-runs/:studioRunId/state', ['workspace:read'], 'READ'),
     route(
       'POST',

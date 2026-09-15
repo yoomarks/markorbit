@@ -28,6 +28,48 @@ const options = {
   csrfSecret: 'wp05-gateway-csrf-key-01234567890123',
   allowedOrigins: ['https://test.markorbit.local']
 };
+const migrationTabularBody = {
+  migrationKey: 'legacy-tabular-2026',
+  sourceFingerprintSha256: 'a'.repeat(64),
+  sourceArtifactId: 'legacy-portfolio.xlsx',
+  sourceArtifactVersion: 'sheet1-v1',
+  observedAt: '2026-09-15T00:00:00.000Z',
+  relationshipKind: 'REPRESENTED',
+  headers: ['Jurisdiction', 'Mark', 'Application No.'],
+  columns: { jurisdiction: 'Jurisdiction', markText: 'Mark', applicationNumber: 'Application No.' },
+  rows: [{ rowKey: 'sheet-row-1', cells: ['US', 'ALPHA', '98123456'] }]
+};
+const migrationReviewBody = {
+  migrationKey: 'legacy-tabular-2026',
+  sourceFingerprintSha256: 'a'.repeat(64),
+  rows: [
+    {
+      rowKey: 'sheet-row-1',
+      item: {
+        identity: { jurisdiction: 'US', markText: 'ALPHA' },
+        externalIdentifiers: [
+          {
+            kind: 'APPLICATION_NUMBER',
+            jurisdiction: 'US',
+            value: '98123456',
+            officialTruthVerifiedByLite: false
+          }
+        ],
+        workspaceRelationships: [{ kind: 'REPRESENTED', sourceAssetEditableByWorkspace: true }],
+        sourceReferences: [
+          {
+            owner: 'WORKSPACE_USER',
+            kind: 'WORKSPACE_ADMISSION',
+            sourceId: 'legacy-portfolio.xlsx#row:1',
+            sourceVersion: 'sheet1-v1',
+            observedAt: '2026-09-15T00:00:00.000Z',
+            freshness: 'UNKNOWN'
+          }
+        ]
+      }
+    }
+  ]
+};
 
 function route(method: string, path: string) {
   const value = createGatewayProductLoopRoutes(options).find(
@@ -384,5 +426,229 @@ describe('Gateway Lite Product-loop transport boundary', () => {
         }
       })
     ).rejects.toMatchObject({ status: 400, code: 'INVALID_WORKSPACE_CONTEXT' });
+  });
+  it('forwards tabular preparation as authenticated advisory POST without idempotency', async () => {
+    const downstream = vi.fn((url: string, init: RequestInit) => {
+      expect(url).toBe('http://lite.test/v1/trademark-asset-migrations/prepare-tabular');
+      expect(init.method).toBe('POST');
+      const headers = init.headers as Record<string, string>;
+      expect(headers['idempotency-key']).toBeUndefined();
+      expect(headers['x-markorbit-workspace-id']).toBe(workspaceId);
+      expect(headers['x-markorbit-principal']).toBeTruthy();
+      expect(JSON.parse(init.body as string)).toEqual(migrationTabularBody);
+      return Promise.resolve(
+        new Response(JSON.stringify({ schemaVersion: 1, workspaceId, ready: 1, unresolved: 0 }), {
+          status: 200,
+          headers: { 'content-type': 'application/json' }
+        })
+      );
+    });
+    vi.stubGlobal('fetch', downstream);
+    const result = await route(
+      'POST',
+      '/api/lite/trademark-asset-migrations/prepare-tabular'
+    ).handle({
+      method: 'POST',
+      path: '/api/lite/trademark-asset-migrations/prepare-tabular',
+      params: {},
+      query: {},
+      headers: {
+        cookie: 'mo_session=token',
+        origin: 'https://test.markorbit.local',
+        'x-markorbit-workspace-id': workspaceId,
+        'x-markorbit-csrf-token': csrfToken(principal.sessionId, options.csrfSecret)
+      },
+      body: migrationTabularBody
+    });
+    expect(result.status).toBe(200);
+    expect(downstream).toHaveBeenCalledTimes(1);
+  });
+
+  it('forwards preview as an idempotent durable migration mutation', async () => {
+    const downstream = vi.fn((url: string, init: RequestInit) => {
+      expect(url).toBe('http://lite.test/v1/trademark-asset-migrations/preview');
+      expect(init.method).toBe('POST');
+      expect((init.headers as Record<string, string>)['idempotency-key']).toBe(
+        'migration-preview-1'
+      );
+      expect(JSON.parse(init.body as string)).toEqual(migrationReviewBody);
+      return Promise.resolve(
+        new Response(
+          JSON.stringify({ schemaVersion: 1, workspaceId, migrationKey: 'legacy-tabular-2026' }),
+          { status: 200, headers: { 'content-type': 'application/json' } }
+        )
+      );
+    });
+    vi.stubGlobal('fetch', downstream);
+    const result = await route('POST', '/api/lite/trademark-asset-migrations/preview').handle({
+      method: 'POST',
+      path: '/api/lite/trademark-asset-migrations/preview',
+      params: {},
+      query: {},
+      headers: {
+        cookie: 'mo_session=token',
+        origin: 'https://test.markorbit.local',
+        'x-markorbit-workspace-id': workspaceId,
+        'x-markorbit-csrf-token': csrfToken(principal.sessionId, options.csrfSecret),
+        'idempotency-key': 'migration-preview-1'
+      },
+      body: migrationReviewBody
+    });
+    expect(result.status).toBe(200);
+  });
+
+  it('forwards migration progress as a Workspace-scoped read', async () => {
+    const downstream = vi.fn((url: string, init: RequestInit) => {
+      expect(url).toBe('http://lite.test/v1/trademark-asset-migrations/legacy-tabular-2026');
+      expect(init.method).toBe('GET');
+      expect(init.body).toBeUndefined();
+      return Promise.resolve(
+        new Response(
+          JSON.stringify({ workspaceId, migrationKey: 'legacy-tabular-2026', status: 'PREVIEWED' }),
+          { status: 200, headers: { 'content-type': 'application/json' } }
+        )
+      );
+    });
+    vi.stubGlobal('fetch', downstream);
+    const result = await route('GET', '/api/lite/trademark-asset-migrations/:migrationKey').handle({
+      method: 'GET',
+      path: '/api/lite/trademark-asset-migrations/legacy-tabular-2026',
+      params: { migrationKey: 'legacy-tabular-2026' },
+      query: {},
+      headers: { cookie: 'mo_session=token', 'x-markorbit-workspace-id': workspaceId },
+      body: undefined
+    });
+    expect(result.status).toBe(200);
+  });
+
+  it('forwards commit only with matter management and idempotency governance', async () => {
+    const downstream = vi.fn((url: string, init: RequestInit) => {
+      expect(url).toBe('http://lite.test/v1/trademark-asset-migrations/legacy-tabular-2026/commit');
+      expect(init.method).toBe('POST');
+      expect((init.headers as Record<string, string>)['idempotency-key']).toBe(
+        'migration-commit-1'
+      );
+      return Promise.resolve(
+        new Response(
+          JSON.stringify({ workspaceId, migrationKey: 'legacy-tabular-2026', created: 1 }),
+          { status: 200, headers: { 'content-type': 'application/json' } }
+        )
+      );
+    });
+    vi.stubGlobal('fetch', downstream);
+    const result = await route(
+      'POST',
+      '/api/lite/trademark-asset-migrations/:migrationKey/commit'
+    ).handle({
+      method: 'POST',
+      path: '/api/lite/trademark-asset-migrations/legacy-tabular-2026/commit',
+      params: { migrationKey: 'legacy-tabular-2026' },
+      query: {},
+      headers: {
+        cookie: 'mo_session=token',
+        origin: 'https://test.markorbit.local',
+        'x-markorbit-workspace-id': workspaceId,
+        'x-markorbit-csrf-token': csrfToken(principal.sessionId, options.csrfSecret),
+        'idempotency-key': 'migration-commit-1'
+      },
+      body: migrationReviewBody
+    });
+    expect(result.status).toBe(200);
+  });
+
+  it('rejects migration authority spoofing before forwarding to Lite', async () => {
+    const downstream = vi.fn();
+    vi.stubGlobal('fetch', downstream);
+    await expect(
+      route('POST', '/api/lite/trademark-asset-migrations/prepare-tabular').handle({
+        method: 'POST',
+        path: '/api/lite/trademark-asset-migrations/prepare-tabular',
+        params: {},
+        query: {},
+        headers: {
+          cookie: 'mo_session=token',
+          origin: 'https://test.markorbit.local',
+          'x-markorbit-workspace-id': workspaceId,
+          'x-markorbit-csrf-token': csrfToken(principal.sessionId, options.csrfSecret)
+        },
+        body: { ...migrationTabularBody, workspaceId }
+      })
+    ).rejects.toMatchObject({ status: 400, code: 'ACTOR_SPOOF_REJECTED' });
+    expect(downstream).not.toHaveBeenCalled();
+  });
+
+  it('requires CSRF for preparation and idempotency for durable migration mutations', async () => {
+    vi.stubGlobal('fetch', vi.fn());
+    await expect(
+      route('POST', '/api/lite/trademark-asset-migrations/prepare-tabular').handle({
+        method: 'POST',
+        path: '/api/lite/trademark-asset-migrations/prepare-tabular',
+        params: {},
+        query: {},
+        headers: {
+          cookie: 'mo_session=token',
+          origin: 'https://test.markorbit.local',
+          'x-markorbit-workspace-id': workspaceId
+        },
+        body: migrationTabularBody
+      })
+    ).rejects.toMatchObject({ status: 403, code: 'INVALID_CSRF_TOKEN' });
+    await expect(
+      route('POST', '/api/lite/trademark-asset-migrations/preview').handle({
+        method: 'POST',
+        path: '/api/lite/trademark-asset-migrations/preview',
+        params: {},
+        query: {},
+        headers: {
+          cookie: 'mo_session=token',
+          origin: 'https://test.markorbit.local',
+          'x-markorbit-workspace-id': workspaceId,
+          'x-markorbit-csrf-token': csrfToken(principal.sessionId, options.csrfSecret)
+        },
+        body: migrationReviewBody
+      })
+    ).rejects.toMatchObject({ status: 400, code: 'INVALID_REQUEST' });
+  });
+
+  it('denies commit without matter:manage and preserves downstream unavailability', async () => {
+    resolveWorkspace.mockResolvedValueOnce({ ...principal, permissions: ['workspace:read'] });
+    vi.stubGlobal('fetch', vi.fn());
+    await expect(
+      route('POST', '/api/lite/trademark-asset-migrations/:migrationKey/commit').handle({
+        method: 'POST',
+        path: '/api/lite/trademark-asset-migrations/legacy-tabular-2026/commit',
+        params: { migrationKey: 'legacy-tabular-2026' },
+        query: {},
+        headers: {
+          cookie: 'mo_session=token',
+          origin: 'https://test.markorbit.local',
+          'x-markorbit-workspace-id': workspaceId,
+          'x-markorbit-csrf-token': csrfToken(principal.sessionId, options.csrfSecret),
+          'idempotency-key': 'migration-commit-denied'
+        },
+        body: migrationReviewBody
+      })
+    ).rejects.toMatchObject({ status: 403, code: 'PERMISSION_DENIED' });
+
+    resolveWorkspace.mockResolvedValueOnce(principal);
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(() => Promise.reject(new Error('offline')))
+    );
+    await expect(
+      route('POST', '/api/lite/trademark-asset-migrations/prepare-tabular').handle({
+        method: 'POST',
+        path: '/api/lite/trademark-asset-migrations/prepare-tabular',
+        params: {},
+        query: {},
+        headers: {
+          cookie: 'mo_session=token',
+          origin: 'https://test.markorbit.local',
+          'x-markorbit-workspace-id': workspaceId,
+          'x-markorbit-csrf-token': csrfToken(principal.sessionId, options.csrfSecret)
+        },
+        body: migrationTabularBody
+      })
+    ).rejects.toMatchObject({ status: 503, code: 'DOWNSTREAM_UNAVAILABLE', retryable: true });
   });
 });
