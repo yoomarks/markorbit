@@ -25,6 +25,8 @@ export interface SiteHttpOptionsV1 {
     | 'activate'
     | 'suspend'
     | 'list'
+    | 'currentConfiguration'
+    | 'listHostBindings'
     | 'resolve'
   >;
   internalServiceSecret: string;
@@ -229,6 +231,26 @@ export function createSiteHttpRoutesV1(options: SiteHttpOptionsV1): readonly Jso
             siteId: request.params.siteId!,
             idempotencyKey: idempotencyKey(request, value)
           })
+        );
+      }
+    },
+    {
+      method: 'GET',
+      path: '/internal/workspaces/:workspaceId/sites/:siteId/configuration',
+      async handle(request) {
+        const actor = principal(request, options, 'workspace:read');
+        return run(200, () =>
+          options.service.currentConfiguration(actor.workspaceId, request.params.siteId!)
+        );
+      }
+    },
+    {
+      method: 'GET',
+      path: '/internal/workspaces/:workspaceId/sites/:siteId/host-bindings',
+      async handle(request) {
+        const actor = principal(request, options, 'workspace:read');
+        return run(200, () =>
+          options.service.listHostBindings(actor.workspaceId, request.params.siteId!)
         );
       }
     },
