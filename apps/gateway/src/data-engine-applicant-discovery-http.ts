@@ -8,7 +8,8 @@ import {
   type ApplicantDiscoveryEnvelopeV1,
   type ApplicantDiscoveryRequestV1,
   type ApplicantPortfolioEnvelopeV1,
-  type ApplicantPortfolioRequestV1
+  type ApplicantPortfolioRequestV1,
+  type DataEngineDiscoveredTrademarkCandidateV1
 } from '@markorbit/contracts/data-engine-applicant-discovery';
 
 import { DataEngineClientError, type DataEngineClient } from './data-engine-http.js';
@@ -20,6 +21,16 @@ export interface ApplicantDiscoveryClientV1 {
   readPortfolio(
     request: Readonly<ApplicantPortfolioRequestV1>
   ): Promise<ApplicantPortfolioEnvelopeV1>;
+  readTrademark(
+    request: Readonly<ApplicantTrademarkReadRequestV1>
+  ): Promise<ApplicantPortfolioEnvelopeV1>;
+}
+
+export interface ApplicantTrademarkReadRequestV1 extends ApplicantPortfolioRequestV1 {
+  trademark: Pick<
+    DataEngineDiscoveredTrademarkCandidateV1,
+    'trademark_candidate_id' | 'source_reference'
+  >;
 }
 
 function requestContext(request: { requestContext: { request_id: string } }) {
@@ -47,6 +58,32 @@ function contractMismatch(resourceKind: string): DataEngineClientError {
     'DATA_ENGINE_CONTRACT_MISMATCH',
     `Data Engine response does not match ${resourceKind} V1.`
   );
+}
+
+function exactTrademarkPath(request: Readonly<ApplicantTrademarkReadRequestV1>): string {
+  const normalized = normalizeApplicantPortfolioRequestV1(request);
+  const trademark = request.trademark;
+  if (
+    !trademark ||
+    !trademark.trademark_candidate_id?.trim() ||
+    trademark.source_reference?.source_kind !== 'TRADEMARK_RECORD' ||
+    trademark.source_reference.jurisdiction !== normalized.applicant.source_reference.jurisdiction
+  ) {
+    throw new TypeError('Exact Trademark read requires a matching Data Engine source reference.');
+  }
+  const query = applicantSourceQuery(
+    normalized.requestContext.requester_workspace_id,
+    normalized.applicant.source_reference
+  );
+  query.set('trademark_source_id', trademark.source_reference.source_id);
+  query.set('trademark_source_version', trademark.source_reference.source_version);
+  query.set(
+    'trademark_source_fingerprint_sha256',
+    trademark.source_reference.source_fingerprint_sha256
+  );
+  query.set('trademark_observed_at', trademark.source_reference.observed_at);
+  const jurisdiction = normalized.applicant.source_reference.jurisdiction.toLowerCase();
+  return `/api/v1/${jurisdiction}/applicants/${encodeURIComponent(normalized.applicant.applicant_candidate_id)}/trademarks/${encodeURIComponent(trademark.trademark_candidate_id)}?${query.toString()}`;
 }
 
 export function createApplicantDiscoveryClientV1(
@@ -108,6 +145,29 @@ export function createApplicantDiscoveryClientV1(
           JSON.stringify(envelope.payload.query.applicant) !==
             JSON.stringify(normalized.applicant) ||
           envelope.payload.query.limits.page_size !== normalized.pageSize)
+      ) {
+        throw contractMismatch(APPLICANT_PORTFOLIO_DISCOVERY_RESOURCE_KIND);
+      }
+      return envelope;
+    },
+
+    async readTrademark(request) {
+      const normalized = normalizeApplicantPortfolioRequestV1(request);
+      const envelope = parseApplicantPortfolioEnvelopeV1(
+        await client.rawGet(exactTrademarkPath(request), requestContext(normalized))
+      );
+      if (
+        !envelope ||
+        (envelope.payload &&
+          (envelope.payload.results.length !== 1 ||
+            JSON.stringify(envelope.payload.query.request_context) !==
+              JSON.stringify(normalized.requestContext) ||
+            JSON.stringify(envelope.payload.query.applicant) !==
+              JSON.stringify(normalized.applicant) ||
+            envelope.payload.results[0]?.trademark_candidate_id !==
+              request.trademark.trademark_candidate_id ||
+            JSON.stringify(envelope.payload.results[0]?.source_reference) !==
+              JSON.stringify(request.trademark.source_reference)))
       ) {
         throw contractMismatch(APPLICANT_PORTFOLIO_DISCOVERY_RESOURCE_KIND);
       }
