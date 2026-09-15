@@ -23,12 +23,29 @@ export function WorkHub({ workspaceId }: WorkHubProps) {
         or context you need to open.
       </p>
       <Alert tone="info" title="Different work surfaces have different authority and maturity">
-        Professional Review, Execution Release, Opportunity Center, Capability Center and Guide use
-        authenticated Workspace context. Execution Release remains preparation only. Guide remains
-        advisory and asset-scoped. Customers remains a fixture-only preview until a canonical
-        Customer owner is available.
+        Site Manager, Professional Review, Execution Release, Opportunity Center, Capability Center
+        and Guide use authenticated Workspace context. Execution Release remains preparation only.
+        Guide remains advisory and asset-scoped. Customers remains a fixture-only preview until a
+        canonical Customer owner is available.
       </Alert>
       <div className="lite-grid" aria-label="Professional work tools">
+        <Card>
+          <div className="lite-row">
+            <div>
+              <p>External business projection</p>
+              <h2>Site Manager</h2>
+            </div>
+            <Badge>Owner-backed</Badge>
+          </div>
+          <p>
+            Configure and inspect the Workspace-owned Site projection, exact host state, locale and
+            service visibility without moving customer, quote, payment or provider authority into
+            Lite.
+          </p>
+          <Button disabled={!workspaceId} onClick={() => open('site-manager', workspaceId)}>
+            {workspaceId ? 'Open Site Manager' : 'Select a Workspace first'}
+          </Button>
+        </Card>
         <Card>
           <div className="lite-row">
             <div>

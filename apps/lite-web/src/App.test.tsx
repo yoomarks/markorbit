@@ -37,6 +37,9 @@ vi.mock('./features/trading-studio/TradingStudio.js', () => ({
     </h1>
   )
 }));
+vi.mock('./features/site-manager/SiteManager.js', () => ({
+  SiteManager: ({ workspaceId }: { workspaceId: string }) => <h1>Site Manager {workspaceId}</h1>
+}));
 vi.mock('./features/guide/GuideWorkspace.js', () => ({
   GuideWorkspace: ({
     workspaceId,
@@ -141,6 +144,7 @@ describe('Lite Workspace Shell V2 navigation truth', () => {
   it.each([
     ['opportunities', 'Opportunity Center workspace-1'],
     ['capability', 'Capability workspace-1'],
+    ['work-site-manager', 'Site Manager workspace-1'],
     ['guide', 'Guide workspace-1']
   ] as const)('preserves legacy #%s as an authenticated Work tool deep link', (hash, heading) => {
     window.history.replaceState(null, '', `/?workspaceId=workspace-1#${hash}`);
@@ -181,6 +185,7 @@ describe('Lite Workspace Shell V2 navigation truth', () => {
     expect(screen.getByRole('heading', { level: 1, name: 'Work' })).toBeVisible();
     expect(screen.getByText('Mixed maturity')).toBeVisible();
     expect(screen.getByText('Work · workspace-1')).toBeVisible();
+    expect(screen.getByText('Owner-backed')).toBeVisible();
     expect(screen.getByText('Live governed')).toBeVisible();
     expect(screen.getByText('Authenticated governed')).toBeVisible();
     expect(screen.getByText('Live · human review')).toBeVisible();
@@ -207,6 +212,7 @@ describe('Lite Workspace Shell V2 navigation truth', () => {
     render(<LiteApp />);
     const user = userEvent.setup();
     for (const [label, hash, heading] of [
+      ['Site Manager', '#work-site-manager', /Site Manager workspace-1/],
       ['Professional Review', '#work-professional-review', /Professional Review/],
       ['Execution Release', '#work-execution-release', /Execution Release/],
       ['Customers', '#work-customers', /Customers/],

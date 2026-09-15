@@ -71,6 +71,7 @@ export interface SiteRepositoryV1 {
     version: number
   ): Promise<SiteConfigurationVersionV1 | undefined>;
   getCurrentBinding(bindingId: string): Promise<SiteHostBindingV1 | undefined>;
+  listCurrentBindings(siteId: string): Promise<readonly SiteHostBindingV1[]>;
   findActiveBindings(normalizedHostname: string): Promise<readonly SiteHostBindingV1[]>;
 }
 
@@ -198,6 +199,15 @@ export class InMemorySiteRepositoryV1 implements SiteRepositoryV1 {
   getCurrentBinding(bindingId: string): Promise<SiteHostBindingV1 | undefined> {
     const value = this.bindingHeads.get(bindingId);
     return Promise.resolve(value && clone(value));
+  }
+
+  listCurrentBindings(siteId: string): Promise<readonly SiteHostBindingV1[]> {
+    return Promise.resolve(
+      [...this.bindingHeads.values()]
+        .filter((value) => value.siteId === siteId)
+        .sort((left, right) => left.bindingId.localeCompare(right.bindingId))
+        .map(clone)
+    );
   }
 
   findActiveBindings(normalizedHostname: string): Promise<readonly SiteHostBindingV1[]> {
@@ -710,6 +720,35 @@ export class SiteServiceV1 {
 
   list(workspaceId: string): Promise<readonly SiteInstallationV1[]> {
     return this.repository.listCurrentInstallations(text(workspaceId, 'workspaceId'));
+  }
+
+  async currentConfiguration(
+    workspaceId: string,
+    siteId: string
+  ): Promise<SiteConfigurationVersionV1> {
+    const site = await this.ownedSite(workspaceId, siteId);
+    const configuration = await this.repository.getConfiguration(
+      site.siteId,
+      site.currentConfigurationVersion
+    );
+    if (!configuration || configuration.workspaceId !== site.workspaceId)
+      throw new SiteServiceError('CONFLICT', 'Current Site configuration is unavailable.');
+    return clone(configuration);
+  }
+
+  async listHostBindings(
+    workspaceId: string,
+    siteId: string
+  ): Promise<readonly SiteHostBindingV1[]> {
+    const site = await this.ownedSite(workspaceId, siteId);
+    const bindings = await this.repository.listCurrentBindings(site.siteId);
+    if (
+      bindings.some(
+        (binding) => binding.workspaceId !== site.workspaceId || binding.siteId !== site.siteId
+      )
+    )
+      throw new SiteServiceError('CONFLICT', 'Stored Site host binding ownership is inconsistent.');
+    return bindings.map(clone);
   }
 
   async resolve(

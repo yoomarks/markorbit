@@ -46,6 +46,12 @@ function fixture() {
     activate: vi.fn((command) => Promise.resolve(command)),
     suspend: vi.fn((command) => Promise.resolve(command)),
     list: vi.fn(() => Promise.resolve([])),
+    currentConfiguration: vi.fn((_workspaceId: string, siteId: string) =>
+      Promise.resolve({ schemaVersion: 1 as const, siteId })
+    ),
+    listHostBindings: vi.fn((_workspaceId: string, siteId: string) =>
+      Promise.resolve([{ schemaVersion: 1 as const, siteId }])
+    ),
     resolve: vi.fn(() => Promise.resolve({ schemaVersion: 1 as const }))
   };
   return {
@@ -92,9 +98,36 @@ describe('Site owner HTTP boundary', () => {
     expect(service.create).not.toHaveBeenCalled();
   });
 
+  it('reads current configuration and host bindings only inside the trusted Workspace', async () => {
+    const { routes, service } = fixture();
+    const configurationRoute = routes.find(
+      (route) =>
+        route.method === 'GET' &&
+        route.path === '/internal/workspaces/:workspaceId/sites/:siteId/configuration'
+    )!;
+    const bindingsRoute = routes.find(
+      (route) =>
+        route.method === 'GET' &&
+        route.path === '/internal/workspaces/:workspaceId/sites/:siteId/host-bindings'
+    )!;
+    const params = { workspaceId: principal.workspaceId, siteId: 'site_manager' };
+    expect(
+      await configurationRoute.handle(request(configurationRoute.path, undefined, params))
+    ).toEqual({ status: 200, body: { schemaVersion: 1, siteId: 'site_manager' } });
+    expect(await bindingsRoute.handle(request(bindingsRoute.path, undefined, params))).toEqual({
+      status: 200,
+      body: [{ schemaVersion: 1, siteId: 'site_manager' }]
+    });
+    expect(service.currentConfiguration).toHaveBeenCalledWith(
+      principal.workspaceId,
+      'site_manager'
+    );
+    expect(service.listHostBindings).toHaveBeenCalledWith(principal.workspaceId, 'site_manager');
+  });
+
   it('keeps public resolution behind internal service identity and rejects owner input', async () => {
     const { routes, service } = fixture();
-    const route = routes[7]!;
+    const route = routes.find((candidate) => candidate.path === '/internal/site-runtime/resolve')!;
     await expect(
       route.handle(
         request(

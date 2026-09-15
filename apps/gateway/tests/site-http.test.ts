@@ -102,6 +102,59 @@ describe('Gateway Site boundary', () => {
     expect(fetchImpl).not.toHaveBeenCalled();
   });
 
+  it('forwards Site management reads through the trusted Workspace Principal without CSRF', async () => {
+    const fetchImpl = vi.fn((url: string | URL | Request, init?: RequestInit) => {
+      const target = typeof url === 'string' ? url : url instanceof URL ? url.href : url.url;
+      const body = target.endsWith('/configuration')
+        ? { schemaVersion: 1, siteId: 'site_manager', version: 4 }
+        : [{ schemaVersion: 1, siteId: 'site_manager', bindingId: 'site_host_manager' }];
+      const headers = new Headers(init?.headers);
+      expect(headers.get('x-markorbit-workspace-id')).toBe(principal.workspaceId);
+      expect(headers.get('x-markorbit-principal')).toBeTruthy();
+      expect(headers.get('x-markorbit-csrf-token')).toBeNull();
+      return Promise.resolve(
+        new Response(JSON.stringify(body), {
+          status: 200,
+          headers: { 'content-type': 'application/json' }
+        })
+      );
+    });
+    const routes = createGatewaySiteRoutesV1({
+      authenticationClient: client(),
+      internalServiceSecret: 'internal-site-secret',
+      fetchImpl,
+      csrfSecret,
+      allowedOrigins: [origin]
+    });
+    const configurationRoute = routes.find(
+      (route) => route.method === 'GET' && route.path === '/api/sites/:siteId/configuration'
+    )!;
+    const bindingsRoute = routes.find(
+      (route) => route.method === 'GET' && route.path === '/api/sites/:siteId/host-bindings'
+    )!;
+    const params = { siteId: 'site_manager' };
+    expect(
+      await configurationRoute.handle(
+        request('GET', configurationRoute.path, undefined, {}, params)
+      )
+    ).toMatchObject({
+      status: 200,
+      body: { siteId: 'site_manager', version: 4 }
+    });
+    expect(
+      await bindingsRoute.handle(request('GET', bindingsRoute.path, undefined, {}, params))
+    ).toMatchObject({
+      status: 200,
+      body: [{ bindingId: 'site_host_manager' }]
+    });
+    expect(fetchImpl).toHaveBeenCalledWith(
+      expect.stringContaining(
+        `/internal/workspaces/${principal.workspaceId}/sites/site_manager/configuration`
+      ),
+      expect.objectContaining({ method: 'GET' })
+    );
+  });
+
   it('requires current workspace:manage and CSRF before mutation forwarding', async () => {
     const fetchImpl = vi.fn(() =>
       Promise.resolve(

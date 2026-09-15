@@ -137,6 +137,47 @@ async function activeSite(
 }
 
 describe('Workspace Site installation runtime', () => {
+  it('reloads the exact current configuration and all current host bindings for Site management', async () => {
+    const { service } = setup();
+    const installation = await service.create({
+      workspaceId: 'workspace_manager',
+      kind: 'WORKSPACE_BRANDED',
+      coreSiteInstallationRef: { installationId: 'install_manager', version: 1 },
+      configuration: configuration('workspace_manager', 'Manager site'),
+      sourceRef: 'test:manager',
+      idempotencyKey: 'create-manager'
+    });
+    const primary = await service.createHostBinding({
+      workspaceId: 'workspace_manager',
+      siteId: installation.siteId,
+      expectedSiteVersion: installation.version,
+      hostname: 'manager.example.com',
+      bindingType: 'PRIMARY',
+      verificationMethod: 'DNS_TXT',
+      idempotencyKey: 'bind-manager-primary'
+    });
+    await service.createHostBinding({
+      workspaceId: 'workspace_manager',
+      siteId: installation.siteId,
+      expectedSiteVersion: installation.version,
+      hostname: 'preview.example.com',
+      bindingType: 'TEST',
+      verificationMethod: 'PLATFORM_MANAGED',
+      idempotencyKey: 'bind-manager-test'
+    });
+    const currentConfiguration = await service.currentConfiguration(
+      'workspace_manager',
+      installation.siteId
+    );
+    const bindings = await service.listHostBindings('workspace_manager', installation.siteId);
+    expect(currentConfiguration.brand.displayName).toBe('Manager site');
+    expect(bindings).toHaveLength(2);
+    expect(bindings.map((binding) => binding.bindingId)).toContain(primary.bindingId);
+    await expect(
+      service.currentConfiguration('workspace_other', installation.siteId)
+    ).rejects.toMatchObject({ code: 'WORKSPACE_MISMATCH' });
+  });
+
   it('resolves two Workspace Sites independently while reusing MarkReg Product truth', async () => {
     const { service } = setup();
     await activeSite(service, 'workspace_a', 'A.Example.com.', 'a');

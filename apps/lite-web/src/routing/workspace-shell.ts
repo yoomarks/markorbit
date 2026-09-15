@@ -5,6 +5,7 @@ export type LiteSurface =
   | 'guide'
   | 'trademarks'
   | 'capability'
+  | 'site-manager'
   | 'work'
   | 'customers'
   | 'opportunities'
@@ -68,6 +69,12 @@ export const LITE_SURFACES: Readonly<Record<LiteSurface, LiteSurfaceDefinition>>
   capability: {
     surface: 'capability',
     hash: '#capability',
+    primary: 'work',
+    requiresWorkspace: true
+  },
+  'site-manager': {
+    surface: 'site-manager',
+    hash: '#work-site-manager',
     primary: 'work',
     requiresWorkspace: true
   },
