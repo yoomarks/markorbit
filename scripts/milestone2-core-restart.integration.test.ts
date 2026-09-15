@@ -68,7 +68,7 @@ suite.sequential('TASK 026 actual Core listener restart', () => {
     await database
       .getPool()
       .query(
-        'DROP TABLE IF EXISTS knowledge_v2_deliveries,knowledge_intake_contents,knowledge_intakes,password_credentials,account_profiles,sessions,workspace_memberships,workspaces,users CASCADE; DROP SCHEMA IF EXISTS markorbit_persistence CASCADE'
+        'DROP TABLE IF EXISTS core_external_oauth_credential_secrets,core_external_oauth_credential_bindings,core_external_oauth_grant_attempts,core_workspace_admin_actions,core_governed_human_action_receipts,knowledge_v2_deliveries,knowledge_intake_contents,knowledge_intakes,password_credentials,account_profiles,sessions,workspace_memberships,workspaces,users CASCADE; DROP FUNCTION IF EXISTS reject_core_workspace_admin_action_mutation() CASCADE; DROP SCHEMA IF EXISTS markorbit_persistence CASCADE'
       );
     const migrations = await loadMigrationsForOwner(
       path.resolve('infrastructure/persistence/migrations'),
