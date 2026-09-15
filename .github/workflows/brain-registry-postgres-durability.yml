@@ -18,13 +18,23 @@ on:
       - 'services/capability-engine/src/workspace-trademark-issue-intelligence-readiness.ts'
       - 'services/capability-engine/src/workspace-trademark-issue-intelligence-readiness-http.ts'
       - 'services/capability-engine/tests/workspace-trademark-issue-intelligence-readiness.test.ts'
+      - 'services/capability-engine/src/workspace-capability-binding.ts'
+      - 'services/capability-engine/src/workspace-capability-binding-policy.ts'
+      - 'services/capability-engine/src/workspace-capability-binding-store.ts'
+      - 'services/capability-engine/src/workspace-capability-binding-http.ts'
+      - 'services/capability-engine/tests/workspace-capability-binding.test.ts'
+      - 'services/capability-engine/tests/workspace-capability-binding-postgres.test.ts'
       - 'services/core/tests/brain-asset-registry-postgres.test.ts'
       - 'services/core/tests/workspace-trademark-issue-intelligence-store-postgres.test.ts'
       - 'services/core/tests/workspace-trademark-issue-intelligence-admission.test.ts'
       - 'services/core/package.json'
       - 'packages/contracts/src/brain*.ts'
+      - 'packages/contracts/src/workspace-capability-binding.ts'
+      - 'packages/contracts/tests/workspace-capability-binding.test.ts'
+      - 'packages/contracts/package.json'
       - 'infrastructure/persistence/migrations/0071_core_brain_registry.sql'
       - 'infrastructure/persistence/migrations/0117_core_workspace_trademark_issue_intelligence.sql'
+      - 'infrastructure/persistence/migrations/0118_capability_engine_workspace_capability_bindings.sql'
       - 'infrastructure/persistence/migration-owners.json'
       - '.github/workflows/brain-registry-postgres-durability.yml'
   push:
@@ -45,13 +55,23 @@ on:
       - 'services/capability-engine/src/workspace-trademark-issue-intelligence-readiness.ts'
       - 'services/capability-engine/src/workspace-trademark-issue-intelligence-readiness-http.ts'
       - 'services/capability-engine/tests/workspace-trademark-issue-intelligence-readiness.test.ts'
+      - 'services/capability-engine/src/workspace-capability-binding.ts'
+      - 'services/capability-engine/src/workspace-capability-binding-policy.ts'
+      - 'services/capability-engine/src/workspace-capability-binding-store.ts'
+      - 'services/capability-engine/src/workspace-capability-binding-http.ts'
+      - 'services/capability-engine/tests/workspace-capability-binding.test.ts'
+      - 'services/capability-engine/tests/workspace-capability-binding-postgres.test.ts'
       - 'services/core/tests/brain-asset-registry-postgres.test.ts'
       - 'services/core/tests/workspace-trademark-issue-intelligence-store-postgres.test.ts'
       - 'services/core/tests/workspace-trademark-issue-intelligence-admission.test.ts'
       - 'services/core/package.json'
       - 'packages/contracts/src/brain*.ts'
+      - 'packages/contracts/src/workspace-capability-binding.ts'
+      - 'packages/contracts/tests/workspace-capability-binding.test.ts'
+      - 'packages/contracts/package.json'
       - 'infrastructure/persistence/migrations/0071_core_brain_registry.sql'
       - 'infrastructure/persistence/migrations/0117_core_workspace_trademark_issue_intelligence.sql'
+      - 'infrastructure/persistence/migrations/0118_capability_engine_workspace_capability_bindings.sql'
       - 'infrastructure/persistence/migration-owners.json'
       - '.github/workflows/brain-registry-postgres-durability.yml'
 
@@ -81,6 +101,8 @@ jobs:
     env:
       BRAIN_REGISTRY_TEST_DATABASE_URL: postgresql://markorbit_brain:markorbit-brain-test-only@127.0.0.1:5432/markorbit_brain_registry_test
       BRAIN_REGISTRY_POSTGRES_TEST_REQUIRED: '1'
+      CAPABILITY_ENGINE_TEST_DATABASE_URL: postgresql://markorbit_brain:markorbit-brain-test-only@127.0.0.1:5432/markorbit_brain_registry_test
+      CAPABILITY_ENGINE_POSTGRES_TEST_REQUIRED: '1'
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -93,11 +115,16 @@ jobs:
       - name: Validate Brain persistence and Capability readiness source
         run: |
           pnpm exec eslint services/core/src/brain-asset-registry.ts services/core/src/brain-asset-registry-postgres.ts services/core/src/workspace-trademark-issue-intelligence-store.ts services/core/src/workspace-trademark-issue-intelligence-admission.ts services/core/src/workspace-trademark-issue-intelligence-http.ts services/core/tests/brain-asset-registry-postgres.test.ts services/core/tests/workspace-trademark-issue-intelligence-store-postgres.test.ts services/core/tests/workspace-trademark-issue-intelligence-admission.test.ts services/core/tests/workspace-trademark-issue-intelligence-http.test.ts services/capability-engine/src/workspace-trademark-issue-intelligence-http-reader.ts services/capability-engine/src/workspace-trademark-issue-intelligence-readiness.ts services/capability-engine/src/workspace-trademark-issue-intelligence-readiness-http.ts services/capability-engine/tests/workspace-trademark-issue-intelligence-readiness.test.ts
+          pnpm exec eslint services/capability-engine/src/workspace-capability-binding.ts services/capability-engine/src/workspace-capability-binding-policy.ts services/capability-engine/src/workspace-capability-binding-store.ts services/capability-engine/src/workspace-capability-binding-http.ts services/capability-engine/tests/workspace-capability-binding.test.ts services/capability-engine/tests/workspace-capability-binding-postgres.test.ts packages/contracts/src/workspace-capability-binding.ts packages/contracts/tests/workspace-capability-binding.test.ts
           pnpm --filter @markorbit/core-service typecheck
+          pnpm --filter @markorbit/contracts typecheck
           pnpm --filter @markorbit/capability-engine typecheck
       - name: Preserve Brain registry, admission and Capability readiness regression
         run: |
           pnpm --filter @markorbit/core-service exec vitest run tests/brain-asset-registry.test.ts tests/brain-build-registry-admission.test.ts tests/brain-build-runtime.test.ts tests/workspace-trademark-issue-intelligence.test.ts tests/workspace-trademark-issue-intelligence-store.test.ts tests/workspace-trademark-issue-intelligence-admission.test.ts tests/workspace-trademark-issue-intelligence-http.test.ts
-          pnpm --filter @markorbit/capability-engine exec vitest run tests/workspace-trademark-issue-intelligence-readiness.test.ts
+          pnpm --filter @markorbit/contracts exec vitest run tests/workspace-capability-binding.test.ts
+          pnpm --filter @markorbit/capability-engine exec vitest run tests/workspace-trademark-issue-intelligence-readiness.test.ts tests/workspace-capability-binding.test.ts
       - name: Prove PostgreSQL restart, replay and concurrent version allocation
-        run: pnpm --filter @markorbit/core-service test:brain-registry:postgres
+        run: |
+          pnpm --filter @markorbit/core-service test:brain-registry:postgres
+          pnpm --filter @markorbit/capability-engine exec vitest run tests/workspace-capability-binding-postgres.test.ts

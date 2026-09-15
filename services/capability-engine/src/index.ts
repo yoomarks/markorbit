@@ -33,6 +33,9 @@ import { createReflectionDispositionProfileRoutes } from './reflection-dispositi
 import type { PostgresReflectionDispositionProfileService } from './reflection-disposition-profile.js';
 import { createRuntimeCapabilityRoutes } from './runtime-capability-http.js';
 import type { PostgresRuntimeCapabilityRegistry } from './runtime-capability-registry.js';
+import { createWorkspaceCapabilityBindingRoutesV1 } from './workspace-capability-binding-http.js';
+import type { WorkspaceCapabilityBindingRepositoryV1 } from './workspace-capability-binding-store.js';
+import type { WorkspaceCapabilityBindingServiceV1 } from './workspace-capability-binding.js';
 import { createWorkspaceTrademarkIssueIntelligenceReadinessRoutesV1 } from './workspace-trademark-issue-intelligence-readiness-http.js';
 import type { WorkspaceTrademarkIssueIntelligenceReadinessServiceV1 } from './workspace-trademark-issue-intelligence-readiness.js';
 
@@ -93,6 +96,10 @@ export * from './uspto-official-fee-production-source-evidence.js';
 export * from './uspto-official-fee-reference-currentness.js';
 export * from './uspto-official-fee-resolver-pilot.js';
 export * from './uspto-official-fee-source-use.js';
+export * from './workspace-capability-binding-http.js';
+export * from './workspace-capability-binding-policy.js';
+export * from './workspace-capability-binding-store.js';
+export * from './workspace-capability-binding.js';
 export * from './workspace-trademark-issue-intelligence-http-reader.js';
 export * from './workspace-trademark-issue-intelligence-readiness.js';
 export * from './workspace-trademark-issue-intelligence-readiness-http.js';
@@ -131,6 +138,8 @@ export interface CapabilityEngineOptions {
     WorkspaceTrademarkIssueIntelligenceReadinessServiceV1,
     'evaluate'
   >;
+  workspaceCapabilityBinding?: Pick<WorkspaceCapabilityBindingServiceV1, 'bind'>;
+  workspaceCapabilityBindingRepository?: Pick<WorkspaceCapabilityBindingRepositoryV1, 'find'>;
   internalServiceSecret?: string;
 }
 
@@ -160,6 +169,18 @@ export function createRuntime(options: CapabilityEngineOptions = {}) {
   if (options.workspaceTrademarkIssueIntelligenceReadiness && !options.internalServiceSecret) {
     throw new Error('Workspace Brain intelligence readiness requires internalServiceSecret.');
   }
+  const workspaceCapabilityBindingConfigured = Boolean(
+    options.workspaceCapabilityBinding || options.workspaceCapabilityBindingRepository
+  );
+  if (workspaceCapabilityBindingConfigured && !options.internalServiceSecret)
+    throw new Error('Workspace Capability binding requires internalServiceSecret.');
+  if (
+    Boolean(options.workspaceCapabilityBinding) !==
+    Boolean(options.workspaceCapabilityBindingRepository)
+  )
+    throw new Error(
+      'workspaceCapabilityBinding and workspaceCapabilityBindingRepository must be configured together.'
+    );
   if (options.privateReflectionCandidates && !options.internalServiceSecret) {
     throw new Error('privateReflectionCandidates requires internalServiceSecret.');
   }
@@ -296,6 +317,16 @@ export function createRuntime(options: CapabilityEngineOptions = {}) {
           internalServiceSecret: options.internalServiceSecret
         })
       : [];
+  const workspaceCapabilityBindingRoutes =
+    options.workspaceCapabilityBinding &&
+    options.workspaceCapabilityBindingRepository &&
+    options.internalServiceSecret
+      ? createWorkspaceCapabilityBindingRoutesV1({
+          binding: options.workspaceCapabilityBinding,
+          repository: options.workspaceCapabilityBindingRepository,
+          internalServiceSecret: options.internalServiceSecret
+        })
+      : [];
   const managedAiExecutionRoutes =
     options.managedAiExecutor && options.internalServiceSecret
       ? createManagedAiExecutionRoutesV1({
@@ -341,6 +372,7 @@ export function createRuntime(options: CapabilityEngineOptions = {}) {
         ...capabilityCenterRoutes,
         ...productionSourceEvidenceRoutes,
         ...workspaceTrademarkIssueIntelligenceReadinessRoutes,
+        ...workspaceCapabilityBindingRoutes,
         ...managedAiExecutionRoutes,
         ...managedCommunicationRoutes
       ]
