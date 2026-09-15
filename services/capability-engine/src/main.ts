@@ -37,9 +37,13 @@ import {
   US_TRADEMARK_MARK_REPRESENTATION_CAPABILITY_DEFINITION,
   US_TRADEMARK_MARK_REPRESENTATION_IMPLEMENTATION_PROFILE
 } from './us-trademark-mark-representation-strategy-source.js';
+import { UnavailableWorkspaceKnowledgeEvidenceCurrentnessAuthorityV1 } from './workspace-capability-binding-currentness.js';
 import { productionWorkspaceCapabilityBindingPolicyV1 } from './workspace-capability-binding-policy.js';
+import { PostgresWorkspaceCapabilityBindingRevocationRepositoryV1 } from './workspace-capability-binding-revocation-store.js';
 import { PostgresWorkspaceCapabilityBindingRepositoryV1 } from './workspace-capability-binding-store.js';
 import { WorkspaceCapabilityBindingServiceV1 } from './workspace-capability-binding.js';
+import { PostgresWorkspaceCapabilityBindingValidityRepositoryV1 } from './workspace-capability-binding-validity-store.js';
+import { WorkspaceCapabilityBindingValidityServiceV1 } from './workspace-capability-binding-validity.js';
 import { PostgresWorkspaceImplementationPreferenceStoreV1 } from './workspace-implementation-preference-postgres.js';
 import { HttpCoreWorkspaceTrademarkIssueIntelligenceReaderV1 } from './workspace-trademark-issue-intelligence-http-reader.js';
 import { WorkspaceTrademarkIssueIntelligenceReadinessServiceV1 } from './workspace-trademark-issue-intelligence-readiness.js';
@@ -196,6 +200,19 @@ if (milestoneFixtureMode) {
     registry,
     workspaceCapabilityBindingRepository
   );
+  const workspaceCapabilityBindingRevocations =
+    new PostgresWorkspaceCapabilityBindingRevocationRepositoryV1(database, pool);
+  const workspaceCapabilityBindingValidityRepository =
+    new PostgresWorkspaceCapabilityBindingValidityRepositoryV1(database, pool);
+  const workspaceCapabilityBindingValidity = new WorkspaceCapabilityBindingValidityServiceV1(
+    workspaceCapabilityBindingRepository,
+    workspaceTrademarkIssueIntelligenceReadiness,
+    productionWorkspaceCapabilityBindingPolicyV1,
+    registry,
+    new UnavailableWorkspaceKnowledgeEvidenceCurrentnessAuthorityV1(),
+    workspaceCapabilityBindingRevocations,
+    workspaceCapabilityBindingValidityRepository
+  );
   const productionSourceEvidenceReader = new CapabilityProductionSourceEvidenceReadServiceV1({
     replayStore,
     evidence: new CurrentProductionSourceEvidenceAuthorityV1({
@@ -216,6 +233,7 @@ if (milestoneFixtureMode) {
     workspaceTrademarkIssueIntelligenceReadiness,
     workspaceCapabilityBinding,
     workspaceCapabilityBindingRepository,
+    workspaceCapabilityBindingValidity,
     ...(managedAiRuntime ?? {}),
     ...(managedCommunicationRuntime ?? {}),
     ...(governedCapabilityRuntime ? { governedCapabilityRuntime } : {}),

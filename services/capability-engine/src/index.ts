@@ -34,6 +34,8 @@ import type { PostgresReflectionDispositionProfileService } from './reflection-d
 import { createRuntimeCapabilityRoutes } from './runtime-capability-http.js';
 import type { PostgresRuntimeCapabilityRegistry } from './runtime-capability-registry.js';
 import { createWorkspaceCapabilityBindingRoutesV1 } from './workspace-capability-binding-http.js';
+import { createWorkspaceCapabilityBindingValidityRoutesV1 } from './workspace-capability-binding-validity-http.js';
+import type { WorkspaceCapabilityBindingValidityServiceV1 } from './workspace-capability-binding-validity.js';
 import type { WorkspaceCapabilityBindingRepositoryV1 } from './workspace-capability-binding-store.js';
 import type { WorkspaceCapabilityBindingServiceV1 } from './workspace-capability-binding.js';
 import { createWorkspaceTrademarkIssueIntelligenceReadinessRoutesV1 } from './workspace-trademark-issue-intelligence-readiness-http.js';
@@ -97,6 +99,11 @@ export * from './uspto-official-fee-reference-currentness.js';
 export * from './uspto-official-fee-resolver-pilot.js';
 export * from './uspto-official-fee-source-use.js';
 export * from './workspace-capability-binding-http.js';
+export * from './workspace-capability-binding-currentness.js';
+export * from './workspace-capability-binding-revocation-store.js';
+export * from './workspace-capability-binding-validity-http.js';
+export * from './workspace-capability-binding-validity-store.js';
+export * from './workspace-capability-binding-validity.js';
 export * from './workspace-capability-binding-policy.js';
 export * from './workspace-capability-binding-store.js';
 export * from './workspace-capability-binding.js';
@@ -140,6 +147,10 @@ export interface CapabilityEngineOptions {
   >;
   workspaceCapabilityBinding?: Pick<WorkspaceCapabilityBindingServiceV1, 'bind'>;
   workspaceCapabilityBindingRepository?: Pick<WorkspaceCapabilityBindingRepositoryV1, 'find'>;
+  workspaceCapabilityBindingValidity?: Pick<
+    WorkspaceCapabilityBindingValidityServiceV1,
+    'evaluate'
+  >;
   internalServiceSecret?: string;
 }
 
@@ -181,6 +192,8 @@ export function createRuntime(options: CapabilityEngineOptions = {}) {
     throw new Error(
       'workspaceCapabilityBinding and workspaceCapabilityBindingRepository must be configured together.'
     );
+  if (options.workspaceCapabilityBindingValidity && !options.internalServiceSecret)
+    throw new Error('Workspace Capability binding validity requires internalServiceSecret.');
   if (options.privateReflectionCandidates && !options.internalServiceSecret) {
     throw new Error('privateReflectionCandidates requires internalServiceSecret.');
   }
@@ -327,6 +340,13 @@ export function createRuntime(options: CapabilityEngineOptions = {}) {
           internalServiceSecret: options.internalServiceSecret
         })
       : [];
+  const workspaceCapabilityBindingValidityRoutes =
+    options.workspaceCapabilityBindingValidity && options.internalServiceSecret
+      ? createWorkspaceCapabilityBindingValidityRoutesV1({
+          validity: options.workspaceCapabilityBindingValidity,
+          internalServiceSecret: options.internalServiceSecret
+        })
+      : [];
   const managedAiExecutionRoutes =
     options.managedAiExecutor && options.internalServiceSecret
       ? createManagedAiExecutionRoutesV1({
@@ -373,6 +393,7 @@ export function createRuntime(options: CapabilityEngineOptions = {}) {
         ...productionSourceEvidenceRoutes,
         ...workspaceTrademarkIssueIntelligenceReadinessRoutes,
         ...workspaceCapabilityBindingRoutes,
+        ...workspaceCapabilityBindingValidityRoutes,
         ...managedAiExecutionRoutes,
         ...managedCommunicationRoutes
       ]
