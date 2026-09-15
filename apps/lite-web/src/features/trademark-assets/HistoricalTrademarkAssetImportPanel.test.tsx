@@ -375,7 +375,9 @@ const completedResult: ReviewableTrademarkAssetMigrationResult = {
   officialTruthVerifiedByLite: false,
   matterCreatedAutomatically: false
 };
-function snapshot(status: TrademarkAssetMigrationRunSnapshot['status']): TrademarkAssetMigrationRunSnapshot {
+function snapshot(
+  status: TrademarkAssetMigrationRunSnapshot['status']
+): TrademarkAssetMigrationRunSnapshot {
   return {
     ...completedResult,
     status,
@@ -388,11 +390,15 @@ function snapshot(status: TrademarkAssetMigrationRunSnapshot['status']): Tradema
 }
 function deferred<T>() {
   let resolve!: (value: T) => void;
-  const promise = new Promise<T>((done) => { resolve = done; });
+  const promise = new Promise<T>((done) => {
+    resolve = done;
+  });
   return { promise, resolve };
 }
 async function reviewHarness(
-  prepareTabular: TrademarkAssetMigrationClient['prepareTabular'] = vi.fn().mockResolvedValue(reviewedReceipt)
+  prepareTabular: TrademarkAssetMigrationClient['prepareTabular'] = vi
+    .fn()
+    .mockResolvedValue(reviewedReceipt)
 ) {
   const harness = migrationHarness(prepareTabular);
   harness.preview.mockResolvedValue(previewReceipt);
@@ -418,8 +424,13 @@ async function requestPreview(user: ReturnType<typeof userEvent.setup>) {
   await user.click(screen.getByRole('button', { name: 'Preview reviewed migration' }));
   await screen.findByRole('heading', { name: 'Migration preview', exact: true });
 }
-async function confirmCommit(user: ReturnType<typeof userEvent.setup>, name = 'Commit reviewed import') {
-  await user.click(screen.getByRole('checkbox', { name: /I confirm importing these reviewed rows/ }));
+async function confirmCommit(
+  user: ReturnType<typeof userEvent.setup>,
+  name = 'Commit reviewed import'
+) {
+  await user.click(
+    screen.getByRole('checkbox', { name: /I confirm importing these reviewed rows/ })
+  );
   await user.click(screen.getByRole('button', { name }));
 }
 
@@ -429,14 +440,21 @@ describe('C9-I reviewed historical migration', () => {
     expect(preview).not.toHaveBeenCalled();
     expect(commit).not.toHaveBeenCalled();
     expect(screen.getByRole('button', { name: 'Preview reviewed migration' })).toBeDisabled();
-    expect(within(screen.getByRole('region', { name: 'Ready rows' })).getByText('APPLICATION_NUMBER: 000123')).toBeInTheDocument();
+    expect(
+      within(screen.getByRole('region', { name: 'Ready rows' })).getByText(
+        'APPLICATION_NUMBER: 000123'
+      )
+    ).toBeInTheDocument();
     await requestPreview(user);
     const expected = {
       migrationKey: reviewedReceipt.migrationKey,
       sourceFingerprintSha256: fingerprint,
       rows: reviewedReceipt.migrationInput!.rows
     };
-    expect(preview).toHaveBeenCalledExactlyOnceWith(expected, 'historical-preview:review-operation');
+    expect(preview).toHaveBeenCalledExactlyOnceWith(
+      expected,
+      'historical-preview:review-operation'
+    );
     expect(preview.mock.calls[0]![0].rows).toBe(reviewedReceipt.migrationInput!.rows);
     expect(preview.mock.calls[0]![0]).not.toHaveProperty('workspaceId');
     expect(commit).not.toHaveBeenCalled();
@@ -444,16 +462,24 @@ describe('C9-I reviewed historical migration', () => {
     expect(screen.getByText(previewReceipt.fingerprint)).toBeInTheDocument();
     await confirmCommit(user);
     await screen.findByRole('heading', { name: 'Import completed' });
-    expect(commit).toHaveBeenCalledExactlyOnceWith(receipt.migrationKey, expected, 'historical-commit:review-operation');
+    expect(commit).toHaveBeenCalledExactlyOnceWith(
+      receipt.migrationKey,
+      expected,
+      'historical-commit:review-operation'
+    );
     expect(onCompleted).toHaveBeenCalledTimes(1);
     rerender(<HistoricalTrademarkAssetImportPanel {...props} onClose={() => undefined} />);
     expect(onCompleted).toHaveBeenCalledTimes(1);
-    expect(screen.queryByRole('button', { name: 'Commit reviewed import' })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: 'Commit reviewed import' })
+    ).not.toBeInTheDocument();
   });
 
   it('reads interrupted progress and resumes only on a new explicit confirmation', async () => {
     const { user, commit, progress, onCompleted } = await reviewHarness();
-    commit.mockRejectedValueOnce(new TrademarkAssetHttpError(503, 'OWNER_INTERRUPTED', 'Interrupted.', true));
+    commit.mockRejectedValueOnce(
+      new TrademarkAssetHttpError(503, 'OWNER_INTERRUPTED', 'Interrupted.', true)
+    );
     progress.mockResolvedValue(snapshot('INTERRUPTED'));
     await requestPreview(user);
     await confirmCommit(user);
@@ -489,7 +515,9 @@ describe('C9-I reviewed historical migration', () => {
     await requestPreview(user);
     await confirmCommit(user);
     await screen.findByText('Import progress unavailable');
-    expect(screen.queryByRole('region', { name: 'Saved migration result' })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('region', { name: 'Saved migration result' })
+    ).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Commit reviewed import' })).toBeDisabled();
     expect(commit).toHaveBeenCalledTimes(1);
     expect(onCompleted).not.toHaveBeenCalled();
@@ -510,14 +538,18 @@ describe('C9-I reviewed historical migration', () => {
     await screen.findByText('COMMITTING', { selector: 'p' });
     expect(screen.getByRole('checkbox', { name: /I confirm importing/ })).toBeDisabled();
     expect(screen.getByRole('button', { name: 'Commit reviewed import' })).toBeDisabled();
-    expect(screen.queryByRole('button', { name: 'Resume interrupted import' })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: 'Resume interrupted import' })
+    ).not.toBeInTheDocument();
     expect(commit).toHaveBeenCalledTimes(1);
     expect(progress).toHaveBeenCalledTimes(1);
   });
 
   it('preserves the permission gate even if a PREVIEWED progress record is readable', async () => {
     const { user, commit, progress, onCompleted } = await reviewHarness();
-    commit.mockRejectedValue(new TrademarkAssetHttpError(403, 'PERMISSION_DENIED', 'matter:manage required.', false));
+    commit.mockRejectedValue(
+      new TrademarkAssetHttpError(403, 'PERMISSION_DENIED', 'matter:manage required.', false)
+    );
     progress.mockResolvedValue(snapshot('PREVIEWED'));
     await requestPreview(user);
     await confirmCommit(user);
@@ -534,7 +566,9 @@ describe('C9-I reviewed historical migration', () => {
     await user.click(screen.getByRole('checkbox', { name: /I have reviewed/ }));
     await user.click(screen.getByRole('button', { name: 'Preview reviewed migration' }));
     await screen.findByText(/returned migration does not match/);
-    expect(screen.queryByRole('button', { name: 'Commit reviewed import' })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: 'Commit reviewed import' })
+    ).not.toBeInTheDocument();
     expect(commit).not.toHaveBeenCalled();
   });
 
@@ -553,9 +587,16 @@ describe('C9-I reviewed historical migration', () => {
       await requestPreview(user);
       await user.click(screen.getByRole('checkbox', { name: /I confirm importing/ }));
       if (field === 'file') uploadSource();
-      else fireEvent.change(screen.getByLabelText(field), { target: { value: field === 'Workspace relationship' ? 'OWNED' : '' } });
-      expect(screen.queryByRole('heading', { name: 'Migration preview', exact: true })).not.toBeInTheDocument();
-      expect(screen.queryByRole('checkbox', { name: /I confirm importing/ })).not.toBeInTheDocument();
+      else
+        fireEvent.change(screen.getByLabelText(field), {
+          target: { value: field === 'Workspace relationship' ? 'OWNED' : '' }
+        });
+      expect(
+        screen.queryByRole('heading', { name: 'Migration preview', exact: true })
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByRole('checkbox', { name: /I confirm importing/ })
+      ).not.toBeInTheDocument();
       expect(preview).toHaveBeenCalledTimes(1);
       expect(commit).not.toHaveBeenCalled();
     }
@@ -565,8 +606,13 @@ describe('C9-I reviewed historical migration', () => {
     const pending = deferred<HistoricalTrademarkAssetPreparationReceipt>();
     const { user, preview } = await reviewHarness(vi.fn().mockReturnValue(pending.promise));
     await user.selectOptions(screen.getByLabelText('Workspace relationship'), 'OWNED');
-    await act(async () => { pending.resolve(reviewedReceipt); await pending.promise; });
-    expect(screen.queryByRole('heading', { name: 'Review the preparation result' })).not.toBeInTheDocument();
+    await act(async () => {
+      pending.resolve(reviewedReceipt);
+      await pending.promise;
+    });
+    expect(
+      screen.queryByRole('heading', { name: 'Review the preparation result' })
+    ).not.toBeInTheDocument();
     expect(preview).not.toHaveBeenCalled();
   });
 
@@ -577,8 +623,13 @@ describe('C9-I reviewed historical migration', () => {
     await user.click(screen.getByRole('checkbox', { name: /I have reviewed/ }));
     await user.click(screen.getByRole('button', { name: 'Preview reviewed migration' }));
     await user.selectOptions(screen.getByLabelText('Workspace relationship'), 'OWNED');
-    await act(async () => { pending.resolve(previewReceipt); await pending.promise; });
-    expect(screen.queryByRole('heading', { name: 'Migration preview', exact: true })).not.toBeInTheDocument();
+    await act(async () => {
+      pending.resolve(previewReceipt);
+      await pending.promise;
+    });
+    expect(
+      screen.queryByRole('heading', { name: 'Migration preview', exact: true })
+    ).not.toBeInTheDocument();
     expect(commit).not.toHaveBeenCalled();
   });
 
@@ -588,8 +639,16 @@ describe('C9-I reviewed historical migration', () => {
     commit.mockReturnValue(pending.promise);
     await requestPreview(user);
     await confirmCommit(user);
-    rerender(<HistoricalTrademarkAssetImportPanel {...props} workspaceId="22222222-2222-4222-8222-222222222222" />);
-    await act(async () => { pending.resolve(completedResult); await pending.promise; });
+    rerender(
+      <HistoricalTrademarkAssetImportPanel
+        {...props}
+        workspaceId="22222222-2222-4222-8222-222222222222"
+      />
+    );
+    await act(async () => {
+      pending.resolve(completedResult);
+      await pending.promise;
+    });
     expect(screen.queryByRole('heading', { name: 'Import completed' })).not.toBeInTheDocument();
     expect(screen.queryByText('legacy.csv')).not.toBeInTheDocument();
     expect(onCompleted).not.toHaveBeenCalled();
