@@ -11,6 +11,7 @@ on:
       - 'playwright*.ts'
       - 'scripts/*playwright*'
       - 'scripts/*storybook*'
+      - 'scripts/milestone-runtime*'
       - '.github/workflows/browser-visual-validation.yml'
   push:
     branches: [main]

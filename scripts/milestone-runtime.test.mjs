@@ -102,6 +102,45 @@ test('stop is idempotent and successful shutdown releases six ports', async () =
   await Promise.all([runtime.stop(), runtime.stop()]);
   await allAvailable(definitions);
 });
+test(
+  'stop terminates a detached runtime group after the direct child exits',
+  { skip: process.platform === 'win32', timeout: 8_000 },
+  async () => {
+    const port = await freePort();
+    const wrapperScript = `
+const { spawn } = require('node:child_process');
+const server = ${JSON.stringify(serverScript)};
+spawn(process.execPath, ['-e', server], {
+  env: process.env,
+  stdio: ['ignore', 'inherit', 'inherit']
+});
+setTimeout(() => process.exit(0), 1500);
+`;
+    const definitions = [
+      {
+        name: 'detached-grandchild',
+        port,
+        health: `http://127.0.0.1:${port}`,
+        command: process.execPath,
+        args: ['-e', wrapperScript],
+        env: { PORT: String(port) }
+      }
+    ];
+    const runtime = await startMilestoneRuntime({
+      definitions,
+      timeoutMs: 3_000,
+      termTimeoutMs: 500,
+      killTimeoutMs: 500,
+      portReleaseTimeoutMs: 2_000
+    });
+    const directChild = runtime.children[0].child;
+    if (directChild.exitCode === null)
+      await new Promise((resolvePromise) => directChild.once('exit', resolvePromise));
+    assert.notEqual(directChild.exitCode, null);
+    await runtime.stop();
+    await allAvailable(definitions);
+  }
+);
 test('custom port map derives independent six-runtime URLs', async () => {
   const ports = {
     gateway: await freePort(),
