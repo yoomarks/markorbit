@@ -17,7 +17,8 @@ export type DiscoveredTrademarkAdmissionErrorCode =
   | 'PERMISSION_DENIED'
   | 'DIRECTORY_REFERENCE_NOT_FOUND'
   | 'DIRECTORY_REFERENCE_MISMATCH'
-  | 'OWNER_READ_NOT_CURRENT';
+  | 'OWNER_READ_NOT_CURRENT'
+  | 'OWNER_READ_UNAVAILABLE';
 
 export class DiscoveredTrademarkAdmissionError extends Error {
   constructor(

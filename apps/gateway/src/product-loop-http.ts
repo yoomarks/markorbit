@@ -1,9 +1,14 @@
+import { randomUUID } from 'node:crypto';
 import {
   AuthenticationError,
   encodeInternalWorkspacePrincipal,
   type Permission,
   type WorkspacePrincipal
 } from '@markorbit/contracts';
+import {
+  normalizeApplicantDiscoveryRequestV1,
+  normalizeApplicantPortfolioRequestV1
+} from '@markorbit/contracts/data-engine-applicant-discovery';
 import { HttpError, json, type JsonRequest, type JsonRoute } from '@markorbit/service-kit';
 import {
   type CoreAuthenticationClient,
@@ -12,6 +17,8 @@ import {
   validateCsrf
 } from './auth.js';
 import { createDataEngineClient } from './data-engine-http.js';
+import { createApplicantDiscoveryClientV1 } from './data-engine-applicant-discovery-http.js';
+import { runDataEngineQuery } from './data-engine-route-support.js';
 import {
   mapDataEngineTrademarkAssetFacts,
   resolveTrademarkAssetDataEngineLookup
@@ -263,6 +270,61 @@ export function createGatewayProductLoopRoutes(
     return json(response.status, response.body);
   };
 
+  const applicantRequestId = (request: JsonRequest) =>
+    request.headers['x-request-id'] ?? request.headers['x-correlation-id'] ?? randomUUID();
+
+  const applicantQuery = async (
+    request: JsonRequest,
+    kind: 'DISCOVERY' | 'PORTFOLIO'
+  ): Promise<ReturnType<typeof json>> => {
+    const principal = await authenticate(
+      request,
+      'ADVISORY_POST',
+      ['workspace:read'],
+      ['requestContext']
+    );
+    if (!dataEngineUrl || !dataEngineApiKey)
+      throw new HttpError(
+        503,
+        'DATA_ENGINE_CONFIGURATION_UNAVAILABLE',
+        'Data Engine protected query configuration is unavailable.',
+        true
+      );
+    const body = bodyRecord(request);
+    const requestContext = {
+      requester_workspace_id: principal.workspaceId,
+      request_id: applicantRequestId(request)
+    };
+    let ownerRequest;
+    try {
+      ownerRequest =
+        kind === 'DISCOVERY'
+          ? normalizeApplicantDiscoveryRequestV1({ ...body, requestContext } as never)
+          : normalizeApplicantPortfolioRequestV1({ ...body, requestContext } as never);
+    } catch (error) {
+      throw new HttpError(
+        400,
+        'INVALID_REQUEST',
+        error instanceof Error ? error.message : 'Applicant query is invalid.'
+      );
+    }
+    return runDataEngineQuery(
+      {
+        dataEngineUrl,
+        dataEngineApiKey,
+        ...(dataEngineTimeoutMs === undefined ? {} : { timeoutMs: dataEngineTimeoutMs }),
+        ...(options.dataEngineFetchImpl ? { fetchImpl: options.dataEngineFetchImpl } : {})
+      },
+      request,
+      (client) => {
+        const applicant = createApplicantDiscoveryClientV1(client);
+        return kind === 'DISCOVERY'
+          ? applicant.discoverApplicants(ownerRequest as never)
+          : applicant.readPortfolio(ownerRequest as never);
+      }
+    );
+  };
+
   const trademarkAssetDetail = async (request: JsonRequest): Promise<ReturnType<typeof json>> => {
     const principal = await authenticate(request, 'READ', ['workspace:read']);
     const base = await liteCall(request, principal);
@@ -335,6 +397,16 @@ export function createGatewayProductLoopRoutes(
   });
 
   return [
+    {
+      method: 'POST',
+      path: '/api/data-engine/applicants/discover',
+      handle: (request) => applicantQuery(request, 'DISCOVERY')
+    },
+    {
+      method: 'POST',
+      path: '/api/data-engine/applicants/portfolio',
+      handle: (request) => applicantQuery(request, 'PORTFOLIO')
+    },
     route('GET', '/api/lite/today', ['workspace:read'], 'READ'),
     route('GET', '/api/lite/daily-orbit', ['workspace:read'], 'READ'),
     route('GET', '/api/lite/daily-workspace', ['workspace:read'], 'READ'),
@@ -359,6 +431,7 @@ export function createGatewayProductLoopRoutes(
       opportunityQualificationAuthoritySpoofFields
     ),
     route('GET', '/api/lite/trademark-assets', ['workspace:read'], 'READ'),
+    route('POST', '/api/lite/trademark-assets/admit-discovered', ['matter:manage']),
     route(
       'POST',
       '/api/lite/trademark-asset-migrations/prepare-tabular',

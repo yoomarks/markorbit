@@ -24,6 +24,9 @@ import {
   PostgresDailySignalReader
 } from './daily-orbit.js';
 import { createDailyWorkspaceRoutes } from './daily-workspace-http.js';
+import { HttpDataEngineApplicantOwnerReader } from './data-engine-applicant-owner-reader.js';
+import { DiscoveredTrademarkAdmissionService } from './discovered-trademark-admission.js';
+import { createDiscoveredTrademarkAdmissionRoutes } from './discovered-trademark-admission-http.js';
 import { createLiteWorkItemRoutes } from './lite-work-item-http.js';
 import { PostgresLiteWorkItemStore } from './lite-work-item.js';
 import { createWorkspaceWatchRoutes } from './workspace-watch-http.js';
@@ -111,6 +114,8 @@ if (!configuredInternalServiceSecret)
   throw new Error('MO_INTERNAL_SERVICE_SECRET is required for the durable Lite runtime.');
 const internalServiceSecret: string = configuredInternalServiceSecret;
 const markRegUrl = process.env.MARKREG_URL ?? 'http://127.0.0.1:4105';
+const dataEngineUrl = process.env.DATA_ENGINE_URL;
+const dataEngineApiKey = process.env.DATA_ENGINE_API_KEY;
 const coreUrl = process.env.CORE_URL ?? 'http://127.0.0.1:4101';
 const capabilityEngineUrl = process.env.CAPABILITY_ENGINE_URL ?? 'http://127.0.0.1:4103';
 const liteVisualStyleId = process.env.MOKI_LITE_STYLE_ID ?? 'markorbit-lite-editorial-v1';
@@ -165,6 +170,14 @@ const agencyLineage = new AgencyLineageProjectionService({
   work: liteWorkItemStore,
   refresh: trademarkAssetRefreshLedger
 });
+const discoveredTrademarkAdmission = new DiscoveredTrademarkAdmissionService(
+  workspaceDirectoryStore,
+  new HttpDataEngineApplicantOwnerReader({
+    ...(dataEngineUrl ? { dataEngineUrl } : {}),
+    ...(dataEngineApiKey ? { apiKey: dataEngineApiKey } : {})
+  }),
+  trademarkAssetStore
+);
 const liteIntakeStagingService = new LiteIntakeStagingService(
   liteIntakeStagingStore,
   new HttpLiteIntakeProductionIntakeClient(markRegUrl, internalServiceSecret)
@@ -445,6 +458,10 @@ const runtime = createServiceRuntime(serviceManifest, {
       store: workspaceDirectoryStore
     }),
     ...createAgencyLineageRoutes({ internalServiceSecret, service: agencyLineage }),
+    ...createDiscoveredTrademarkAdmissionRoutes({
+      internalServiceSecret,
+      service: discoveredTrademarkAdmission
+    }),
     ...createCommunicationLinkRoutes({
       internalServiceSecret,
       service: communicationLinkService
