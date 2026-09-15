@@ -46,6 +46,7 @@ export * from './system-super-admin-http.js';
 export * from './governance-super-admin-http.js';
 export * from './lite-super-admin-http.js';
 export * from './workspace-super-admin-http.js';
+export * from './workspace-commercial-http.js';
 export * from './markreg-early-funnel-http.js';
 export * from './preparation-lock-http.js';
 export * from './filing-governance-http.js';
@@ -79,6 +80,7 @@ import { createGatewayDataControlPlaneRoutes } from './data-control-plane-http.j
 import { createGatewayKnowledgeControlPlaneRoutes } from './knowledge-control-plane-http.js';
 import { createGatewayKnowledgeSuperAdminRoutes } from './knowledge-super-admin-http.js';
 import { createGatewayWorkspaceSuperAdminRoutes } from './workspace-super-admin-http.js';
+import { createGatewayWorkspaceCommercialRoutesV1 } from './workspace-commercial-http.js';
 import { createGatewayMarkRegEarlyFunnelRoutes } from './markreg-early-funnel-http.js';
 import { createGatewayPreparationLockHandler } from './preparation-lock-http.js';
 import { createGatewayFilingGovernanceHandler } from './filing-governance-http.js';
@@ -570,6 +572,16 @@ export function createRuntime(options: GatewayOptions = {}) {
             : {}),
           csrfSecret,
           allowedOrigins
+        }),
+        ...createGatewayWorkspaceCommercialRoutesV1({
+          coreUrl: options.coreUrl ?? process.env.CORE_URL ?? 'http://127.0.0.1:4101',
+          ...(authenticationClient ? { authenticationClient } : {}),
+          ...((options.internalServiceSecret ?? process.env.MO_INTERNAL_SERVICE_SECRET)
+            ? {
+                internalServiceSecret: (options.internalServiceSecret ??
+                  process.env.MO_INTERNAL_SERVICE_SECRET)!
+              }
+            : {})
         }),
         ...createGatewayCapabilityRoutes({
           capabilityEngineUrl,

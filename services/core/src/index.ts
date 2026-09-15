@@ -32,6 +32,8 @@ import type { PostgresWorkspaceAdminManagementServiceV1 } from './workspace-admi
 import type { BrainCognitiveReadServiceV1 } from './brain-cognitive-read.js';
 import { createCurrentWorkspaceAuthorityRoutes } from './current-workspace-authority-http.js';
 import type { CurrentWorkspaceAuthorityService } from './current-workspace-authority.js';
+import { createWorkspaceCommercialRoutesV1 } from './workspace-commercial-http.js';
+import type { WorkspaceCommercialServiceV1 } from './workspace-commercial.js';
 import {
   fingerprintReadyPackageContentExport,
   validateReadyPackageContentExport,
@@ -84,6 +86,10 @@ export interface CoreRuntimeOptions {
   accountOnboarding?: AccountOnboardingService;
   workspaces?: Pick<WorkspaceRepository, 'findById'>;
   currentWorkspaceAuthority?: Pick<CurrentWorkspaceAuthorityService, 'validate'>;
+  workspaceCommercial?: Pick<
+    WorkspaceCommercialServiceV1,
+    'listCurrentInstallations' | 'resolveEntitlement' | 'recordOffer' | 'recordRatePolicy'
+  >;
   knowledgeIntakes?: KnowledgeIntakeRepository;
   knowledgeContents?: KnowledgeReadyPackageContentRepository;
   knowledgeV2Deliveries?: KnowledgeV2DeliveryRepository;
@@ -156,6 +162,10 @@ export function createRuntime(options: CoreRuntimeOptions = {}) {
   if (options.currentWorkspaceAuthority && !secret)
     throw new Error(
       'internalServiceSecret is required for current Workspace authority validation.'
+    );
+  if (options.workspaceCommercial && (!secret || !options.currentWorkspaceAuthority))
+    throw new Error(
+      'internalServiceSecret and currentWorkspaceAuthority are required for Workspace commercial routes.'
     );
   const onboardingRoutes =
     options.accountOnboarding && secret
@@ -245,6 +255,14 @@ export function createRuntime(options: CoreRuntimeOptions = {}) {
     options.currentWorkspaceAuthority && secret
       ? createCurrentWorkspaceAuthorityRoutes({
           service: options.currentWorkspaceAuthority,
+          internalServiceSecret: secret
+        })
+      : [];
+  const workspaceCommercialRoutes =
+    options.workspaceCommercial && options.currentWorkspaceAuthority && secret
+      ? createWorkspaceCommercialRoutesV1({
+          service: options.workspaceCommercial,
+          currentWorkspaceAuthority: options.currentWorkspaceAuthority,
           internalServiceSecret: secret
         })
       : [];
@@ -744,6 +762,7 @@ export function createRuntime(options: CoreRuntimeOptions = {}) {
     : [];
   routes.push(
     ...currentWorkspaceAuthorityRoutes,
+    ...workspaceCommercialRoutes,
     ...internalOperatorPrincipalRoutes,
     ...coreAdminRoutes,
     ...systemAdminRoutes,
@@ -795,3 +814,6 @@ export * from './workspace-trademark-issue-intelligence-http.js';
 export * from './oauth-credential.js';
 export * from './oauth-credential-crypto.js';
 export * from './oauth-credential-postgres.js';
+export * from './workspace-commercial.js';
+export * from './workspace-commercial-postgres.js';
+export * from './workspace-commercial-http.js';

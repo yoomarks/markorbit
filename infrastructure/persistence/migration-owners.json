@@ -189,6 +189,7 @@
     "0115_lite_trademark_service_reviewed_communication_draft": "@markorbit/lite-service",
     "0116_lite_prepared_action_client_notification_vocabulary": "@markorbit/lite-service",
     "0117_core_workspace_trademark_issue_intelligence": "@markorbit/core-service",
-    "0118_capability_engine_workspace_capability_bindings": "@markorbit/capability-engine"
+    "0118_capability_engine_workspace_capability_bindings": "@markorbit/capability-engine",
+    "0119_core_workspace_commercial_policy": "@markorbit/core-service"
   }
 }
