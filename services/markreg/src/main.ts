@@ -87,6 +87,14 @@ import { PostgresProductionFeeFactsService } from './production-fee-facts.js';
 import { createProductionFeeFactsRoutes } from './production-fee-facts-http.js';
 import { ProductionServicePricingSourceService } from './production-service-pricing-source.js';
 import { createProductionServicePricingSourceRoutes } from './production-service-pricing-source-http.js';
+import {
+  HttpProductionOfficialFeeCapabilityInvokerV1,
+  HttpProductionOfficialFeeSourceEvidenceReaderV1,
+  ProductionOfficialFeeSourceServiceV1
+} from './production-official-fee-source.js';
+import { createProductionOfficialFeeSourceRoutesV1 } from './production-official-fee-source-http.js';
+import { PostgresProductionQuoteServiceV1 } from './production-quote.js';
+import { createProductionQuoteRoutesV1 } from './production-quote-http.js';
 import { PostgresCustomerRelationshipStore } from './customer-relationship.js';
 import { createCustomerRelationshipRoutes } from './customer-relationship-http.js';
 import {
@@ -298,16 +306,41 @@ if (fixtureRuntime) {
     internalServiceSecret,
     service: productionUserSelectionService
   });
+  const productionFeeFactsService = new PostgresProductionFeeFactsService(database, pool);
   const productionFeeFactsRoutes = createProductionFeeFactsRoutes({
     internalServiceSecret,
-    service: new PostgresProductionFeeFactsService(database, pool)
+    service: productionFeeFactsService
   });
+  const productionOfficialFeeSourceService = new ProductionOfficialFeeSourceServiceV1({
+    feeFacts: productionFeeFactsService,
+    invoker: new HttpProductionOfficialFeeCapabilityInvokerV1(capabilityUrl, internalServiceSecret),
+    reader: new HttpProductionOfficialFeeSourceEvidenceReaderV1(
+      capabilityUrl,
+      internalServiceSecret
+    )
+  });
+  const productionOfficialFeeSourceRoutes = createProductionOfficialFeeSourceRoutesV1({
+    internalServiceSecret,
+    service: productionOfficialFeeSourceService
+  });
+  const productionServicePricingSourceService = new ProductionServicePricingSourceService(
+    productionIntakeService,
+    commercialRepository
+  );
   const productionServicePricingSourceRoutes = createProductionServicePricingSourceRoutes({
     internalServiceSecret,
-    service: new ProductionServicePricingSourceService(
-      productionIntakeService,
-      commercialRepository
-    )
+    service: productionServicePricingSourceService
+  });
+  const productionQuoteService = new PostgresProductionQuoteServiceV1(database, pool, {
+    intakes: productionIntakeService,
+    recommendations: productionRecommendationService,
+    selections: productionUserSelectionService,
+    servicePricing: productionServicePricingSourceService,
+    officialFees: productionOfficialFeeSourceService
+  });
+  const productionQuoteRoutes = createProductionQuoteRoutesV1({
+    internalServiceSecret,
+    service: productionQuoteService
   });
   const customerRelationshipRoutes = createCustomerRelationshipRoutes({
     internalServiceSecret,
@@ -394,7 +427,9 @@ if (fixtureRuntime) {
       ...productionRecommendationOrchestrationRoutes,
       ...productionUserSelectionRoutes,
       ...productionFeeFactsRoutes,
+      ...productionOfficialFeeSourceRoutes,
       ...productionServicePricingSourceRoutes,
+      ...productionQuoteRoutes,
       ...customerRelationshipRoutes,
       ...durablePreparationLockRoutes,
       ...commercialCheckoutRoutes,

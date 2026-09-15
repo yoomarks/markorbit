@@ -336,6 +336,7 @@ jobs:
           pnpm test:document-package:postgres
           pnpm test:document-package:http
           pnpm --filter @markorbit/markreg-service exec vitest run tests/lifecycle-projection-postgres.test.ts tests/recommended-action-postgres.test.ts tests/order-memory-contract.test.ts tests/order-postgres.test.ts tests/order-service.test.ts tests/order-service-postgres.test.ts tests/order-matter-conversion-postgres.test.ts
+          pnpm --filter @markorbit/markreg-service exec vitest run tests/production-quote-postgres.test.ts
           pnpm test:order:http
           pnpm test:order:client
           pnpm test:order:journey
