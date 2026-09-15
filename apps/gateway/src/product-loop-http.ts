@@ -60,6 +60,19 @@ const trademarkManagementDispositionAuthoritySpoofFields = [
   'provider',
   'model'
 ] as const;
+const trademarkAssetRefreshAuthoritySpoofFields = [
+  'workspaceId',
+  'principalId',
+  'trademarkAssetId',
+  'idempotencyKey',
+  'refreshRunId',
+  'changes',
+  'refreshedAt',
+  'officialTruthVerifiedByLite',
+  'legalDeadlineCertified',
+  'conflictResolvedByLite',
+  'executionAuthorized'
+] as const;
 const trademarkAssetMigrationAuthoritySpoofFields = [
   'workspaceId',
   'actorPrincipalId',
@@ -472,6 +485,13 @@ export function createGatewayProductLoopRoutes(
       path: '/api/lite/trademark-assets/:trademarkAssetId/ai-guide',
       handle: trademarkAssetAiGuide
     },
+    route(
+      'POST',
+      '/api/lite/trademark-assets/:trademarkAssetId/refresh',
+      ['matter:manage'],
+      'DURABLE_MUTATION',
+      trademarkAssetRefreshAuthoritySpoofFields
+    ),
     route(
       'GET',
       '/api/lite/trademark-assets/:trademarkAssetId/management-dispositions',

@@ -24,7 +24,8 @@ import {
 } from './trademark-asset-management-disposition.js';
 import {
   TrademarkAssetRefreshError,
-  type PostgresTrademarkAssetRefreshLedger
+  type PostgresTrademarkAssetRefreshLedger,
+  type RefreshTrademarkAssetCommand
 } from './trademark-asset-refresh.js';
 import { composeTrademarkAssetView } from './trademark-asset-view.js';
 import { createTrademarkAssetCompositionRoutes } from './trademark-asset-composition-http.js';
@@ -197,6 +198,101 @@ function managementDispositionCommand(
     subjectUserId: principal.userId,
     ...(body.note !== undefined ? { note: body.note } : {}),
     idempotencyKey
+  };
+}
+
+function refreshCommand(
+  request: JsonRequest,
+  principal: WorkspacePrincipal
+): RefreshTrademarkAssetCommand {
+  if (!principal.permissions.includes('matter:manage'))
+    throw new HttpError(403, 'PERMISSION_DENIED', 'matter:manage permission is required.');
+  if (!request.body || typeof request.body !== 'object' || Array.isArray(request.body))
+    throw new HttpError(400, 'INVALID_REQUEST', 'Request body must be an object.');
+  const body = request.body as Record<string, unknown>;
+  const fields = [
+    'sourceOwnerScope',
+    'observations',
+    'sourceReadStates',
+    'admittedClaims'
+  ] as const;
+  if (Object.keys(body).some((field) => !fields.includes(field as (typeof fields)[number])))
+    throw new HttpError(
+      400,
+      'INVALID_REQUEST',
+      'Only sourceOwnerScope, observations, sourceReadStates and admittedClaims are accepted.'
+    );
+  if (!Array.isArray(body.sourceOwnerScope) || !Array.isArray(body.observations))
+    throw new HttpError(
+      400,
+      'INVALID_REQUEST',
+      'sourceOwnerScope and observations must be arrays.'
+    );
+  if (body.sourceReadStates !== undefined && !Array.isArray(body.sourceReadStates))
+    throw new HttpError(400, 'INVALID_REQUEST', 'sourceReadStates must be an array when provided.');
+  if (body.admittedClaims !== undefined && !Array.isArray(body.admittedClaims))
+    throw new HttpError(400, 'INVALID_REQUEST', 'admittedClaims must be an array when provided.');
+  const idempotencyKey = request.headers['idempotency-key'];
+  if (!idempotencyKey?.trim())
+    throw new HttpError(400, 'IDEMPOTENCY_KEY_REQUIRED', 'Idempotency-Key is required.');
+
+  const admittedClaims = body.admittedClaims?.map((raw) => {
+    if (!raw || typeof raw !== 'object' || Array.isArray(raw))
+      throw new HttpError(400, 'INVALID_REQUEST', 'Every admitted claim must be an object.');
+    const claim = raw as Record<string, unknown>;
+    if (claim.claimClass === 'COMMUNICATION_CLAIM') {
+      const allowed = [
+        'claimClass',
+        'claimId',
+        'factKind',
+        'value',
+        'source',
+        'consequential',
+        'reviewedAt',
+        'candidateReference'
+      ] as const;
+      if (Object.keys(claim).some((field) => !allowed.includes(field as (typeof allowed)[number])))
+        throw new HttpError(
+          400,
+          'ACTOR_SPOOF_REJECTED',
+          'Communication review identity is derived from the trusted Workspace Principal.'
+        );
+      return { ...claim, reviewedByPrincipalId: principal.userId };
+    }
+    if (claim.claimClass === 'WORKSPACE_USER_CONFIRMATION') {
+      const allowed = [
+        'claimClass',
+        'claimId',
+        'factKind',
+        'value',
+        'consequential',
+        'confirmedAt'
+      ] as const;
+      if (Object.keys(claim).some((field) => !allowed.includes(field as (typeof allowed)[number])))
+        throw new HttpError(
+          400,
+          'ACTOR_SPOOF_REJECTED',
+          'Workspace confirmation identity is derived from the trusted Workspace Principal.'
+        );
+      return { ...claim, confirmedByPrincipalId: principal.userId };
+    }
+    throw new HttpError(400, 'INVALID_REQUEST', 'admitted claimClass is unsupported.');
+  }) as RefreshTrademarkAssetCommand['admittedClaims'];
+
+  return {
+    workspaceId: principal.workspaceId,
+    trademarkAssetId: request.params.trademarkAssetId! as TrademarkAssetId,
+    sourceOwnerScope: body.sourceOwnerScope as RefreshTrademarkAssetCommand['sourceOwnerScope'],
+    observations: body.observations as RefreshTrademarkAssetCommand['observations'],
+    ...(body.sourceReadStates === undefined
+      ? {}
+      : {
+          sourceReadStates: body.sourceReadStates as NonNullable<
+            RefreshTrademarkAssetCommand['sourceReadStates']
+          >
+        }),
+    ...(admittedClaims === undefined ? {} : { admittedClaims }),
+    idempotencyKey: idempotencyKey.trim()
   };
 }
 
@@ -468,6 +564,20 @@ export function createTrademarkAssetReadRoutes(
         }
       }
     },
+    {
+      method: 'POST',
+      path: '/v1/trademark-assets/:trademarkAssetId/refresh',
+      handle: async (request) => {
+        const principal = principalOf(request, options.internalServiceSecret);
+        const command = refreshCommand(request, principal);
+        try {
+          return json(200, await options.refreshLedger.refresh(command));
+        } catch (error) {
+          return mapError(error);
+        }
+      }
+    },
+
     {
       method: 'POST',
       path: '/v1/trademark-assets/:trademarkAssetId/ai-guide',

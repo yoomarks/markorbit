@@ -1,7 +1,12 @@
 import path from 'node:path';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import { encodeInternalWorkspacePrincipal, type WorkspacePrincipal } from '@markorbit/contracts';
 import { ManagedDatabase, loadMigrationsForOwner, migrate } from '@markorbit/persistence';
 import { PostgresTrademarkAssetRefreshLedger } from '../src/trademark-asset-refresh.js';
+import {
+  createTrademarkAssetReadRoutes,
+  type TrademarkAssetReadRouteOptions
+} from '../src/trademark-asset-http.js';
 import { PostgresLiteTrademarkAssetStore } from '../src/trademark-asset.js';
 
 const url = process.env.LITE_TRADEMARK_ASSET_TEST_DATABASE_URL;
@@ -346,5 +351,58 @@ suite('PostgreSQL M11-WP02 Trademark Asset refresh ledger', () => {
       expect(claim.legalConclusionCreated).toBe(false);
       expect(claim.admissionFingerprintSha256).toMatch(/^[0-9a-f]{64}$/);
     }
+  });
+  it('creates a durable refresh through the authenticated HTTP boundary', async () => {
+    const asset = await admitAsset();
+    const internalServiceSecret = 'lite-refresh-http-postgres-secret-012345';
+    const principal: WorkspacePrincipal = {
+      kind: 'WORKSPACE',
+      userId: '11111111-1111-4111-8111-111111111111',
+      sessionId: 'session_refresh_http_postgres',
+      sessionExpiresAt: '2030-01-01T00:00:00.000Z',
+      workspaceId,
+      membershipId: 'membership_refresh_http_postgres',
+      role: 'MATTER_MANAGER',
+      permissions: ['workspace:read', 'matter:manage']
+    };
+    const refreshLedger = ledger();
+    const routes = createTrademarkAssetReadRoutes({
+      internalServiceSecret,
+      assets: {},
+      portfolio: {},
+      refreshLedger,
+      commerce: {},
+      dispositions: {},
+      aiGuide: {}
+    } as unknown as TrademarkAssetReadRouteOptions);
+    const route = routes.find(
+      (candidate) =>
+        candidate.method === 'POST' &&
+        candidate.path === '/v1/trademark-assets/:trademarkAssetId/refresh'
+    );
+    if (!route) throw new Error('Trademark Asset refresh route is missing.');
+
+    const result = await route.handle({
+      method: 'POST',
+      path: `/v1/trademark-assets/${asset.trademarkAssetId}/refresh`,
+      params: { trademarkAssetId: asset.trademarkAssetId },
+      query: {},
+      headers: {
+        'x-markorbit-internal-authorization': internalServiceSecret,
+        'x-markorbit-principal': encodeInternalWorkspacePrincipal(principal),
+        'x-markorbit-workspace-id': workspaceId,
+        'idempotency-key': 'refresh-http-postgres-1'
+      },
+      body: {
+        sourceOwnerScope: ['DATA_ENGINE'],
+        observations: [dataObservation('1')]
+      }
+    });
+    expect(result.status).toBe(200);
+
+    const restarted = new PostgresTrademarkAssetRefreshLedger(database, database.getPool(), now);
+    const restored = await restarted.listRecent(workspaceId, asset.trademarkAssetId);
+    expect(restored).toHaveLength(1);
+    expect(restored[0]).toEqual(result.body);
   });
 });
