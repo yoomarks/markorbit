@@ -235,23 +235,22 @@ export async function startMilestoneRuntime(options = {}) {
       for (const entry of [...children].reverse()) {
         const { child, log, outputFinished } = entry;
         try {
-          if (child.exitCode === null && child.signalCode === null) {
+          const childRunning = child.exitCode === null && child.signalCode === null;
+          try {
+            if (entry.detached) process.kill(-child.pid, 'SIGTERM');
+            else if (childRunning) child.kill('SIGTERM');
+          } catch {
+            if (childRunning) child.kill('SIGTERM');
+          }
+          if (childRunning && !(await waitForExit(child, options.termTimeoutMs ?? 5_000))) {
             try {
-              if (entry.detached) process.kill(-child.pid, 'SIGTERM');
-              else child.kill('SIGTERM');
+              if (entry.detached) process.kill(-child.pid, 'SIGKILL');
+              else child.kill('SIGKILL');
             } catch {
-              child.kill('SIGTERM');
+              child.kill('SIGKILL');
             }
-            if (!(await waitForExit(child, options.termTimeoutMs ?? 5_000))) {
-              try {
-                if (entry.detached) process.kill(-child.pid, 'SIGKILL');
-                else child.kill('SIGKILL');
-              } catch {
-                child.kill('SIGKILL');
-              }
-              if (!(await waitForExit(child, options.killTimeoutMs ?? 2_000)))
-                throw new Error(`${entry.name} did not exit after SIGKILL.`);
-            }
+            if (!(await waitForExit(child, options.killTimeoutMs ?? 2_000)))
+              throw new Error(`${entry.name} did not exit after SIGKILL.`);
           }
         } catch (error) {
           errors.push(error);
