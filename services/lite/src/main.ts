@@ -8,6 +8,8 @@ import type {
 } from '@markorbit/contracts/product-loop';
 import { createServiceRuntime } from '@markorbit/service-kit';
 import { PostgresLiteCandidateQualificationStore } from './candidate-qualification.js';
+import { AgencyLineageProjectionService } from './agency-lineage.js';
+import { createAgencyLineageRoutes } from './agency-lineage-http.js';
 import { createLiteAdminRoutesV1 } from './admin-http.js';
 import { ContentKitService, PostgresContentKitLifecycleReader } from './content-kit.js';
 import { createContentKitRoutes } from './content-kit-http.js';
@@ -155,6 +157,14 @@ const workspaceWatchStore = new PostgresWorkspaceWatchStore(database, pool);
 const workspaceDirectoryStore = new PostgresWorkspaceDirectoryStore(database, pool);
 const communicationLinkStore = new PostgresCommunicationLinkStore(database, pool);
 const liteIntakeStagingStore = new PostgresLiteIntakeStagingStore(database, pool);
+const agencyLineage = new AgencyLineageProjectionService({
+  assets: trademarkAssetStore,
+  directory: workspaceDirectoryStore,
+  intake: liteIntakeStagingStore,
+  links: communicationLinkStore,
+  work: liteWorkItemStore,
+  refresh: trademarkAssetRefreshLedger
+});
 const liteIntakeStagingService = new LiteIntakeStagingService(
   liteIntakeStagingStore,
   new HttpLiteIntakeProductionIntakeClient(markRegUrl, internalServiceSecret)
@@ -434,6 +444,7 @@ const runtime = createServiceRuntime(serviceManifest, {
       internalServiceSecret,
       store: workspaceDirectoryStore
     }),
+    ...createAgencyLineageRoutes({ internalServiceSecret, service: agencyLineage }),
     ...createCommunicationLinkRoutes({
       internalServiceSecret,
       service: communicationLinkService
