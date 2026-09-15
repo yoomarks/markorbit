@@ -116,3 +116,15 @@ test('owner database variables are distinct throughout the matrix', () => {
     assert.doesNotMatch(workflow, /^\s+DATABASE_URL:/mu);
   });
 });
+
+test('the full browser journey reuses the migrated durable owner databases', () => {
+  return readFile(
+    new URL('../.github/workflows/milestone-2-reliability.yml', import.meta.url),
+    'utf8'
+  ).then((workflow) => {
+    const value = (name) => workflow.match(new RegExp(`^\\s+${name}: ([^\\n]+)$`, 'mu'))?.[1];
+    assert.equal(value('MO_MILESTONE_DURABLE_OWNERS'), "'1'");
+    assert.equal(value('MARKREG_DATABASE_URL'), value('MARKREG_TEST_DATABASE_URL'));
+    assert.equal(value('EXECUTION_DATABASE_URL'), value('EXECUTION_TEST_DATABASE_URL'));
+  });
+});
