@@ -72,7 +72,9 @@ function mappedColumns(mappings: MappingState): HistoricalTrademarkAssetTabularC
   };
 }
 
-export function HistoricalTrademarkAssetImportPanel(props: HistoricalTrademarkAssetImportPanelProps) {
+export function HistoricalTrademarkAssetImportPanel(
+  props: HistoricalTrademarkAssetImportPanelProps
+) {
   return <HistoricalImportSession key={props.workspaceId} {...props} />;
 }
 
@@ -842,11 +844,7 @@ function HistoricalMigrationReview({
         </Alert>
       ) : null}
       {attempted && !completed ? (
-        <Button
-          variant="secondary"
-          disabled={Boolean(busy)}
-          onClick={() => void refreshProgress()}
-        >
+        <Button variant="secondary" disabled={Boolean(busy)} onClick={() => void refreshProgress()}>
           Check saved progress
         </Button>
       ) : null}

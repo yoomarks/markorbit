@@ -119,10 +119,10 @@ type Scenario =
 
 function fixtureClient(scenario: Scenario): TrademarkAssetMigrationClient {
   return {
-    prepareTabular: async () => {
-      if (scenario !== 'empty') return receipt;
+    prepareTabular: () => {
+      if (scenario !== 'empty') return Promise.resolve(receipt);
       const { migrationInput, ...empty } = receipt;
-      return {
+      return Promise.resolve({
         ...empty,
         ready: 0,
         unresolved: 2,
@@ -135,9 +135,9 @@ function fixtureClient(scenario: Scenario): TrademarkAssetMigrationClient {
           },
           ...receipt.unresolvedRows
         ]
-      };
+      });
     },
-    preview: async () => preview,
+    preview: () => Promise.resolve(preview),
     commit: async () => {
       if (scenario === 'committing') return new Promise(() => undefined);
       if (scenario === 'permission')
@@ -156,9 +156,10 @@ function fixtureClient(scenario: Scenario): TrademarkAssetMigrationClient {
         );
       return result;
     },
-    progress: async () => {
-      if (scenario === 'unavailable') throw new Error('Saved progress is temporarily unavailable.');
-      return {
+    progress: () => {
+      if (scenario === 'unavailable')
+        return Promise.reject(new Error('Saved progress is temporarily unavailable.'));
+      return Promise.resolve({
         ...result,
         status: scenario === 'permission' ? 'PREVIEWED' : 'INTERRUPTED',
         created: 0,
@@ -166,7 +167,7 @@ function fixtureClient(scenario: Scenario): TrademarkAssetMigrationClient {
         nextChunkIndex: 0,
         rowKeys: [row.rowKey],
         updatedAt: at
-      };
+      });
     }
   };
 }
@@ -177,7 +178,7 @@ const meta = {
   args: {
     workspaceId,
     client: fixtureClient('review'),
-    decoder: async () => workbook,
+    decoder: () => Promise.resolve(workbook),
     now: () => at,
     createOperationId: () => 'fixture-operation'
   },
@@ -216,7 +217,7 @@ function reviewStory(scenario: Scenario): Story {
       if (scenario === 'review' || scenario === 'empty') return;
       await user.click(canvas.getByRole('checkbox', { name: /I have reviewed the READY rows/ }));
       await user.click(canvas.getByRole('button', { name: 'Preview reviewed migration' }));
-      await canvas.findByRole('heading', { name: 'Migration preview', exact: true });
+      await canvas.findByRole('heading', { name: /^Migration preview$/ });
       if (scenario === 'preview') return;
       await user.click(
         canvas.getByRole('checkbox', { name: /I confirm importing these reviewed rows/ })

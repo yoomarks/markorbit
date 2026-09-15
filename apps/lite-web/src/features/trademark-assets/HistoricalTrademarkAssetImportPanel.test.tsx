@@ -5,6 +5,7 @@ import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type {
   HistoricalTrademarkAssetPreparationReceipt,
+  ReviewableTrademarkAssetMigrationRequest,
   ReviewableTrademarkAssetMigrationResult,
   TrademarkAssetMigrationClient,
   TrademarkAssetMigrationPreview,
@@ -422,7 +423,7 @@ async function reviewHarness(
 async function requestPreview(user: ReturnType<typeof userEvent.setup>) {
   await user.click(screen.getByRole('checkbox', { name: /I have reviewed the READY rows/ }));
   await user.click(screen.getByRole('button', { name: 'Preview reviewed migration' }));
-  await screen.findByRole('heading', { name: 'Migration preview', exact: true });
+  await screen.findByRole('heading', { name: /^Migration preview$/ });
 }
 async function confirmCommit(
   user: ReturnType<typeof userEvent.setup>,
@@ -455,8 +456,9 @@ describe('C9-I reviewed historical migration', () => {
       expected,
       'historical-preview:review-operation'
     );
-    expect(preview.mock.calls[0]![0].rows).toBe(reviewedReceipt.migrationInput!.rows);
-    expect(preview.mock.calls[0]![0]).not.toHaveProperty('workspaceId');
+    const previewRequest = preview.mock.calls[0]![0] as ReviewableTrademarkAssetMigrationRequest;
+    expect(previewRequest.rows).toBe(reviewedReceipt.migrationInput!.rows);
+    expect(previewRequest).not.toHaveProperty('workspaceId');
     expect(commit).not.toHaveBeenCalled();
     expect(screen.getByRole('button', { name: 'Commit reviewed import' })).toBeDisabled();
     expect(screen.getByText(previewReceipt.fingerprint)).toBeInTheDocument();
@@ -592,7 +594,7 @@ describe('C9-I reviewed historical migration', () => {
           target: { value: field === 'Workspace relationship' ? 'OWNED' : '' }
         });
       expect(
-        screen.queryByRole('heading', { name: 'Migration preview', exact: true })
+        screen.queryByRole('heading', { name: /^Migration preview$/ })
       ).not.toBeInTheDocument();
       expect(
         screen.queryByRole('checkbox', { name: /I confirm importing/ })
@@ -627,9 +629,7 @@ describe('C9-I reviewed historical migration', () => {
       pending.resolve(previewReceipt);
       await pending.promise;
     });
-    expect(
-      screen.queryByRole('heading', { name: 'Migration preview', exact: true })
-    ).not.toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: /^Migration preview$/ })).not.toBeInTheDocument();
     expect(commit).not.toHaveBeenCalled();
   });
 
