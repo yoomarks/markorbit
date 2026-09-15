@@ -492,6 +492,7 @@ describe('MarkReg early-funnel governed Gateway mutations', () => {
       'POST /api/markreg/production-intakes/:intakeId/fee-facts',
       'POST /api/markreg/production-recommendations',
       'POST /api/markreg/production-user-selections',
+      'POST /api/markreg/production-quotes',
       'POST /v1/markreg/intakes',
       'POST /v1/markreg/quotes',
       'POST /v1/markreg/quotes/:quoteId/confirm',

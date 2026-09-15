@@ -51,10 +51,12 @@ export function parseNiceClassSelection(value: string): readonly number[] {
 
 export function ProductionFeeFactsPanel({
   intake,
-  client = defaultClient
+  client = defaultClient,
+  onSaved
 }: {
   intake: ProductionIntakeV1;
   client?: ProductionFeeFactsClient;
+  onSaved?: (record: ProductionFeeFactsV1) => void;
 }) {
   const [status, setStatus] = useState<Status>('idle');
   const [record, setRecord] = useState<ProductionFeeFactsV1>();
@@ -137,6 +139,7 @@ export function ProductionFeeFactsPanel({
       await client.create(intake.intakeId, command);
       const readback = await client.getCurrent(intake.intakeId, intake.version);
       setRecord(readback.feeFacts);
+      onSaved?.(readback.feeFacts);
       pending.current = undefined;
       setStatus('ready');
     } catch (cause) {

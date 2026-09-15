@@ -131,8 +131,16 @@ describe('ProductionGuidance', () => {
     );
     const getSelection = vi.fn(() => Promise.resolve({ selection }));
     const api = client({ createRecommendation, getRecommendation, createSelection, getSelection });
+    const onSelection = vi.fn();
 
-    render(<ProductionGuidance intake={intake} client={api} onReloadIntake={vi.fn()} />);
+    render(
+      <ProductionGuidance
+        intake={intake}
+        client={api}
+        onReloadIntake={vi.fn()}
+        onSelection={onSelection}
+      />
+    );
     expect(screen.getByRole('button', { name: 'Generate governed Recommendation' })).toBeTruthy();
     await user.click(screen.getByRole('button', { name: 'Generate governed Recommendation' }));
 
@@ -164,6 +172,7 @@ describe('ProductionGuidance', () => {
       selectedOptionCode: 'B'
     });
     await waitFor(() => expect(getSelection).toHaveBeenCalledWith(selection.selectionId));
+    await waitFor(() => expect(onSelection).toHaveBeenCalledWith(recommendation, selection));
     expect(await screen.findByText('Customer selection recorded')).toBeTruthy();
     expect(screen.getAllByText(/customer choice only/i)).toHaveLength(2);
     expect(screen.getByText(/does not create a Quote, Order, Matter, Payment/i)).toBeTruthy();

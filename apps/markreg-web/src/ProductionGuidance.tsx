@@ -110,11 +110,13 @@ const defaultClient = createProductionGuidanceClient();
 export function ProductionGuidance({
   intake,
   client = defaultClient,
-  onReloadIntake
+  onReloadIntake,
+  onSelection
 }: {
   intake: ProductionIntakeV1;
   client?: ProductionGuidanceClient;
   onReloadIntake: () => void;
+  onSelection?: (recommendation: ProductionRecommendationV1, selection: UserSelectionV1) => void;
 }) {
   const storageBase = `${intake.workspaceId}:${intake.intakeId}`;
   const recommendationPointerKey = `markreg-production-recommendation-pointer-v1:${storageBase}`;
@@ -145,6 +147,7 @@ export function ProductionGuidance({
         throw new Error('Selection Recommendation lineage mismatch.');
       setSelection(envelope.selection);
       setSelectedOptionCode(envelope.selection.selectedOptionCode);
+      onSelection?.(expected, envelope.selection);
       setOperation('idle');
     } catch (error) {
       setFailure(failureFor(error, 'selection-read'));
