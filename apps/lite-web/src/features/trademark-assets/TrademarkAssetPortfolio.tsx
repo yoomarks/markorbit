@@ -26,6 +26,7 @@ import {
   type TrademarkAssetPortfolioManagementSummary
 } from '../../api/trademark-assets.js';
 import { updateLiteLocation } from '../../routing/workspace-navigation.js';
+import { HistoricalTrademarkAssetImportPanel } from './HistoricalTrademarkAssetImportPanel.js';
 import { TrademarkAssetWorkspace } from './TrademarkAssetWorkspace.js';
 import { TrademarkServiceWorkbench } from './TrademarkServiceWorkbench.js';
 import './trademark-asset-workspace.css';
@@ -64,6 +65,7 @@ export function TrademarkAssetPortfolio({
     [suppliedClient, workspaceId]
   );
   const [loadState, setLoadState] = useState<LoadState>('loading');
+  const [historicalImportOpen, setHistoricalImportOpen] = useState(false);
   const [assets, setAssets] = useState<readonly TrademarkAsset[]>([]);
   const [management, setManagement] = useState<TrademarkAssetPortfolioManagementSummary>();
   const [managementByAsset, setManagementByAsset] = useState<
@@ -265,8 +267,21 @@ export function TrademarkAssetPortfolio({
       <PageHeader
         title="Trademark Assets"
         description="Your durable workspace portfolio of owned, managed, represented and Marketplace-added trademark assets."
-        actions={<Badge>Workspace-scoped · source-aware</Badge>}
+        actions={
+          <div className="trademark-asset-portfolio__header-actions">
+            <Badge>Workspace-scoped · source-aware</Badge>
+            <Button variant="secondary" onClick={() => setHistoricalImportOpen((value) => !value)}>
+              {historicalImportOpen ? 'Close historical import' : 'Import historical assets'}
+            </Button>
+          </div>
+        }
       />
+      {historicalImportOpen ? (
+        <HistoricalTrademarkAssetImportPanel
+          workspaceId={workspaceId}
+          onClose={() => setHistoricalImportOpen(false)}
+        />
+      ) : null}
 
       {management ? (
         <section

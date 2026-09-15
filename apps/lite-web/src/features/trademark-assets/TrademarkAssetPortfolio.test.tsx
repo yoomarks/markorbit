@@ -140,6 +140,19 @@ describe('TrademarkAssetPortfolio', () => {
     expect(screen.getByText(/AI output is advisory/i)).toBeInTheDocument();
   });
 
+  it('opens historical import preparation from the Portfolio surface', async () => {
+    const client = clientWithLoad(vi.fn().mockResolvedValue({ view, commerceProfile: null }));
+    const user = userEvent.setup();
+    render(<TrademarkAssetPortfolio workspaceId={workspaceId} client={client} />);
+
+    await user.click(await screen.findByRole('button', { name: 'Import historical assets' }));
+
+    expect(
+      screen.getByRole('heading', { name: 'Prepare a local spreadsheet for review' })
+    ).toBeInTheDocument();
+    expect(screen.getByLabelText('Local CSV or XLSX file')).toBeInTheDocument();
+  });
+
   it('reflects a Commerce Profile from a durable detail reload', async () => {
     const client = clientWithLoad(vi.fn().mockResolvedValue({ view, commerceProfile }));
     const user = userEvent.setup();
