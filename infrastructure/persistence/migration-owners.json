@@ -194,6 +194,7 @@
     "0118_capability_engine_workspace_capability_bindings": "@markorbit/capability-engine",
     "0119_core_workspace_commercial_policy": "@markorbit/core-service",
     "0120_site_runtime": "@markorbit/site-service",
-    "0121_capability_engine_workspace_capability_binding_validity": "@markorbit/capability-engine"
+    "0121_capability_engine_workspace_capability_binding_validity": "@markorbit/capability-engine",
+    "0122_lite_outbound_contact_policy": "@markorbit/lite-service"
   }
 }
