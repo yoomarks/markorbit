@@ -92,6 +92,10 @@ export * from './production-intake-http.js';
 export * from './recommendation-source.js';
 export * from './production-recommendation.js';
 export * from './production-recommendation-http.js';
+export * from './production-official-fee-source.js';
+export * from './production-official-fee-source-http.js';
+export * from './production-quote.js';
+export * from './production-quote-http.js';
 export const serviceManifest = Object.freeze({
   name: 'markreg',
   port: Number(process.env.PORT ?? '4105'),
