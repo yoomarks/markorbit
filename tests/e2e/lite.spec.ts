@@ -203,7 +203,9 @@ test('Lite governed professional review preserves filters, focus, and authority 
   assertHealthy();
 });
 
-test('Historical migration requires separate review and commit and reloads Portfolio (fixture) @visual', async ({ page }, testInfo) => {
+test('Historical migration requires separate review and commit and reloads Portfolio (fixture) @visual', async ({
+  page
+}, testInfo) => {
   // This is UI fixture acceptance, not real-runtime import or permission evidence.
   const assertHealthy = watchPage(page);
   const workspaceId = '11111111-1111-4111-8111-111111111111';
@@ -212,12 +214,22 @@ test('Historical migration requires separate review and commit and reloads Portf
   let previewCalls = 0;
   let commitCalls = 0;
   let portfolioReads = 0;
-  await page.route('**/api/auth/session', (route) => route.fulfill({
-    json: { csrfToken: 'fixture-only-csrf-token' }
-  }));
+  await page.route('**/api/auth/session', (route) =>
+    route.fulfill({
+      json: { csrfToken: 'fixture-only-csrf-token' }
+    })
+  );
   await page.route('**/api/lite/trademark-assets?*', (route) => {
     portfolioReads += 1;
-    return route.fulfill({ json: { schemaVersion: 1, workspaceId, assets: [], hasMore: false, officialTruthVerifiedByLite: false } });
+    return route.fulfill({
+      json: {
+        schemaVersion: 1,
+        workspaceId,
+        assets: [],
+        hasMore: false,
+        officialTruthVerifiedByLite: false
+      }
+    });
   });
   await page.route('**/api/lite/trademark-asset-migrations/**', async (route) => {
     const path = new URL(route.request().url()).pathname;
@@ -234,21 +246,48 @@ test('Historical migration requires separate review and commit and reloads Portf
         total: 1,
         ready: 1,
         unresolved: 0,
-        readyRows: [{ rowKey: row.rowKey, sourceIndex: 0, item: {
-          identity: { jurisdiction: 'US', markText: 'ALPHA' },
-          externalIdentifiers: [{ kind: 'APPLICATION_NUMBER', jurisdiction: 'US', value: '000123', officialTruthVerifiedByLite: false }],
-          workspaceRelationships: [{ kind: 'MANAGED', sourceAssetEditableByWorkspace: true }],
-          sourceReferences: [{ owner: 'WORKSPACE_USER', kind: 'WORKSPACE_ADMISSION', sourceId: input.sourceArtifactId, sourceVersion: input.sourceArtifactVersion, observedAt: input.observedAt, freshness: 'UNKNOWN' }]
-        } }],
+        readyRows: [
+          {
+            rowKey: row.rowKey,
+            sourceIndex: 0,
+            item: {
+              identity: { jurisdiction: 'US', markText: 'ALPHA' },
+              externalIdentifiers: [
+                {
+                  kind: 'APPLICATION_NUMBER',
+                  jurisdiction: 'US',
+                  value: '000123',
+                  officialTruthVerifiedByLite: false
+                }
+              ],
+              workspaceRelationships: [{ kind: 'MANAGED', sourceAssetEditableByWorkspace: true }],
+              sourceReferences: [
+                {
+                  owner: 'WORKSPACE_USER',
+                  kind: 'WORKSPACE_ADMISSION',
+                  sourceId: input.sourceArtifactId,
+                  sourceVersion: input.sourceArtifactVersion,
+                  observedAt: input.observedAt,
+                  freshness: 'UNKNOWN'
+                }
+              ]
+            }
+          }
+        ],
         unresolvedRows: [],
         officialTruthVerifiedByLite: false,
         assetsCreatedAutomatically: false,
         matterCreatedAutomatically: false
       };
-      preparation = { ...preparation, migrationInput: {
-        workspaceId, migrationKey: preparation.migrationKey, sourceFingerprintSha256: preparation.sourceFingerprintSha256!,
-        rows: preparation.readyRows.map(({ rowKey, item }) => ({ rowKey, item }))
-      } };
+      preparation = {
+        ...preparation,
+        migrationInput: {
+          workspaceId,
+          migrationKey: preparation.migrationKey,
+          sourceFingerprintSha256: preparation.sourceFingerprintSha256!,
+          rows: preparation.readyRows.map(({ rowKey, item }) => ({ rowKey, item }))
+        }
+      };
       await route.fulfill({ json: preparation });
       return;
     }
@@ -268,7 +307,14 @@ test('Historical migration requires separate review and commit and reloads Portf
         fingerprint: 'c'.repeat(64),
         total: 1,
         chunkCount: 1,
-        chunks: [{ chunkIndex: 0, startIndex: 0, endExclusive: 1, rowKeys: [reviewedInput.rows[0]!.rowKey] }],
+        chunks: [
+          {
+            chunkIndex: 0,
+            startIndex: 0,
+            endExclusive: 1,
+            rowKeys: [reviewedInput.rows[0]!.rowKey]
+          }
+        ],
         rows: [{ rowKey: reviewedInput.rows[0]!.rowKey, importIndex: 0 }],
         officialTruthVerifiedByLite: false,
         matterCreatedAutomatically: false
@@ -276,28 +322,32 @@ test('Historical migration requires separate review and commit and reloads Portf
       await route.fulfill({ json: preview });
       return;
     }
-    expect(path).toBe(`/api/lite/trademark-asset-migrations/${encodeURIComponent(preparation!.migrationKey)}/commit`);
+    expect(path).toBe(
+      `/api/lite/trademark-asset-migrations/${encodeURIComponent(preparation!.migrationKey)}/commit`
+    );
     commitCalls += 1;
-    await route.fulfill({ json: {
-      schemaVersion: 1,
-      workspaceId,
-      migrationKey: preparation!.migrationKey,
-      sourceFingerprintSha256: preparation!.sourceFingerprintSha256,
-      fingerprint: preview!.fingerprint,
-      total: 1,
-      chunkCount: 1,
-      created: 1,
-      duplicates: 0,
-      rejected: 0,
-      items: [{ rowKey: reviewedInput.rows[0]!.rowKey, importIndex: 0, status: 'CREATED' }],
-      officialTruthVerifiedByLite: false,
-      matterCreatedAutomatically: false
-    } });
+    await route.fulfill({
+      json: {
+        schemaVersion: 1,
+        workspaceId,
+        migrationKey: preparation!.migrationKey,
+        sourceFingerprintSha256: preparation!.sourceFingerprintSha256,
+        fingerprint: preview!.fingerprint,
+        total: 1,
+        chunkCount: 1,
+        created: 1,
+        duplicates: 0,
+        rejected: 0,
+        items: [{ rowKey: reviewedInput.rows[0]!.rowKey, importIndex: 0, status: 'CREATED' }],
+        officialTruthVerifiedByLite: false,
+        matterCreatedAutomatically: false
+      }
+    });
   });
   await page.goto(`${urls.lite}?workspaceId=${workspaceId}#trademarks`);
   await expect(page.getByRole('heading', { name: 'No Trademark Assets found' })).toBeVisible();
   await page.getByRole('button', { name: 'Import historical assets' }).click();
-  const panel = page.getByTestId('historical-import-panel');
+  const panel = page.locator('.historical-import');
   await panel.getByLabel('Local CSV or XLSX file').setInputFiles({
     name: 'historical-fixture.csv',
     mimeType: 'text/csv',
@@ -316,7 +366,9 @@ test('Historical migration requires separate review and commit and reloads Portf
   await expect(panel.getByRole('button', { name: 'Preview reviewed migration' })).toBeDisabled();
   await panel.getByRole('checkbox', { name: /I have reviewed the READY rows/ }).check();
   await panel.getByRole('button', { name: 'Preview reviewed migration' }).click();
-  await expect(panel.getByRole('heading', { name: 'Migration preview', exact: true })).toBeVisible();
+  await expect(
+    panel.getByRole('heading', { name: 'Migration preview', exact: true })
+  ).toBeVisible();
   expect(previewCalls).toBe(1);
   expect(commitCalls).toBe(0);
   await expect(panel.getByRole('button', { name: 'Commit reviewed import' })).toBeDisabled();
