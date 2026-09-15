@@ -56,6 +56,8 @@ import {
   materializeUsTrademarkMarkRepresentationBrainAssetLifecycleV1
 } from './us-trademark-mark-representation-method-authority.js';
 import { PostgresWorkspaceTrademarkIssueIntelligenceRepository } from './workspace-trademark-issue-intelligence-store.js';
+import { WorkspaceCommercialServiceV1 } from './workspace-commercial.js';
+import { PostgresWorkspaceCommercialRepositoryV1 } from './workspace-commercial-postgres.js';
 
 const secret = process.env.MO_INTERNAL_SERVICE_SECRET;
 if (!secret) throw new Error('MO_INTERNAL_SERVICE_SECRET is required.');
@@ -77,6 +79,30 @@ const currentWorkspaceAuthorityService = new CurrentWorkspaceAuthorityService({
   workspaces,
   memberships
 });
+const workspaceCommercial = new WorkspaceCommercialServiceV1(
+  new PostgresWorkspaceCommercialRepositoryV1(database),
+  async (membershipId) => {
+    const result = await query.query<{
+      membership_id: string;
+      workspace_id: string;
+      user_id: string;
+      status: 'ACTIVE' | 'SUSPENDED';
+    }>(
+      `SELECT membership_id,workspace_id,user_id,status
+         FROM workspace_memberships WHERE membership_id=$1`,
+      [membershipId]
+    );
+    const value = result.rows[0];
+    return value
+      ? {
+          membershipId: value.membership_id,
+          workspaceId: value.workspace_id,
+          userId: value.user_id,
+          status: value.status
+        }
+      : undefined;
+  }
+);
 const governedHumanActionReceipts = new GovernedHumanActionReceiptService({
   store: new PostgresGovernedHumanActionReceiptStore(database),
   currentWorkspaceAuthority: currentWorkspaceAuthorityService
@@ -129,6 +155,7 @@ const runtime = createRuntime({
   accountOnboarding,
   workspaces,
   currentWorkspaceAuthority,
+  workspaceCommercial,
   knowledgeIntakes: new PostgresKnowledgeIntakeRepository(query),
   knowledgeContents: new PostgresKnowledgeReadyPackageContentRepository(query),
   knowledgeV2Deliveries: new PostgresKnowledgeV2DeliveryRepository(query),
