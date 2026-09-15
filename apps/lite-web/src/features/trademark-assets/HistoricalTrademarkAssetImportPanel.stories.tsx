@@ -19,16 +19,41 @@ const workbook: DecodedHistoricalTrademarkAssetWorkbook = {
   fileName: 'fixture-portfolio.csv',
   format: 'CSV',
   sourceFingerprintSha256: fingerprint,
-  sheets: [{ name: 'CSV', rows: [['Country', 'Mark', 'Application'], ['US', 'ALPHA', '00123'], ['US', '', '']] }]
+  sheets: [
+    {
+      name: 'CSV',
+      rows: [
+        ['Country', 'Mark', 'Application'],
+        ['US', 'ALPHA', '00123'],
+        ['US', '', '']
+      ]
+    }
+  ]
 };
 const row: HistoricalTrademarkAssetPreparationReceipt['readyRows'][number] = {
   rowKey: 'sheet:CSV:row:2',
   sourceIndex: 0,
   item: {
     identity: { jurisdiction: 'US', markText: 'ALPHA' },
-    externalIdentifiers: [{ kind: 'APPLICATION_NUMBER', jurisdiction: 'US', value: '00123', officialTruthVerifiedByLite: false }],
+    externalIdentifiers: [
+      {
+        kind: 'APPLICATION_NUMBER',
+        jurisdiction: 'US',
+        value: '00123',
+        officialTruthVerifiedByLite: false
+      }
+    ],
     workspaceRelationships: [{ kind: 'MANAGED', sourceAssetEditableByWorkspace: true }],
-    sourceReferences: [{ owner: 'WORKSPACE_USER', kind: 'WORKSPACE_ADMISSION', sourceId: 'fixture-portfolio.csv', sourceVersion: fingerprint, observedAt: at, freshness: 'UNKNOWN' }]
+    sourceReferences: [
+      {
+        owner: 'WORKSPACE_USER',
+        kind: 'WORKSPACE_ADMISSION',
+        sourceId: 'fixture-portfolio.csv',
+        sourceVersion: fingerprint,
+        observedAt: at,
+        freshness: 'UNKNOWN'
+      }
+    ]
   }
 };
 const receipt: HistoricalTrademarkAssetPreparationReceipt = {
@@ -41,8 +66,15 @@ const receipt: HistoricalTrademarkAssetPreparationReceipt = {
   ready: 1,
   unresolved: 1,
   readyRows: [row],
-  unresolvedRows: [{ rowKey: 'sheet:CSV:row:3', sourceIndex: 1, reason: 'Mark and identifier are missing.' }],
-  migrationInput: { workspaceId, migrationKey: 'historical-fixture-reviewed', sourceFingerprintSha256: fingerprint, rows: [{ rowKey: row.rowKey, item: row.item }] },
+  unresolvedRows: [
+    { rowKey: 'sheet:CSV:row:3', sourceIndex: 1, reason: 'Mark and identifier are missing.' }
+  ],
+  migrationInput: {
+    workspaceId,
+    migrationKey: 'historical-fixture-reviewed',
+    sourceFingerprintSha256: fingerprint,
+    rows: [{ rowKey: row.rowKey, item: row.item }]
+  },
   officialTruthVerifiedByLite: false,
   assetsCreatedAutomatically: false,
   matterCreatedAutomatically: false
@@ -75,23 +107,53 @@ const result: ReviewableTrademarkAssetMigrationResult = {
   officialTruthVerifiedByLite: false,
   matterCreatedAutomatically: false
 };
-type Scenario = 'review' | 'preview' | 'permission' | 'interrupted' | 'completed' | 'empty' | 'committing' | 'unavailable';
+type Scenario =
+  | 'review'
+  | 'preview'
+  | 'permission'
+  | 'interrupted'
+  | 'completed'
+  | 'empty'
+  | 'committing'
+  | 'unavailable';
 
 function fixtureClient(scenario: Scenario): TrademarkAssetMigrationClient {
   return {
     prepareTabular: async () => {
       if (scenario !== 'empty') return receipt;
       const { migrationInput, ...empty } = receipt;
-      return { ...empty, ready: 0, unresolved: 2, readyRows: [], unresolvedRows: [
-        { rowKey: migrationInput!.rows[0]!.rowKey, sourceIndex: 0, reason: 'Fixture source needs correction.' },
-        ...receipt.unresolvedRows
-      ] };
+      return {
+        ...empty,
+        ready: 0,
+        unresolved: 2,
+        readyRows: [],
+        unresolvedRows: [
+          {
+            rowKey: migrationInput!.rows[0]!.rowKey,
+            sourceIndex: 0,
+            reason: 'Fixture source needs correction.'
+          },
+          ...receipt.unresolvedRows
+        ]
+      };
     },
     preview: async () => preview,
     commit: async () => {
       if (scenario === 'committing') return new Promise(() => undefined);
-      if (scenario === 'permission') throw new TrademarkAssetHttpError(403, 'PERMISSION_DENIED', 'matter:manage permission is required.', false);
-      if (scenario === 'interrupted' || scenario === 'unavailable') throw new TrademarkAssetHttpError(503, 'OWNER_INTERRUPTED', 'The import response was interrupted.', true);
+      if (scenario === 'permission')
+        throw new TrademarkAssetHttpError(
+          403,
+          'PERMISSION_DENIED',
+          'matter:manage permission is required.',
+          false
+        );
+      if (scenario === 'interrupted' || scenario === 'unavailable')
+        throw new TrademarkAssetHttpError(
+          503,
+          'OWNER_INTERRUPTED',
+          'The import response was interrupted.',
+          true
+        );
       return result;
     },
     progress: async () => {
@@ -120,12 +182,14 @@ const meta = {
     createOperationId: () => 'fixture-operation'
   },
   parameters: { layout: 'padded' },
-  decorators: [(Story) => (
-    <div style={{ maxWidth: 1120, margin: '0 auto' }}>
-      <p>Demonstration fixture only. No live requests or real imports occur in these stories.</p>
-      <Story />
-    </div>
-  )]
+  decorators: [
+    (Story) => (
+      <div style={{ maxWidth: 1120, margin: '0 auto' }}>
+        <p>Demonstration fixture only. No live requests or real imports occur in these stories.</p>
+        <Story />
+      </div>
+    )
+  ]
 } satisfies Meta<typeof HistoricalTrademarkAssetImportPanel>;
 export default meta;
 type Story = StoryObj<typeof meta>;
@@ -136,7 +200,9 @@ function reviewStory(scenario: Scenario): Story {
     play: async ({ canvasElement }) => {
       const canvas = within(canvasElement);
       const user = userEvent.setup({ document: canvasElement.ownerDocument });
-      const file = new File(['Country,Mark,Application\nUS,ALPHA,00123'], 'fixture-portfolio.csv', { type: 'text/csv' });
+      const file = new File(['Country,Mark,Application\nUS,ALPHA,00123'], 'fixture-portfolio.csv', {
+        type: 'text/csv'
+      });
       await user.upload(canvas.getByLabelText('Local CSV or XLSX file'), file);
       await canvas.findByText('fixture-portfolio.csv');
       await user.selectOptions(canvas.getByLabelText('Worksheet'), 'CSV');
@@ -152,10 +218,14 @@ function reviewStory(scenario: Scenario): Story {
       await user.click(canvas.getByRole('button', { name: 'Preview reviewed migration' }));
       await canvas.findByRole('heading', { name: 'Migration preview', exact: true });
       if (scenario === 'preview') return;
-      await user.click(canvas.getByRole('checkbox', { name: /I confirm importing these reviewed rows/ }));
+      await user.click(
+        canvas.getByRole('checkbox', { name: /I confirm importing these reviewed rows/ })
+      );
       await user.click(canvas.getByRole('button', { name: 'Commit reviewed import' }));
-      if (scenario === 'completed') await canvas.findByRole('heading', { name: 'Import completed' });
-      else if (scenario === 'interrupted') await canvas.findByText('INTERRUPTED', { selector: 'p' });
+      if (scenario === 'completed')
+        await canvas.findByRole('heading', { name: 'Import completed' });
+      else if (scenario === 'interrupted')
+        await canvas.findByText('INTERRUPTED', { selector: 'p' });
       else if (scenario === 'permission') await canvas.findByText('Import permission required');
       else if (scenario === 'unavailable') await canvas.findByText('Import progress unavailable');
       else await canvas.findByRole('button', { name: 'Submitting reviewed import…' });
