@@ -385,7 +385,7 @@ export function createGatewayMarkRegEarlyFunnelRoutes(
     command: Readonly<{
       workspaceId: string;
       confirmationId: string;
-      confirmationVersion: number;
+      confirmationVersion?: number;
     }>
   ) => {
     if (!options.internalServiceSecret)
@@ -1073,7 +1073,9 @@ const matterDraftRoute: JsonRoute = {
       if (
         typeof body.confirmationId !== 'string' ||
         !body.confirmationId.trim() ||
-        !Number.isSafeInteger(body.confirmationVersion)
+        (body.confirmationVersion !== undefined &&
+          !Number.isSafeInteger(body.confirmationVersion)) ||
+        (!options.fixtureTestRuntime && !Number.isSafeInteger(body.confirmationVersion))
       )
         throw new HttpError(
           400,
@@ -1083,7 +1085,9 @@ const matterDraftRoute: JsonRoute = {
       return forwardMatterDraft(request, principal, {
         workspaceId: principal.workspaceId,
         confirmationId: body.confirmationId,
-        confirmationVersion: body.confirmationVersion as number
+        ...(body.confirmationVersion === undefined
+          ? {}
+          : { confirmationVersion: body.confirmationVersion as number })
       });
     }
   };

@@ -29,13 +29,14 @@ function authenticationClient(): CoreAuthenticationClient {
   };
 }
 
-function governedRoute() {
+function governedRoute(fixtureTestRuntime = false) {
   const route = createGatewayMarkRegEarlyFunnelRoutes({
     markRegUrl: 'http://markreg.test',
     authenticationClient: authenticationClient(),
     internalServiceSecret,
     csrfSecret,
-    allowedOrigins: ['https://app.example']
+    allowedOrigins: ['https://app.example'],
+    fixtureTestRuntime
   }).find((candidate) => candidate.path === '/api/markreg/matter-drafts');
   if (!route) throw new Error('Governed Matter Draft route missing.');
   return route;
@@ -152,5 +153,23 @@ describe('Gateway trusted Workspace Matter Draft creation', () => {
       governedRoute().handle(request({ confirmationId: 'confirmation_771' }))
     ).rejects.toMatchObject({ status: 400, code: 'INVALID_REQUEST' });
     expect(downstream).not.toHaveBeenCalled();
+  });
+
+  it('preserves the authenticated fixture runtime legacy version protocol', async () => {
+    const downstream = vi.fn((_url: string, init: RequestInit) => {
+      expect(JSON.parse(init.body as string)).toEqual({
+        workspaceId,
+        confirmationId: 'confirmation_771'
+      });
+      return response(200, { matterDraft: { matterDraftId: 'matter-draft_771' } });
+    });
+    vi.stubGlobal('fetch', downstream);
+
+    const result = await governedRoute(true).handle(
+      request({ confirmationId: 'confirmation_771' })
+    );
+
+    expect(result.status).toBe(200);
+    expect(downstream).toHaveBeenCalledTimes(1);
   });
 });
