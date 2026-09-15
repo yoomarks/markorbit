@@ -80,6 +80,26 @@ test('payment-only changes stay in the payment hard-gate lane', () => {
   assert.equal(scope.full_typecheck, true);
 });
 
+test('Site-only changes select the Site owner, Gateway and persistence hard gate', () => {
+  const scope = classifyChangedFiles(
+    [
+      'services/site/src/site-service.ts',
+      'apps/gateway/src/site-http.ts',
+      'packages/contracts/src/site.ts',
+      'packages/contracts/package.json',
+      'infrastructure/persistence/migration-owners.json',
+      'infrastructure/persistence/migrations/0120_site_runtime.sql'
+    ],
+    { siteAvailable: true, paymentAvailable: false }
+  );
+  assert.equal(scope.site, true);
+  assert.equal(scope.gateway, true);
+  assert.equal(scope.persistence, true);
+  assert.equal(scope.shared, false);
+  assert.equal(scope.hard_gate, true);
+  assert.equal(scope.postgres, true);
+});
+
 test('owned migration plus owner map remains owner-scoped but hard-gated', () => {
   const scope = classifyChangedFiles([
     'infrastructure/persistence/migration-owners.json',

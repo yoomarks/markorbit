@@ -16,6 +16,7 @@ import type {
   ResolvedEntitlementV1,
   WorkspaceProductInstallationV1
 } from '@markorbit/contracts/workspace-commercial';
+import type { SiteRuntimeCommercialAccessV1 } from '@markorbit/contracts/site';
 
 export type WorkspaceCommercialErrorCode =
   | 'INVALID_INPUT'
@@ -46,6 +47,10 @@ function instant(value: string, field: string): number {
   if (Number.isNaN(parsed))
     throw new WorkspaceCommercialError('INVALID_INPUT', `${field} must be an ISO date/time.`);
   return parsed;
+}
+
+function isArray(value: unknown): boolean {
+  return Array.isArray(value);
 }
 
 function activeAt(
@@ -237,6 +242,81 @@ export class WorkspaceCommercialServiceV1 {
       if (!prior || prior.version < value.version) current.set(value.productKey, value);
     }
     return [...current.values()].filter((v) => v.status !== 'DECOMMISSIONED').map(clone);
+  }
+
+  async resolveSiteRuntimeAccess(
+    input: Readonly<{
+      workspaceId: string;
+      installationId: string;
+      installationVersion: number;
+      entitlementKeys: readonly string[];
+      asOf: string;
+    }>
+  ): Promise<SiteRuntimeCommercialAccessV1> {
+    if (
+      typeof input.workspaceId !== 'string' ||
+      !input.workspaceId.trim() ||
+      typeof input.installationId !== 'string' ||
+      !input.installationId.trim() ||
+      !isArray(input.entitlementKeys) ||
+      input.entitlementKeys.length === 0 ||
+      input.entitlementKeys.some((value) => typeof value !== 'string' || !value.trim())
+    )
+      throw new WorkspaceCommercialError(
+        'INVALID_INPUT',
+        'Exact Site runtime access input is required.'
+      );
+    assertVersion(input.installationVersion);
+    const at = instant(input.asOf, 'asOf');
+    const current = (await this.repository.listInstallations(input.workspaceId))
+      .filter((value) => value.installationId === input.installationId)
+      .sort((left, right) => right.version - left.version)[0];
+    if (!current)
+      throw new WorkspaceCommercialError('NOT_FOUND', 'Core SITE installation does not exist.');
+    if (
+      current.version !== input.installationVersion ||
+      current.productKey !== 'SITE' ||
+      current.status !== 'ACTIVE' ||
+      instant(current.effectiveAt, 'effectiveAt') > at
+    )
+      throw new WorkspaceCommercialError(
+        'NOT_ACTIVE',
+        'Core SITE installation is not current and active.'
+      );
+    const entitlementRefs = [];
+    for (const entitlementKey of [...new Set(input.entitlementKeys)]) {
+      const resolved = await this.resolveEntitlement(
+        { scope: 'WORKSPACE', workspaceId: input.workspaceId },
+        entitlementKey,
+        input.asOf
+      );
+      const enabled =
+        resolved.value.kind === 'BOOLEAN'
+          ? resolved.value.enabled
+          : resolved.value.kind === 'QUANTITY'
+            ? resolved.value.quantity > 0
+            : resolved.value.rank > 0;
+      if (!enabled)
+        throw new WorkspaceCommercialError(
+          'NO_APPLICABLE_ENTITLEMENT',
+          'Site entitlement is not enabled.'
+        );
+      entitlementRefs.push({
+        key: resolved.key,
+        contributingGrantRefs: resolved.contributingGrantRefs,
+        resolvedAt: resolved.resolvedAt
+      });
+    }
+    return {
+      schemaVersion: 1,
+      workspaceId: input.workspaceId,
+      installationRef: {
+        installationId: current.installationId,
+        version: current.version
+      },
+      entitlementRefs,
+      currentAt: input.asOf
+    };
   }
 
   async recordOffer(value: CommercialOfferVersionV1): Promise<CommercialOfferVersionV1> {

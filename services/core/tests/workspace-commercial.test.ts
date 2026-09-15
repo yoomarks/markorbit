@@ -355,6 +355,70 @@ describe('Workspace commercial foundation', () => {
     ).rejects.toMatchObject({ code: 'NO_APPLICABLE_ENTITLEMENT' });
   });
 
+  it('proves exact current SITE installation and Workspace entitlement references for Site runtime', async () => {
+    const { repository, service } = setup();
+    await repository.appendInstallation({
+      schemaVersion: 1,
+      installationId: 'install_site_runtime',
+      workspaceId: 'workspace_team',
+      productKey: 'SITE',
+      version: 1,
+      status: 'ACTIVE',
+      effectiveAt: t0,
+      recordedAt: t0,
+      sourceRef: 'test:site-runtime'
+    });
+    for (const [index, entitlementKey] of ['site.access', 'site.workspace.custom_domain'].entries())
+      await repository.appendGrant({
+        schemaVersion: 1,
+        grantId: `grant_site_${index}`,
+        version: 1,
+        subject: { scope: 'WORKSPACE', workspaceId: 'workspace_team' },
+        entitlement: {
+          key: entitlementKey,
+          subjectScope: 'WORKSPACE',
+          value: { kind: 'BOOLEAN', enabled: true }
+        },
+        status: 'ACTIVE',
+        sourceType: 'AGREEMENT',
+        sourceRef: 'agreement_site:1',
+        effectiveFrom: t0,
+        recordedAt: t0
+      });
+    await expect(
+      service.resolveSiteRuntimeAccess({
+        workspaceId: 'workspace_team',
+        installationId: 'install_site_runtime',
+        installationVersion: 1,
+        entitlementKeys: ['site.access', 'site.workspace.custom_domain'],
+        asOf: t1
+      })
+    ).resolves.toMatchObject({
+      installationRef: { installationId: 'install_site_runtime', version: 1 },
+      entitlementRefs: [{ key: 'site.access' }, { key: 'site.workspace.custom_domain' }]
+    });
+    await repository.appendInstallation({
+      schemaVersion: 1,
+      installationId: 'install_site_runtime',
+      workspaceId: 'workspace_team',
+      productKey: 'SITE',
+      version: 2,
+      status: 'SUSPENDED',
+      effectiveAt: t1,
+      recordedAt: t1,
+      sourceRef: 'test:suspended'
+    });
+    await expect(
+      service.resolveSiteRuntimeAccess({
+        workspaceId: 'workspace_team',
+        installationId: 'install_site_runtime',
+        installationVersion: 1,
+        entitlementKeys: ['site.access'],
+        asOf: '2026-10-02T00:00:00.000Z'
+      })
+    ).rejects.toMatchObject({ code: 'NOT_ACTIVE' });
+  });
+
   it('snapshots the exact historical rate version without inventing payment success', async () => {
     const { service } = setup();
     const rate = (

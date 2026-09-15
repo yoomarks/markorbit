@@ -88,7 +88,11 @@ export interface CoreRuntimeOptions {
   currentWorkspaceAuthority?: Pick<CurrentWorkspaceAuthorityService, 'validate'>;
   workspaceCommercial?: Pick<
     WorkspaceCommercialServiceV1,
-    'listCurrentInstallations' | 'resolveEntitlement' | 'recordOffer' | 'recordRatePolicy'
+    | 'listCurrentInstallations'
+    | 'resolveEntitlement'
+    | 'resolveSiteRuntimeAccess'
+    | 'recordOffer'
+    | 'recordRatePolicy'
   >;
   knowledgeIntakes?: KnowledgeIntakeRepository;
   knowledgeContents?: KnowledgeReadyPackageContentRepository;
