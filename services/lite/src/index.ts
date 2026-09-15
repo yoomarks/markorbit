@@ -11,6 +11,7 @@ export * from './daily-orbit.js';
 export * from './daily-workspace-snapshot.js';
 export * from './daily-workspace-http.js';
 export * from './trademark-asset.js';
+export * from './discovered-trademark-admission.js';
 export * from './trademark-asset-view.js';
 export * from './trademark-asset-portfolio.js';
 export * from './trademark-asset-migration.js';

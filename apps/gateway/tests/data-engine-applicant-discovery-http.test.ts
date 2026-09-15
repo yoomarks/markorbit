@@ -117,6 +117,32 @@ describe('Gateway Applicant Discovery client', () => {
     expect(context).toEqual({ requestId: 'request-a', correlationId: 'request-a' });
   });
 
+  it('binds an exact trademark source reference to the owner-read endpoint', async () => {
+    const rawGet = vi.fn(() =>
+      Promise.resolve(emptyEnvelope(APPLICANT_PORTFOLIO_DISCOVERY_RESOURCE_KIND, 'CN'))
+    );
+    const client = createApplicantDiscoveryClientV1({ rawGet });
+    const request = portfolioRequest();
+
+    await client.readTrademark({
+      ...request,
+      trademark: {
+        trademark_candidate_id: 'trademark/one',
+        source_reference: {
+          ...request.applicant.source_reference,
+          source_kind: 'TRADEMARK_RECORD',
+          source_id: 'trademark-source-1'
+        }
+      }
+    });
+
+    const [path] = rawGet.mock.calls[0] as unknown as [string];
+    expect(path).toContain('/api/v1/cn/applicants/candidate%2Fone/trademarks/trademark%2Fone?');
+    expect(path).toContain('trademark_source_id=trademark-source-1');
+    expect(path).toContain(`trademark_source_fingerprint_sha256=${encodeURIComponent(SHA)}`);
+    expect(path).not.toContain('page_size=');
+  });
+
   it('rejects forged or incomplete source references before transport', async () => {
     const rawGet = vi.fn();
     const client = createApplicantDiscoveryClientV1({ rawGet });
