@@ -83,6 +83,33 @@ integration('PostgreSQL Workspace Site persistence', () => {
     ).rejects.toBeDefined();
   });
 
+  it('reloads current host bindings by exact Site after restart', async () => {
+    const repository = new PostgresSiteRepositoryV1(database);
+    const binding: SiteHostBindingV1 = {
+      schemaVersion: 1,
+      bindingId: 'site_host_manager_read',
+      siteId: 'site_manager_read',
+      workspaceId: 'workspace_manager_read',
+      normalizedHostname: 'manager-read.example.com',
+      bindingType: 'TEST',
+      version: 1,
+      status: 'PENDING_VERIFICATION',
+      verificationMethod: 'PLATFORM_MANAGED',
+      recordedAt: '2026-09-15T00:00:00.000Z'
+    };
+    await repository.commitMutation({
+      workspaceId: binding.workspaceId,
+      idempotencyKey: 'binding-manager-read',
+      requestFingerprint: 'e'.repeat(64),
+      response: binding,
+      expectedBindingVersion: 0,
+      binding
+    });
+    const restarted = new PostgresSiteRepositoryV1(database);
+    expect(await restarted.listCurrentBindings(binding.siteId)).toEqual([binding]);
+    expect(await restarted.listCurrentBindings('site_other')).toEqual([]);
+  });
+
   it('enforces one active Site owner for an exact hostname', async () => {
     const repository = new PostgresSiteRepositoryV1(database);
     const binding = (suffix: string): SiteHostBindingV1 => ({

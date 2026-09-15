@@ -307,6 +307,19 @@ export class PostgresSiteRepositoryV1 implements SiteRepositoryV1 {
     }
   }
 
+  async listCurrentBindings(siteId: string): Promise<readonly SiteHostBindingV1[]> {
+    try {
+      const result = await this.database.getPool().query<JsonRow>(
+        `SELECT record_json FROM site_host_binding_heads
+         WHERE site_id=$1 ORDER BY binding_id`,
+        [siteId]
+      );
+      return result.rows.map((row) => stored<SiteHostBindingV1>(row.record_json));
+    } catch (error) {
+      return translate(error);
+    }
+  }
+
   async findActiveBindings(normalizedHostname: string): Promise<readonly SiteHostBindingV1[]> {
     try {
       const result = await this.database.getPool().query<JsonRow>(

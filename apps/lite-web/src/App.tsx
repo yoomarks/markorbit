@@ -26,6 +26,7 @@ import { TradingStudio } from './features/trading-studio/TradingStudio.js';
 import { CandidateReview } from './features/opportunities/CandidateReview.js';
 import { GovernedActionComposer } from './features/opportunities/GovernedActionComposer.js';
 import { GuideWorkspace } from './features/guide/GuideWorkspace.js';
+import { SiteManager } from './features/site-manager/SiteManager.js';
 import {
   LITE_PRIMARY_NAV,
   isLiteFixtureSurface,
@@ -56,6 +57,7 @@ export interface LiteAppProps {
 
 const workSubnavigationSurfaces: readonly LiteSurface[] = [
   'work',
+  'site-manager',
   'professional-review',
   'execution-release',
   'customers'
@@ -80,6 +82,7 @@ function WorkSubnavigation({
   if (!workSubnavigationSurfaces.includes(surface)) return null;
   const items = [
     { label: 'Overview', surface: 'work' },
+    { label: 'Site Manager', surface: 'site-manager' },
     { label: 'Professional Review', surface: 'professional-review' },
     { label: 'Execution Release', surface: 'execution-release' },
     { label: 'Customers', surface: 'customers' }
@@ -324,6 +327,14 @@ export function LiteApp({
           )
         ) : surface === 'work' ? (
           <WorkHub workspaceId={activeWorkspaceId} />
+        ) : surface === 'site-manager' ? (
+          activeWorkspaceId ? (
+            <SiteManager key={activeWorkspaceId} workspaceId={activeWorkspaceId} />
+          ) : (
+            workspaceRequired(
+              'A valid Workspace context is required to manage its Site projection.'
+            )
+          )
         ) : surface === 'professional-review' ? (
           <ProfessionalReview
             state={state}

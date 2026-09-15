@@ -386,3 +386,163 @@ test('Historical migration requires separate review and commit and reloads Portf
   await capture(page, `lite-historical-migration-completed-${viewport}`);
   assertHealthy();
 });
+
+test('Lite Site Manager previews durable owner state and reloads an explicit revision @visual', async ({
+  page
+}, testInfo) => {
+  const assertHealthy = watchPage(page);
+  const workspaceId = '11111111-1111-4111-8111-111111111111';
+  let site = {
+    schemaVersion: 1,
+    siteId: 'site_e2e',
+    workspaceId,
+    coreSiteInstallationRef: { installationId: 'install_e2e', version: 2 },
+    version: 4,
+    kind: 'WORKSPACE_BRANDED',
+    lifecycle: 'ACTIVE',
+    currentConfigurationVersion: 3,
+    effectiveAt: '2026-09-15T00:00:00.000Z',
+    recordedAt: '2026-09-15T00:00:00.000Z',
+    sourceRef: 'fixture:site-e2e'
+  };
+  let displayName = 'Orbit IP';
+  let configurationVersion = 3;
+  let revisionCalls = 0;
+  const corsHeaders = {
+    'access-control-allow-origin': new URL(urls.lite).origin,
+    'access-control-allow-credentials': 'true',
+    'access-control-allow-methods': 'GET,POST,OPTIONS',
+    'access-control-allow-headers':
+      'content-type,x-markorbit-workspace-id,x-markorbit-csrf-token,idempotency-key'
+  };
+  const configuration = () => ({
+    schemaVersion: 1,
+    siteId: site.siteId,
+    workspaceId,
+    version: configurationVersion,
+    brand: {
+      displayName,
+      theme: { primaryColor: '#102030', accentColor: '#abcdef', colorMode: 'LIGHT' }
+    },
+    localization: {
+      defaultLocale: 'en-US',
+      supportedLocales: ['en-US'],
+      defaultMarket: 'US',
+      jurisdictions: ['US']
+    },
+    roles: {
+      surfaceOwnerWorkspaceId: workspaceId,
+      customerRelationshipWorkspaceId: 'workspace_relationship',
+      offerOwnerRef: 'markreg:catalog',
+      merchantOwnerRef: 'payment:markreg',
+      fulfillmentOwnerRef: 'markreg:fulfillment'
+    },
+    services: [],
+    contentSlots: [],
+    recordedAt: '2026-09-15T00:00:00.000Z',
+    sourceRef: 'fixture:site-e2e'
+  });
+  const bindings = [
+    {
+      schemaVersion: 1,
+      bindingId: 'site_host_e2e',
+      siteId: site.siteId,
+      workspaceId,
+      normalizedHostname: 'brand.example.com',
+      bindingType: 'PRIMARY',
+      version: 3,
+      status: 'ACTIVE',
+      verificationMethod: 'DNS_TXT',
+      verificationEvidenceRef: 'dns:fixture',
+      verifiedAt: '2026-09-15T00:00:00.000Z',
+      recordedAt: '2026-09-15T00:00:00.000Z'
+    }
+  ];
+  await page.route('**/api/auth/session', (route) =>
+    route.fulfill({ json: { csrfToken: 'site-manager-csrf' } })
+  );
+  await page.route(/\/api\/sites(?:\/.*)?$/, async (route) => {
+    const request = route.request();
+    const url = new URL(request.url());
+    const path = url.pathname;
+    if (request.method() === 'OPTIONS') {
+      await route.fulfill({ status: 204, headers: corsHeaders });
+      return;
+    }
+    if (request.method() === 'GET' && path === '/api/sites') {
+      await route.fulfill({ json: [site], headers: corsHeaders });
+      return;
+    }
+    if (request.method() === 'GET' && path.endsWith('/configuration')) {
+      await route.fulfill({ json: configuration(), headers: corsHeaders });
+      return;
+    }
+    if (request.method() === 'GET' && path.endsWith('/host-bindings')) {
+      await route.fulfill({ json: bindings, headers: corsHeaders });
+      return;
+    }
+    if (request.method() === 'POST' && path.endsWith('/configurations')) {
+      revisionCalls += 1;
+      expect(request.headers()['x-markorbit-workspace-id']).toBe(workspaceId);
+      expect(request.headers()['x-markorbit-csrf-token']).toBe('site-manager-csrf');
+      expect(request.headers()['idempotency-key']).toContain(
+        'site-manager:configuration:site_e2e:'
+      );
+      const body = request.postDataJSON() as Record<string, unknown>;
+      expect(body).not.toHaveProperty('workspaceId');
+      expect(body).not.toHaveProperty('actor');
+      const input = body['configuration'] as { brand: { displayName: string } };
+      displayName = input.brand.displayName;
+      configurationVersion += 1;
+      site = {
+        ...site,
+        version: site.version + 1,
+        lifecycle: 'DRAFT',
+        currentConfigurationVersion: configurationVersion
+      };
+      await route.fulfill({ json: site, headers: corsHeaders });
+      return;
+    }
+    await route.fulfill({
+      status: 404,
+      contentType: 'application/json',
+      body: JSON.stringify({ code: 'NOT_FOUND', message: `Unexpected fixture route ${path}` })
+    });
+  });
+  await page.goto(`${urls.lite}?workspaceId=${workspaceId}#work`);
+  await page.getByRole('button', { name: 'Open Site Manager' }).click();
+  await expect(page).toHaveURL(new RegExp(`#work-site-manager$`));
+  await expect(page.getByRole('heading', { level: 1, name: 'Site Manager' })).toBeVisible();
+  await expect(page.getByLabel('Display name')).toHaveValue('Orbit IP');
+  await expect(page.getByText('brand.example.com', { exact: true })).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Open Site' })).toHaveAttribute(
+    'href',
+    'https://brand.example.com'
+  );
+  await page.getByRole('button', { name: 'Preview current projection' }).click();
+  await expect(
+    page.getByRole('heading', { name: 'Current durable projection preview' })
+  ).toBeVisible();
+  await expect(page.getByText('Preview only / config v3')).toBeVisible();
+  await expect(page.getByText(/Previewing does not publish/)).toBeVisible();
+  await expectNoHorizontalOverflow(page);
+  const viewport = testInfo.project.name.startsWith('mobile') ? 'mobile' : 'desktop';
+  await capture(page, `lite-site-manager-preview-${viewport}`);
+
+  await page.getByLabel('Display name').fill('Orbit IP Updated');
+  await expect(page.getByRole('button', { name: 'Save configuration version' })).toBeDisabled();
+  await page
+    .getByRole('checkbox', {
+      name: /I understand this revision requires a separate activation step/
+    })
+    .check();
+  await page.getByRole('button', { name: 'Save configuration version' }).click();
+  await expect(page.getByLabel('Display name')).toHaveValue('Orbit IP Updated');
+  await expect(page.getByRole('definition').filter({ hasText: 'DRAFT' })).toBeVisible();
+  await expect(page.getByText(/New Site configuration version saved/)).toBeVisible();
+  expect(revisionCalls).toBe(1);
+  await expect(page.getByRole('link', { name: 'Open Site' })).toHaveCount(0);
+  await expectNoHorizontalOverflow(page);
+  await capture(page, `lite-site-manager-revised-${viewport}`);
+  assertHealthy();
+});
