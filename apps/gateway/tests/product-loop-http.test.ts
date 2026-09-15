@@ -736,4 +736,99 @@ describe('Gateway Lite Product-loop transport boundary', () => {
       })
     ).rejects.toMatchObject({ status: 503, code: 'DOWNSTREAM_UNAVAILABLE', retryable: true });
   });
+  it('forwards Trademark Asset refresh as an authenticated durable owner mutation', async () => {
+    const refreshBody = {
+      sourceOwnerScope: ['MANAGED_COMMUNICATION'],
+      observations: [],
+      admittedClaims: [
+        {
+          claimClass: 'COMMUNICATION_CLAIM',
+          claimId: 'claim_gateway_1',
+          factKind: 'STATUS_TEXT',
+          value: 'Office action received',
+          source: {
+            owner: 'MANAGED_COMMUNICATION',
+            kind: 'MANAGED_COMMUNICATION_MESSAGE',
+            sourceId: 'managed-message_gateway-1',
+            sourceVersion: '1',
+            observedAt: '2026-09-15T10:00:00.000Z',
+            freshness: 'CURRENT'
+          },
+          reviewedAt: '2026-09-15T10:05:00.000Z'
+        }
+      ]
+    };
+    const downstream = vi.fn((url: string, init: RequestInit) => {
+      expect(url).toBe('http://lite.test/v1/trademark-assets/trademark-asset_gateway-1/refresh');
+      expect(init.method).toBe('POST');
+      expect(JSON.parse(init.body as string)).toEqual(refreshBody);
+      const headers = init.headers as Record<string, string>;
+      expect(headers['idempotency-key']).toBe('refresh-gateway-1');
+      expect(headers['x-markorbit-workspace-id']).toBe(workspaceId);
+      expect(headers['x-markorbit-principal']).toBeTruthy();
+      return Promise.resolve(
+        new Response(JSON.stringify({ refreshRunId: 'trademark-asset-refresh_gateway-1' }), {
+          status: 200,
+          headers: { 'content-type': 'application/json' }
+        })
+      );
+    });
+    vi.stubGlobal('fetch', downstream);
+    const result = await route(
+      'POST',
+      '/api/lite/trademark-assets/:trademarkAssetId/refresh'
+    ).handle({
+      method: 'POST',
+      path: '/api/lite/trademark-assets/trademark-asset_gateway-1/refresh',
+      params: { trademarkAssetId: 'trademark-asset_gateway-1' },
+      query: {},
+      headers: {
+        cookie: 'mo_session=token',
+        origin: 'https://test.markorbit.local',
+        'x-markorbit-workspace-id': workspaceId,
+        'x-markorbit-csrf-token': csrfToken(principal.sessionId, options.csrfSecret),
+        'idempotency-key': 'refresh-gateway-1'
+      },
+      body: refreshBody
+    });
+    expect(result.status).toBe(200);
+    expect(downstream).toHaveBeenCalledTimes(1);
+  });
+
+  it('rejects Trademark Asset refresh authority spoofing, missing idempotency and missing permission', async () => {
+    const downstream = vi.fn();
+    vi.stubGlobal('fetch', downstream);
+    const baseRequest = {
+      method: 'POST' as const,
+      path: '/api/lite/trademark-assets/trademark-asset_gateway-1/refresh',
+      params: { trademarkAssetId: 'trademark-asset_gateway-1' },
+      query: {},
+      headers: {
+        cookie: 'mo_session=token',
+        origin: 'https://test.markorbit.local',
+        'x-markorbit-workspace-id': workspaceId,
+        'x-markorbit-csrf-token': csrfToken(principal.sessionId, options.csrfSecret),
+        'idempotency-key': 'refresh-gateway-guard'
+      },
+      body: { sourceOwnerScope: ['WORKSPACE_USER'], observations: [] }
+    };
+    const refreshRoute = route('POST', '/api/lite/trademark-assets/:trademarkAssetId/refresh');
+    await expect(
+      refreshRoute.handle({ ...baseRequest, body: { ...baseRequest.body, workspaceId } })
+    ).rejects.toMatchObject({ status: 400, code: 'ACTOR_SPOOF_REJECTED' });
+    await expect(
+      refreshRoute.handle({
+        ...baseRequest,
+        headers: Object.fromEntries(
+          Object.entries(baseRequest.headers).filter(([key]) => key !== 'idempotency-key')
+        )
+      })
+    ).rejects.toMatchObject({ status: 400, code: 'INVALID_REQUEST' });
+    resolveWorkspace.mockResolvedValueOnce({ ...principal, permissions: ['workspace:read'] });
+    await expect(refreshRoute.handle(baseRequest)).rejects.toMatchObject({
+      status: 403,
+      code: 'PERMISSION_DENIED'
+    });
+    expect(downstream).not.toHaveBeenCalled();
+  });
 });
