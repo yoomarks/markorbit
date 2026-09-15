@@ -47,6 +47,7 @@ export * from './governance-super-admin-http.js';
 export * from './lite-super-admin-http.js';
 export * from './workspace-super-admin-http.js';
 export * from './workspace-commercial-http.js';
+export * from './site-http.js';
 export * from './markreg-early-funnel-http.js';
 export * from './preparation-lock-http.js';
 export * from './filing-governance-http.js';
@@ -81,6 +82,7 @@ import { createGatewayKnowledgeControlPlaneRoutes } from './knowledge-control-pl
 import { createGatewayKnowledgeSuperAdminRoutes } from './knowledge-super-admin-http.js';
 import { createGatewayWorkspaceSuperAdminRoutes } from './workspace-super-admin-http.js';
 import { createGatewayWorkspaceCommercialRoutesV1 } from './workspace-commercial-http.js';
+import { createGatewaySiteRoutesV1 } from './site-http.js';
 import { createGatewayMarkRegEarlyFunnelRoutes } from './markreg-early-funnel-http.js';
 import { createGatewayPreparationLockHandler } from './preparation-lock-http.js';
 import { createGatewayFilingGovernanceHandler } from './filing-governance-http.js';
@@ -108,6 +110,8 @@ export interface GatewayOptions {
   authenticationClient?: CoreAuthenticationClient;
   internalServiceSecret?: string;
   coreUrl?: string;
+  siteUrl?: string;
+  trustedProxy?: boolean;
   csrfSecret?: string;
   allowedOrigins?: readonly string[];
   secureCookies?: boolean;
@@ -582,6 +586,19 @@ export function createRuntime(options: GatewayOptions = {}) {
                   process.env.MO_INTERNAL_SERVICE_SECRET)!
               }
             : {})
+        }),
+        ...createGatewaySiteRoutesV1({
+          siteUrl: options.siteUrl ?? process.env.SITE_URL ?? 'http://127.0.0.1:4109',
+          ...(authenticationClient ? { authenticationClient } : {}),
+          ...((options.internalServiceSecret ?? process.env.MO_INTERNAL_SERVICE_SECRET)
+            ? {
+                internalServiceSecret: (options.internalServiceSecret ??
+                  process.env.MO_INTERNAL_SERVICE_SECRET)!
+              }
+            : {}),
+          csrfSecret,
+          allowedOrigins,
+          trustedProxy: options.trustedProxy ?? process.env.MO_TRUST_PROXY === '1'
         }),
         ...createGatewayCapabilityRoutes({
           capabilityEngineUrl,

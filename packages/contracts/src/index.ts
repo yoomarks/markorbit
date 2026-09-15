@@ -1242,3 +1242,4 @@ export * from './external-capability-exposure.js';
 export * from './workspace-watch.js';
 export * from './oauth-credential.js';
 export * from './workspace-commercial.js';
+export * from './site.js';

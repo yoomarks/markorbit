@@ -18,7 +18,8 @@ export interface WorkspaceCommercialHttpOptionsV1 {
   service: Pick<
     WorkspaceCommercialServiceV1,
     'listCurrentInstallations' | 'resolveEntitlement' | 'recordOffer' | 'recordRatePolicy'
-  >;
+  > &
+    Partial<Pick<WorkspaceCommercialServiceV1, 'resolveSiteRuntimeAccess'>>;
   currentWorkspaceAuthority: Pick<CurrentWorkspaceAuthorityService, 'validate'>;
   internalServiceSecret: string;
   now?: () => Date;
@@ -196,6 +197,41 @@ export function createWorkspaceCommercialRoutesV1(
             await options.service.recordRatePolicy(
               object(request) as unknown as RatePolicyVersionV1
             )
+          );
+        } catch (error) {
+          return translate(error);
+        }
+      }
+    },
+    {
+      method: 'POST',
+      path: '/internal/workspaces/:workspaceId/site-runtime/access/resolve',
+      async handle(request) {
+        internal(request, options.internalServiceSecret);
+        if (!options.service.resolveSiteRuntimeAccess)
+          throw new HttpError(
+            503,
+            'WORKSPACE_COMMERCIAL_UNAVAILABLE',
+            'Site commercial authority is unavailable.',
+            true
+          );
+        const value = object(request);
+        const entitlementKeys = value.entitlementKeys;
+        if (
+          !Array.isArray(entitlementKeys) ||
+          entitlementKeys.some((key) => typeof key !== 'string')
+        )
+          throw new HttpError(400, 'INVALID_REQUEST', 'entitlementKeys must be a string array.');
+        try {
+          return json(
+            200,
+            await options.service.resolveSiteRuntimeAccess({
+              workspaceId: text(request.params.workspaceId, 'workspaceId'),
+              installationId: text(value.installationId, 'installationId'),
+              installationVersion: expected(value.installationVersion, 'installationVersion')!,
+              entitlementKeys,
+              asOf: text(value.asOf, 'asOf')
+            })
           );
         } catch (error) {
           return translate(error);

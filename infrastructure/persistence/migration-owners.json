@@ -76,7 +76,8 @@
     "core_oauth_credentials": "@markorbit/core-service",
     "lite_workspace_watch_targets": "@markorbit/lite-service",
     "lite_communication_links": "@markorbit/lite-service",
-    "lite_workspace_directory": "@markorbit/lite-service"
+    "lite_workspace_directory": "@markorbit/lite-service",
+    "site_runtime": "@markorbit/site-service"
   },
   "protectedTableFamilies": {
     "capability_communication_": "@markorbit/capability-engine",
@@ -86,7 +87,8 @@
     "lite_trademark_asset": "@markorbit/lite-service",
     "lite_work_item": "@markorbit/lite-service",
     "lite_workspace_directory_": "@markorbit/lite-service",
-    "lite_workspace_watch_": "@markorbit/lite-service"
+    "lite_workspace_watch_": "@markorbit/lite-service",
+    "site_": "@markorbit/site-service"
   },
   "migrations": {
     "0018_identity_workspace_membership": "@markorbit/core-service",
@@ -190,6 +192,7 @@
     "0116_lite_prepared_action_client_notification_vocabulary": "@markorbit/lite-service",
     "0117_core_workspace_trademark_issue_intelligence": "@markorbit/core-service",
     "0118_capability_engine_workspace_capability_bindings": "@markorbit/capability-engine",
-    "0119_core_workspace_commercial_policy": "@markorbit/core-service"
+    "0119_core_workspace_commercial_policy": "@markorbit/core-service",
+    "0120_site_runtime": "@markorbit/site-service"
   }
 }

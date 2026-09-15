@@ -29,6 +29,7 @@ jobs:
       execution: ${{ steps.scope.outputs.execution }}
       mgsn: ${{ steps.scope.outputs.mgsn }}
       payment: ${{ steps.scope.outputs.payment }}
+      site: ${{ steps.scope.outputs.site }}
       web: ${{ steps.scope.outputs.web }}
       gateway: ${{ steps.scope.outputs.gateway }}
       persistence: ${{ steps.scope.outputs.persistence }}
@@ -209,6 +210,8 @@ jobs:
       MARKREG_ORDER_HTTP_REQUIRED: '1'
       PAYMENT_TEST_DATABASE_URL: postgresql://markorbit_test:markorbit-test-only@127.0.0.1:5432/markorbit_payment_test
       PAYMENT_POSTGRES_REQUIRED: '1'
+      SITE_TEST_DATABASE_URL: postgresql://markorbit_test:markorbit-test-only@127.0.0.1:5432/markorbit_site_test
+      SITE_POSTGRES_TEST_REQUIRED: '1'
       EXECUTION_TEST_DATABASE_URL: postgresql://markorbit_test:markorbit-test-only@127.0.0.1:5432/markorbit_execution_test
       EXECUTION_POSTGRES_TEST_REQUIRED: '1'
       EXECUTION_PROVIDER_RETURN_EVIDENCE_POSTGRES_REQUIRED: '1'
@@ -253,6 +256,7 @@ jobs:
           CAPABILITY_SCOPE: ${{ needs.detect.outputs.capability == 'true' }}
           MARKREG_SCOPE: ${{ needs.detect.outputs.markreg == 'true' }}
           PAYMENT_SCOPE: ${{ needs.detect.outputs.payment == 'true' }}
+          SITE_SCOPE: ${{ needs.detect.outputs.site == 'true' }}
           EXECUTION_SCOPE: ${{ needs.detect.outputs.execution == 'true' }}
           MGSN_SCOPE: ${{ needs.detect.outputs.mgsn == 'true' }}
         run: |
@@ -280,6 +284,7 @@ jobs:
           fi
           if [ "$MARKREG_SCOPE" = "true" ]; then create_db markorbit_markreg_test; fi
           if [ "$PAYMENT_SCOPE" = "true" ]; then create_db markorbit_payment_test; fi
+          if [ "$SITE_SCOPE" = "true" ]; then create_db markorbit_site_test; fi
           if [ "$EXECUTION_SCOPE" = "true" ] || [ "$MARKREG_SCOPE" = "true" ]; then create_db markorbit_execution_test; fi
           if [ "$MGSN_SCOPE" = "true" ]; then create_db markorbit_mgsn_test; fi
           if [ "$EXECUTION_SCOPE" = "true" ] && [ "$MARKREG_SCOPE" = "true" ]; then
@@ -379,6 +384,12 @@ jobs:
           else
             echo 'Payment package is not present on this revision; skipping Payment lane.'
           fi
+      - name: Site integration
+        if: needs.detect.outputs.site == 'true'
+        run: |
+          pnpm exec turbo run build --filter=@markorbit/site-service... --filter=@markorbit/gateway...
+          pnpm --filter @markorbit/site-service exec vitest run tests/site-postgres.test.ts tests/site-http.test.ts tests/site-service.test.ts
+          pnpm --filter @markorbit/gateway exec vitest run tests/site-http.test.ts
       - name: Cross-domain Execution to MarkReg handoff
         if: needs.detect.outputs.execution == 'true' && needs.detect.outputs.markreg == 'true'
         run: pnpm exec vitest run scripts/milestone5-reviewed-source-handoff.integration.test.ts

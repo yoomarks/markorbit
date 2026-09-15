@@ -44,13 +44,22 @@ function fixture() {
   );
   const recordOffer = vi.fn((value) => Promise.resolve(value));
   const recordRatePolicy = vi.fn((value) => Promise.resolve(value));
+  const resolveSiteRuntimeAccess = vi.fn((value) =>
+    Promise.resolve({ schemaVersion: 1, ...value })
+  );
   const routes = createWorkspaceCommercialRoutesV1({
-    service: { listCurrentInstallations, resolveEntitlement, recordOffer, recordRatePolicy },
+    service: {
+      listCurrentInstallations,
+      resolveEntitlement,
+      resolveSiteRuntimeAccess,
+      recordOffer,
+      recordRatePolicy
+    },
     currentWorkspaceAuthority: { validate },
     internalServiceSecret: secret,
     now: () => new Date('2026-09-15T00:00:00.000Z')
   });
-  return { routes, validate, resolveEntitlement, recordOffer };
+  return { routes, validate, resolveEntitlement, resolveSiteRuntimeAccess, recordOffer };
 }
 
 describe('Workspace commercial HTTP boundary', () => {
@@ -132,6 +141,27 @@ describe('Workspace commercial HTTP boundary', () => {
         })
       )
     ).rejects.toMatchObject({ status: 401, code: 'INTERNAL_SERVICE_UNAUTHORIZED' });
+    expect(validate).not.toHaveBeenCalled();
+  });
+
+  it('exposes a service-authenticated read seam without inventing a Workspace member', async () => {
+    const { routes, validate, resolveSiteRuntimeAccess } = fixture();
+    await routes[4]!.handle(
+      request('/internal/workspaces/:workspaceId/site-runtime/access/resolve', {
+        installationId: 'install_site',
+        installationVersion: 3,
+        entitlementKeys: ['site.access'],
+        asOf: '2026-09-15T00:00:00.000Z',
+        userId: 'browser-supplied-user'
+      })
+    );
+    expect(resolveSiteRuntimeAccess).toHaveBeenCalledWith({
+      workspaceId: ids.workspace,
+      installationId: 'install_site',
+      installationVersion: 3,
+      entitlementKeys: ['site.access'],
+      asOf: '2026-09-15T00:00:00.000Z'
+    });
     expect(validate).not.toHaveBeenCalled();
   });
 });

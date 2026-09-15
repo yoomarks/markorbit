@@ -14,6 +14,12 @@ const paymentSpecific = (path) =>
   /^packages\/contracts\/(src|tests)\/payment(?:\.|-|\/)/.test(path) ||
   migrationName(path).includes('payment');
 
+const siteSpecific = (path) =>
+  starts(path, 'services/site/') ||
+  /^apps\/gateway\/(src|tests)\/site(?:-|\.|\/)/.test(path) ||
+  /^packages\/contracts\/(src|tests)\/site(?:\.|-|\/)/.test(path) ||
+  migrationName(path).includes('_site_');
+
 const ownedMigration = (path, owner) => {
   const name = migrationName(path);
   if (!name) return false;
@@ -24,11 +30,12 @@ const ownedMigration = (path, owner) => {
   if (owner === 'mgsn') return name.includes('_mgsn_');
   if (owner === 'capability') return name.includes('_capability_engine_');
   if (owner === 'payment') return name.includes('_payment_') || name.includes('payment');
+  if (owner === 'site') return name.includes('_site_');
   return false;
 };
 
 const knownOwnedMigration = (path) =>
-  ['core', 'lite', 'markreg', 'execution', 'mgsn', 'capability', 'payment'].some((owner) =>
+  ['core', 'lite', 'markreg', 'execution', 'mgsn', 'capability', 'payment', 'site'].some((owner) =>
     ownedMigration(path, owner)
   );
 
@@ -117,6 +124,8 @@ export function classifyChangedFiles(rawFiles, options = {}) {
   const files = [...new Set(rawFiles.map(normalize).filter(Boolean))];
   const paymentSignal = files.some(paymentSpecific);
   const paymentAvailable = options.paymentAvailable ?? existsSync('services/payment/package.json');
+  const siteSignal = files.some(siteSpecific);
+  const siteAvailable = options.siteAvailable ?? existsSync('services/site/package.json');
   const docsOnly = files.length > 0 && files.every(docsOnlyPath);
 
   const workspaceTopology = files.some(
@@ -140,7 +149,8 @@ export function classifyChangedFiles(rawFiles, options = {}) {
     (path) =>
       starts(path, 'packages/contracts/') &&
       !paymentSpecific(path) &&
-      !(path === 'packages/contracts/package.json' && paymentSignal)
+      !siteSpecific(path) &&
+      !(path === 'packages/contracts/package.json' && (paymentSignal || siteSignal))
   );
   const sharedPackage = files.some(
     (path) =>
@@ -220,6 +230,7 @@ export function classifyChangedFiles(rawFiles, options = {}) {
       /^apps\/gateway\/(src|tests)\/(mgsn|provider)(?:-|\.|\/)/.test(path)
   );
   let payment = paymentSignal || files.some((path) => ownedMigration(path, 'payment'));
+  let site = siteSignal || files.some((path) => ownedMigration(path, 'site'));
   let gateway = files.some((path) => starts(path, 'apps/gateway/'));
 
   const web = files.some(
@@ -265,11 +276,13 @@ export function classifyChangedFiles(rawFiles, options = {}) {
     mgsn = true;
     gateway = true;
     if (paymentAvailable) payment = true;
+    if (siteAvailable) site = true;
   }
 
   // Execution's authenticated Professional Review lane validates MarkReg-owned matter state.
   if (execution) markreg = true;
   if (payment) gateway = true;
+  if (site) gateway = true;
 
   const productLoop =
     files.some(productLoopSpecific) ||
@@ -301,7 +314,7 @@ export function classifyChangedFiles(rawFiles, options = {}) {
     browserProductLoop ||
     browserProviderWeb;
   const postgres =
-    core || lite || capability || markreg || execution || mgsn || payment || persistence;
+    core || lite || capability || markreg || execution || mgsn || payment || site || persistence;
   const integration = postgres || gateway;
   const fullTypecheck = workspaceTopology || compilerConfiguration || dependencyTopology;
   const l2Merge = integration || browser || hardGate;
@@ -316,6 +329,7 @@ export function classifyChangedFiles(rawFiles, options = {}) {
     execution,
     mgsn,
     payment,
+    site,
     web,
     gateway,
     persistence,
@@ -386,6 +400,7 @@ function fullScope() {
     execution: true,
     mgsn: true,
     payment: existsSync('services/payment/package.json'),
+    site: existsSync('services/site/package.json'),
     web: true,
     gateway: true,
     persistence: true,
