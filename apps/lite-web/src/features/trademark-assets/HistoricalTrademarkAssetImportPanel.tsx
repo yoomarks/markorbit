@@ -1,11 +1,14 @@
-import { useMemo, useState, type ChangeEvent } from 'react';
+import { useEffect, useMemo, useRef, useState, type ChangeEvent } from 'react';
 import { Alert, Button, Card, Select, TextInput } from '@markorbit/ui';
 import {
   createTrademarkAssetMigrationClient,
   type HistoricalTrademarkAssetImportRelationshipKind,
   type HistoricalTrademarkAssetPreparationReceipt,
   type HistoricalTrademarkAssetTabularColumnMapping,
-  type TrademarkAssetMigrationClient
+  type TrademarkAssetMigrationClient,
+  type TrademarkAssetMigrationPreview,
+  type TrademarkAssetMigrationRunSnapshot,
+  type ReviewableTrademarkAssetMigrationResult
 } from '../../api/trademark-asset-migrations.js';
 import { TrademarkAssetHttpError } from '../../api/trademark-assets.js';
 import {
@@ -43,6 +46,7 @@ export interface HistoricalTrademarkAssetImportPanelProps {
   now?: () => string;
   createOperationId?: () => string;
   onClose?: () => void;
+  onCompleted?: () => void;
 }
 
 function headerProblem(headers: readonly string[]): string | undefined {
@@ -68,13 +72,20 @@ function mappedColumns(mappings: MappingState): HistoricalTrademarkAssetTabularC
   };
 }
 
-export function HistoricalTrademarkAssetImportPanel({
+export function HistoricalTrademarkAssetImportPanel(
+  props: HistoricalTrademarkAssetImportPanelProps
+) {
+  return <HistoricalImportSession key={props.workspaceId} {...props} />;
+}
+
+function HistoricalImportSession({
   workspaceId,
   client: suppliedClient,
   decoder = decodeHistoricalTrademarkAssetFile,
   now = () => new Date().toISOString(),
   createOperationId = () => crypto.randomUUID(),
-  onClose
+  onClose,
+  onCompleted
 }: HistoricalTrademarkAssetImportPanelProps) {
   const client = useMemo(
     () => suppliedClient ?? createTrademarkAssetMigrationClient(workspaceId),
@@ -94,6 +105,14 @@ export function HistoricalTrademarkAssetImportPanel({
   const [prepareState, setPrepareState] = useState<'idle' | 'submitting' | 'error'>('idle');
   const [prepareError, setPrepareError] = useState<string>();
   const [receipt, setReceipt] = useState<Readonly<HistoricalTrademarkAssetPreparationReceipt>>();
+  const revision = useRef(0);
+  const preparing = useRef(false);
+  useEffect(
+    () => () => {
+      revision.current += 1;
+    },
+    []
+  );
 
   const selectedSheet = workbook?.sheets.find((sheet) => sheet.name === selectedSheetName);
   const headerRowIndex = /^\d+$/.test(headerRowNumber) ? Number(headerRowNumber) - 1 : undefined;
@@ -129,6 +148,8 @@ export function HistoricalTrademarkAssetImportPanel({
   );
 
   const clearPreparedResult = () => {
+    revision.current += 1;
+    preparing.current = false;
     setReceipt(undefined);
     setPrepareError(undefined);
     setPrepareState('idle');
@@ -153,13 +174,16 @@ export function HistoricalTrademarkAssetImportPanel({
       return;
     }
     setDecodeState('decoding');
+    const currentRevision = revision.current;
     try {
       const decoded = await decoder({ fileName: file.name, bytes: await file.arrayBuffer() });
+      if (revision.current !== currentRevision) return;
       setWorkbook(decoded);
       setObservedAt(now());
       setMigrationKey(operationKey(decoded.sourceFingerprintSha256, createOperationId));
       setDecodeState('ready');
     } catch (error) {
+      if (revision.current !== currentRevision) return;
       setDecodeState('error');
       setDecodeError(
         error instanceof HistoricalTrademarkAssetFileDecodeError
@@ -174,7 +198,9 @@ export function HistoricalTrademarkAssetImportPanel({
   };
 
   const prepare = async () => {
-    if (!readyToPrepare || !workbook || !table || !relationshipKind) return;
+    if (!readyToPrepare || !workbook || !table || !relationshipKind || preparing.current) return;
+    const currentRevision = ++revision.current;
+    preparing.current = true;
     setPrepareState('submitting');
     setPrepareError(undefined);
     setReceipt(undefined);
@@ -190,13 +216,17 @@ export function HistoricalTrademarkAssetImportPanel({
         columns: mappedColumns(mappings),
         rows: table.rows
       });
+      if (revision.current !== currentRevision) return;
       setReceipt(prepared);
       setPrepareState('idle');
     } catch (error) {
+      if (revision.current !== currentRevision) return;
       setPrepareState('error');
       setPrepareError(
         error instanceof TrademarkAssetHttpError ? error.message : 'Preparation is unavailable.'
       );
+    } finally {
+      if (revision.current === currentRevision) preparing.current = false;
     }
   };
   return (
@@ -415,12 +445,458 @@ export function HistoricalTrademarkAssetImportPanel({
               ) : null}
             </div>
           ) : null}
-          <Alert tone="info" title="Preparation only">
+          <Alert tone="info" title="Preparation receipt">
             Lite reports source mapping readiness only. Official truth remains unverified, and no
-            Asset or Matter was created automatically.
+            Asset or Matter was created automatically by preparation.
           </Alert>
+          <HistoricalMigrationReview
+            workspaceId={workspaceId}
+            receipt={receipt}
+            client={client}
+            createOperationId={createOperationId}
+            {...(onCompleted ? { onCompleted } : {})}
+          />
         </section>
       ) : null}
     </Card>
+  );
+}
+
+/** Interaction state only; the preparation receipt remains the admission-input owner. */
+function HistoricalMigrationReview({
+  workspaceId,
+  receipt,
+  client,
+  createOperationId,
+  onCompleted
+}: {
+  workspaceId: string;
+  receipt: Readonly<HistoricalTrademarkAssetPreparationReceipt>;
+  client: TrademarkAssetMigrationClient;
+  createOperationId: () => string;
+  onCompleted?: () => void;
+}) {
+  const input = useMemo(() => {
+    if (!receipt.migrationInput || !receipt.readyRows.length) return;
+    const { workspaceId: inputWorkspace, ...reviewed } = receipt.migrationInput;
+    if (
+      inputWorkspace !== workspaceId ||
+      receipt.workspaceId !== workspaceId ||
+      reviewed.migrationKey !== receipt.migrationKey ||
+      reviewed.sourceFingerprintSha256 !== receipt.sourceFingerprintSha256 ||
+      receipt.ready !== receipt.readyRows.length ||
+      reviewed.rows.length !== receipt.ready ||
+      reviewed.rows.some((row, index) => row.rowKey !== receipt.readyRows[index]?.rowKey)
+    )
+      return;
+    return reviewed;
+  }, [receipt, workspaceId]);
+  const [reviewed, setReviewed] = useState(false);
+  const [confirmed, setConfirmed] = useState(false);
+  const [preview, setPreview] = useState<Readonly<TrademarkAssetMigrationPreview>>();
+  const [progress, setProgress] = useState<Readonly<TrademarkAssetMigrationRunSnapshot>>();
+  const [completed, setCompleted] = useState<Readonly<ReviewableTrademarkAssetMigrationResult>>();
+  const [attempted, setAttempted] = useState(false);
+  const [denied, setDenied] = useState(false);
+  const [error, setError] = useState<string>();
+  const [progressError, setProgressError] = useState<string>();
+  const [busy, setBusy] = useState<'' | 'preview' | 'commit' | 'progress'>('');
+  const [page, setPage] = useState(0);
+  const alive = useRef(true);
+  const running = useRef(false);
+  const previewKey = useRef<string>();
+  const commitKey = useRef<string>();
+  const notified = useRef(false);
+  useEffect(() => {
+    alive.current = true;
+    return () => {
+      alive.current = false;
+    };
+  }, []);
+  useEffect(() => {
+    if (!completed || notified.current) return;
+    notified.current = true;
+    onCompleted?.();
+  }, [completed, onCompleted]);
+
+  const message = (cause: unknown) =>
+    cause instanceof Error ? cause.message : 'The import service is unavailable.';
+  const assertRun = (
+    value: Readonly<TrademarkAssetMigrationPreview | ReviewableTrademarkAssetMigrationResult>
+  ) => {
+    if (
+      !input ||
+      value.workspaceId !== workspaceId ||
+      value.migrationKey !== input.migrationKey ||
+      value.sourceFingerprintSha256 !== input.sourceFingerprintSha256 ||
+      value.total !== input.rows.length ||
+      value.schemaVersion !== 1 ||
+      value.officialTruthVerifiedByLite !== false ||
+      value.matterCreatedAutomatically !== false ||
+      (preview && value.fingerprint !== preview.fingerprint)
+    ) {
+      throw new Error(
+        'The returned migration does not match the reviewed input. No completion can be confirmed.'
+      );
+    }
+  };
+  const acceptCompletion = (value: Readonly<ReviewableTrademarkAssetMigrationResult>) => {
+    assertRun(value);
+    if (
+      value.created + value.duplicates + value.rejected !== value.total ||
+      value.items.length !== value.total
+    ) {
+      throw new Error(
+        'The import result is incomplete. Check saved progress before taking another action.'
+      );
+    }
+    setCompleted(value);
+    setError(undefined);
+  };
+  const readProgress = async () => {
+    if (!input) return;
+    setProgressError(undefined);
+    try {
+      const value = await client.progress(input.migrationKey);
+      if (!alive.current) return;
+      assertRun(value);
+      if (!['PREVIEWED', 'COMMITTING', 'INTERRUPTED', 'COMPLETED'].includes(value.status)) {
+        throw new Error('The import service returned an unsupported progress state.');
+      }
+      setProgress(value);
+      if (value.status === 'COMPLETED') acceptCompletion(value);
+    } catch (cause) {
+      if (!alive.current) return;
+      setProgress(undefined);
+      setProgressError(message(cause));
+    }
+  };
+  const preparePreview = async () => {
+    if (!input || !reviewed || running.current || preview) return;
+    running.current = true;
+    setBusy('preview');
+    setError(undefined);
+    setConfirmed(false);
+    previewKey.current ??= `historical-preview:${createOperationId()}`;
+    try {
+      const value = await client.preview(input, previewKey.current);
+      if (!alive.current) return;
+      assertRun(value);
+      if (
+        value.rows.length !== input.rows.length ||
+        value.chunks.length !== value.chunkCount ||
+        value.rows.some(
+          (row, index) => row.importIndex !== index || row.rowKey !== input.rows[index]?.rowKey
+        )
+      ) {
+        throw new Error('The migration preview is incomplete. Review cannot continue.');
+      }
+      setPreview(value);
+    } catch (cause) {
+      if (alive.current) setError(message(cause));
+    } finally {
+      running.current = false;
+      if (alive.current) setBusy('');
+    }
+  };
+  const canCommit = Boolean(
+    input &&
+    preview &&
+    reviewed &&
+    confirmed &&
+    !denied &&
+    !completed &&
+    !progressError &&
+    (!attempted || progress?.status === 'PREVIEWED' || progress?.status === 'INTERRUPTED')
+  );
+  const commit = async () => {
+    if (!input || !canCommit || running.current) return;
+    running.current = true;
+    setBusy('commit');
+    setError(undefined);
+    setProgress(undefined);
+    setAttempted(true);
+    setConfirmed(false);
+    commitKey.current ??= `historical-commit:${createOperationId()}`;
+    try {
+      const value = await client.commit(input.migrationKey, input, commitKey.current);
+      if (!alive.current) return;
+      acceptCompletion(value);
+    } catch (cause) {
+      if (!alive.current) return;
+      setError(message(cause));
+      if (
+        cause instanceof TrademarkAssetHttpError &&
+        (cause.status === 401 || cause.status === 403)
+      )
+        setDenied(true);
+      // A lost response may hide an already-completed write. Read; never auto-retry the write.
+      await readProgress();
+    } finally {
+      running.current = false;
+      if (alive.current) setBusy('');
+    }
+  };
+  const refreshProgress = async () => {
+    if (running.current) return;
+    running.current = true;
+    setBusy('progress');
+    setConfirmed(false);
+    try {
+      await readProgress();
+    } finally {
+      running.current = false;
+      if (alive.current) setBusy('');
+    }
+  };
+  const first = page * 20;
+  const results = completed ?? progress;
+  return (
+    <section className="historical-import__review" aria-label="Reviewed migration">
+      <h4>READY rows for your review</h4>
+      <p>
+        Review the prepared identifiers and relationships. These are source facts, not verified
+        registry information.
+      </p>
+      {receipt.readyRows.length ? (
+        <>
+          <div
+            className="historical-import__table-wrap"
+            role="region"
+            aria-label="Ready rows"
+            tabIndex={0}
+          >
+            <table>
+              <thead>
+                <tr>
+                  <th scope="col">Source row</th>
+                  <th scope="col">Jurisdiction</th>
+                  <th scope="col">Trademark</th>
+                  <th scope="col">Identifiers</th>
+                  <th scope="col">Relationship</th>
+                </tr>
+              </thead>
+              <tbody>
+                {receipt.readyRows.slice(first, first + 20).map((row) => (
+                  <tr key={row.rowKey}>
+                    <th scope="row">{row.rowKey}</th>
+                    <td>{row.item.identity.jurisdiction}</td>
+                    <td>{row.item.identity.markText ?? 'Not supplied'}</td>
+                    <td>
+                      {row.item.externalIdentifiers
+                        ?.map((id) => `${id.kind}: ${id.value}`)
+                        .join(' · ') || 'Not supplied'}
+                    </td>
+                    <td>
+                      {row.item.workspaceRelationships
+                        .map((relationship) => relationship.kind)
+                        .join(' · ')}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <div className="historical-import__actions">
+            <span>
+              Rows {first + 1}–{Math.min(first + 20, receipt.readyRows.length)} of{' '}
+              {receipt.readyRows.length}
+            </span>
+            {receipt.readyRows.length > 20 ? (
+              <>
+                <Button
+                  variant="secondary"
+                  disabled={page === 0}
+                  onClick={() => setPage((value) => value - 1)}
+                >
+                  Previous ready rows
+                </Button>
+                <Button
+                  variant="secondary"
+                  disabled={first + 20 >= receipt.readyRows.length}
+                  onClick={() => setPage((value) => value + 1)}
+                >
+                  Next ready rows
+                </Button>
+              </>
+            ) : null}
+          </div>
+        </>
+      ) : (
+        <p>No READY rows are available to review.</p>
+      )}
+      {!input ? (
+        <Alert tone="warning" title="Import review unavailable">
+          A matching reviewed migration input and READY rows are required. Correct the source or
+          prepare the review again.
+        </Alert>
+      ) : null}
+      <label className="historical-import__confirmation">
+        <input
+          type="checkbox"
+          checked={reviewed}
+          disabled={!input || Boolean(busy) || Boolean(preview)}
+          onChange={(event) => setReviewed(event.target.checked)}
+        />
+        <span>I have reviewed the READY rows and their Workspace relationships.</span>
+      </label>
+      {!preview ? (
+        <Button
+          disabled={!input || !reviewed || Boolean(busy)}
+          onClick={() => void preparePreview()}
+        >
+          {busy === 'preview' ? 'Preparing migration preview…' : 'Preview reviewed migration'}
+        </Button>
+      ) : null}
+      {error ? (
+        <Alert
+          tone="danger"
+          title={denied ? 'Import permission required' : 'Import action could not be confirmed'}
+        >
+          {error}
+        </Alert>
+      ) : null}
+      {preview ? (
+        <section className="historical-import__review" aria-label="Migration preview">
+          <h4>Migration preview</h4>
+          <p>
+            Preview created no Trademark Asset or Matter. Only the reviewed READY rows below will be
+            submitted; unresolved rows are excluded.
+          </p>
+          <dl className="historical-import__metadata">
+            <div>
+              <dt>Migration key</dt>
+              <dd>{preview.migrationKey}</dd>
+            </div>
+            <div>
+              <dt>Source fingerprint</dt>
+              <dd>{preview.sourceFingerprintSha256 ?? 'Not supplied'}</dd>
+            </div>
+            <div>
+              <dt>Reviewed input fingerprint</dt>
+              <dd>{preview.fingerprint}</dd>
+            </div>
+            <div>
+              <dt>Total reviewed rows</dt>
+              <dd>{preview.total}</dd>
+            </div>
+            <div>
+              <dt>Chunk count</dt>
+              <dd>{preview.chunkCount}</dd>
+            </div>
+          </dl>
+          <details>
+            <summary>Inspect exact chunk boundaries</summary>
+            <p>Indexes are zero-based; the end index is exclusive.</p>
+            <ol>
+              {preview.chunks.map((chunk) => (
+                <li key={chunk.chunkIndex}>
+                  Chunk {chunk.chunkIndex}: [{chunk.startIndex}, {chunk.endExclusive}) ·{' '}
+                  {chunk.rowKeys.length} row(s)
+                </li>
+              ))}
+            </ol>
+          </details>
+          {!completed ? (
+            <>
+              <label className="historical-import__confirmation">
+                <input
+                  type="checkbox"
+                  checked={confirmed}
+                  disabled={
+                    Boolean(busy) ||
+                    denied ||
+                    Boolean(progressError) ||
+                    (attempted &&
+                      progress?.status !== 'PREVIEWED' &&
+                      progress?.status !== 'INTERRUPTED')
+                  }
+                  onChange={(event) => setConfirmed(event.target.checked)}
+                />
+                <span>
+                  I confirm importing these reviewed rows into this Workspace. No Matter or filing
+                  will be created.
+                </span>
+              </label>
+              <Button disabled={!canCommit || Boolean(busy)} onClick={() => void commit()}>
+                {busy === 'commit'
+                  ? 'Submitting reviewed import…'
+                  : progress?.status === 'INTERRUPTED'
+                    ? 'Resume interrupted import'
+                    : 'Commit reviewed import'}
+              </Button>
+            </>
+          ) : null}
+        </section>
+      ) : null}
+      {busy ? (
+        <p role="status">
+          {busy === 'preview'
+            ? 'Requesting preview; nothing is imported.'
+            : busy === 'commit'
+              ? 'Import requested. Waiting for the saved result.'
+              : 'Reading saved migration progress…'}
+        </p>
+      ) : null}
+      {progressError ? (
+        <Alert tone="warning" title="Import progress unavailable">
+          {progressError} The outcome is unknown. Check progress before attempting another write.
+        </Alert>
+      ) : null}
+      {attempted && !completed ? (
+        <Button variant="secondary" disabled={Boolean(busy)} onClick={() => void refreshProgress()}>
+          Check saved progress
+        </Button>
+      ) : null}
+      {results ? (
+        <section className="historical-import__review" aria-label="Saved migration result">
+          <h4>{completed ? 'Import completed' : 'Saved migration progress'}</h4>
+          <p role="status">{completed ? 'COMPLETED' : progress?.status}</p>
+          <dl className="historical-import__metadata">
+            <div>
+              <dt>Created</dt>
+              <dd>{results.created}</dd>
+            </div>
+            <div>
+              <dt>Duplicates</dt>
+              <dd>{results.duplicates}</dd>
+            </div>
+            <div>
+              <dt>Rejected</dt>
+              <dd>{results.rejected}</dd>
+            </div>
+            {progress ? (
+              <>
+                <div>
+                  <dt>Next chunk index</dt>
+                  <dd>{progress.nextChunkIndex}</dd>
+                </div>
+                <div>
+                  <dt>Saved at</dt>
+                  <dd>{progress.updatedAt}</dd>
+                </div>
+              </>
+            ) : null}
+          </dl>
+          {progress?.status === 'COMMITTING' && !completed ? (
+            <p>
+              The saved run is still COMMITTING. Check progress; this screen will not start another
+              import automatically.
+            </p>
+          ) : null}
+          {progress?.status === 'INTERRUPTED' && !completed ? (
+            <p>
+              The run was interrupted. Review the saved counts and confirm again to resume the same
+              reviewed input.
+            </p>
+          ) : null}
+          <p>These are saved Workspace import results, not verified official trademark status.</p>
+        </section>
+      ) : null}
+      <small>
+        Changing the source or mapping clears this review, not a submitted server operation. This
+        browser does not persist review drafts.
+      </small>
+    </section>
   );
 }

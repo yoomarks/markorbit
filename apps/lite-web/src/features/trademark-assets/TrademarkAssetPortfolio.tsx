@@ -280,6 +280,7 @@ export function TrademarkAssetPortfolio({
         <HistoricalTrademarkAssetImportPanel
           workspaceId={workspaceId}
           onClose={() => setHistoricalImportOpen(false)}
+          onCompleted={() => void loadPortfolio()}
         />
       ) : null}
 
