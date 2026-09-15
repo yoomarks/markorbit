@@ -1,0 +1,93 @@
+.site-manager {
+  display: grid;
+  gap: var(--mo-space-lg);
+}
+.site-manager__header-actions,
+.site-manager__section-heading,
+.site-manager__actions,
+.site-manager__preview-brand {
+  display: flex;
+  align-items: center;
+  gap: var(--mo-space-md);
+}
+.site-manager__header-actions,
+.site-manager__actions {
+  flex-wrap: wrap;
+}
+.site-manager__section-heading {
+  justify-content: space-between;
+  align-items: flex-start;
+}
+.site-manager__section-heading > * {
+  min-width: 0;
+}
+.site-manager__summary-grid,
+.site-manager__form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--mo-space-lg);
+}
+.site-manager__configuration,
+.site-manager__services,
+.site-manager__binding-list {
+  display: grid;
+  gap: var(--mo-space-lg);
+}
+.site-manager__service-row,
+.site-manager__binding-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(12rem, 0.8fr) minmax(12rem, 0.8fr);
+  gap: var(--mo-space-md);
+  align-items: end;
+  padding: var(--mo-space-md) 0;
+  border-bottom: 1px solid var(--mo-border);
+}
+.site-manager__binding-row {
+  grid-template-columns: minmax(0, 1fr) auto minmax(12rem, auto);
+  align-items: center;
+}
+.site-manager__binding-form {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(10rem, 0.7fr) minmax(12rem, 0.8fr) auto;
+  gap: var(--mo-space-md);
+  align-items: end;
+}
+.site-manager__compact-list {
+  display: grid;
+  gap: var(--mo-space-md);
+  padding-left: 1.25rem;
+}
+.site-manager__compact-list span,
+.site-manager__preview-brand small {
+  display: block;
+  color: var(--mo-secondary);
+}
+.site-manager__open-link {
+  align-self: center;
+}
+.site-manager__preview-surface {
+  display: grid;
+  gap: var(--mo-space-md);
+  padding: var(--mo-space-lg);
+  border: 1px solid var(--mo-border);
+  border-top: 0.35rem solid var(--mo-border);
+  border-radius: var(--mo-radius);
+}
+.site-manager__preview-accent {
+  width: 0.8rem;
+  height: 2.5rem;
+  border-radius: 999px;
+  flex: 0 0 auto;
+}
+@media (max-width: 800px) {
+  .site-manager__summary-grid,
+  .site-manager__form-grid,
+  .site-manager__service-row,
+  .site-manager__binding-row,
+  .site-manager__binding-form {
+    grid-template-columns: 1fr;
+  }
+  .site-manager__section-heading {
+    flex-direction: column;
+  }
+}

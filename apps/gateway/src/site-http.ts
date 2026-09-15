@@ -269,6 +269,38 @@ export function createGatewaySiteRoutesV1(options: GatewaySiteOptionsV1): readon
           (actor) =>
             `/internal/workspaces/${encodeURIComponent(actor.workspaceId)}/sites/${encodeURIComponent(request.params.siteId!)}/suspend`
         )
+    },
+    {
+      method: 'GET',
+      path: '/api/sites/:siteId/configuration',
+      async handle(request) {
+        const actor = await principal(request, options, 'workspace:read', false);
+        const response = await callSite(
+          request,
+          options,
+          `/internal/workspaces/${encodeURIComponent(actor.workspaceId)}/sites/${encodeURIComponent(request.params.siteId!)}/configuration`,
+          'GET',
+          undefined,
+          actor
+        );
+        return json(response.status, response.body);
+      }
+    },
+    {
+      method: 'GET',
+      path: '/api/sites/:siteId/host-bindings',
+      async handle(request) {
+        const actor = await principal(request, options, 'workspace:read', false);
+        const response = await callSite(
+          request,
+          options,
+          `/internal/workspaces/${encodeURIComponent(actor.workspaceId)}/sites/${encodeURIComponent(request.params.siteId!)}/host-bindings`,
+          'GET',
+          undefined,
+          actor
+        );
+        return json(response.status, response.body);
+      }
     }
   ];
 }

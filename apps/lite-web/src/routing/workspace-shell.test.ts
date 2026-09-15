@@ -30,6 +30,7 @@ describe('Workspace Shell registry', () => {
       'opportunities',
       'opportunities-provider',
       'capability',
+      'site-manager',
       'guide',
       'professional-review',
       'execution-release',
