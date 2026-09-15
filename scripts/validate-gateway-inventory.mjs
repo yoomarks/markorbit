@@ -58,6 +58,7 @@ for (const row of inventory) {
     row.path.startsWith('/api/markreg/production-intakes') ||
     row.path.startsWith('/api/markreg/production-recommendations') ||
     row.path.startsWith('/api/markreg/production-user-selections') ||
+    row.path.startsWith('/api/markreg/production-quotes') ||
     row.path.startsWith('/api/markreg/recommended-actions') ||
     row.path.startsWith('/api/markreg/workspace-actions') ||
     row.path.startsWith('/api/operations/') ||
@@ -88,8 +89,8 @@ for (const row of inventory) {
         )
   );
 }
-assert.equal(source.length, 103);
-assert.equal(inventory.length, 103);
+assert.equal(source.length, 105);
+assert.equal(inventory.length, 105);
 assert.equal(
   source.filter(
     (x) =>
@@ -98,8 +99,8 @@ assert.equal(
       !x.path.startsWith('/api/auth/') &&
       !x.path.endsWith('/context')
   ).length,
-  97
+  99
 );
 console.log(
-  'Gateway inventory PASS: 103 runtime routes; authenticated Early Funnel, Production Intake + Fee Facts, Production Recommendation, User Selection, Matter Intelligence, Formal Matter Evidence, Examination, Workspace Action, Checkout, Commercial Catalog, Payment, Order, Document Package, Evidence Review and Lifecycle boundaries included; test bootstrap excluded'
+  'Gateway inventory PASS: 105 runtime routes; authenticated Early Funnel, Production Intake + Fee Facts, Production Recommendation, User Selection, Production Quote, Matter Intelligence, Formal Matter Evidence, Examination, Workspace Action, Checkout, Commercial Catalog, Payment, Order, Document Package, Evidence Review and Lifecycle boundaries included; test bootstrap excluded'
 );

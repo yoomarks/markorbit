@@ -90,6 +90,16 @@ const productionSelectionBrowserFields = new Set([
   'selectedOptionCode',
   'idempotencyKey'
 ]);
+const productionQuoteBrowserFields = new Set([
+  'schemaVersion',
+  'intakeId',
+  'expectedIntakeVersion',
+  'recommendationId',
+  'expectedRecommendationVersion',
+  'selectionId',
+  'expectedSelectionVersion',
+  'idempotencyKey'
+]);
 const matterIntelligenceQueryFields = ['page', 'pageSize', 'reviewHistoryLimit'] as const;
 
 function bodyRecord(request: JsonRequest): Record<string, unknown> {
@@ -280,6 +290,26 @@ export function createGatewayMarkRegEarlyFunnelRoutes(
         throw new AuthenticationError(
           'PERMISSION_DENIED',
           'matter:create permission is required for MarkReg early-funnel mutations.'
+        );
+      return principal;
+    } catch (error) {
+      return mapAuthentication(error);
+    }
+  };
+
+  const authenticateProductionQuote = async (request: JsonRequest): Promise<WorkspacePrincipal> => {
+    const principal = await resolveWorkspacePrincipal(request);
+    try {
+      requireTrustedOrigin(request.headers.origin, options.allowedOrigins);
+      validateCsrf(
+        principal.sessionId,
+        options.csrfSecret,
+        request.headers['x-markorbit-csrf-token']
+      );
+      if (!principal.permissions.includes('order:create'))
+        throw new AuthenticationError(
+          'PERMISSION_DENIED',
+          'order:create permission is required for Production Quote creation.'
         );
       return principal;
     } catch (error) {
@@ -832,6 +862,47 @@ export function createGatewayMarkRegEarlyFunnelRoutes(
     }
   };
 
+  const productionQuoteRoute: JsonRoute = {
+    method: 'POST',
+    path: '/api/markreg/production-quotes',
+    handle: async (request) => {
+      const body = bodyRecord(request);
+      rejectProductionConsumerFields(body, productionQuoteBrowserFields, 'INVALID_PRODUCTION_QUOTE_REQUEST');
+      const key = idempotency(request, body);
+      const correlation = correlationId(request);
+      const principal = await authenticateProductionQuote(request);
+      if (body.schemaVersion !== 1)
+        throw new HttpError(400, 'INVALID_PRODUCTION_QUOTE_REQUEST', 'schemaVersion must be 1.');
+      const command = {
+        schemaVersion: 1,
+        intakeId: exactBrowserText(body.intakeId, 'intakeId'),
+        expectedIntakeVersion: exactBrowserVersion(body.expectedIntakeVersion, 'expectedIntakeVersion'),
+        recommendationId: exactBrowserText(body.recommendationId, 'recommendationId'),
+        expectedRecommendationVersion: exactBrowserVersion(body.expectedRecommendationVersion, 'expectedRecommendationVersion'),
+        selectionId: exactBrowserText(body.selectionId, 'selectionId'),
+        expectedSelectionVersion: exactBrowserVersion(body.expectedSelectionVersion, 'expectedSelectionVersion'),
+        idempotencyKey: key,
+        correlationId: correlation
+      };
+      return forward(request, principal, '/internal/v1/production-quotes', command, key, correlation);
+    }
+  };
+
+
+  const productionQuoteReadRoute: JsonRoute = {
+    method: 'GET',
+    path: '/api/markreg/production-quotes/:quoteId',
+    handle: async (request) => {
+      const principal = await authenticateRead(request);
+      const quoteId = encodeURIComponent(exactBrowserText(request.params.quoteId, 'quoteId'));
+      return forwardProductionArtifactRead(
+        request,
+        principal,
+        `/internal/v1/production-quotes/${quoteId}`
+      );
+    }
+  };
+
   const matterIntelligenceRoute: JsonRoute = {
     method: 'GET',
     path: '/api/markreg/formal-matters/:formalMatterId/intelligence',
@@ -1063,6 +1134,8 @@ const matterDraftRoute: JsonRoute = {
     productionRecommendationReadRoute,
     productionUserSelectionRoute,
     productionUserSelectionReadRoute,
+    productionQuoteRoute,
+    productionQuoteReadRoute,
     intakeRoute,
     quoteRoute,
     confirmationRoute,

@@ -4,7 +4,9 @@ import type {
   EarlyFunnelApplicantType,
   EarlyFunnelTrademarkType,
   ProductionIntakeInputV1,
-  ProductionIntakeV1
+  ProductionIntakeV1,
+  ProductionRecommendationV1,
+  UserSelectionV1
 } from '@markorbit/contracts/markreg-early-funnel';
 import {
   Alert,
@@ -28,6 +30,7 @@ import {
 import type { ProductionGuidanceClient } from './api/production-guidance.js';
 import { ProductionFeeFactsPanel } from './ProductionFeeFactsPanel.js';
 import { ProductionGuidance } from './ProductionGuidance.js';
+import { ProductionQuotePanel } from './ProductionQuotePanel.js';
 import './production-intake.css';
 
 export interface ProductionIntakeDraft {
@@ -635,6 +638,17 @@ function ReceivedIntake({
   onReload: () => void;
   onStartAnother: () => void;
 }) {
+  const [quoteLineage, setQuoteLineage] = useState<{
+    recommendation: ProductionRecommendationV1;
+    selection: UserSelectionV1;
+  }>();
+  const [feeFactsSignal, setFeeFactsSignal] = useState('');
+
+  useEffect(() => {
+    setQuoteLineage(undefined);
+    setFeeFactsSignal('');
+  }, [record.intakeId, record.version, record.fingerprintSha256]);
+
   return (
     <main className="markreg-page production-intake-page">
       <PageHeader
@@ -678,13 +692,26 @@ function ReceivedIntake({
           />
         </details>
       </Card>
-      <ProductionFeeFactsPanel intake={record} />
+      <ProductionFeeFactsPanel
+        intake={record}
+        onSaved={(facts) => setFeeFactsSignal(facts.fingerprintSha256)}
+      />
       <ProductionGuidance
         key={`${record.intakeId}:${record.version}:${record.fingerprintSha256}`}
         intake={record}
         onReloadIntake={onReload}
+        onSelection={(recommendation, selection) => setQuoteLineage({ recommendation, selection })}
         {...(guidanceClient ? { client: guidanceClient } : {})}
       />
+      {quoteLineage && (
+        <ProductionQuotePanel
+          key={`${quoteLineage.selection.selectionId}:${quoteLineage.selection.version}`}
+          intake={record}
+          recommendation={quoteLineage.recommendation}
+          selection={quoteLineage.selection}
+          retryToken={feeFactsSignal}
+        />
+      )}
       <Button variant="secondary" onClick={onStartAnother}>
         Start another Intake
       </Button>

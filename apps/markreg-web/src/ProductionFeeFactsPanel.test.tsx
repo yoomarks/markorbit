@@ -109,7 +109,14 @@ describe('Production fee facts panel', () => {
       )
       .mockResolvedValueOnce({ feeFacts });
     const create = vi.fn<ProductionFeeFactsClient['create']>(() => Promise.resolve({ feeFacts }));
-    render(<ProductionFeeFactsPanel intake={intake} client={client({ create, getCurrent })} />);
+    const onSaved = vi.fn();
+    render(
+      <ProductionFeeFactsPanel
+        intake={intake}
+        client={client({ create, getCurrent })}
+        onSaved={onSaved}
+      />
+    );
 
     await user.click(screen.getByRole('button', { name: 'Review fee-driving facts' }));
     expect(
@@ -133,6 +140,7 @@ describe('Production fee facts panel', () => {
       await screen.findByRole('heading', { name: 'Current application fee facts' })
     ).toBeTruthy();
     expect(getCurrent).toHaveBeenLastCalledWith(intake.intakeId, 1);
+    expect(onSaved).toHaveBeenCalledWith(feeFacts);
   });
 
   it('fails validation before mutation when explicit class material is contradictory', async () => {
