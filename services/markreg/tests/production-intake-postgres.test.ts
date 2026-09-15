@@ -21,6 +21,18 @@ const suite = url ? describe : describe.skip;
 const workspaceId = '60606060-6060-4606-8606-606060606060';
 const otherWorkspaceId = '61616161-6161-4616-8616-616161616161';
 const at = '2026-09-02T13:00:00.000Z';
+const siteSource = {
+  siteId: 'site_markreg_reference' as const,
+  siteOwnerWorkspaceId: 'workspace_site_owner',
+  siteVersion: 2,
+  configurationVersion: 3,
+  hostBindingId: 'site_host_markreg_reference' as const,
+  hostBindingVersion: 4,
+  hostname: 'markreg.com',
+  locale: 'en-US',
+  observedAt: at,
+  fingerprintSha256: 'a'.repeat(64)
+};
 
 const principal = (
   workspace = workspaceId,
@@ -116,12 +128,14 @@ suite('PostgreSQL Production Intake', () => {
   });
 
   it('persists exact structured Intake truth and replays across service restart', async () => {
-    const first = await service().create(principal(), command());
+    const siteCommand = command({ siteSource });
+    const first = await service().create(principal(), siteCommand);
     expect(first).toMatchObject({
       workspaceId,
       version: 1,
       status: 'RECEIVED',
       sourceClass: 'CUSTOMER_SUPPLIED',
+      siteSource,
       input: {
         applicant: { name: 'Orbit Intake Labs Ltd.', country: 'GB' },
         trademark: { type: 'WORD', representationText: 'ORBIT INTAKE' },
@@ -133,7 +147,7 @@ suite('PostgreSQL Production Intake', () => {
     expect(first.fingerprintSha256).toMatch(/^[0-9a-f]{64}$/u);
 
     const restarted = new PostgresProductionIntakeService(database, database.getPool(), () => at);
-    expect(await restarted.create(principal(), command())).toEqual(first);
+    expect(await restarted.create(principal(), siteCommand)).toEqual(first);
     expect(await restarted.get(principal(), first.intakeId)).toEqual(first);
 
     const rows = await database
@@ -164,7 +178,10 @@ suite('PostgreSQL Production Intake', () => {
     expect(audit.rowCount).toBe(1);
     expect(auditRow.action).toBe('PRODUCTION_INTAKE_CREATED');
     expect(auditRow.actor_id).toBe('user_task0608');
-    expect(auditRow.source_lineage).toMatchObject({ sourceClass: 'CUSTOMER_SUPPLIED' });
+    expect(auditRow.source_lineage).toMatchObject({
+      sourceClass: 'CUSTOMER_SUPPLIED',
+      siteSource
+    });
 
     expect(
       (

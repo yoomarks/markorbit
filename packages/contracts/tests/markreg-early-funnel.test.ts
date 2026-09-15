@@ -187,6 +187,30 @@ describe('MarkReg early-funnel production contract V1', () => {
     }
   });
 
+  it('parses exact trusted Site admission lineage when supplied by the server', () => {
+    const siteSource = {
+      siteId: 'site_reference',
+      siteOwnerWorkspaceId: 'workspace_site_owner',
+      siteVersion: 2,
+      configurationVersion: 3,
+      hostBindingId: 'site_host_reference',
+      hostBindingVersion: 4,
+      hostname: 'markreg.com',
+      locale: 'en-US',
+      observedAt: now,
+      fingerprintSha256: fingerprintA
+    };
+    expect(parseCreateProductionIntakeCommandV1({ ...intakeCommand, siteSource })).toMatchObject({
+      siteSource
+    });
+    expect(() =>
+      parseCreateProductionIntakeCommandV1({
+        ...intakeCommand,
+        siteSource: { ...siteSource, fingerprintSha256: 'not-exact' }
+      })
+    ).toThrow(/fingerprint/);
+  });
+
   it('keeps fixture/test Recommendation explicit and outside production admission', () => {
     const fixture = {
       ...recommendation,

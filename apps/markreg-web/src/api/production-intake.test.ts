@@ -2,7 +2,10 @@
 import type { CreateProductionIntakeCommandV1 } from '@markorbit/contracts/markreg-early-funnel';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createApiClient } from './client.js';
-import { createProductionIntakeClient } from './production-intake.js';
+import {
+  createProductionIntakeClient,
+  createSiteProductionIntakeClient
+} from './production-intake.js';
 
 const workspaceId = '018f0000-0000-7000-8000-000000000699';
 const command: CreateProductionIntakeCommandV1 = {
@@ -115,6 +118,29 @@ describe('durable Production Intake browser client', () => {
       'X-MarkOrbit-Workspace-Id': workspaceId
     });
     expect(init?.headers).not.toHaveProperty('X-MarkOrbit-CSRF-Token');
+  });
+
+  it('omits browser-selected channel and Site lineage on Site admission', async () => {
+    const fetcher = vi.fn<typeof fetch>(() =>
+      Promise.resolve(
+        new Response(JSON.stringify(envelope), {
+          status: 200,
+          headers: { 'content-type': 'application/json' }
+        })
+      )
+    );
+    const client = createSiteProductionIntakeClient(createApiClient('', 10_000, fetcher));
+
+    await client.create(command);
+
+    const [url, init] = fetcher.mock.calls[0]!;
+    expect(url).toBe('/api/site/markreg/production-intakes');
+    if (typeof init?.body !== 'string') throw new Error('expected JSON request body');
+    const body = JSON.parse(init.body) as Record<string, unknown>;
+    expect(body).toEqual({ schemaVersion: 1, input: command.input });
+    expect(body).not.toHaveProperty('channel');
+    expect(body).not.toHaveProperty('relationshipModel');
+    expect(body).not.toHaveProperty('siteSource');
   });
 
   it.each([400, 401, 403, 409, 503])(
