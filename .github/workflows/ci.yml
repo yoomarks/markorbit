@@ -276,6 +276,7 @@ jobs:
           fi
           if [ "$CAPABILITY_SCOPE" = "true" ]; then
             create_db markorbit_capability_registry_test
+            create_db markorbit_capability_binding_validity_test
             create_db markorbit_capability_observation_test
             create_db markorbit_capability_reflection_test
             create_db markorbit_capability_profile_test
@@ -328,7 +329,7 @@ jobs:
           CAPABILITY_ENGINE_TEST_DATABASE_URL=postgresql://markorbit_test:markorbit-test-only@127.0.0.1:5432/markorbit_capability_profile_test pnpm --filter @markorbit/capability-engine test:reflection-disposition-profile:postgres
           CAPABILITY_ENGINE_TEST_DATABASE_URL=postgresql://markorbit_test:markorbit-test-only@127.0.0.1:5432/markorbit_capability_managed_ai_test pnpm --filter @markorbit/capability-engine test:managed-ai-claim:postgres
           CAPABILITY_ENGINE_TEST_DATABASE_URL=postgresql://markorbit_test:markorbit-test-only@127.0.0.1:5432/markorbit_capability_managed_ai_exact_output_test pnpm --filter @markorbit/capability-engine test:managed-ai-exact-output:postgres
-          CAPABILITY_ENGINE_TEST_DATABASE_URL=postgresql://markorbit_test:markorbit-test-only@127.0.0.1:5432/markorbit_capability_registry_test pnpm --filter @markorbit/capability-engine exec vitest run tests/workspace-capability-binding-validity-postgres.test.ts
+          CAPABILITY_ENGINE_TEST_DATABASE_URL=postgresql://markorbit_test:markorbit-test-only@127.0.0.1:5432/markorbit_capability_binding_validity_test pnpm --filter @markorbit/capability-engine exec vitest run tests/workspace-capability-binding-validity-postgres.test.ts
       - name: MarkReg integration
         if: >-
           needs.detect.outputs.markreg == 'true' &&
