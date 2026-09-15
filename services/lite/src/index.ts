@@ -63,3 +63,5 @@ export * from './workspace-watch-http.js';
 export * from './lite-intake-staging.js';
 export * from './lite-intake-staging-http.js';
 export * from './lite-intake-staging-markreg.js';
+export * from './outbound-contact-policy.js';
+export * from './outbound-contact-policy-http.js';

@@ -33,6 +33,8 @@ import { createWorkspaceWatchRoutes } from './workspace-watch-http.js';
 import { PostgresWorkspaceWatchStore } from './workspace-watch.js';
 import { createWorkspaceDirectoryRoutes } from './workspace-directory-http.js';
 import { PostgresWorkspaceDirectoryStore } from './workspace-directory.js';
+import { PostgresOutboundContactPolicyStore } from './outbound-contact-policy.js';
+import { createOutboundContactPolicyRoutes } from './outbound-contact-policy-http.js';
 import { createCommunicationLinkRoutes } from './communication-link-http.js';
 import { CommunicationLinkService, PostgresCommunicationLinkStore } from './communication-link.js';
 import {
@@ -160,6 +162,7 @@ const trademarkServiceWorkPackages = new PostgresTrademarkServiceWorkPackageStor
 const liteWorkItemStore = new PostgresLiteWorkItemStore(database, pool);
 const workspaceWatchStore = new PostgresWorkspaceWatchStore(database, pool);
 const workspaceDirectoryStore = new PostgresWorkspaceDirectoryStore(database, pool);
+const outboundContactPolicyStore = new PostgresOutboundContactPolicyStore(database, pool);
 const communicationLinkStore = new PostgresCommunicationLinkStore(database, pool);
 const liteIntakeStagingStore = new PostgresLiteIntakeStagingStore(database, pool);
 const agencyLineage = new AgencyLineageProjectionService({
@@ -456,6 +459,10 @@ const runtime = createServiceRuntime(serviceManifest, {
     ...createWorkspaceDirectoryRoutes({
       internalServiceSecret,
       store: workspaceDirectoryStore
+    }),
+    ...createOutboundContactPolicyRoutes({
+      internalServiceSecret,
+      store: outboundContactPolicyStore
     }),
     ...createAgencyLineageRoutes({ internalServiceSecret, service: agencyLineage }),
     ...createDiscoveredTrademarkAdmissionRoutes({
