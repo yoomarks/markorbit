@@ -113,6 +113,25 @@ Default execution loop:
 
 **Read → locate → confirm root cause → modify → test → fix → retest → complete.**
 
+Before modifying files for a real task, create its dedicated worktree from a successfully fetched
+authoritative remote default branch with the freshness guard. Declare every expected repository
+path with a repeated `--scope` argument:
+
+```bash
+pnpm task:bootstrap -- --branch <task-branch> --worktree <absolute-path> --scope <repo-path>
+```
+
+The command must report `FRESH_MAIN_BOOTSTRAP PASS`. A fetch or open-PR metadata failure is a
+blocked bootstrap, never permission to use a cached remote-tracking ref or local `main`. Add
+`--migration-sensitive` when persistence migrations are expected; the guard records the current
+migration tail and next available slot from authoritative remote state.
+
+Before push, run `pnpm task:prepush` inside the task worktree. If it reports main drift, refresh the
+branch onto current remote main, run `pnpm task:refresh`, rerun affected validation, and then run
+`pnpm task:prepush` again. A migration-tail or central-surface overlap remains blocked until the
+conflict is explicitly resolved. On Windows, use `pnpm.cmd` when PowerShell execution policy blocks
+`pnpm.ps1`.
+
 Avoid replacing execution with long speculative discussion. Ask the user only when a genuine product, authority, destructive-action or scope decision cannot be resolved from existing sources.
 
 ## 6. Verification and CI
