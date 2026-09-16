@@ -14,6 +14,7 @@
     "playwright.opportunity-candidates.config.ts",
     "playwright.governed-provider.config.ts",
     "playwright.trademark-commerce.config.ts",
-    "playwright.agency-ia-prototype.config.ts"
+    "playwright.agency-ia-prototype.config.ts",
+    "playwright.ux-trust-visual.config.ts"
   ]
 }
