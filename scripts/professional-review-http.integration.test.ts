@@ -224,6 +224,9 @@ suite('real authenticated durable Professional Review HTTP path', () => {
     const markregPool = markregDatabase.getPool();
     await executionPool.query(
       `DROP TABLE IF EXISTS
+         execution_protected_action_commands,
+         execution_protected_action_releases,
+         execution_protected_action_authorizations,
          execution_trademark_service_artifacts,
          execution_trademark_service_protected_action_replays,
          execution_trademark_service_sessions,
