@@ -428,6 +428,13 @@ export function createGatewayProductLoopRoutes(
     route('POST', '/api/lite/data-prospecting/candidates/:opportunityCandidateId/outreach', [
       'matter:manage'
     ]),
+    route('POST', '/api/lite/protection-monitoring/candidates', ['matter:manage']),
+    route('POST', '/api/lite/protection-monitoring/candidates/:candidateId/decision', [
+      'matter:manage'
+    ]),
+    route('POST', '/api/lite/protection-monitoring/candidates/:candidateId/action-candidate', [
+      'matter:manage'
+    ]),
     route('POST', '/api/lite/partner-intelligence/candidates', ['matter:manage']),
     route(
       'GET',

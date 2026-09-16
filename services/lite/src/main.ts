@@ -29,6 +29,11 @@ import { DiscoveredTrademarkAdmissionService } from './discovered-trademark-admi
 import { createDiscoveredTrademarkAdmissionRoutes } from './discovered-trademark-admission-http.js';
 import { DataProspectingService } from './data-prospecting.js';
 import { createDataProspectingRoutes } from './data-prospecting-http.js';
+import { createProtectionMonitoringRoutes } from './protection-monitoring-http.js';
+import {
+  PostgresProtectionMonitoringRepository,
+  ProtectionMonitoringService
+} from './protection-monitoring.js';
 import { createLiteWorkItemRoutes } from './lite-work-item-http.js';
 import { PostgresLiteWorkItemStore } from './lite-work-item.js';
 import { createWorkspaceWatchRoutes } from './workspace-watch-http.js';
@@ -313,6 +318,17 @@ const dataProspectingService = new DataProspectingService(
   outboundContactPolicyStore,
   managedCommunicationClientNotificationSender
 );
+const protectionMonitoringRepository = new PostgresProtectionMonitoringRepository(database, pool);
+const protectionMonitoringService = new ProtectionMonitoringService(
+  trademarkAssetStore,
+  workspaceWatchStore,
+  new HttpDataEngineApplicantOwnerReader({
+    ...(dataEngineUrl ? { dataEngineUrl } : {}),
+    ...(dataEngineApiKey ? { apiKey: dataEngineApiKey } : {})
+  }),
+  protectionMonitoringRepository,
+  candidateStore
+);
 const preparedActionStore = new PostgresPreparedActionStore(database, pool);
 const creatorPreferences = new PostgresProductPreferenceStore(database, pool);
 
@@ -556,6 +572,10 @@ const runtime = createServiceRuntime(serviceManifest, {
     ...createDataProspectingRoutes({
       internalServiceSecret,
       service: dataProspectingService
+    }),
+    ...createProtectionMonitoringRoutes({
+      internalServiceSecret,
+      service: protectionMonitoringService
     }),
     ...createCommunicationLinkRoutes({
       internalServiceSecret,

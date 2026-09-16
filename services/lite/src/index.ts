@@ -79,3 +79,5 @@ export * from './partner-referral.js';
 export * from './partner-referral-http.js';
 export * from './education-community.js';
 export * from './education-community-http.js';
+export * from './protection-monitoring.js';
+export * from './protection-monitoring-http.js';
