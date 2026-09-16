@@ -13,6 +13,8 @@ export * from './daily-workspace-http.js';
 export * from './trademark-asset.js';
 export * from './discovered-trademark-admission.js';
 export * from './discovered-trademark-admission-http.js';
+export * from './data-prospecting.js';
+export * from './data-prospecting-http.js';
 export * from './data-engine-applicant-owner-reader.js';
 export * from './agency-lineage.js';
 export * from './agency-lineage-http.js';

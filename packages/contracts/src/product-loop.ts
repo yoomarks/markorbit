@@ -45,6 +45,7 @@ export interface ProductLoopExactReference<TId extends string = string> {
 
 export const productLoopSourceOwners = [
   'CORE',
+  'DATA_ENGINE',
   'KNOWLEDGE',
   'LITE',
   'MARKREG',
@@ -54,6 +55,7 @@ export const productLoopSourceOwners = [
 export type ProductLoopSourceOwner = (typeof productLoopSourceOwners)[number];
 
 export const productLoopSourceKinds = [
+  'DATA_ENGINE_APPLICANT_DISCOVERY',
   'KNOWLEDGE_READY_PACKAGE',
   'TRADEMARK_CONTEXT',
   'CUSTOMER_CONTEXT',

@@ -27,6 +27,8 @@ import { createDailyWorkspaceRoutes } from './daily-workspace-http.js';
 import { HttpDataEngineApplicantOwnerReader } from './data-engine-applicant-owner-reader.js';
 import { DiscoveredTrademarkAdmissionService } from './discovered-trademark-admission.js';
 import { createDiscoveredTrademarkAdmissionRoutes } from './discovered-trademark-admission-http.js';
+import { DataProspectingService } from './data-prospecting.js';
+import { createDataProspectingRoutes } from './data-prospecting-http.js';
 import { createLiteWorkItemRoutes } from './lite-work-item-http.js';
 import { PostgresLiteWorkItemStore } from './lite-work-item.js';
 import { createWorkspaceWatchRoutes } from './workspace-watch-http.js';
@@ -249,6 +251,15 @@ const candidateStore = new PostgresLiteCandidateQualificationStore(
       );
     }
   }
+);
+const dataProspectingService = new DataProspectingService(
+  new HttpDataEngineApplicantOwnerReader({
+    ...(dataEngineUrl ? { dataEngineUrl } : {}),
+    ...(dataEngineApiKey ? { apiKey: dataEngineApiKey } : {})
+  }),
+  candidateStore,
+  outboundContactPolicyStore,
+  managedCommunicationClientNotificationSender
 );
 const preparedActionStore = new PostgresPreparedActionStore(database, pool);
 const creatorPreferences = new PostgresProductPreferenceStore(database, pool);
@@ -475,6 +486,10 @@ const runtime = createServiceRuntime(serviceManifest, {
     ...createDiscoveredTrademarkAdmissionRoutes({
       internalServiceSecret,
       service: discoveredTrademarkAdmission
+    }),
+    ...createDataProspectingRoutes({
+      internalServiceSecret,
+      service: dataProspectingService
     }),
     ...createCommunicationLinkRoutes({
       internalServiceSecret,

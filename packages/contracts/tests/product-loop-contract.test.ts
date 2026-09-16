@@ -44,6 +44,19 @@ const workspaceId = 'workspace_plc-01';
 const correlationId = 'correlation_plc-01' as const;
 const principalId = 'principal_plc-reviewer' as const;
 
+describe('Data Prospecting Product-loop vocabulary', () => {
+  it('admits exact Data Engine Applicant Discovery lineage without adding authority', () => {
+    expect(productLoopSourceOwners).toContain('DATA_ENGINE');
+    expect(productLoopSourceKinds).toContain('DATA_ENGINE_APPLICANT_DISCOVERY');
+    expect(noAutomaticProductLoopConsequences).toEqual(
+      expect.objectContaining({
+        customerContactedAutomatically: false,
+        formalOpportunityCreatedAutomatically: false
+      })
+    );
+  });
+});
+
 const source = {
   schemaVersion: 1,
   owner: 'KNOWLEDGE',

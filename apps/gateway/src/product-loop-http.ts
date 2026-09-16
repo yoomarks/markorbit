@@ -424,6 +424,10 @@ export function createGatewayProductLoopRoutes(
     route('GET', '/api/lite/daily-orbit', ['workspace:read'], 'READ'),
     route('GET', '/api/lite/daily-workspace', ['workspace:read'], 'READ'),
     route('GET', '/api/lite/opportunity-candidates', ['workspace:read'], 'READ'),
+    route('POST', '/api/lite/data-prospecting/candidates', ['matter:manage']),
+    route('POST', '/api/lite/data-prospecting/candidates/:opportunityCandidateId/outreach', [
+      'matter:manage'
+    ]),
     route(
       'GET',
       '/api/lite/opportunity-candidates/:opportunityCandidateId',
