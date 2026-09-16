@@ -179,6 +179,54 @@ export function createGatewayBusinessAttributionRoutes(
         forward(request, options, '/v1/partner-commission-eligibility-candidates', 'POST')
     },
     {
+      method: 'POST',
+      path: '/api/lite/education-community/cohorts',
+      handle: (request) => forward(request, options, '/v1/education-community/cohorts', 'POST')
+    },
+    {
+      method: 'POST',
+      path: '/api/lite/education-community/participants',
+      handle: (request) => forward(request, options, '/v1/education-community/participants', 'POST')
+    },
+    {
+      method: 'POST',
+      path: '/api/lite/education-community/journeys/:journeyId/invitation',
+      handle: (request) =>
+        forward(
+          request,
+          options,
+          `/v1/education-community/journeys/${encodeURIComponent(request.params.journeyId!)}/invitation`,
+          'POST'
+        )
+    },
+    {
+      method: 'POST',
+      path: '/api/lite/education-community/activations',
+      handle: (request) => forward(request, options, '/v1/education-community/activations', 'POST')
+    },
+    {
+      method: 'POST',
+      path: '/api/lite/education-community/journeys/:journeyId/first-value',
+      handle: (request) =>
+        forward(
+          request,
+          options,
+          `/v1/education-community/journeys/${encodeURIComponent(request.params.journeyId!)}/first-value`,
+          'POST'
+        )
+    },
+    {
+      method: 'POST',
+      path: '/api/lite/education-community/journeys/:journeyId/retained-use',
+      handle: (request) =>
+        forward(
+          request,
+          options,
+          `/v1/education-community/journeys/${encodeURIComponent(request.params.journeyId!)}/retained-use`,
+          'POST'
+        )
+    },
+    {
       method: 'GET',
       path: '/api/lite/partner-commission-eligibility-candidates/:candidateId',
       handle: (request) =>

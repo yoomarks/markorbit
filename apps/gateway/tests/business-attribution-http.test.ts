@@ -170,4 +170,40 @@ describe('Gateway Business Attribution boundary', () => {
       'http://lite.test/v1/partner-commission-eligibility-candidates'
     ]);
   });
+
+  it('forwards the bounded education journey without accepting server-owned authority fields', async () => {
+    const fetchImpl = vi.fn<
+      (input: string | URL | Request, init?: RequestInit) => Promise<Response>
+    >(() => Promise.resolve(new Response(JSON.stringify({ ok: true }), { status: 200 })));
+    const routes = createGatewayBusinessAttributionRoutes({
+      liteUrl: 'http://lite.test',
+      authenticationClient: auth(),
+      internalServiceSecret: 'internal-secret-32-bytes-minimum!!',
+      csrfSecret: csrf,
+      allowedOrigins: [origin],
+      fetchImpl
+    });
+    await route(routes, '/api/lite/education-community/journeys/:journeyId/first-value').handle(
+      request(
+        'POST',
+        {
+          expectedVersion: 3,
+          workItem: {
+            id: 'lite-work-item_first',
+            version: 1,
+            fingerprintSha256: 'a'.repeat(64)
+          }
+        },
+        { journeyId: 'education-journey_attendee-1' }
+      )
+    );
+    expect(fetchImpl.mock.calls[0]![0]).toBe(
+      'http://lite.test/v1/education-community/journeys/education-journey_attendee-1/first-value'
+    );
+    await expect(
+      route(routes, '/api/lite/education-community/cohorts').handle(
+        request('POST', { name: 'Clinic', source: {}, authorityConsequences: {} })
+      )
+    ).rejects.toMatchObject({ code: 'ACTOR_SPOOF_REJECTED' });
+  });
 });
