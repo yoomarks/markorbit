@@ -1,4 +1,4 @@
-﻿export type TradingMarketplaceTargetBindingId = `trading-marketplace-target-binding_${string}`;
+export type TradingMarketplaceTargetBindingId = `trading-marketplace-target-binding_${string}`;
 
 export const tradingMarketplaceTargetBindingLifecyclesV1 = ['ACTIVE', 'STALE', 'REVOKED'] as const;
 export type TradingMarketplaceTargetBindingLifecycleV1 =

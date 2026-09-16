@@ -1,4 +1,4 @@
-﻿CREATE TABLE lite_trading_marketplace_target_binding_versions (
+CREATE TABLE lite_trading_marketplace_target_binding_versions (
   workspace_id uuid NOT NULL REFERENCES workspaces(workspace_id),
   target_binding_id text NOT NULL CHECK (target_binding_id ~ '^trading-marketplace-target-binding_[A-Za-z0-9_-]+$'),
   version integer NOT NULL CHECK (version > 0),

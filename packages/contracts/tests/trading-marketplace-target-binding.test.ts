@@ -1,4 +1,4 @@
-﻿import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import {
   noTradingMarketplaceTargetBindingAuthorityConsequencesV1,
   parseTradingMarketplaceTargetBindingV1
