@@ -75,10 +75,12 @@ export async function planTaskCloseout(options = {}, suppliedDependencies = {}) 
     ...suppliedDependencies
   };
   const repoRoot = resolveRepositoryRoot(options.cwd ?? process.cwd());
-  const report = await dependencies.doctorRepository(
-    { cwd: repoRoot, remote: options.remote },
-    dependencies.doctorDependencies
-  );
+  const report =
+    options.report ??
+    (await dependencies.doctorRepository(
+      { cwd: repoRoot, remote: options.remote },
+      dependencies.doctorDependencies
+    ));
   const requestedPath = normalizedPath(options.worktree);
   const target = report.worktrees.find((entry) => normalizedPath(entry.path) === requestedPath);
   if (!target) block('TASK_WORKTREE_NOT_FOUND', { worktree: resolve(options.worktree) });
