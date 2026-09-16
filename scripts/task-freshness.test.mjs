@@ -8,7 +8,9 @@ import {
   GuardError,
   bootstrapTask,
   evaluateConcurrentOverlap,
+  evaluateIssueCoordination,
   fetchRemoteMain,
+  parseIssueCoordination,
   prepushTask,
   verifyWorktreeBase
 } from './task-freshness.mjs';
@@ -82,6 +84,33 @@ function bootstrapOptions(fixture, suffix, extra = {}) {
     scope: ['services/lite/src/task.ts'],
     ...extra
   };
+}
+
+function coordinationBlock(baseSha, overrides = {}) {
+  const declaration = {
+    version: 1,
+    status: 'ready',
+    base_sha: baseSha,
+    migration_sensitive: false,
+    reserved_migration: 'none',
+    blocked_by: [],
+    ...overrides
+  };
+  return `Context remains prose.\n\n\`\`\`markorbit-coordination\n${JSON.stringify(declaration)}\n\`\`\`\n`;
+}
+
+function issue(number, body, state = 'open') {
+  return { number, body, state };
+}
+
+async function evaluateIssue(fixture, body, options = {}) {
+  return evaluateIssueCoordination({
+    issue: issue(options.issueNumber ?? 1286, body, options.state),
+    issueNumber: options.issueNumber ?? 1286,
+    baseSha: options.baseSha ?? fixture.initialSha,
+    repoRoot: fixture.clone,
+    loadBlocker: options.loadBlocker ?? (async () => assert.fail('Unexpected blocker read.'))
+  });
 }
 
 async function assertGuardReason(action, reason) {
@@ -247,4 +276,143 @@ test('non-conflicting ordinary work is not over-blocked', () => {
     ]
   );
   assert.deepEqual(conflicts, []);
+});
+
+test('open issue with a current declaration passes issue coordination audit', async (t) => {
+  const fixture = createFixture(t);
+  const audit = await evaluateIssue(fixture, coordinationBlock(fixture.initialSha));
+  assert.deepEqual(audit, {
+    status: 'PASS',
+    reason: 'ISSUE_COORDINATION_CURRENT',
+    migrationSensitive: false,
+    reservedMigration: 'none'
+  });
+});
+
+test('closed implementation issue is blocked', async (t) => {
+  const fixture = createFixture(t);
+  const audit = await evaluateIssue(fixture, coordinationBlock(fixture.initialSha), {
+    state: 'closed'
+  });
+  assert.equal(audit.status, 'BLOCKED');
+  assert.equal(audit.reason, 'ISSUE_CLOSED');
+});
+
+test('open declared blocker blocks implementation', async (t) => {
+  const fixture = createFixture(t);
+  const body = coordinationBlock(fixture.initialSha, {
+    blocked_by: [{ type: 'issue', number: 42 }]
+  });
+  const audit = await evaluateIssue(fixture, body, {
+    loadBlocker: async () => ({ kind: 'issue', number: 42, state: 'open' })
+  });
+  assert.equal(audit.status, 'BLOCKED');
+  assert.equal(audit.reason, 'ISSUE_BLOCKER_OPEN');
+  assert.equal(audit.blockerNumber, 42);
+});
+
+test('closed or merged declared blocker produces a stale declaration warning', async (t) => {
+  const fixture = createFixture(t);
+  const body = coordinationBlock(fixture.initialSha, {
+    blocked_by: [{ type: 'pr', number: 1284 }]
+  });
+  const audit = await evaluateIssue(fixture, body, {
+    loadBlocker: async () => ({ kind: 'pr', number: 1284, state: 'closed', merged: true })
+  });
+  assert.deepEqual(audit, {
+    status: 'WARN',
+    reason: 'ISSUE_BLOCKER_STALE',
+    satisfiedBlockers: ['pr#1284']
+  });
+});
+
+test('pinned issue base that differs from remote main is blocked', async (t) => {
+  const fixture = createFixture(t);
+  const staleSha = 'a'.repeat(40);
+  const audit = await evaluateIssue(fixture, coordinationBlock(staleSha));
+  assert.equal(audit.status, 'BLOCKED');
+  assert.equal(audit.reason, 'ISSUE_BASE_STALE');
+  assert.equal(audit.declaredBaseSha, staleSha);
+  assert.equal(audit.currentBaseSha, fixture.initialSha);
+});
+
+test('consumed migration reservation is blocked against authoritative migration state', async (t) => {
+  const fixture = createFixture(t, { migrations: true });
+  const body = coordinationBlock(fixture.initialSha, {
+    migration_sensitive: true,
+    reserved_migration: '0124'
+  });
+  const audit = await evaluateIssue(fixture, body);
+  assert.equal(audit.status, 'BLOCKED');
+  assert.equal(audit.reason, 'ISSUE_MIGRATION_STALE');
+  assert.equal(audit.currentMigrationTail, '0124');
+});
+
+test('migration-sensitive declaration with no reservation stays non-reserving', async (t) => {
+  const fixture = createFixture(t);
+  const body = coordinationBlock(fixture.initialSha, {
+    migration_sensitive: true,
+    reserved_migration: 'none'
+  });
+  const audit = await evaluateIssue(fixture, body);
+  assert.equal(audit.status, 'PASS');
+  assert.equal(audit.reservedMigration, 'none');
+});
+
+test('malformed issue coordination declaration fails closed in strict mode', async (t) => {
+  const fixture = createFixture(t);
+  const malformed = '```markorbit-coordination\n{"version":1}\n```';
+  assert.throws(
+    () => parseIssueCoordination(malformed),
+    (error) => error instanceof GuardError && error.reason === 'ISSUE_COORDINATION_MALFORMED'
+  );
+  await assertGuardReason(
+    () =>
+      bootstrapTask(
+        bootstrapOptions(fixture, 'malformed-issue', { issue: 1286, strictIssue: true }),
+        {
+          inspectConcurrentWork: fixture.inspectConcurrentWork,
+          inspectIssueCoordination: async () => parseIssueCoordination(malformed)
+        }
+      ),
+    'ISSUE_COORDINATION_MALFORMED'
+  );
+});
+
+test('GitHub issue metadata failure fails closed in strict mode', async (t) => {
+  const fixture = createFixture(t);
+  await assertGuardReason(
+    () =>
+      bootstrapTask(
+        bootstrapOptions(fixture, 'issue-network', { issue: 1286, strictIssue: true }),
+        {
+          inspectConcurrentWork: fixture.inspectConcurrentWork,
+          inspectIssueCoordination: async () => {
+            throw new GuardError('ISSUE_METADATA_UNAVAILABLE', { detail: 'timeout' });
+          }
+        }
+      ),
+    'ISSUE_METADATA_UNAVAILABLE'
+  );
+});
+
+test('legacy issue is explicit advisory and strict mode can require a declaration', async (t) => {
+  const fixture = createFixture(t);
+  const undeclared = await evaluateIssue(fixture, 'Legacy prose only.');
+  assert.deepEqual(undeclared, {
+    status: 'WARN',
+    reason: 'ISSUE_COORDINATION_UNDECLARED'
+  });
+
+  await assertGuardReason(
+    () =>
+      bootstrapTask(
+        bootstrapOptions(fixture, 'legacy-strict', { issue: 1286, strictIssue: true }),
+        {
+          inspectConcurrentWork: fixture.inspectConcurrentWork,
+          inspectIssueCoordination: async () => undeclared
+        }
+      ),
+    'ISSUE_COORDINATION_UNDECLARED'
+  );
 });
