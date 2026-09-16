@@ -1,6 +1,8 @@
 // @vitest-environment jsdom
 import '@testing-library/jest-dom/vitest';
-import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { cleanup, render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { axe } from 'jest-axe';
 import { afterEach, describe, expect, it } from 'vitest';
 import { SourcesHistoryDisclosure } from './SourcesHistoryDisclosure.js';
 import { sourcesHistoryFixtures } from './fixtures.js';
@@ -54,18 +56,52 @@ describe('SourcesHistoryDisclosure', () => {
     expect(screen.queryByRole('heading', { name: 'Recorded information' })).not.toBeInTheDocument();
   });
 
-  it('reveals optional diagnostics through the native Advanced disclosure', () => {
-    render(
+  it('has no automated accessibility violations in normal and unavailable states', async () => {
+    const normal = render(
       <SourcesHistoryDisclosure {...sourcesHistoryFixtures.normal} diagnostics={diagnostics} />
+    );
+    expect((await axe(normal.container)).violations).toEqual([]);
+    normal.unmount();
+
+    const unavailable = render(
+      <SourcesHistoryDisclosure {...sourcesHistoryFixtures.unavailable} diagnostics={diagnostics} />
+    );
+    expect(screen.getByRole('status')).toHaveTextContent('Source information is unavailable');
+    expect((await axe(unavailable.container)).violations).toEqual([]);
+  });
+
+  it('preserves disclosure focus and does not create a keyboard trap', async () => {
+    const user = userEvent.setup();
+    render(
+      <>
+        <SourcesHistoryDisclosure {...sourcesHistoryFixtures.normal} diagnostics={diagnostics} />
+        <button type="button">After pattern</button>
+      </>
     );
 
     const advanced = screen.getByText('Advanced');
     expect(advanced.closest('details')).not.toHaveAttribute('open');
 
-    fireEvent.click(advanced);
+    advanced.focus();
+    expect(advanced).toHaveFocus();
+    await user.click(advanced);
 
     expect(screen.getByRole('heading', { name: 'Diagnostics' })).toBeVisible();
     expect(screen.getByText('Exact version')).toBeVisible();
     expect(screen.getByText(/not required to complete ordinary work/i)).toBeVisible();
+    expect(advanced).toHaveFocus();
+    expect((await axe(document.body)).violations).toEqual([]);
+
+    await user.click(advanced);
+    expect(advanced.closest('details')).not.toHaveAttribute('open');
+    expect(advanced).toHaveFocus();
+    await user.tab();
+    expect(advanced).not.toHaveFocus();
+  });
+
+  it('detects a deliberately inaccessible regression fixture', async () => {
+    const { container } = render(<button type="button" />);
+    const results = await axe(container);
+    expect(results.violations.map(({ id }) => id)).toContain('button-name');
   });
 });

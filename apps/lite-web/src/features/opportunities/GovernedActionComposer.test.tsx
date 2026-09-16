@@ -100,6 +100,11 @@ describe('GovernedActionComposer', () => {
     expect(
       screen.getByRole('heading', { name: 'Choose Northstar Trademark Services' })
     ).toBeVisible();
+    expect(
+      screen.getByRole('button', { name: 'Record human Selection' })
+    ).toHaveAccessibleDescription(
+      'Explain why this Candidate fits before recording the Selection.'
+    );
     expect(selectSpy).not.toHaveBeenCalled();
 
     await user.type(

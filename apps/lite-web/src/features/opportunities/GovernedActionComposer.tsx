@@ -241,10 +241,21 @@ function SelectionReview({
           <Button type="button" variant="secondary" disabled={busy} onClick={onBack}>
             Back to comparison
           </Button>
-          <Button type="submit" disabled={busy || !rationale.trim()}>
+          <Button
+            type="submit"
+            disabled={busy || !rationale.trim()}
+            aria-describedby={
+              !busy && !rationale.trim() ? 'selection-rationale-requirement' : undefined
+            }
+          >
             {busy ? 'Recording Selection…' : 'Record human Selection'}
           </Button>
         </div>
+        {!busy && !rationale.trim() ? (
+          <p id="selection-rationale-requirement">
+            Explain why this Candidate fits before recording the Selection.
+          </p>
+        ) : null}
       </form>
     </Card>
   );
