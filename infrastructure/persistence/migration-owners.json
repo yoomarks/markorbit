@@ -196,6 +196,7 @@
     "0120_site_runtime": "@markorbit/site-service",
     "0121_capability_engine_workspace_capability_binding_validity": "@markorbit/capability-engine",
     "0122_lite_outbound_contact_policy": "@markorbit/lite-service",
-    "0123_lite_trading_listing_assets": "@markorbit/lite-service"
+    "0123_lite_trading_listing_assets": "@markorbit/lite-service",
+    "0124_lite_trading_marketplace_targets": "@markorbit/lite-service"
   }
 }
