@@ -1,0 +1,260 @@
+{
+  "schemaVersion": 1,
+  "owner": "apps/lite-web",
+  "purpose": "Read-only Storybook evidence inventory for representative mature Lite user surfaces.",
+  "stateFamilies": [
+    "LOADING",
+    "EMPTY",
+    "PARTIAL",
+    "STALE_OR_NEEDS_REFRESH",
+    "UNAVAILABLE",
+    "PERMISSION_RESTRICTED",
+    "ERROR",
+    "SUCCESS_OR_READY"
+  ],
+  "scopeExclusions": [
+    {
+      "path": "apps/lite-web/src/features/agency-ia-prototype/AgencyIaPrototype.stories.tsx",
+      "reason": "Agency IA remains a prototype and is not authorized for production cutover."
+    },
+    {
+      "path": "apps/lite-web/src/features/trademark-assets/HistoricalTrademarkAssetImportPanel.stories.tsx",
+      "reason": "Historical migration belongs to the active Agency delivery lane."
+    },
+    {
+      "path": "apps/lite-web/src/features/trading-studio/TradingStudio.stories.tsx",
+      "reason": "Trading evidence is owned by the Trading lane."
+    },
+    {
+      "path": "apps/lite-web/src/features/trademark-assets/TrademarkAssetWorkspace.stories.tsx",
+      "reason": "The current story is a sell-side workspace and remains in the Trading evidence lane."
+    }
+  ],
+  "surfaces": [
+    {
+      "id": "capability-center",
+      "label": "Capability Center",
+      "userJob": "Understand available governed capabilities and inspect their current evidence without changing formal state.",
+      "storyFile": "apps/lite-web/src/features/capability/CapabilityCenter.stories.tsx",
+      "coverage": {
+        "LOADING": { "status": "EVIDENCED", "stories": ["Loading"] },
+        "EMPTY": { "status": "EVIDENCED", "stories": ["Empty"] },
+        "PARTIAL": { "status": "EVIDENCED", "stories": ["Partial"] },
+        "STALE_OR_NEEDS_REFRESH": { "status": "EVIDENCED", "stories": ["StaleDisposition"] },
+        "UNAVAILABLE": {
+          "status": "MISSING",
+          "reason": "No story isolates owner-data unavailability from recoverable request failure."
+        },
+        "PERMISSION_RESTRICTED": { "status": "EVIDENCED", "stories": ["PermissionDenied"] },
+        "ERROR": { "status": "EVIDENCED", "stories": ["RecoverableError"] },
+        "SUCCESS_OR_READY": { "status": "EVIDENCED", "stories": ["Ready"] }
+      }
+    },
+    {
+      "id": "content-studio",
+      "label": "Content Studio",
+      "userJob": "Review governed content work, distinguish preparation from approval, and understand incomplete owner context.",
+      "storyFile": "apps/lite-web/src/features/content-studio/ContentStudio.stories.tsx",
+      "coverage": {
+        "LOADING": {
+          "status": "MISSING",
+          "reason": "The story set covers mutation-busy but not initial workspace loading."
+        },
+        "EMPTY": { "status": "EVIDENCED", "stories": ["EmptyWorkspace", "CompleteEmpty"] },
+        "PARTIAL": { "status": "EVIDENCED", "stories": ["PartialEmptyUnknown", "PartialMixed"] },
+        "STALE_OR_NEEDS_REFRESH": {
+          "status": "MISSING",
+          "reason": "No fixture-backed story demonstrates a stale content snapshot that needs refresh."
+        },
+        "UNAVAILABLE": { "status": "EVIDENCED", "stories": ["PersistenceUnavailable"] },
+        "PERMISSION_RESTRICTED": { "status": "EVIDENCED", "stories": ["PermissionDenied"] },
+        "ERROR": {
+          "status": "EVIDENCED",
+          "stories": ["FeedbackMutationError", "PreparationMutationError"]
+        },
+        "SUCCESS_OR_READY": {
+          "status": "EVIDENCED",
+          "stories": ["SuccessList", "ReadyForReview", "ApprovedPackageReady"]
+        }
+      }
+    },
+    {
+      "id": "execution-release",
+      "label": "Execution Release",
+      "userJob": "Review whether prepared work is ready for a governed release without treating payment or preparation as completion.",
+      "storyFile": "apps/lite-web/src/features/execution-release/ExecutionRelease.stories.tsx",
+      "coverage": {
+        "LOADING": { "status": "EVIDENCED", "stories": ["QueueLoading"] },
+        "EMPTY": { "status": "EVIDENCED", "stories": ["QueueEmpty"] },
+        "PARTIAL": { "status": "EVIDENCED", "stories": ["BlockingUnknown"] },
+        "STALE_OR_NEEDS_REFRESH": { "status": "EVIDENCED", "stories": ["Stale"] },
+        "UNAVAILABLE": {
+          "status": "MISSING",
+          "reason": "Recoverable request failure exists, but an explicit unavailable-data state does not."
+        },
+        "PERMISSION_RESTRICTED": {
+          "status": "MISSING",
+          "reason": "No Storybook fixture demonstrates a release queue the user cannot access."
+        },
+        "ERROR": { "status": "EVIDENCED", "stories": ["RecoverableError"] },
+        "SUCCESS_OR_READY": { "status": "EVIDENCED", "stories": ["Ready", "ReleasedReceipt"] }
+      }
+    },
+    {
+      "id": "guide",
+      "label": "Contextual AI Guide",
+      "userJob": "Ask for contextual guidance while seeing when the selected asset is missing or no longer current.",
+      "storyFile": "apps/lite-web/src/features/guide/GuideWorkspace.stories.tsx",
+      "coverage": {
+        "LOADING": {
+          "status": "MISSING",
+          "reason": "No story demonstrates asset or guidance loading."
+        },
+        "EMPTY": { "status": "EVIDENCED", "stories": ["AssetChooser"] },
+        "PARTIAL": {
+          "status": "NOT_APPLICABLE",
+          "reason": "The current bounded Guide model exposes exact asset context or explicit unavailability, not a partial projection."
+        },
+        "STALE_OR_NEEDS_REFRESH": { "status": "EVIDENCED", "stories": ["VersionDriftMobile390"] },
+        "UNAVAILABLE": { "status": "EVIDENCED", "stories": ["ExplicitAssetUnavailable"] },
+        "PERMISSION_RESTRICTED": {
+          "status": "MISSING",
+          "reason": "No story demonstrates denied access to contextual guidance."
+        },
+        "ERROR": {
+          "status": "MISSING",
+          "reason": "No story demonstrates a recoverable guidance request failure."
+        },
+        "SUCCESS_OR_READY": { "status": "EVIDENCED", "stories": ["ExactAssetContext"] }
+      }
+    },
+    {
+      "id": "workspace-insights",
+      "label": "Workspace Insights",
+      "userJob": "Understand evidence-backed workspace preferences without mistaking missing evidence for an inferred preference.",
+      "storyFile": "apps/lite-web/src/features/insights/WorkspaceInsights.stories.tsx",
+      "coverage": {
+        "LOADING": { "status": "EVIDENCED", "stories": ["Loading"] },
+        "EMPTY": { "status": "EVIDENCED", "stories": ["NoPreferenceEvidence"] },
+        "PARTIAL": { "status": "EVIDENCED", "stories": ["PreferenceReadUnavailable"] },
+        "STALE_OR_NEEDS_REFRESH": {
+          "status": "MISSING",
+          "reason": "No story demonstrates preference evidence that needs refresh."
+        },
+        "UNAVAILABLE": { "status": "EVIDENCED", "stories": ["OwnerUnavailable"] },
+        "PERMISSION_RESTRICTED": { "status": "EVIDENCED", "stories": ["PermissionDenied"] },
+        "ERROR": {
+          "status": "MISSING",
+          "reason": "No story distinguishes a recoverable request error from unavailable owner data."
+        },
+        "SUCCESS_OR_READY": {
+          "status": "EVIDENCED",
+          "stories": ["ExplicitPreference", "ProductFeedbackPreference"]
+        }
+      }
+    },
+    {
+      "id": "candidate-review",
+      "label": "Opportunity Candidate Review",
+      "userJob": "Review an opportunity candidate and its governed disposition without treating an AI suggestion as a decision.",
+      "storyFile": "apps/lite-web/src/features/opportunities/CandidateReview.stories.tsx",
+      "coverage": {
+        "LOADING": { "status": "EVIDENCED", "stories": ["LoadingList", "DetailLoading"] },
+        "EMPTY": { "status": "EVIDENCED", "stories": ["EmptyWorkspace", "NoDecision"] },
+        "PARTIAL": { "status": "EVIDENCED", "stories": ["DispositionedWithoutDecision"] },
+        "STALE_OR_NEEDS_REFRESH": {
+          "status": "EVIDENCED",
+          "stories": ["HistoricalReviewedVersion", "QualificationConflict"]
+        },
+        "UNAVAILABLE": { "status": "EVIDENCED", "stories": ["QualificationUnavailable"] },
+        "PERMISSION_RESTRICTED": {
+          "status": "EVIDENCED",
+          "stories": ["AuthenticationRequired", "PermissionDenied"]
+        },
+        "ERROR": {
+          "status": "EVIDENCED",
+          "stories": ["ServiceUnavailable", "InvalidQualification"]
+        },
+        "SUCCESS_OR_READY": {
+          "status": "EVIDENCED",
+          "stories": ["ListSuccess", "QualifiedForMarkReg"]
+        }
+      }
+    },
+    {
+      "id": "governed-action-composer",
+      "label": "Governed Action Composer",
+      "userJob": "Compare candidates and prepare an action while authority remains explicitly bounded.",
+      "storyFile": "apps/lite-web/src/features/opportunities/GovernedActionComposer.stories.tsx",
+      "coverage": {
+        "LOADING": { "status": "EVIDENCED", "stories": ["Loading"] },
+        "EMPTY": { "status": "EVIDENCED", "stories": ["KnownEmpty"] },
+        "PARTIAL": {
+          "status": "NOT_APPLICABLE",
+          "reason": "The current projection resolves to candidate comparison, known empty, or explicit authority unavailability."
+        },
+        "STALE_OR_NEEDS_REFRESH": {
+          "status": "MISSING",
+          "reason": "No story demonstrates a candidate comparison that needs refresh."
+        },
+        "UNAVAILABLE": { "status": "EVIDENCED", "stories": ["AuthorityUnavailable"] },
+        "PERMISSION_RESTRICTED": {
+          "status": "MISSING",
+          "reason": "No story demonstrates a permission-restricted composer."
+        },
+        "ERROR": {
+          "status": "MISSING",
+          "reason": "No story distinguishes recoverable failure from explicit authority unavailability."
+        },
+        "SUCCESS_OR_READY": { "status": "EVIDENCED", "stories": ["CandidateComparison"] }
+      }
+    },
+    {
+      "id": "site-manager",
+      "label": "Site Manager",
+      "userJob": "Inspect the owner-backed site state and prepare bounded updates without implying publication occurred.",
+      "storyFile": "apps/lite-web/src/features/site-manager/SiteManager.stories.tsx",
+      "coverage": {
+        "LOADING": { "status": "EVIDENCED", "stories": ["Loading"] },
+        "EMPTY": { "status": "EVIDENCED", "stories": ["Empty"] },
+        "PARTIAL": { "status": "EVIDENCED", "stories": ["PartialDomainUnavailable"] },
+        "STALE_OR_NEEDS_REFRESH": {
+          "status": "MISSING",
+          "reason": "No story demonstrates a site projection that needs refresh."
+        },
+        "UNAVAILABLE": { "status": "EVIDENCED", "stories": ["PartialDomainUnavailable"] },
+        "PERMISSION_RESTRICTED": { "status": "EVIDENCED", "stories": ["PermissionDenied"] },
+        "ERROR": {
+          "status": "MISSING",
+          "reason": "No story demonstrates a recoverable owner request failure."
+        },
+        "SUCCESS_OR_READY": { "status": "EVIDENCED", "stories": ["Ready"] }
+      }
+    },
+    {
+      "id": "today-workspace",
+      "label": "Today Workspace",
+      "userJob": "See the next useful work, create a governed artifact, and move it only through explicit review or handoff.",
+      "storyFile": "apps/lite-web/src/features/today/TodayWorkspace.stories.tsx",
+      "coverage": {
+        "LOADING": {
+          "status": "MISSING",
+          "reason": "No story demonstrates initial Today workspace loading."
+        },
+        "EMPTY": { "status": "EVIDENCED", "stories": ["Empty"] },
+        "PARTIAL": { "status": "EVIDENCED", "stories": ["PartialContext"] },
+        "STALE_OR_NEEDS_REFRESH": {
+          "status": "MISSING",
+          "reason": "No story demonstrates a Today item that needs refresh before work continues."
+        },
+        "UNAVAILABLE": { "status": "EVIDENCED", "stories": ["DependencyError"] },
+        "PERMISSION_RESTRICTED": { "status": "EVIDENCED", "stories": ["PermissionDenied"] },
+        "ERROR": { "status": "EVIDENCED", "stories": ["DependencyError"] },
+        "SUCCESS_OR_READY": {
+          "status": "EVIDENCED",
+          "stories": ["RecommendationDetail", "PreparedActionReview", "HandoffSuccess"]
+        }
+      }
+    }
+  ]
+}
