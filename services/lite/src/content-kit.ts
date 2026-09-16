@@ -150,14 +150,35 @@ function latestDraft(
 
 function variantsFor(
   pick: Readonly<ContentPick>,
-  drafts: readonly Readonly<ContentDraft>[]
+  drafts: readonly Readonly<ContentDraft>[],
+  packages: readonly Readonly<PublishPackage>[]
 ): readonly PlatformVariant[] {
-  const latest = latestDraft(drafts);
+  const latestPackage = [...packages].sort(
+    (left, right) =>
+      Date.parse(right.createdAt) - Date.parse(left.createdAt) ||
+      right.version - left.version ||
+      left.publishPackageId.localeCompare(right.publishPackageId)
+  )[0];
+  const latest = latestPackage
+    ? drafts.find(
+        (draft) =>
+          draft.contentDraftId === latestPackage.contentDraft.id &&
+          String(draft.version) === String(latestPackage.contentDraft.version)
+      )
+    : latestDraft(drafts);
+  if (latestPackage && !latest) {
+    throw new ContentKitError(
+      'PERSISTENCE_UNAVAILABLE',
+      'Stored PublishPackage no longer has its exact Content Draft.',
+      503,
+      true
+    );
+  }
   return pick.recommendedPlatforms.map((platform) => ({
     variantId: `platform-variant_${digest(`${pick.contentPickId}:${platform}`).slice(0, 24)}`,
     kind: variantKind(platform, Boolean(latest)),
-    title: latest?.title ?? pick.title,
-    body: latest?.body ?? starterBody(pick),
+    title: latestPackage?.title ?? latest?.title ?? pick.title,
+    body: latestPackage?.body ?? latest?.body ?? starterBody(pick),
     topicTags: [],
     ...(latest
       ? {
@@ -165,6 +186,15 @@ function variantsFor(
             id: latest.contentDraftId,
             version: latest.version
           }
+        }
+      : {}),
+    ...(latestPackage
+      ? {
+          publishPackage: {
+            id: latestPackage.publishPackageId,
+            version: latestPackage.version
+          },
+          sourceFingerprintSha256: latestPackage.publishPackageFingerprintSha256
         }
       : {}),
     humanReviewRequired: true,
@@ -296,7 +326,11 @@ export function projectContentKit(
     whyPublish: input.pick.whyPublish,
     angles: anglesFor(input.pick, input.lifecycle.opportunity, audience),
     audience,
-    platformVariants: variantsFor(input.pick, input.lifecycle.drafts),
+    platformVariants: variantsFor(
+      input.pick,
+      input.lifecycle.drafts,
+      input.lifecycle.publishPackages
+    ),
     draftReferences,
     publishPackageReferences,
     visualBriefReferences: [],

@@ -11,11 +11,16 @@ import type {
   BusinessAttributionReferenceV1,
   BusinessAttributionStateV1
 } from '@markorbit/contracts/business-attribution';
+import type { ProductLoopUseFeedback, PublishPackageId } from '@markorbit/contracts/product-loop';
 import { HttpError, json, type JsonRequest, type JsonRoute } from '@markorbit/service-kit';
 import {
   BusinessAttributionRuntimeError,
   type PostgresBusinessAttributionStore
 } from './business-attribution.js';
+import {
+  ContentLedDemandError,
+  type ContentLedDemandAttributionService
+} from './content-led-demand.js';
 
 type Store = Pick<PostgresBusinessAttributionStore, 'create' | 'find' | 'summarizeSiteInbound'>;
 type Body = Record<string, unknown>;
@@ -64,6 +69,19 @@ function bodyOf(request: JsonRequest): Body {
   }
   return request.body as Body;
 }
+function object(value: unknown, field: string): Body {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    throw new HttpError(400, 'INVALID_REQUEST', `${field} must be an object.`);
+  }
+  return value as Body;
+}
+function exactObject(value: unknown, field: string, allowed: readonly string[]): Body {
+  const parsed = object(value, field);
+  if (Object.keys(parsed).some((key) => !allowed.includes(key))) {
+    throw new HttpError(400, 'INVALID_REQUEST', `${field} contains unsupported fields.`);
+  }
+  return parsed;
+}
 function exact(body: Body): void {
   const allowed = new Set([
     'motionKind',
@@ -94,10 +112,22 @@ function exact(body: Body): void {
     throw new HttpError(400, 'INVALID_REQUEST', 'Request body contains unsupported fields.');
   }
 }
+function exactContentLedDemand(body: Body): void {
+  const allowed = new Set(['publishPackage', 'useFeedback', 'siteInboundAttribution']);
+  if (Object.keys(body).some((field) => !allowed.has(field))) {
+    throw new HttpError(400, 'INVALID_REQUEST', 'Request body contains unsupported fields.');
+  }
+}
 function text(value: unknown, field: string): string {
   if (typeof value !== 'string' || !value.trim())
     throw new HttpError(400, 'INVALID_REQUEST', `${field} must be a non-empty string.`);
   return value.trim();
+}
+function whole(value: unknown, field: string): number {
+  if (!Number.isSafeInteger(value) || Number(value) < 1) {
+    throw new HttpError(400, 'INVALID_REQUEST', `${field} must be a positive integer.`);
+  }
+  return Number(value);
 }
 function refs(value: unknown, field: string): readonly Readonly<BusinessAttributionReferenceV1>[] {
   if (!Array.isArray(value))
@@ -114,6 +144,8 @@ function noQuery(request: JsonRequest): void {
     throw new HttpError(400, 'INVALID_REQUEST', 'Query parameters are not supported.');
 }
 function map(error: unknown): never {
+  if (error instanceof ContentLedDemandError)
+    throw new HttpError(error.status, error.code, error.message, error.retryable);
   if (error instanceof BusinessAttributionRuntimeError)
     throw new HttpError(error.status, error.code, error.message, error.retryable);
   throw error;
@@ -122,6 +154,7 @@ function map(error: unknown): never {
 export function createBusinessAttributionRoutes(options: {
   internalServiceSecret: string;
   store: Store;
+  contentLedDemandService?: ContentLedDemandAttributionService;
 }): readonly JsonRoute[] {
   return [
     {
@@ -132,6 +165,14 @@ export function createBusinessAttributionRoutes(options: {
         noQuery(request);
         const body = bodyOf(request);
         exact(body);
+        const motionKind = text(body.motionKind, 'motionKind') as BusinessAttributionMotionKindV1;
+        if (motionKind === 'CONTENT_LED_DEMAND') {
+          throw new HttpError(
+            400,
+            'VERIFIED_LINEAGE_REQUIRED',
+            'Content-led demand attribution requires the verified lineage route.'
+          );
+        }
         try {
           return json(
             201,
@@ -139,7 +180,7 @@ export function createBusinessAttributionRoutes(options: {
               workspaceId: principal.workspaceId,
               actorPrincipalId: principal.userId,
               idempotencyKey: text(request.headers['idempotency-key'], 'Idempotency-Key'),
-              motionKind: text(body.motionKind, 'motionKind') as BusinessAttributionMotionKindV1,
+              motionKind,
               sourceRefs: refs(body.sourceRefs, 'sourceRefs'),
               touchpointRefs: refs(body.touchpointRefs, 'touchpointRefs'),
               ...(body.downstreamRef === undefined
@@ -171,6 +212,14 @@ export function createBusinessAttributionRoutes(options: {
         noQuery(request);
         const body = bodyOf(request);
         exact(body);
+        const motionKind = text(body.motionKind, 'motionKind') as BusinessAttributionMotionKindV1;
+        if (motionKind === 'CONTENT_LED_DEMAND') {
+          throw new HttpError(
+            400,
+            'VERIFIED_LINEAGE_REQUIRED',
+            'Content-led demand attribution requires the verified lineage route.'
+          );
+        }
         try {
           return json(
             201,
@@ -178,7 +227,7 @@ export function createBusinessAttributionRoutes(options: {
               workspaceId: principal.workspaceId,
               actorPrincipalId: principal.userId,
               idempotencyKey: text(request.headers['idempotency-key'], 'Idempotency-Key'),
-              motionKind: text(body.motionKind, 'motionKind') as BusinessAttributionMotionKindV1,
+              motionKind,
               sourceRefs: refs(body.sourceRefs, 'sourceRefs'),
               touchpointRefs: refs(body.touchpointRefs, 'touchpointRefs'),
               ...(body.downstreamRef === undefined
@@ -202,6 +251,76 @@ export function createBusinessAttributionRoutes(options: {
         }
       }
     },
+    ...(options.contentLedDemandService
+      ? [
+          {
+            method: 'POST' as const,
+            path: '/v1/content-led-demand-attribution-links',
+            handle: async (request: JsonRequest) => {
+              const principal = principalOf(
+                request,
+                options.internalServiceSecret,
+                'workspace:manage'
+              );
+              noQuery(request);
+              const body = bodyOf(request);
+              exactContentLedDemand(body);
+              const publishPackage = exactObject(body.publishPackage, 'publishPackage', [
+                'id',
+                'version',
+                'fingerprintSha256'
+              ]);
+              const useFeedback = exactObject(body.useFeedback, 'useFeedback', ['id', 'version']);
+              const siteInboundAttribution = exactObject(
+                body.siteInboundAttribution,
+                'siteInboundAttribution',
+                ['id', 'version', 'fingerprintSha256']
+              );
+              try {
+                return json(
+                  201,
+                  await options.contentLedDemandService!.record({
+                    workspaceId: principal.workspaceId,
+                    actorPrincipalId: principal.userId,
+                    idempotencyKey: text(request.headers['idempotency-key'], 'Idempotency-Key'),
+                    publishPackage: {
+                      id: text(publishPackage.id, 'publishPackage.id') as PublishPackageId,
+                      version: whole(publishPackage.version, 'publishPackage.version'),
+                      fingerprintSha256: text(
+                        publishPackage.fingerprintSha256,
+                        'publishPackage.fingerprintSha256'
+                      )
+                    },
+                    useFeedback: {
+                      id: text(
+                        useFeedback.id,
+                        'useFeedback.id'
+                      ) as ProductLoopUseFeedback['productLoopFeedbackId'],
+                      version: whole(useFeedback.version, 'useFeedback.version')
+                    },
+                    siteInboundAttribution: {
+                      id: text(
+                        siteInboundAttribution.id,
+                        'siteInboundAttribution.id'
+                      ) as BusinessAttributionLinkIdV1,
+                      version: whole(
+                        siteInboundAttribution.version,
+                        'siteInboundAttribution.version'
+                      ),
+                      fingerprintSha256: text(
+                        siteInboundAttribution.fingerprintSha256,
+                        'siteInboundAttribution.fingerprintSha256'
+                      )
+                    }
+                  })
+                );
+              } catch (error) {
+                return map(error);
+              }
+            }
+          }
+        ]
+      : []),
     {
       method: 'GET',
       path: '/v1/business-attribution-links/site-inbound/summary',

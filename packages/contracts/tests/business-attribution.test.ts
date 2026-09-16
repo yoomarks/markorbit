@@ -104,6 +104,29 @@ describe('BusinessAttributionLinkV1', () => {
     expect(parsed.downstreamRef).toBeUndefined();
   });
 
+  it('supports bounded content-led lineage without granting publication or conversion authority', () => {
+    const fixture = portfolioGrowthFixture();
+    const { businessAttributionFingerprintSha256: _fingerprint, ...base } = fixture;
+    expect(_fingerprint).toMatch(/^[0-9a-f]{64}$/u);
+    const value = {
+      ...base,
+      motionKind: 'CONTENT_LED_DEMAND' as const,
+      sourceRefs: [ref('LITE', 'PUBLISH_PACKAGE', 'publish-package_reviewed', 1, 'a')],
+      touchpointRefs: [
+        ref('LITE', 'CONTENT_USE_FEEDBACK', 'product-loop-feedback_manual', 1, 'b'),
+        ref('LITE', 'SITE_INBOUND_ATTRIBUTION', 'business-attribution_site', 1, 'c')
+      ]
+    };
+    const parsed = parseBusinessAttributionLinkV1({
+      ...value,
+      businessAttributionFingerprintSha256: businessAttributionFingerprintSha256V1(value)
+    });
+    expect(parsed.motionKind).toBe('CONTENT_LED_DEMAND');
+    expect(parsed.sourceRefs[0]?.kind).toBe('PUBLISH_PACKAGE');
+    expect(parsed.authorityConsequences.conversionCreated).toBe(false);
+    expect(parsed.authorityConsequences.causalReturnOnInvestmentClaimed).toBe(false);
+  });
+
   it('rejects fingerprint drift and any claimed authority consequence', () => {
     expect(() =>
       parseBusinessAttributionLinkV1({

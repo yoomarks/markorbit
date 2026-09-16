@@ -162,6 +162,12 @@ export function createGatewayBusinessAttributionRoutes(
       handle: (request) => forward(request, options, '/v1/business-attribution-links', 'POST')
     },
     {
+      method: 'POST',
+      path: '/api/lite/content-led-demand-attribution-links',
+      handle: (request) =>
+        forward(request, options, '/v1/content-led-demand-attribution-links', 'POST')
+    },
+    {
       method: 'GET',
       path: '/api/lite/business-attribution-links/site-inbound/summary',
       handle: (request) =>

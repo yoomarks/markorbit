@@ -268,6 +268,14 @@ suite('PostgreSQL M9-WP-04 Content Kit projection', () => {
       id: reviewReady.contentDraftId,
       version: reviewReady.version
     });
+    expect(kit.platformVariants).toHaveLength(2);
+    expect(
+      kit.platformVariants.every(
+        (variant) =>
+          variant.publishPackage?.id === publishPackage.publishPackageId &&
+          variant.sourceFingerprintSha256 === publishPackage.publishPackageFingerprintSha256
+      )
+    ).toBe(true);
     expect(kit.platformVariants[0]?.humanReviewRequired).toBe(true);
     expect(kit.externalPublishExecuted).toBe(false);
     expect(publishPackage.externalPublishExecuted).toBe(false);

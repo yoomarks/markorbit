@@ -147,6 +147,9 @@ export interface PlatformVariant {
   body: string;
   topicTags: readonly string[];
   draft?: Readonly<ProductLoopExactReference<ContentDraftId>>;
+  /** Present only when the variant is derived from one exact reviewed package. */
+  publishPackage?: Readonly<ProductLoopExactReference<PublishPackageId>>;
+  sourceFingerprintSha256?: string;
   humanReviewRequired: true;
   externalPublishExecuted: false;
 }
