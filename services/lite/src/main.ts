@@ -49,6 +49,12 @@ import {
 } from './partner-intelligence.js';
 import { createPartnerIntelligenceRoutes } from './partner-intelligence-http.js';
 import { PostgresPartnerIntelligenceStore } from './partner-intelligence-store.js';
+import { createPartnerReferralRoutes } from './partner-referral-http.js';
+import {
+  HttpCorePartnerReferralRatePolicyReader,
+  PartnerReferralService,
+  PostgresPartnerReferralStore
+} from './partner-referral.js';
 import { createCommunicationLinkRoutes } from './communication-link-http.js';
 import { CommunicationLinkService, PostgresCommunicationLinkStore } from './communication-link.js';
 import {
@@ -178,6 +184,13 @@ const workspaceWatchStore = new PostgresWorkspaceWatchStore(database, pool);
 const workspaceDirectoryStore = new PostgresWorkspaceDirectoryStore(database, pool);
 const outboundContactPolicyStore = new PostgresOutboundContactPolicyStore(database, pool);
 const businessAttributionStore = new PostgresBusinessAttributionStore(database, pool);
+const partnerReferralStore = new PostgresPartnerReferralStore(database, pool);
+const partnerReferralService = new PartnerReferralService(
+  workspaceDirectoryStore,
+  businessAttributionStore,
+  new HttpCorePartnerReferralRatePolicyReader(coreUrl, internalServiceSecret),
+  partnerReferralStore
+);
 const contentLedDemandService = new ContentLedDemandAttributionService(
   new PostgresContentLedDemandLineageReader(pool),
   feedbackStore,
@@ -512,6 +525,10 @@ const runtime = createServiceRuntime(serviceManifest, {
       internalServiceSecret,
       service: partnerIntelligenceService,
       store: partnerIntelligenceStore
+    }),
+    ...createPartnerReferralRoutes({
+      internalServiceSecret,
+      service: partnerReferralService
     }),
     ...createAgencyLineageRoutes({ internalServiceSecret, service: agencyLineage }),
     ...createDiscoveredTrademarkAdmissionRoutes({

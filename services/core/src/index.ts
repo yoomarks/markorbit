@@ -93,7 +93,8 @@ export interface CoreRuntimeOptions {
     | 'resolveSiteRuntimeAccess'
     | 'recordOffer'
     | 'recordRatePolicy'
-  >;
+  > &
+    Partial<Pick<WorkspaceCommercialServiceV1, 'resolveRatePolicy'>>;
   knowledgeIntakes?: KnowledgeIntakeRepository;
   knowledgeContents?: KnowledgeReadyPackageContentRepository;
   knowledgeV2Deliveries?: KnowledgeV2DeliveryRepository;

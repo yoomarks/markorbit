@@ -461,11 +461,23 @@ export function createGatewayMarkRegEarlyFunnelRoutes(
       {
         owner: 'SITE',
         kind: 'SITE_INBOUND_ACQUISITION',
-        id: `${source.siteId}|${acquisition.source ?? acquisition.referrerHostname ?? acquisition.attributionState}`,
+        id: `${source.siteId}|${acquisition.source ?? acquisition.referral ?? acquisition.referrerHostname ?? acquisition.attributionState}`,
         version: 1,
         fingerprintSha256: acquisition.fingerprintSha256,
         observedAt: acquisition.observedAt
       },
+      ...(acquisition.referral
+        ? [
+            {
+              owner: 'SITE',
+              kind: 'SITE_REFERRAL_CODE',
+              id: `${source.siteId}|${acquisition.referral}`,
+              version: 1,
+              fingerprintSha256: acquisition.fingerprintSha256,
+              observedAt: acquisition.observedAt
+            }
+          ]
+        : []),
       ...(acquisition.contentRef
         ? [
             {

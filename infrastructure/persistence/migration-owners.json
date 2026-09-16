@@ -200,6 +200,7 @@
     "0124_lite_trading_marketplace_targets": "@markorbit/lite-service",
     "0125_lite_business_attribution_links": "@markorbit/lite-service",
     "0126_lite_partner_intelligence": "@markorbit/lite-service",
-    "0127_lite_content_led_demand_attribution": "@markorbit/lite-service"
+    "0127_lite_content_led_demand_attribution": "@markorbit/lite-service",
+    "0128_lite_partner_referral_eligibility": "@markorbit/lite-service"
   }
 }

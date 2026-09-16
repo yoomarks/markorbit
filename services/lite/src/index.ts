@@ -75,3 +75,5 @@ export * from './outbound-contact-policy-http.js';
 export * from './business-attribution.js';
 export * from './business-attribution-http.js';
 export * from './content-led-demand.js';
+export * from './partner-referral.js';
+export * from './partner-referral-http.js';

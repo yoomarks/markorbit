@@ -168,6 +168,28 @@ export function createGatewayBusinessAttributionRoutes(
         forward(request, options, '/v1/content-led-demand-attribution-links', 'POST')
     },
     {
+      method: 'POST',
+      path: '/api/lite/partner-referral-programs',
+      handle: (request) => forward(request, options, '/v1/partner-referral-programs', 'POST')
+    },
+    {
+      method: 'POST',
+      path: '/api/lite/partner-commission-eligibility-candidates',
+      handle: (request) =>
+        forward(request, options, '/v1/partner-commission-eligibility-candidates', 'POST')
+    },
+    {
+      method: 'GET',
+      path: '/api/lite/partner-commission-eligibility-candidates/:candidateId',
+      handle: (request) =>
+        forward(
+          request,
+          options,
+          `/v1/partner-commission-eligibility-candidates/${encodeURIComponent(request.params.candidateId!)}`,
+          'GET'
+        )
+    },
+    {
       method: 'GET',
       path: '/api/lite/business-attribution-links/site-inbound/summary',
       handle: (request) =>

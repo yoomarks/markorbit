@@ -266,11 +266,23 @@ export function createGatewaySiteInboundOutcomeRoutesV1(
             reference(
               'SITE',
               'SITE_INBOUND_ACQUISITION',
-              `${source.siteId}|${acquisition.source ?? acquisition.referrerHostname ?? acquisition.attributionState}`,
+              `${source.siteId}|${acquisition.source ?? acquisition.referral ?? acquisition.referrerHostname ?? acquisition.attributionState}`,
               1,
               acquisition.fingerprintSha256,
               acquisition.observedAt
             ),
+            ...(acquisition.referral
+              ? [
+                  reference(
+                    'SITE',
+                    'SITE_REFERRAL_CODE',
+                    `${source.siteId}|${acquisition.referral}`,
+                    1,
+                    acquisition.fingerprintSha256,
+                    acquisition.observedAt
+                  )
+                ]
+              : []),
             ...(acquisition.contentRef
               ? [
                   reference(
