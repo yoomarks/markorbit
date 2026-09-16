@@ -20,7 +20,7 @@ test('default Playwright inventory excludes the real-runtime suite', () => {
   const source = fs.readFileSync('playwright.config.ts', 'utf8');
   assert.match(source, /testMatch:/u, 'playwright.config.ts needs an exact testMatch');
   assert.match(source, /retries:\s*0/u, 'playwright.config.ts must not rely on retries');
-  assert.equal(entries.length, 34);
+  assert.equal(entries.length, 36);
   assert.deepEqual([...new Set(entries.map(({ file }) => file))].sort(), [
     'filing-authorization-release.spec.ts',
     'lite.spec.ts',
@@ -35,7 +35,7 @@ test('default Playwright inventory excludes the real-runtime suite', () => {
         entries.filter((entry) => entry.project === project).length
       ])
     ),
-    { 'desktop-chromium': 17, 'mobile-chromium': 17 }
+    { 'desktop-chromium': 18, 'mobile-chromium': 18 }
   );
   assert.deepEqual(
     Object.fromEntries(
