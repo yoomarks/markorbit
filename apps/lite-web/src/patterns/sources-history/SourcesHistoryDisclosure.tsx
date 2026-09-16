@@ -123,7 +123,7 @@ export function SourcesHistoryDisclosure({
       )}
 
       <details className="sources-history-pattern__advanced" open={diagnosticsOpen || undefined}>
-        <summary>Advanced</summary>
+        <summary onClick={(event) => event.currentTarget.focus()}>Advanced</summary>
         <section aria-labelledby="diagnostics-title">
           <p className="sources-history-pattern__advanced-label">Support and administration</p>
           <h2 id="diagnostics-title">Diagnostics</h2>
