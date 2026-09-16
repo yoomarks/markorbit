@@ -80,7 +80,7 @@ function parseGitHubRepository(remoteUrl) {
   return { owner: match[1], name: match[2], slug: `${match[1]}/${match[2]}` };
 }
 
-async function githubJson(url) {
+async function githubJson(url, unavailableReason = 'PR_METADATA_UNAVAILABLE') {
   const token = process.env.GITHUB_TOKEN || process.env.GH_TOKEN;
   const headers = {
     Accept: 'application/vnd.github+json',
@@ -92,14 +92,215 @@ async function githubJson(url) {
   try {
     response = await fetch(url, { headers, signal: AbortSignal.timeout(15_000) });
   } catch (error) {
-    throw new GuardError('PR_METADATA_UNAVAILABLE', { detail: error.message });
+    throw new GuardError(unavailableReason, { detail: error.message });
   }
   if (!response.ok) {
-    throw new GuardError('PR_METADATA_UNAVAILABLE', {
+    throw new GuardError(unavailableReason, {
       detail: `GitHub API returned HTTP ${response.status}.`
     });
   }
-  return response.json();
+  try {
+    return await response.json();
+  } catch (error) {
+    throw new GuardError(unavailableReason, {
+      detail: `Malformed GitHub payload: ${error.message}`
+    });
+  }
+}
+
+const COORDINATION_FENCE = /```markorbit-coordination\s*\r?\n([\s\S]*?)\r?\n```/g;
+const COORDINATION_FIELDS = new Set([
+  'version',
+  'status',
+  'base_sha',
+  'migration_sensitive',
+  'reserved_migration',
+  'blocked_by'
+]);
+
+export function parseIssueCoordination(body) {
+  const source = String(body ?? '');
+  const blocks = [...source.matchAll(COORDINATION_FENCE)];
+  if (!blocks.length) {
+    if (source.includes('```markorbit-coordination')) {
+      throw new GuardError('ISSUE_COORDINATION_MALFORMED', {
+        detail: 'The markorbit-coordination fence is incomplete.'
+      });
+    }
+    return null;
+  }
+  if (blocks.length !== 1) {
+    throw new GuardError('ISSUE_COORDINATION_MALFORMED', {
+      detail: 'Exactly one markorbit-coordination block is allowed.'
+    });
+  }
+
+  let declaration;
+  try {
+    declaration = JSON.parse(blocks[0][1]);
+  } catch (error) {
+    throw new GuardError('ISSUE_COORDINATION_MALFORMED', { detail: error.message });
+  }
+  if (!declaration || Array.isArray(declaration) || typeof declaration !== 'object') {
+    throw new GuardError('ISSUE_COORDINATION_MALFORMED', {
+      detail: 'The coordination declaration must be a JSON object.'
+    });
+  }
+  const unknownFields = Object.keys(declaration).filter((field) => !COORDINATION_FIELDS.has(field));
+  const validStatus = declaration.status === 'ready' || declaration.status === 'blocked';
+  const validBase =
+    declaration.base_sha === null || /^[0-9a-f]{40}$/.test(declaration.base_sha ?? '');
+  const validReservation =
+    declaration.reserved_migration === 'none' ||
+    /^\d{4}$/.test(declaration.reserved_migration ?? '');
+  const validBlockers =
+    Array.isArray(declaration.blocked_by) &&
+    declaration.blocked_by.length <= 10 &&
+    declaration.blocked_by.every(
+      (blocker) =>
+        blocker &&
+        !Array.isArray(blocker) &&
+        Object.keys(blocker).length === 2 &&
+        (blocker.type === 'issue' || blocker.type === 'pr') &&
+        Number.isSafeInteger(blocker.number) &&
+        blocker.number > 0
+    );
+  if (
+    unknownFields.length ||
+    declaration.version !== 1 ||
+    !validStatus ||
+    !validBase ||
+    typeof declaration.migration_sensitive !== 'boolean' ||
+    !validReservation ||
+    !validBlockers ||
+    (!declaration.migration_sensitive && declaration.reserved_migration !== 'none')
+  ) {
+    throw new GuardError('ISSUE_COORDINATION_MALFORMED', {
+      detail:
+        unknownFields.length > 0
+          ? `Unknown fields: ${unknownFields.join(', ')}`
+          : 'Declaration does not match the version 1 coordination schema.'
+    });
+  }
+  return declaration;
+}
+
+function issueAudit(status, reason, details = {}) {
+  return { status, reason, ...details };
+}
+
+function assertIssuePayload(issue, issueNumber) {
+  if (
+    !issue ||
+    issue.number !== issueNumber ||
+    (issue.body !== null && typeof issue.body !== 'string') ||
+    !['open', 'closed'].includes(issue.state) ||
+    issue.pull_request
+  ) {
+    throw new GuardError('ISSUE_METADATA_UNAVAILABLE', {
+      detail: `GitHub returned an invalid payload for issue #${issueNumber}.`
+    });
+  }
+}
+
+export async function evaluateIssueCoordination({
+  issue,
+  issueNumber,
+  baseSha,
+  repoRoot,
+  loadBlocker
+}) {
+  assertIssuePayload(issue, issueNumber);
+  if (issue.state === 'closed') return issueAudit('BLOCKED', 'ISSUE_CLOSED');
+
+  const declaration = parseIssueCoordination(issue.body);
+  if (!declaration) return issueAudit('WARN', 'ISSUE_COORDINATION_UNDECLARED');
+  if (declaration.status === 'blocked') return issueAudit('BLOCKED', 'ISSUE_DECLARED_BLOCKED');
+  if (declaration.base_sha && declaration.base_sha !== baseSha) {
+    return issueAudit('BLOCKED', 'ISSUE_BASE_STALE', {
+      declaredBaseSha: declaration.base_sha,
+      currentBaseSha: baseSha
+    });
+  }
+
+  const satisfiedBlockers = [];
+  for (const blocker of declaration.blocked_by) {
+    const metadata = await loadBlocker(blocker);
+    const validState =
+      metadata?.number === blocker.number && ['open', 'closed'].includes(metadata.state);
+    const validKind = blocker.type === 'pr' ? metadata?.kind === 'pr' : metadata?.kind === 'issue';
+    if (!validState || !validKind) {
+      throw new GuardError('ISSUE_METADATA_UNAVAILABLE', {
+        detail: `GitHub returned an invalid payload for ${blocker.type} #${blocker.number}.`
+      });
+    }
+    if (metadata.state === 'open') {
+      return issueAudit('BLOCKED', 'ISSUE_BLOCKER_OPEN', {
+        blockerType: blocker.type,
+        blockerNumber: blocker.number
+      });
+    }
+    satisfiedBlockers.push(`${blocker.type}#${blocker.number}`);
+  }
+
+  if (declaration.migration_sensitive && declaration.reserved_migration !== 'none') {
+    const migration = readMigrationStateAt(repoRoot, baseSha);
+    if (Number(declaration.reserved_migration) <= Number(migration.tail)) {
+      return issueAudit('BLOCKED', 'ISSUE_MIGRATION_STALE', {
+        reservedMigration: declaration.reserved_migration,
+        currentMigrationTail: migration.tail,
+        currentNextSlot: migration.nextSlot
+      });
+    }
+  }
+  if (satisfiedBlockers.length) {
+    return issueAudit('WARN', 'ISSUE_BLOCKER_STALE', { satisfiedBlockers });
+  }
+  return issueAudit('PASS', 'ISSUE_COORDINATION_CURRENT', {
+    migrationSensitive: declaration.migration_sensitive,
+    reservedMigration: declaration.reserved_migration
+  });
+}
+
+export async function inspectIssueCoordination({ repoRoot, remote, baseSha, issueNumber }) {
+  const remoteUrl = runGit(repoRoot, ['remote', 'get-url', remote]);
+  let repository;
+  try {
+    repository = parseGitHubRepository(remoteUrl);
+  } catch (error) {
+    throw new GuardError('ISSUE_METADATA_UNAVAILABLE', { detail: error.details?.detail });
+  }
+  const apiRoot = `https://api.github.com/repos/${repository.owner}/${repository.name}`;
+  const issue = await githubJson(`${apiRoot}/issues/${issueNumber}`, 'ISSUE_METADATA_UNAVAILABLE');
+  return evaluateIssueCoordination({
+    issue,
+    issueNumber,
+    baseSha,
+    repoRoot,
+    loadBlocker: async (blocker) => {
+      if (blocker.type === 'pr') {
+        const pull = await githubJson(
+          `${apiRoot}/pulls/${blocker.number}`,
+          'ISSUE_METADATA_UNAVAILABLE'
+        );
+        return {
+          kind: 'pr',
+          number: pull.number,
+          state: pull.state,
+          merged: pull.merged_at !== null
+        };
+      }
+      const blockedIssue = await githubJson(
+        `${apiRoot}/issues/${blocker.number}`,
+        'ISSUE_METADATA_UNAVAILABLE'
+      );
+      return {
+        kind: blockedIssue.pull_request ? 'pr' : 'issue',
+        number: blockedIssue.number,
+        state: blockedIssue.state
+      };
+    }
+  });
 }
 
 export async function inspectConcurrentWork({ repoRoot, remote, baseSha, defaultBranch }) {
@@ -304,6 +505,46 @@ async function concurrencyState(params, expectedScope, currentBranch, inspector)
   return { ...state, conflicts };
 }
 
+async function issueState(params, options, dependencies = {}) {
+  if (!options.issue) return null;
+  const inspector = dependencies.inspectIssueCoordination ?? inspectIssueCoordination;
+  let audit;
+  try {
+    audit = await inspector({ ...params, issueNumber: options.issue });
+  } catch (error) {
+    if (
+      error instanceof GuardError &&
+      !options.strictIssue &&
+      ['ISSUE_COORDINATION_MALFORMED', 'ISSUE_METADATA_UNAVAILABLE'].includes(error.reason)
+    ) {
+      return issueAudit('WARN', error.reason, error.details);
+    }
+    throw error;
+  }
+  if (options.strictIssue && audit.reason === 'ISSUE_COORDINATION_UNDECLARED') {
+    throw new GuardError(audit.reason);
+  }
+  if (audit.status === 'BLOCKED') {
+    const { status, reason, ...details } = audit;
+    throw new GuardError(reason, details);
+  }
+  return audit;
+}
+
+export async function auditIssueTask(options, dependencies = {}) {
+  const repoRoot = resolveRepositoryRoot(options.cwd ?? process.cwd());
+  const remote = options.remote ?? 'origin';
+  const defaultBranch = resolveRemoteDefaultBranch(repoRoot, remote);
+  const baseSha = fetchRemoteMain(repoRoot, remote, defaultBranch);
+  if (!options.issue) throw new GuardError('TASK_ISSUE_REQUIRED');
+  const inspector = dependencies.inspectIssueCoordination ?? inspectIssueCoordination;
+  const audit = await inspector({ repoRoot, remote, baseSha, issueNumber: options.issue });
+  if (options.strictIssue && audit.reason === 'ISSUE_COORDINATION_UNDECLARED') {
+    throw new GuardError(audit.reason);
+  }
+  return { audit, baseSha };
+}
+
 export async function bootstrapTask(options, dependencies = {}) {
   const repoRoot = resolveRepositoryRoot(options.cwd ?? process.cwd());
   const remote = options.remote ?? 'origin';
@@ -313,6 +554,8 @@ export async function bootstrapTask(options, dependencies = {}) {
   if (!expectedScope.length) throw new GuardError('TASK_SCOPE_REQUIRED');
   if (!options.branch) throw new GuardError('TASK_BRANCH_REQUIRED');
   if (!options.worktree) throw new GuardError('TASK_WORKTREE_REQUIRED');
+
+  const issueAuditResult = await issueState({ repoRoot, remote, baseSha }, options, dependencies);
 
   const worktreePath = isAbsolute(options.worktree)
     ? resolve(options.worktree)
@@ -358,10 +601,12 @@ export async function bootstrapTask(options, dependencies = {}) {
     migrationTail: migration?.tail ?? null,
     nextMigrationSlot: migration?.nextSlot ?? null,
     expectedScope,
-    openPullRequestCount: concurrency.pulls.length
+    openPullRequestCount: concurrency.pulls.length,
+    issueNumber: options.issue ?? null,
+    issueAudit: issueAuditResult
   };
   writeManifest(worktreePath, manifest);
-  return { manifest, openPullRequests: concurrency.pulls.length };
+  return { manifest, openPullRequests: concurrency.pulls.length, issueAudit: issueAuditResult };
 }
 
 async function loadFreshState(options, dependencies = {}) {
@@ -494,9 +739,16 @@ function parseArgs(argv) {
   const options = { scope: [] };
   for (let index = 0; index < rest.length; index += 1) {
     const arg = rest[index];
+    if (arg === '--') continue;
     if (arg === '--migration-sensitive') options.migrationSensitive = true;
+    else if (arg === '--strict-issue') options.strictIssue = true;
     else if (arg === '--remote') options.remote = rest[++index];
-    else if (arg === '--branch') options.branch = rest[++index];
+    else if (arg === '--issue') {
+      options.issue = Number(rest[++index]);
+      if (!Number.isSafeInteger(options.issue) || options.issue <= 0) {
+        throw new GuardError('INVALID_ARGUMENT', { argument: '--issue' });
+      }
+    } else if (arg === '--branch') options.branch = rest[++index];
     else if (arg === '--worktree') options.worktree = rest[++index];
     else if (arg === '--scope') options.scope.push(rest[++index]);
     else throw new GuardError('INVALID_ARGUMENT', { argument: arg });
@@ -530,7 +782,22 @@ async function main() {
         migration_sensitive: result.manifest.migrationSensitive,
         migration_tail: result.manifest.migrationTail,
         next_migration_slot: result.manifest.nextMigrationSlot,
+        issue: result.manifest.issueNumber,
+        issue_audit_status: result.issueAudit?.status ?? 'NOT_REQUESTED',
+        issue_audit_reason: result.issueAudit?.reason ?? 'none',
         base_fresh: true
+      });
+      return;
+    }
+    if (command === 'audit') {
+      const result = await auditIssueTask(parsed.options);
+      emit('ISSUE_AUDIT', result.audit.status, {
+        issue: parsed.options.issue,
+        reason: result.audit.reason,
+        remote_main: result.baseSha,
+        ...Object.fromEntries(
+          Object.entries(result.audit).filter(([key]) => !['status', 'reason'].includes(key))
+        )
       });
       return;
     }
@@ -564,9 +831,11 @@ async function main() {
     const label =
       command === 'bootstrap'
         ? 'FRESH_MAIN_BOOTSTRAP'
-        : command === 'refresh'
-          ? 'TASK_BASE_REFRESH'
-          : 'PRE_PUSH_FRESHNESS';
+        : command === 'audit'
+          ? 'ISSUE_AUDIT'
+          : command === 'refresh'
+            ? 'TASK_BASE_REFRESH'
+            : 'PRE_PUSH_FRESHNESS';
     emit(label, 'BLOCKED', {
       reason: guardError.reason,
       ...guardError.details
