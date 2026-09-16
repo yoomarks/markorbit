@@ -13,6 +13,7 @@
     "playwright.navigation.config.ts",
     "playwright.opportunity-candidates.config.ts",
     "playwright.governed-provider.config.ts",
-    "playwright.trademark-commerce.config.ts"
+    "playwright.trademark-commerce.config.ts",
+    "playwright.agency-ia-prototype.config.ts"
   ]
 }

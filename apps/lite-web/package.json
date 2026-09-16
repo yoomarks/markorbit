@@ -11,8 +11,9 @@
     "test:opportunity-candidates:browser": "playwright test --config playwright.opportunity-candidates.config.ts",
     "test:governed-provider:browser": "playwright test --config playwright.governed-provider.config.ts",
     "test:trademark-commerce:browser": "playwright test --config playwright.trademark-commerce.config.ts",
+    "test:agency-ia-prototype:browser": "playwright test --config playwright.agency-ia-prototype.config.ts",
     "typecheck": "tsc --noEmit",
-    "lint": "eslint src tests vite.config.ts playwright.navigation.config.ts playwright.opportunity-candidates.config.ts playwright.governed-provider.config.ts playwright.trademark-commerce.config.ts",
+    "lint": "eslint src tests vite.config.ts playwright.navigation.config.ts playwright.opportunity-candidates.config.ts playwright.governed-provider.config.ts playwright.trademark-commerce.config.ts playwright.agency-ia-prototype.config.ts",
     "build-storybook": "storybook build -c ../../packages/ui/.storybook"
   },
   "dependencies": {
