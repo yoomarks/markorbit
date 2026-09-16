@@ -2,6 +2,9 @@
 
 Professional content, opportunity, asset, capability and work product.
 
+The bounded Codex B UX-quality lane evidence and remaining dogfood gaps are summarized in
+[`UX-QUALITY-CLOSEOUT.md`](./UX-QUALITY-CLOSEOUT.md).
+
 ## #413 Content Studio
 
 Content is a read-only, authenticated Workspace surface backed by
