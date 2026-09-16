@@ -40,6 +40,10 @@ import { createOutboundContactPolicyRoutes } from './outbound-contact-policy-htt
 import { PostgresBusinessAttributionStore } from './business-attribution.js';
 import { createBusinessAttributionRoutes } from './business-attribution-http.js';
 import {
+  ContentLedDemandAttributionService,
+  PostgresContentLedDemandLineageReader
+} from './content-led-demand.js';
+import {
   HttpCorePartnerKnowledgeSourceReader,
   PartnerIntelligenceService
 } from './partner-intelligence.js';
@@ -174,6 +178,11 @@ const workspaceWatchStore = new PostgresWorkspaceWatchStore(database, pool);
 const workspaceDirectoryStore = new PostgresWorkspaceDirectoryStore(database, pool);
 const outboundContactPolicyStore = new PostgresOutboundContactPolicyStore(database, pool);
 const businessAttributionStore = new PostgresBusinessAttributionStore(database, pool);
+const contentLedDemandService = new ContentLedDemandAttributionService(
+  new PostgresContentLedDemandLineageReader(pool),
+  feedbackStore,
+  businessAttributionStore
+);
 const partnerIntelligenceStore = new PostgresPartnerIntelligenceStore(database, pool);
 const communicationLinkStore = new PostgresCommunicationLinkStore(database, pool);
 const liteIntakeStagingStore = new PostgresLiteIntakeStagingStore(database, pool);
@@ -496,7 +505,8 @@ const runtime = createServiceRuntime(serviceManifest, {
     }),
     ...createBusinessAttributionRoutes({
       internalServiceSecret,
-      store: businessAttributionStore
+      store: businessAttributionStore,
+      contentLedDemandService
     }),
     ...createPartnerIntelligenceRoutes({
       internalServiceSecret,

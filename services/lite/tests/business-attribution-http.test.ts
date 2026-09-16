@@ -105,4 +105,56 @@ describe('Business attribution HTTP boundary', () => {
     ).handle(request('GET', undefined));
     expect(result).toMatchObject({ status: 200, body: { intakeCount: 1 } });
   });
+
+  it('routes content-led demand through the owner-re-reading service only', async () => {
+    const record = vi.fn(() => Promise.resolve({ motionKind: 'CONTENT_LED_DEMAND' } as never));
+    const routes = createBusinessAttributionRoutes({
+      internalServiceSecret: secret,
+      store: { create: vi.fn(), find: vi.fn(), summarizeSiteInbound: vi.fn() },
+      contentLedDemandService: { record } as never
+    });
+    const body = {
+      publishPackage: {
+        id: 'publish-package_reviewed',
+        version: 1,
+        fingerprintSha256: 'a'.repeat(64)
+      },
+      useFeedback: { id: 'product-loop-feedback_manual', version: 1 },
+      siteInboundAttribution: {
+        id: 'business-attribution_site',
+        version: 1,
+        fingerprintSha256: 'b'.repeat(64)
+      }
+    };
+    const result = await route(routes, '/v1/content-led-demand-attribution-links').handle(
+      request('POST', body)
+    );
+    expect(result).toMatchObject({ status: 201 });
+    expect(record).toHaveBeenCalledWith({
+      ...body,
+      workspaceId: principal.workspaceId,
+      actorPrincipalId: principal.userId,
+      idempotencyKey: 'idem-1'
+    });
+    await expect(
+      route(routes, '/v1/content-led-demand-attribution-links').handle(
+        request('POST', {
+          ...body,
+          publishPackage: { ...body.publishPackage, workspaceId: principal.workspaceId }
+        })
+      )
+    ).rejects.toMatchObject({ code: 'INVALID_REQUEST' });
+
+    await expect(
+      route(routes, '/v1/business-attribution-links').handle(
+        request('POST', {
+          motionKind: 'CONTENT_LED_DEMAND',
+          sourceRefs: [{}],
+          touchpointRefs: [],
+          attributionState: 'UNKNOWN',
+          evidenceBasis: 'EXACT_LINEAGE'
+        })
+      )
+    ).rejects.toMatchObject({ code: 'VERIFIED_LINEAGE_REQUIRED' });
+  });
 });

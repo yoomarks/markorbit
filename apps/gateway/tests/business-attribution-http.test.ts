@@ -95,4 +95,36 @@ describe('Gateway Business Attribution boundary', () => {
     );
     expect(new Headers(fetchImpl.mock.calls[0]![1]?.headers).has('idempotency-key')).toBe(false);
   });
+
+  it('forwards the guarded content-led demand lineage command', async () => {
+    const fetchImpl = vi.fn<
+      (input: string | URL | Request, init?: RequestInit) => Promise<Response>
+    >(() => Promise.resolve(new Response(JSON.stringify({ ok: true }), { status: 201 })));
+    const routes = createGatewayBusinessAttributionRoutes({
+      liteUrl: 'http://lite.test',
+      authenticationClient: auth(),
+      internalServiceSecret: 'internal-secret-32-bytes-minimum!!',
+      csrfSecret: csrf,
+      allowedOrigins: [origin],
+      fetchImpl
+    });
+    await route(routes, '/api/lite/content-led-demand-attribution-links').handle(
+      request('POST', {
+        publishPackage: {
+          id: 'publish-package_reviewed',
+          version: 1,
+          fingerprintSha256: 'a'.repeat(64)
+        },
+        useFeedback: { id: 'product-loop-feedback_manual', version: 1 },
+        siteInboundAttribution: {
+          id: 'business-attribution_site',
+          version: 1,
+          fingerprintSha256: 'b'.repeat(64)
+        }
+      })
+    );
+    expect(fetchImpl.mock.calls[0]![0]).toBe(
+      'http://lite.test/v1/content-led-demand-attribution-links'
+    );
+  });
 });

@@ -173,6 +173,17 @@ describe('M9-WP-04 Content Kit / Studio projection', () => {
     expect(kit.angles[0]?.evidenceNotes[0]).toContain(source.sourceFingerprintSha256);
     expect(kit.platformVariants).toHaveLength(2);
     expect(kit.platformVariants[0]?.draft).toEqual({ id: draft.contentDraftId, version: 2 });
+    expect(
+      kit.platformVariants.every(
+        (variant) => variant.publishPackage?.id === publishPackage.publishPackageId
+      )
+    ).toBe(true);
+    expect(
+      kit.platformVariants.every(
+        (variant) =>
+          variant.sourceFingerprintSha256 === publishPackage.publishPackageFingerprintSha256
+      )
+    ).toBe(true);
     expect(kit.platformVariants.every((variant) => variant.humanReviewRequired)).toBe(true);
     expect(kit.platformVariants.every((variant) => !variant.externalPublishExecuted)).toBe(true);
     expect(kit.draftReferences).toEqual([{ id: draft.contentDraftId, version: 2 }]);
