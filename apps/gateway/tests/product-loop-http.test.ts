@@ -873,4 +873,43 @@ describe('Gateway Lite Product-loop transport boundary', () => {
     expect(result.status).toBe(201);
     expect(downstream).toHaveBeenCalledTimes(1);
   });
+
+  it('forwards Partner Intelligence admission through the governed Workspace mutation boundary', async () => {
+    const body = {
+      knowledgeReadyPackageId: 'ready-package_partner-1',
+      publicEvidenceRefs: [{ owner: 'PUBLIC_SOURCE', kind: 'TRADEMARK_REPRESENTATION_RECORD' }],
+      brief: { displayName: 'Example IP Law' }
+    };
+    const downstream = vi.fn((url: string, init: RequestInit) => {
+      expect(url).toBe('http://lite.test/v1/partner-intelligence/candidates');
+      expect(init.method).toBe('POST');
+      expect(init.body).toBe(JSON.stringify(body));
+      const forwarded = init.headers as Record<string, string>;
+      expect(forwarded['idempotency-key']).toBe('g3-admission');
+      expect(forwarded['x-markorbit-principal']).toBeTruthy();
+      return Promise.resolve(
+        new Response(JSON.stringify({ partnerCandidateId: 'partner-candidate_1' }), {
+          status: 201,
+          headers: { 'content-type': 'application/json' }
+        })
+      );
+    });
+    vi.stubGlobal('fetch', downstream);
+    const result = await route('POST', '/api/lite/partner-intelligence/candidates').handle({
+      method: 'POST',
+      path: '/api/lite/partner-intelligence/candidates',
+      params: {},
+      query: {},
+      headers: {
+        cookie: 'mo_session=token',
+        origin: 'https://test.markorbit.local',
+        'x-markorbit-workspace-id': workspaceId,
+        'x-markorbit-csrf-token': csrfToken(principal.sessionId, options.csrfSecret),
+        'idempotency-key': 'g3-admission'
+      },
+      body
+    });
+    expect(result.status).toBe(201);
+    expect(downstream).toHaveBeenCalledOnce();
+  });
 });

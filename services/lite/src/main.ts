@@ -39,6 +39,12 @@ import { PostgresOutboundContactPolicyStore } from './outbound-contact-policy.js
 import { createOutboundContactPolicyRoutes } from './outbound-contact-policy-http.js';
 import { PostgresBusinessAttributionStore } from './business-attribution.js';
 import { createBusinessAttributionRoutes } from './business-attribution-http.js';
+import {
+  HttpCorePartnerKnowledgeSourceReader,
+  PartnerIntelligenceService
+} from './partner-intelligence.js';
+import { createPartnerIntelligenceRoutes } from './partner-intelligence-http.js';
+import { PostgresPartnerIntelligenceStore } from './partner-intelligence-store.js';
 import { createCommunicationLinkRoutes } from './communication-link-http.js';
 import { CommunicationLinkService, PostgresCommunicationLinkStore } from './communication-link.js';
 import {
@@ -168,6 +174,7 @@ const workspaceWatchStore = new PostgresWorkspaceWatchStore(database, pool);
 const workspaceDirectoryStore = new PostgresWorkspaceDirectoryStore(database, pool);
 const outboundContactPolicyStore = new PostgresOutboundContactPolicyStore(database, pool);
 const businessAttributionStore = new PostgresBusinessAttributionStore(database, pool);
+const partnerIntelligenceStore = new PostgresPartnerIntelligenceStore(database, pool);
 const communicationLinkStore = new PostgresCommunicationLinkStore(database, pool);
 const liteIntakeStagingStore = new PostgresLiteIntakeStagingStore(database, pool);
 const agencyLineage = new AgencyLineageProjectionService({
@@ -205,6 +212,15 @@ const communicationLinkService = new CommunicationLinkService(
 );
 const managedCommunicationClientNotificationSender =
   new HttpManagedCommunicationClientNotificationSender(capabilityEngineUrl, internalServiceSecret);
+const partnerIntelligenceService = new PartnerIntelligenceService(
+  new HttpCorePartnerKnowledgeSourceReader(coreUrl, internalServiceSecret),
+  partnerIntelligenceStore,
+  outboundContactPolicyStore,
+  managedCommunicationClientNotificationSender,
+  workspaceDirectoryStore,
+  communicationLinkStore,
+  businessAttributionStore
+);
 const clientNotificationHandoff = new ClientNotificationPreparedActionHandoff(
   trademarkServiceWorkPackages,
   workspaceDirectoryStore,
@@ -481,6 +497,11 @@ const runtime = createServiceRuntime(serviceManifest, {
     ...createBusinessAttributionRoutes({
       internalServiceSecret,
       store: businessAttributionStore
+    }),
+    ...createPartnerIntelligenceRoutes({
+      internalServiceSecret,
+      service: partnerIntelligenceService,
+      store: partnerIntelligenceStore
     }),
     ...createAgencyLineageRoutes({ internalServiceSecret, service: agencyLineage }),
     ...createDiscoveredTrademarkAdmissionRoutes({
