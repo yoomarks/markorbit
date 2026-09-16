@@ -163,6 +163,12 @@ export function createGatewayBusinessAttributionRoutes(
     },
     {
       method: 'GET',
+      path: '/api/lite/business-attribution-links/site-inbound/summary',
+      handle: (request) =>
+        forward(request, options, '/v1/business-attribution-links/site-inbound/summary', 'GET')
+    },
+    {
+      method: 'GET',
       path: '/api/lite/business-attribution-links/:linkId',
       handle: (request) =>
         forward(

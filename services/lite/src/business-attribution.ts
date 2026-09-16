@@ -10,6 +10,7 @@ import {
   type BusinessAttributionReferenceV1,
   type BusinessAttributionStateV1
 } from '@markorbit/contracts/business-attribution';
+import type { SiteInboundAttributionSummaryV1 } from '@markorbit/contracts/site-inbound-attribution';
 import type { QueryClient } from '@markorbit/persistence';
 import type { LiteTransactionHost } from './content-preparation.js';
 
@@ -224,6 +225,80 @@ export class PostgresBusinessAttributionStore {
       throw new BusinessAttributionRuntimeError(
         'PERSISTENCE_UNAVAILABLE',
         'Business Attribution persistence is unavailable.',
+        503,
+        true,
+        { cause: error instanceof Error ? error : undefined }
+      );
+    }
+  }
+
+  async summarizeSiteInbound(workspaceIdValue: string): Promise<SiteInboundAttributionSummaryV1> {
+    const workspaceId = workspace(workspaceIdValue);
+    try {
+      const result = await this.query.query(
+        `SELECT document_json FROM lite_business_attribution_links
+         WHERE workspace_id=$1 AND motion_kind='SITE_INBOUND'
+         ORDER BY evaluated_at ASC`,
+        [workspaceId]
+      );
+      const links = result.rows.map((row) => persisted((row as Row).document_json, workspaceId));
+      const intakeLinks = links.filter(
+        (link) =>
+          link.downstreamRef?.owner === 'MARKREG' && link.downstreamRef.kind === 'PRODUCTION_INTAKE'
+      );
+      const completedLinks = links.filter(
+        (link) =>
+          link.downstreamRef?.owner === 'MARKREG' && link.downstreamRef.kind === 'FORMAL_MATTER'
+      );
+      const grouped = new Map<string, SiteInboundAttributionSummaryV1['bySiteSource'][number]>();
+      for (const link of intakeLinks) {
+        const site = link.sourceRefs.find(
+          (ref) => ref.owner === 'SITE' && ref.kind === 'SITE_REQUEST_CONTEXT'
+        );
+        const acquisition = link.sourceRefs.find(
+          (ref) => ref.owner === 'SITE' && ref.kind === 'SITE_INBOUND_ACQUISITION'
+        );
+        if (!site || !acquisition) continue;
+        const source = acquisition.id.split('|').at(-1) || link.attributionState;
+        const key = `${site.id}\u0000${source}\u0000${link.attributionState}`;
+        const current = grouped.get(key);
+        grouped.set(key, {
+          siteId: site.id,
+          source,
+          attributionState: link.attributionState,
+          intakeCount: (current?.intakeCount ?? 0) + 1
+        });
+      }
+      const byAttributionState = {
+        ATTRIBUTED: 0,
+        DIRECT: 0,
+        UNATTRIBUTED: 0,
+        UNKNOWN: 0
+      } satisfies Record<BusinessAttributionStateV1, number>;
+      for (const link of intakeLinks) byAttributionState[link.attributionState] += 1;
+      const touchpointCount = (kind: string) =>
+        completedLinks.filter((link) => link.touchpointRefs.some((ref) => ref.kind === kind))
+          .length;
+      return {
+        schemaVersion: 1,
+        workspaceId,
+        intakeCount: intakeLinks.length,
+        quotePreparedCount: touchpointCount('PRODUCTION_QUOTE'),
+        orderCount: touchpointCount('ORDER'),
+        confirmationCount: touchpointCount('CUSTOMER_CONFIRMATION'),
+        matterCount: completedLinks.length,
+        bySiteSource: [...grouped.values()].sort(
+          (left, right) =>
+            left.siteId.localeCompare(right.siteId) || left.source.localeCompare(right.source)
+        ),
+        byAttributionState,
+        evaluatedAt: this.now()
+      };
+    } catch (error) {
+      if (error instanceof BusinessAttributionRuntimeError) throw error;
+      throw new BusinessAttributionRuntimeError(
+        'PERSISTENCE_UNAVAILABLE',
+        'Business Attribution summary is unavailable.',
         503,
         true,
         { cause: error instanceof Error ? error : undefined }

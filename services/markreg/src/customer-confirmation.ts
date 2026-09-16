@@ -1,8 +1,21 @@
 import { createHash, randomUUID } from 'node:crypto';
-import type { Permission, Quote, WorkspacePrincipal } from '@markorbit/contracts';
+import type { Permission, QuoteLine, QuoteStatus, WorkspacePrincipal } from '@markorbit/contracts';
 import type { QueryClient } from '@markorbit/persistence';
 
 export const CUSTOMER_CONFIRMATION_SNAPSHOT_SCHEMA_VERSION = 1 as const;
+export interface ConfirmableQuoteSource {
+  quoteId: string;
+  pricingRuleVersion: string;
+  status: QuoteStatus;
+  currency: string;
+  total: { amountMinor: number; currency: string };
+  lines: readonly Readonly<QuoteLine>[];
+  selectedOptionCode: string;
+  recommendationId: string;
+  assumptions: readonly Readonly<{ code: string; text: string }>[];
+  limitations: readonly string[];
+  validUntil: string;
+}
 export type CustomerConfirmationState = 'CONFIRMED' | 'WITHDRAWN';
 export interface AcceptedQuoteSnapshot {
   schemaVersion: 1;
@@ -368,7 +381,10 @@ function authorize(principal: WorkspacePrincipal, workspaceId: string, permissio
 export class CustomerConfirmationService {
   constructor(
     private readonly repository: CustomerConfirmationRepository,
-    private readonly loadQuote: (id: string) => Promise<Quote | null>,
+    private readonly loadQuote: (
+      principal: WorkspacePrincipal,
+      id: string
+    ) => Promise<ConfirmableQuoteSource | null>,
     private readonly now = () => new Date().toISOString()
   ) {}
   async create(
@@ -385,7 +401,7 @@ export class CustomerConfirmationService {
   ) {
     const { workspaceId, quoteId, quoteVersion } = input;
     authorize(principal, workspaceId, 'matter:create');
-    const quote = await this.loadQuote(quoteId);
+    const quote = await this.loadQuote(principal, quoteId);
     if (!quote)
       throw new CustomerConfirmationError(
         'CUSTOMER_CONFIRMATION_SOURCE_NOT_FOUND',

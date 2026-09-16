@@ -5,10 +5,12 @@ import type {
   ProductionRecommendationV1,
   UserSelectionV1
 } from '@markorbit/contracts/markreg-early-funnel';
-import { Alert, Card, ErrorState, KeyValueList, LoadingState } from '@markorbit/ui';
+import { Alert, Button, Card, ErrorState, KeyValueList, LoadingState } from '@markorbit/ui';
 import { useEffect, useRef, useState } from 'react';
 import { MarkregApiError } from './api/errors.js';
 import { createProductionQuoteClient, type ProductionQuoteClient } from './api/production-quote.js';
+import { createMarkregClient } from './api/markreg.js';
+import { ConfirmationMatterFlow, type ConfirmationQuoteSource } from './ConfirmationMatterFlow.js';
 
 type Status =
   | 'creating'
@@ -97,6 +99,7 @@ export function ProductionQuotePanel({
   const [quote, setQuote] = useState<ProductionQuoteV1>();
   const [message, setMessage] = useState<string>();
   const [readbackId, setReadbackId] = useState<MarkOrbitId>();
+  const [continueCommercially, setContinueCommercially] = useState(false);
   const lock = useRef(false);
   const retryRef = useRef(retryToken);
   const currentIntent = useRef('');
@@ -255,6 +258,47 @@ export function ProductionQuotePanel({
     );
   }
 
+  if (continueCommercially) {
+    const confirmationQuote: ConfirmationQuoteSource = {
+      planSelection: {
+        planSelectionId: selection.selectionId,
+        intakeId: intake.intakeId,
+        recommendationId: recommendation.recommendationId,
+        selectedOptionCode: selection.selectedOptionCode,
+        selectedAt: selection.selectedAt
+      },
+      quote: {
+        quoteId: quote.quoteId,
+        intakeId: intake.intakeId,
+        recommendationId: recommendation.recommendationId,
+        selectedOptionCode: selection.selectedOptionCode,
+        pricingRuleVersion: String(quote.version),
+        status: quote.status,
+        currency: quote.currency,
+        lines: quote.lines.map((line) => ({ ...line })),
+        subtotal: quote.subtotal,
+        estimatedOfficialFees: quote.estimatedOfficialFees,
+        estimatedServiceFees: quote.estimatedServiceFees,
+        estimatedDisbursements: quote.estimatedDisbursements,
+        estimatedTaxes: quote.estimatedTaxes,
+        total: quote.total,
+        assumptions: quote.assumptions.map((assumption) => ({ ...assumption })),
+        limitations: [...quote.limitations],
+        validUntil: quote.validUntil,
+        createdAt: quote.createdAt
+      }
+    };
+    return (
+      <ConfirmationMatterFlow
+        quote={confirmationQuote}
+        client={createMarkregClient()}
+        channel={intake.channel}
+        relationshipModel={intake.relationshipModel}
+        siteInbound={{ intakeId: intake.intakeId, quoteId: quote.quoteId }}
+      />
+    );
+  }
+
   return (
     <section aria-labelledby="production-quote-heading">
       <h2 id="production-quote-heading">Governed Production Quote</h2>
@@ -307,6 +351,9 @@ export function ProductionQuotePanel({
             ]}
           />
         </details>
+        <Button onClick={() => setContinueCommercially(true)}>
+          Continue to confirmation and Order
+        </Button>
       </Card>
     </section>
   );

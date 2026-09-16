@@ -15,6 +15,10 @@ import {
   parseRecommendationArtifactV1,
   parseUserSelectionV1
 } from '../src/markreg-early-funnel.js';
+import {
+  noSiteInboundAcquisitionAuthorityConsequencesV1,
+  siteInboundAcquisitionFingerprintSha256V1
+} from '../src/site-inbound-attribution.js';
 
 const fingerprintA = 'a'.repeat(64);
 const fingerprintB = 'b'.repeat(64);
@@ -188,6 +192,13 @@ describe('MarkReg early-funnel production contract V1', () => {
   });
 
   it('parses exact trusted Site admission lineage when supplied by the server', () => {
+    const acquisitionMaterial = {
+      schemaVersion: 1 as const,
+      attributionState: 'DIRECT' as const,
+      landingPath: '/',
+      observedAt: now,
+      authorityConsequences: noSiteInboundAcquisitionAuthorityConsequencesV1
+    };
     const siteSource = {
       siteId: 'site_reference',
       siteOwnerWorkspaceId: 'workspace_site_owner',
@@ -198,7 +209,11 @@ describe('MarkReg early-funnel production contract V1', () => {
       hostname: 'markreg.com',
       locale: 'en-US',
       observedAt: now,
-      fingerprintSha256: fingerprintA
+      fingerprintSha256: fingerprintA,
+      acquisition: {
+        ...acquisitionMaterial,
+        fingerprintSha256: siteInboundAcquisitionFingerprintSha256V1(acquisitionMaterial)
+      }
     };
     expect(parseCreateProductionIntakeCommandV1({ ...intakeCommand, siteSource })).toMatchObject({
       siteSource

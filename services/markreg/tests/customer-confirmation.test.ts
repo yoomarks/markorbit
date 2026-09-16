@@ -73,7 +73,7 @@ const setup = () => {
     repository,
     service: new CustomerConfirmationService(
       repository,
-      (id) => Promise.resolve(id === snapshot.quoteId ? structuredClone(quote) : null),
+      (_principal, id) => Promise.resolve(id === snapshot.quoteId ? structuredClone(quote) : null),
       () => '2026-07-31T12:00:00.000Z'
     )
   };

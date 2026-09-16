@@ -44,6 +44,51 @@ const record: ProductionIntakeV1 = {
     officialTruthCreated: false
   }
 };
+const acquisitionMaterial = {
+  schemaVersion: 1 as const,
+  attributionState: 'ATTRIBUTED' as const,
+  landingPath: '/services/us-trademark-registration',
+  source: 'ai-answer',
+  campaign: 'us-filing-guide',
+  referrerHostname: 'answer.example',
+  contentRef: {
+    owner: 'LITE' as const,
+    kind: 'PUBLISH_PACKAGE' as const,
+    id: 'publish-package_us-filing-guide',
+    version: 4,
+    fingerprintSha256: 'b'.repeat(64)
+  },
+  observedAt: '2026-09-03T07:59:58.000Z',
+  authorityConsequences: {
+    customerIdentityEstablished: false,
+    customerRelationshipCreated: false,
+    contactPermissionGranted: false,
+    conversionCreated: false,
+    paymentCreated: false,
+    causalReturnOnInvestmentClaimed: false
+  } as const
+};
+const attributedRecord: ProductionIntakeV1 = {
+  ...record,
+  channel: 'MARKREG_WHITE_LABEL',
+  relationshipModel: 'WHITE_LABEL',
+  siteSource: {
+    siteId: 'site_workspace_reference',
+    siteOwnerWorkspaceId: '22222222-2222-4222-8222-222222222222',
+    siteVersion: 2,
+    configurationVersion: 5,
+    hostBindingId: 'site_host_workspace_reference',
+    hostBindingVersion: 3,
+    hostname: 'brand.example',
+    locale: 'en-US',
+    observedAt: acquisitionMaterial.observedAt,
+    fingerprintSha256: 'c'.repeat(64),
+    acquisition: {
+      ...acquisitionMaterial,
+      fingerprintSha256: '5192f97dc3e0cb3185cca894187234414e9793584665fe597b965bda88159059'
+    }
+  }
+};
 
 const editingClient: ProductionIntakeClient = {
   create: () => Promise.resolve({ intake: record }),
@@ -81,5 +126,14 @@ export const Mobile390: Story = {
       },
       defaultViewport: 'markreg390'
     }
+  }
+};
+
+export const SiteAttributedReceipt: Story = {
+  args: {
+    client: editingClient,
+    workspaceId,
+    storageScope: 'site:site_workspace_reference',
+    fixtureRecord: attributedRecord
   }
 };

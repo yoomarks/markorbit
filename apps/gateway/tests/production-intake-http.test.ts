@@ -85,6 +85,7 @@ function routes(authenticationClient: CoreAuthenticationClient = client()) {
   return createGatewayMarkRegEarlyFunnelRoutes({
     markRegUrl: 'http://markreg.test',
     siteUrl: 'http://site.test',
+    liteUrl: 'http://lite.test',
     trustedProxy: true,
     authenticationClient,
     internalServiceSecret,
@@ -195,6 +196,16 @@ describe('durable Production Intake Gateway boundary', () => {
             channel: 'MARKREG_WHITE_LABEL',
             relationshipModel: 'WHITE_LABEL'
           }
+        ],
+        contentSlots: [
+          {
+            slot: 'service-us',
+            route: '/services/us-trademark',
+            locale: 'en-US',
+            title: 'US trademark registration',
+            publishPackageRef: { id: 'publish-package_us', version: 5 },
+            contentFingerprintSha256: 'c'.repeat(64)
+          }
         ]
       },
       requestContext: {
@@ -217,19 +228,37 @@ describe('durable Production Intake Gateway boundary', () => {
         expect(JSON.parse(init.body)).toMatchObject({ hostname: 'pilot.example.com' });
         return response(200, siteRuntime);
       }
-      expect(url).toBe('http://markreg.test/internal/v1/production-intakes');
       const body = JSON.parse(init.body) as Record<string, unknown>;
+      if (url === 'http://markreg.test/internal/v1/production-intakes') {
+        expect(body).toMatchObject({
+          channel: 'MARKREG_WHITE_LABEL',
+          relationshipModel: 'WHITE_LABEL',
+          siteSource: {
+            siteId: 'site_pilot',
+            siteOwnerWorkspaceId: 'site-owner-workspace',
+            hostBindingId: 'site_host_pilot',
+            fingerprintSha256: 'b'.repeat(64),
+            acquisition: {
+              attributionState: 'ATTRIBUTED',
+              landingPath: '/services/us-trademark',
+              source: 'ai-answer',
+              campaign: 'launch',
+              referrerHostname: 'answer.example',
+              contentRef: { id: 'publish-package_us', version: 5 }
+            }
+          }
+        });
+        return response(200, {
+          intake: { ...intakeEnvelope.intake, siteSource: body.siteSource }
+        });
+      }
+      expect(url).toBe('http://lite.test/v1/site-inbound-attribution-links');
       expect(body).toMatchObject({
-        channel: 'MARKREG_WHITE_LABEL',
-        relationshipModel: 'WHITE_LABEL',
-        siteSource: {
-          siteId: 'site_pilot',
-          siteOwnerWorkspaceId: 'site-owner-workspace',
-          hostBindingId: 'site_host_pilot',
-          fingerprintSha256: 'b'.repeat(64)
-        }
+        motionKind: 'SITE_INBOUND',
+        attributionState: 'ATTRIBUTED',
+        downstreamRef: { kind: 'PRODUCTION_INTAKE', id: 'production-intake_698' }
       });
-      return response(200, intakeEnvelope);
+      return response(201, { businessAttributionLinkId: 'business-attribution_intake' });
     });
     vi.stubGlobal('fetch', downstream);
 
@@ -238,12 +267,21 @@ describe('durable Production Intake Gateway boundary', () => {
         'POST',
         '/api/site/markreg/production-intakes',
         { schemaVersion: 1, input: productionIntakeBody.input },
-        { host: 'ignored.example.com', 'x-forwarded-host': 'pilot.example.com' }
+        {
+          host: 'ignored.example.com',
+          'x-forwarded-host': 'pilot.example.com',
+          referer:
+            'https://pilot.example.com/services/us-trademark?utm_source=ai-answer&utm_campaign=launch',
+          'x-markorbit-site-referrer-host': 'answer.example'
+        }
       )
     );
 
     expect(result.status).toBe(200);
-    expect(downstream).toHaveBeenCalledTimes(2);
+    expect(downstream).toHaveBeenCalledTimes(3);
+    expect(result.body).toMatchObject({
+      attribution: { businessAttributionLinkId: 'business-attribution_intake' }
+    });
   });
 
   it('rejects browser attempts to select Site authority fields', async () => {

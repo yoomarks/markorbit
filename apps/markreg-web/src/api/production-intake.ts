@@ -40,10 +40,22 @@ export function createSiteProductionIntakeClient(
   return {
     create(command) {
       const { idempotencyKey, correlationId, input, schemaVersion } = command;
+      const referrerHostname = (() => {
+        if (typeof document === 'undefined' || !document.referrer) return undefined;
+        try {
+          return new URL(document.referrer).hostname;
+        } catch {
+          return undefined;
+        }
+      })();
       return api.post<ProductionIntakeEnvelopeV1>(
         '/api/site/markreg/production-intakes',
         { schemaVersion, input },
-        { 'Idempotency-Key': idempotencyKey, 'X-Correlation-ID': correlationId }
+        {
+          'Idempotency-Key': idempotencyKey,
+          'X-Correlation-ID': correlationId,
+          ...(referrerHostname ? { 'X-MarkOrbit-Site-Referrer-Host': referrerHostname } : {})
+        }
       );
     },
     get(intakeId) {

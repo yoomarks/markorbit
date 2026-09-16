@@ -18,7 +18,8 @@ import {
   type QuoteCreateCommand,
   type ProfessionalReviewCase,
   type CustomerInstructionType,
-  type CreateFormalMatterCommand
+  type CreateFormalMatterCommand,
+  type WorkspacePrincipal
 } from '@markorbit/contracts';
 import {
   noAutomaticConsequences,
@@ -51,6 +52,7 @@ import {
 import {
   CustomerConfirmationError,
   CustomerConfirmationService,
+  type ConfirmableQuoteSource,
   type CustomerConfirmationRepository
 } from './customer-confirmation.js';
 import {
@@ -85,6 +87,7 @@ export * from './order-persistence.js';
 export * from './order-service.js';
 export * from './order-matter-conversion.js';
 export * from './order-http.js';
+export * from './production-order-commercial-source.js';
 export * from './customer-relationship.js';
 export * from './customer-relationship-http.js';
 export * from './production-intake.js';
@@ -288,6 +291,10 @@ export interface MarkRegOptions {
   preparationSources?: PreparationSources;
   milestoneTestRuntime?: boolean;
   customerConfirmationRepository?: CustomerConfirmationRepository;
+  customerConfirmationQuoteSource?: (
+    principal: WorkspacePrincipal,
+    id: string
+  ) => Promise<ConfirmableQuoteSource | null>;
   matterDraftRepository?: MatterDraftRepository;
   formalMatterRepository?: FormalMatterRepository;
   internalServiceSecret?: string;
@@ -380,7 +387,12 @@ export function createRuntime(options: MarkRegOptions = {}) {
   const durableConfirmations = options.customerConfirmationRepository
     ? new CustomerConfirmationService(
         options.customerConfirmationRepository,
-        (id) => Promise.resolve(repository.getQuote(id) ?? null),
+        async (principal, id) =>
+          (options.customerConfirmationQuoteSource
+            ? await options.customerConfirmationQuoteSource(principal, id)
+            : null) ??
+          repository.getQuote(id) ??
+          null,
         now
       )
     : undefined;

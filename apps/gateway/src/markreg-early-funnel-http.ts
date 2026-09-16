@@ -9,7 +9,8 @@ import {
 } from '@markorbit/contracts';
 import {
   parseCreateProductionFeeFactsCommandV1,
-  parseCreateProductionIntakeCommandV1
+  parseCreateProductionIntakeCommandV1,
+  type ProductionIntakeV1
 } from '@markorbit/contracts/markreg-early-funnel';
 import type { ResolvedSiteRuntimeV1 } from '@markorbit/contracts/site';
 import { HttpError, json, type JsonRequest, type JsonRoute } from '@markorbit/service-kit';
@@ -21,6 +22,7 @@ import {
   validateCsrf
 } from './auth.js';
 import { authorizeGovernedWorkspaceMutation } from './governed-action.js';
+import { deriveSiteInboundAcquisitionV1 } from './site-inbound-attribution.js';
 
 export interface GatewayMarkRegEarlyFunnelOptions {
   markRegUrl: string;
@@ -30,6 +32,7 @@ export interface GatewayMarkRegEarlyFunnelOptions {
   allowedOrigins: readonly string[];
   fixtureTestRuntime?: boolean;
   siteUrl?: string;
+  liteUrl?: string;
   trustedProxy?: boolean;
 }
 
@@ -430,6 +433,105 @@ export function createGatewayMarkRegEarlyFunnelRoutes(
     }
   };
 
+  const recordSiteInboundIntake = async (
+    request: JsonRequest,
+    principal: WorkspacePrincipal,
+    intake: ProductionIntakeV1,
+    key: string
+  ) => {
+    if (!options.internalServiceSecret || !options.liteUrl || !intake.siteSource) {
+      throw new HttpError(
+        503,
+        'ATTRIBUTION_RUNTIME_UNAVAILABLE',
+        'Site inbound attribution is unavailable.',
+        true
+      );
+    }
+    const source = intake.siteSource;
+    const acquisition = source.acquisition;
+    const sourceRefs = [
+      {
+        owner: 'SITE',
+        kind: 'SITE_REQUEST_CONTEXT',
+        id: source.siteId,
+        version: source.configurationVersion,
+        fingerprintSha256: source.fingerprintSha256,
+        observedAt: source.observedAt
+      },
+      {
+        owner: 'SITE',
+        kind: 'SITE_INBOUND_ACQUISITION',
+        id: `${source.siteId}|${acquisition.source ?? acquisition.referrerHostname ?? acquisition.attributionState}`,
+        version: 1,
+        fingerprintSha256: acquisition.fingerprintSha256,
+        observedAt: acquisition.observedAt
+      },
+      ...(acquisition.contentRef
+        ? [
+            {
+              owner: acquisition.contentRef.owner,
+              kind: acquisition.contentRef.kind,
+              id: acquisition.contentRef.id,
+              version: acquisition.contentRef.version,
+              fingerprintSha256: acquisition.contentRef.fingerprintSha256,
+              observedAt: acquisition.observedAt
+            }
+          ]
+        : [])
+    ];
+    try {
+      const response = await fetch(
+        `${options.liteUrl.replace(/\/$/u, '')}/v1/site-inbound-attribution-links`,
+        {
+          method: 'POST',
+          headers: {
+            'content-type': 'application/json',
+            'idempotency-key': `site-intake:${key}`,
+            'x-markorbit-internal-authorization': options.internalServiceSecret,
+            'x-markorbit-principal': encodeInternalWorkspacePrincipal(principal),
+            'x-markorbit-workspace-id': principal.workspaceId,
+            ...(request.headers['x-correlation-id']
+              ? { 'x-correlation-id': request.headers['x-correlation-id'] }
+              : {})
+          },
+          body: JSON.stringify({
+            motionKind: 'SITE_INBOUND',
+            sourceRefs,
+            touchpointRefs: [],
+            downstreamRef: {
+              owner: 'MARKREG',
+              kind: 'PRODUCTION_INTAKE',
+              id: intake.intakeId,
+              version: intake.version,
+              fingerprintSha256: intake.fingerprintSha256,
+              observedAt: intake.updatedAt
+            },
+            attributionState: acquisition.attributionState,
+            evidenceBasis: 'EXACT_LINEAGE',
+            evaluatedAt: intake.updatedAt
+          })
+        }
+      );
+      if (!response.ok) {
+        throw new HttpError(
+          response.status,
+          'ATTRIBUTION_RECORD_REJECTED',
+          'Site inbound attribution could not be recorded.',
+          response.status >= 500
+        );
+      }
+      return (await response.json()) as unknown;
+    } catch (error) {
+      if (error instanceof HttpError) throw error;
+      throw new HttpError(
+        503,
+        'ATTRIBUTION_RUNTIME_UNAVAILABLE',
+        'Site inbound attribution is unavailable.',
+        true
+      );
+    }
+  };
+
   const forwardMatterDraft = async (
     request: JsonRequest,
     principal: WorkspacePrincipal,
@@ -775,7 +877,8 @@ export function createGatewayMarkRegEarlyFunnelRoutes(
             hostname: resolved.requestContext.normalizedHostname,
             locale: resolved.requestContext.defaultLocale,
             observedAt: resolved.requestContext.observedAt,
-            fingerprintSha256: resolved.requestContext.fingerprintSha256
+            fingerprintSha256: resolved.requestContext.fingerprintSha256,
+            acquisition: deriveSiteInboundAcquisitionV1(request, resolved)
           }
         });
       } catch (error) {
@@ -785,7 +888,20 @@ export function createGatewayMarkRegEarlyFunnelRoutes(
           error instanceof Error ? error.message : 'Production Intake request is invalid.'
         );
       }
-      return forward(request, principal, '/internal/v1/production-intakes', command, key, correlation);
+      const result = await forward(
+        request,
+        principal,
+        '/internal/v1/production-intakes',
+        command,
+        key,
+        correlation
+      );
+      if (result.status !== 200) return result;
+      const intake = (result.body as { intake?: ProductionIntakeV1 }).intake;
+      if (!intake)
+        throw new HttpError(503, 'DOWNSTREAM_INVALID_RESPONSE', 'MarkReg Intake response is invalid.', true);
+      const attribution = await recordSiteInboundIntake(request, principal, intake, key);
+      return json(200, { ...(result.body as object), attribution }, result.headers);
     }
   };
 

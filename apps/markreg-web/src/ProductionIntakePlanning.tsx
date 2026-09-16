@@ -226,12 +226,14 @@ export function ProductionIntakePlanning({
   client = defaultClient,
   guidanceClient,
   workspaceId = currentWorkspaceId(),
-  storageScope = 'direct'
+  storageScope = 'direct',
+  fixtureRecord
 }: {
   client?: ProductionIntakeClient;
   guidanceClient?: ProductionGuidanceClient;
   workspaceId?: string;
   storageScope?: string;
+  fixtureRecord?: ProductionIntakeV1;
 }) {
   const storageSuffix =
     storageScope === 'direct'
@@ -240,14 +242,16 @@ export function ProductionIntakePlanning({
   const draftKey = `markreg-production-intake-draft-v1:${storageSuffix}`;
   const pointerKey = `markreg-production-intake-pointer-v1:${storageSuffix}`;
   const pendingKey = `markreg-production-intake-pending-v1:${storageSuffix}`;
-  const existingPointer = safeLoad<MarkOrbitId>(pointerKey);
+  const existingPointer = fixtureRecord?.intakeId ?? safeLoad<MarkOrbitId>(pointerKey);
   const [draft, setDraft] = useState<ProductionIntakeDraft>(
     () => safeLoad<ProductionIntakeDraft>(draftKey) ?? emptyDraft
   );
   const [step, setStep] = useState(0);
   const [errors, setErrors] = useState<Partial<Record<keyof ProductionIntakeDraft, string>>>({});
-  const [status, setStatus] = useState<FlowStatus>(existingPointer ? 'loading' : 'editing');
-  const [record, setRecord] = useState<ProductionIntakeV1>();
+  const [status, setStatus] = useState<FlowStatus>(
+    fixtureRecord ? 'received' : existingPointer ? 'loading' : 'editing'
+  );
+  const [record, setRecord] = useState<ProductionIntakeV1 | undefined>(fixtureRecord);
   const [readbackId, setReadbackId] = useState<MarkOrbitId | undefined>(existingPointer);
   const [failure, setFailure] = useState<FailureView>();
   const submitting = useRef(false);
@@ -271,7 +275,7 @@ export function ProductionIntakePlanning({
   };
 
   useEffect(() => {
-    if (!existingPointer) return;
+    if (!existingPointer || fixtureRecord) return;
     void readDurable(existingPointer, false);
     // The durable pointer is the only local submitted-state value. Material truth comes from GET.
   }, []);
@@ -701,6 +705,29 @@ function ReceivedIntake({
                       value: `${record.siteSource.configurationVersion}`
                     },
                     { key: 'Source host', value: record.siteSource.hostname },
+                    {
+                      key: 'Acquisition state',
+                      value: record.siteSource.acquisition.attributionState
+                    },
+                    {
+                      key: 'Acquisition source',
+                      value:
+                        record.siteSource.acquisition.source ??
+                        record.siteSource.acquisition.referrerHostname ??
+                        record.siteSource.acquisition.attributionState
+                    },
+                    {
+                      key: 'Landing path',
+                      value: record.siteSource.acquisition.landingPath
+                    },
+                    ...(record.siteSource.acquisition.contentRef
+                      ? [
+                          {
+                            key: 'Content source',
+                            value: `${record.siteSource.acquisition.contentRef.id} · v${record.siteSource.acquisition.contentRef.version}`
+                          }
+                        ]
+                      : []),
                     { key: 'Site lineage', value: record.siteSource.fingerprintSha256 }
                   ]
                 : [])

@@ -71,6 +71,15 @@ class MemoryDatabase {
         return Promise.resolve({ rows: [], rowCount: 1 });
       }
       if (sql.startsWith('SELECT document_json')) {
+        if (sql.includes("motion_kind='SITE_INBOUND'")) {
+          const values = [...this.links.entries()]
+            .filter(
+              ([key, value]) =>
+                key.startsWith(`${String(params[0])}:`) && value.motionKind === 'SITE_INBOUND'
+            )
+            .map(([, value]) => ({ document_json: value }));
+          return Promise.resolve({ rows: values, rowCount: values.length });
+        }
         const value = this.links.get(`${String(params[0])}:${String(params[1])}`);
         return Promise.resolve({
           rows: value ? [{ document_json: value }] : [],
@@ -125,5 +134,59 @@ describe('PostgresBusinessAttributionStore', () => {
     await expect(
       store.create({ ...withoutDownstream, attributionState: 'UNKNOWN' })
     ).rejects.toMatchObject({ code: 'IDEMPOTENCY_CONFLICT' });
+  });
+
+  it('counts Site/source Intakes separately from exact downstream conversions', async () => {
+    const database = new MemoryDatabase();
+    let sequence = 0;
+    const store = new PostgresBusinessAttributionStore(
+      database as never,
+      database.client as never,
+      () => at,
+      () => `site${++sequence}`
+    );
+    const siteRefs = [
+      exactRef('SITE', 'SITE_REQUEST_CONTEXT', 'site_reference', 'a'),
+      exactRef('SITE', 'SITE_INBOUND_ACQUISITION', 'site_reference|ai-answer', 'b')
+    ];
+    await store.create({
+      ...command(),
+      idempotencyKey: 'site-intake-1',
+      motionKind: 'SITE_INBOUND',
+      sourceRefs: siteRefs,
+      touchpointRefs: [],
+      downstreamRef: exactRef('MARKREG', 'PRODUCTION_INTAKE', 'production-intake_1', 'c'),
+      attributionState: 'ATTRIBUTED'
+    });
+    await store.create({
+      ...command(),
+      idempotencyKey: 'site-matter-1',
+      motionKind: 'SITE_INBOUND',
+      sourceRefs: siteRefs,
+      touchpointRefs: [
+        exactRef('MARKREG', 'PRODUCTION_INTAKE', 'production-intake_1', 'c'),
+        exactRef('MARKREG', 'PRODUCTION_QUOTE', 'quote_1', 'd'),
+        exactRef('MARKREG', 'ORDER', 'order_1', 'e'),
+        exactRef('MARKREG', 'CUSTOMER_CONFIRMATION', 'confirmation_1', 'f')
+      ],
+      downstreamRef: exactRef('MARKREG', 'FORMAL_MATTER', 'formal-matter_1', '1'),
+      attributionState: 'ATTRIBUTED'
+    });
+    await expect(store.summarizeSiteInbound(workspace)).resolves.toMatchObject({
+      intakeCount: 1,
+      quotePreparedCount: 1,
+      orderCount: 1,
+      confirmationCount: 1,
+      matterCount: 1,
+      bySiteSource: [
+        {
+          siteId: 'site_reference',
+          source: 'ai-answer',
+          attributionState: 'ATTRIBUTED',
+          intakeCount: 1
+        }
+      ],
+      byAttributionState: { ATTRIBUTED: 1, DIRECT: 0, UNATTRIBUTED: 0, UNKNOWN: 0 }
+    });
   });
 });
