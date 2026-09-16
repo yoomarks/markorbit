@@ -5,6 +5,48 @@ import { fileURLToPath } from 'node:url';
 
 const normalize = (value) => value.replaceAll('\\', '/').replace(/^\.\//, '');
 const starts = (path, prefix) => path.startsWith(prefix);
+
+export function centralSurfacesForFiles(rawFiles) {
+  const surfaces = new Set();
+  for (const rawFile of rawFiles) {
+    const path = normalize(rawFile);
+    if (starts(path, 'packages/contracts/')) surfaces.add('contracts');
+    if (starts(path, 'infrastructure/persistence/') || starts(path, 'packages/persistence/')) {
+      surfaces.add('persistence');
+    }
+    if (starts(path, 'apps/gateway/')) surfaces.add('gateway');
+    if (
+      starts(path, '.github/workflows/') ||
+      starts(path, '.github/actions/') ||
+      path === 'scripts/ci-detect-scope.mjs' ||
+      path === 'scripts/ci-detect-scope.test.mjs'
+    ) {
+      surfaces.add('ci-governance');
+    }
+    if (
+      starts(path, 'packages/service-kit/') ||
+      starts(path, 'packages/events/') ||
+      starts(path, 'packages/config/')
+    ) {
+      surfaces.add('shared-runtime');
+    }
+    if (
+      [
+        'package.json',
+        'pnpm-lock.yaml',
+        'pnpm-workspace.yaml',
+        'turbo.json',
+        'tsconfig.base.json',
+        'eslint.config.mjs',
+        'prettier.config.mjs',
+        '.prettierrc'
+      ].includes(path)
+    ) {
+      surfaces.add('workspace-topology');
+    }
+  }
+  return [...surfaces].sort();
+}
 const migrationName = (path) =>
   starts(path, 'infrastructure/persistence/migrations/') ? basename(path).toLowerCase() : '';
 

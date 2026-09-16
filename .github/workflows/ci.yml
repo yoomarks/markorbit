@@ -116,7 +116,7 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
       - name: Validate CI scope map
-        run: node --test scripts/ci-detect-scope.test.mjs
+        run: node --test scripts/ci-detect-scope.test.mjs scripts/task-freshness.test.mjs
       - name: Format-check changed files only
         env:
           BASE_SHA: ${{ needs.detect.outputs.diff_base }}
