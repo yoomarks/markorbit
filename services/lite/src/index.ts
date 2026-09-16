@@ -24,6 +24,7 @@ export * from './trademark-asset-attention.js';
 export * from './trademark-asset-refresh.js';
 export * from './trading-studio-run.js';
 export * from './trading-listing.js';
+export * from './trading-listing-asset.js';
 export * from './trading-ai-profile.js';
 export * from './trading-ai-profile-generation.js';
 export * from './trading-ai-profile-checkpoint.js';
