@@ -39,7 +39,8 @@ function state(selected = false): TradingStudioState {
     run: {
       studioRunId,
       currentness: 'CURRENT',
-      status: 'COMPLETED'
+      status: 'COMPLETED',
+      trademarkAsset: { id: 'trademark-asset_ui', version: 4 }
     },
     aiProfile: {
       aiProfileId: 'trading-ai-derived_ai-profile_ui',
@@ -102,6 +103,13 @@ function state(selected = false): TradingStudioState {
         limits: ['Evidence coverage does not predict commercial success.']
       }
     },
+    brandDna: {
+      brandDnaId: 'trading-ai-derived_brand-dna_ui',
+      version: 1,
+      brandPromise: 'A focused, evidence-aware brand direction for a future operator.',
+      positioning: ['Focused and credible', 'Easy to understand'],
+      constraints: ['Do not imply verified demand.']
+    },
     directionSet: {
       commercialDirectionSetId: 'commercial-direction-set_ui',
       version: 1,
@@ -148,6 +156,41 @@ describe('Orbit Trading Studio direction comparison', () => {
     expect(screen.getByText(/Selection does not start Deep Build/u)).toBeInTheDocument();
     expect(screen.getAllByText('WHO')).toHaveLength(3);
     expect(screen.getAllByText('Focused launch')).toHaveLength(4);
+    expect(screen.queryByRole('button', { name: 'Build this direction' })).not.toBeInTheDocument();
+  });
+
+  it('opens a read-only seller validation flow from durable selection without implying publication', async () => {
+    render(
+      <TradingStudio
+        workspaceId={workspaceId}
+        studioRunId={studioRunId}
+        client={client(state(true)).api}
+        sellerValidationPrototype
+      />
+    );
+
+    await userEvent.click(await screen.findByRole('button', { name: 'Build this direction' }));
+    expect(await screen.findByText('Seller validation flow')).toBeInTheDocument();
+    expect(screen.getByText('Nothing here publishes the trademark')).toBeInTheDocument();
+    expect(screen.getByText(/Brand DNA available/u)).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Visual build slots' })).toBeInTheDocument();
+    expect(screen.getByText('Hero visual')).toBeInTheDocument();
+    await userEvent.click(screen.getAllByRole('button', { name: 'Pin' })[0]!);
+    expect(screen.getByText('Pinned locally')).toBeInTheDocument();
+    expect(
+      screen.getByText('Prototype pin state changed locally. No saved creative asset was created.')
+    ).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole('button', { name: 'Listing preview' }));
+    expect(screen.getByRole('heading', { name: /Focused operator —/u })).toBeInTheDocument();
+    expect(screen.getByText('Workspace facts')).toBeInTheDocument();
+    expect(screen.getByText('AI interpretation')).toBeInTheDocument();
+    expect(screen.getByText('Not published')).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole('button', { name: 'Destination readiness' }));
+    expect(screen.getByText('Needs attention — no destination is connected')).toBeInTheDocument();
+    expect(screen.getByText('Not published yet')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Publication not enabled' })).toBeDisabled();
   });
 
   it('records one explicit exact-version choice and reloads durable owner state', async () => {

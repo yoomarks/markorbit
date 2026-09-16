@@ -17,7 +17,12 @@ const commercialDirectionContext = {
 } as const;
 
 const state = {
-  run: { studioRunId: 'standard-studio-run_story', currentness: 'CURRENT', status: 'COMPLETED' },
+  run: {
+    studioRunId: 'standard-studio-run_story',
+    currentness: 'CURRENT',
+    status: 'COMPLETED',
+    trademarkAsset: { id: 'trademark-asset_story', version: 4 }
+  },
   aiProfile: {
     aiProfileId: 'trading-ai-derived_ai-profile_story',
     version: 2,
@@ -85,6 +90,13 @@ const state = {
       ],
       limits: ['Evidence coverage is qualitative and does not predict commercial success.']
     }
+  },
+  brandDna: {
+    brandDnaId: 'trading-ai-derived_brand-dna_story',
+    version: 1,
+    brandPromise: 'A focused identity system that can support a credible future launch.',
+    positioning: ['Focused and credible', 'Accessible modern offer'],
+    constraints: ['Do not present imagined demand as fact.']
   },
   directionSet: {
     commercialDirectionSetId: 'commercial-direction-set_story',
@@ -158,6 +170,26 @@ export const Selected: Story = {
         }
       }
     } as unknown as TradingStudioState)
+  }
+};
+export const SellerValidationPrototype: Story = {
+  args: {
+    ...Selected.args,
+    sellerValidationPrototype: true
+  },
+  play: ({ canvasElement }) => {
+    Array.from(canvasElement.querySelectorAll('button'))
+      .find((button) => button.textContent === 'Build this direction')
+      ?.click();
+  }
+};
+export const SellerValidationPrototypeMobile390: Story = {
+  ...SellerValidationPrototype,
+  parameters: {
+    viewport: {
+      defaultViewport: 'mobile1',
+      viewports: { mobile1: { name: '390px mobile', styles: { width: '390px', height: '844px' } } }
+    }
   }
 };
 export const Empty: Story = { args: { ...base, client: client({ ...state, directionSet: null }) } };

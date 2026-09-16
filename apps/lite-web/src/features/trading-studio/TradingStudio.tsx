@@ -18,12 +18,17 @@ import {
   type TradingStudioClient,
   type TradingStudioState
 } from '../../api/trading-studio.js';
+import {
+  TradingSellerValidationFlow,
+  type TradingSellerValidationModel
+} from './TradingSellerValidationFlow.js';
 import './trading-studio.css';
 
 export interface TradingStudioProps {
   workspaceId: string;
   studioRunId: TradingStudioRunV1['studioRunId'];
   client?: TradingStudioClient;
+  sellerValidationPrototype?: boolean;
 }
 
 const roleLabel = {
@@ -303,11 +308,17 @@ function failureMessage(error: unknown): { title: string; description: string } 
   };
 }
 
-export function TradingStudio({ workspaceId, studioRunId, client }: TradingStudioProps) {
+export function TradingStudio({
+  workspaceId,
+  studioRunId,
+  client,
+  sellerValidationPrototype = false
+}: TradingStudioProps) {
   const api = client ?? createTradingStudioClient(workspaceId);
   const [state, setState] = useState<TradingStudioState>();
   const [error, setError] = useState<unknown>();
   const [selecting, setSelecting] = useState<string>();
+  const [validationOpen, setValidationOpen] = useState(false);
   const selectionKeys = useRef(new Map<string, string>());
 
   const load = async () => {
@@ -320,6 +331,7 @@ export function TradingStudio({ workspaceId, studioRunId, client }: TradingStudi
   };
 
   useEffect(() => {
+    setValidationOpen(false);
     void load();
   }, [studioRunId]);
 
@@ -378,6 +390,30 @@ export function TradingStudio({ workspaceId, studioRunId, client }: TradingStudi
   const selected = state.selection?.selectedDirection;
   const stale = state.run.currentness === 'STALE';
   const mutationError = error ? failureMessage(error) : undefined;
+  const selectedDirectionRecord = state.directionSet?.directions.find(
+    (direction) =>
+      direction.commercialDirectionId === selected?.id && direction.version === selected.version
+  );
+  const sellerValidationModel: TradingSellerValidationModel | undefined = selectedDirectionRecord
+    ? {
+        listingHeadline: state.brandDna?.brandPromise
+          ? `${selectedDirectionRecord.title} — ${state.brandDna.brandPromise}`
+          : selectedDirectionRecord.title,
+        workspaceFacts: [
+          `Trademark record version: ${state.run.trademarkAsset.version}`,
+          `Source status: ${state.run.currentness === 'CURRENT' ? 'Up to date' : 'Needs refresh'}`
+        ],
+        aiInterpretations: [
+          selectedDirectionRecord.thesis ?? selectedDirectionRecord.summary,
+          ...(state.brandDna?.positioning.slice(0, 2) ?? [])
+        ],
+        assumptions:
+          state.aiProfile?.commercialInsights?.assumptions.map(
+            (item) => `${item.label}: ${item.description}`
+          ) ?? [],
+        destinations: []
+      }
+    : undefined;
 
   return (
     <main className="trading-studio">
@@ -443,9 +479,37 @@ export function TradingStudio({ workspaceId, studioRunId, client }: TradingStudi
           })}
         </div>
       )}
+      {sellerValidationPrototype && selectedDirectionRecord && sellerValidationModel ? (
+        <section
+          className="trading-studio__seller-validation-entry"
+          aria-label="Seller validation entry"
+        >
+          <Card className="trading-studio__seller-validation-card">
+            <div>
+              <Badge>Selected direction ready for validation</Badge>
+              <h2>Build this direction</h2>
+              <p>
+                Inspect Deep Build readiness, a seller-facing listing story, and destination gaps
+                without enabling publication.
+              </p>
+            </div>
+            <Button disabled={stale} onClick={() => setValidationOpen((open) => !open)}>
+              {validationOpen ? 'Close seller validation' : 'Build this direction'}
+            </Button>
+          </Card>
+          {validationOpen ? (
+            <TradingSellerValidationFlow
+              state={state}
+              model={sellerValidationModel}
+              sourceIsCurrent={!stale}
+            />
+          ) : null}
+        </section>
+      ) : null}
       <p className="trading-studio__boundary">
-        Directions are AI concepts, not Trademark Truth. Selection does not start Deep Build or
-        create a Listing. Refinement is not yet available through a governed execution boundary.
+        {sellerValidationPrototype
+          ? 'Directions are AI concepts, not official trademark records. Seller validation is a read-only prototype and does not publish anything.'
+          : 'Directions are AI concepts, not Trademark Truth. Selection does not start Deep Build or create a Listing. Refinement is not yet available through a governed execution boundary.'}
       </p>
     </main>
   );

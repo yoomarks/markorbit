@@ -1,5 +1,6 @@
 import type { TradingCommercialDirectionSetV1 } from '@markorbit/contracts/trading-commercial-direction';
 import type { TradingAiProfileV1 } from '@markorbit/contracts/trading-ai-profile';
+import type { TradingBrandDnaV1 } from '@markorbit/contracts/trading-brand-dna';
 import type {
   CreateTradingDirectionSelectionCommandV1,
   TradingDirectionSelectionV1
@@ -11,6 +12,7 @@ const baseUrl = import.meta.env['VITE_LITE_GATEWAY_URL'] ?? 'http://127.0.0.1:40
 export interface TradingStudioState {
   readonly run: Readonly<TradingStudioRunV1>;
   readonly aiProfile: Readonly<TradingAiProfileV1> | null;
+  readonly brandDna: Readonly<TradingBrandDnaV1> | null;
   readonly directionSet: Readonly<TradingCommercialDirectionSetV1> | null;
   readonly selection: Readonly<TradingDirectionSelectionV1> | null;
 }

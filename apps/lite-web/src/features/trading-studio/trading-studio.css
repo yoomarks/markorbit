@@ -152,3 +152,27 @@
     grid-template-columns: 1fr;
   }
 }
+
+.trading-studio__seller-validation-entry {
+  display: grid;
+  gap: 16px;
+}
+.trading-studio__seller-validation-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+}
+.trading-studio__seller-validation-card > div {
+  display: grid;
+  gap: 8px;
+}
+.trading-studio__seller-validation-card h2,
+.trading-studio__seller-validation-card p {
+  margin: 0;
+}
+@media (max-width: 760px) {
+  .trading-studio__seller-validation-card {
+    display: grid;
+  }
+}
