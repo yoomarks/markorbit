@@ -1232,6 +1232,7 @@ export * from './capability-learning.js';
 export * from './capability-center.js';
 export * from './knowledge-ready-package-v2.js';
 export * from './trading-listing.js';
+export * from './trading-marketplace-target-binding.js';
 export * from './media.js';
 export * from './media-rights.js';
 export * from './voice-capability.js';
