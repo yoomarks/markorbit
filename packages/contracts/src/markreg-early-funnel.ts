@@ -13,6 +13,10 @@ import {
   type QuoteStatus,
   type RelationshipModel
 } from './index.js';
+import {
+  parseSiteInboundAcquisitionV1,
+  type SiteInboundAcquisitionV1
+} from './site-inbound-attribution.js';
 
 export const earlyFunnelAdmissionClasses = [
   'PRODUCTION_ADMISSIBLE',
@@ -107,6 +111,7 @@ export interface SiteIntakeSourceV1 {
   locale: string;
   observedAt: string;
   fingerprintSha256: string;
+  acquisition: Readonly<SiteInboundAcquisitionV1>;
 }
 
 export interface ProductionIntakeV1 {
@@ -523,7 +528,8 @@ function parseSiteIntakeSource(value: unknown): SiteIntakeSourceV1 {
     hostname: text(v.hostname, 'siteSource.hostname'),
     locale: text(v.locale, 'siteSource.locale'),
     observedAt: timestamp(v.observedAt, 'siteSource.observedAt'),
-    fingerprintSha256: sha256(v.fingerprintSha256, 'siteSource.fingerprintSha256')
+    fingerprintSha256: sha256(v.fingerprintSha256, 'siteSource.fingerprintSha256'),
+    acquisition: parseSiteInboundAcquisitionV1(v.acquisition)
   };
 }
 

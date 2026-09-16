@@ -1,11 +1,13 @@
 import type {
+  Channel,
   ConfirmationAcknowledgement,
   CustomerConfirmation,
   MatterDraft,
   MatterDraftPreparation,
   PlanQuoteResponse,
   ProfessionalReviewCase,
-  FormalMatter
+  FormalMatter,
+  RelationshipModel
 } from '@markorbit/contracts';
 import {
   Alert,
@@ -51,14 +53,24 @@ export interface FlowFixture {
   draft?: MatterDraft;
   message?: string;
 }
+export interface ConfirmationQuoteSource {
+  planSelection: PlanQuoteResponse['planSelection'];
+  quote: Omit<PlanQuoteResponse['quote'], 'fixtureOnly'>;
+}
 export function ConfirmationMatterFlow({
   quote,
   client,
-  fixture
+  fixture,
+  channel = 'MARKREG_DIRECT',
+  relationshipModel = 'DIRECT',
+  siteInbound
 }: {
-  quote: PlanQuoteResponse;
+  quote: ConfirmationQuoteSource;
   client: MarkregClient;
   fixture?: FlowFixture;
+  channel?: Channel;
+  relationshipModel?: RelationshipModel;
+  siteInbound?: Readonly<{ intakeId: string; quoteId: string }>;
 }) {
   const [state, setState] = useState<MatterViewState>(fixture?.state ?? 'QUOTE_REVIEW');
   const [checked, setChecked] = useState<ConfirmationAcknowledgement['code'][]>([]);
@@ -113,7 +125,17 @@ export function ConfirmationMatterFlow({
       setState('FORMAL_MATTER_RECEIPT');
     });
   }, [client, fixture, formalMatterStorageKey]);
-  if (orderJourneyOpen && confirmation) return <OrderJourney source={{ confirmation }} />;
+  if (orderJourneyOpen && confirmation)
+    return (
+      <OrderJourney
+        source={{
+          confirmation,
+          channel,
+          relationshipModel,
+          ...(siteInbound ? { siteInbound } : {})
+        }}
+      />
+    );
 
   const confirm = async () => {
     setState('CONFIRMING');
@@ -354,7 +376,9 @@ export function ConfirmationMatterFlow({
             Creating the Order does not create a Payment, Invoice or Filing.
           </Alert>
           <div className="markreg-actions">
-            <Button onClick={() => setOrderJourneyOpen(true)}>Create service Order</Button>
+            {!siteInbound && (
+              <Button onClick={() => setOrderJourneyOpen(true)}>Create service Order</Button>
+            )}
             <Button variant="secondary" onClick={() => void createDraft()}>
               Prepare Matter Draft
             </Button>
@@ -507,6 +531,10 @@ export function ConfirmationMatterFlow({
             </p>
             <Button
               onClick={() => {
+                if (siteInbound) {
+                  setOrderJourneyOpen(true);
+                  return;
+                }
                 if (!confirmation || !workspaceId || !client.createFormalMatter) return;
                 const draftVersion = (matter as MatterDraft & { version?: number }).version;
                 const confirmationVersion = (
@@ -538,7 +566,7 @@ export function ConfirmationMatterFlow({
                   });
               }}
             >
-              Create Formal Matter
+              {siteInbound ? 'Continue to service Order' : 'Create Formal Matter'}
             </Button>
             {!reviewCase ? (
               <Button

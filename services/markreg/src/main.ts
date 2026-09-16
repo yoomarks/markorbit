@@ -7,6 +7,8 @@ import {
   PostgresDocumentPackageService,
   PostgresMarkRegAuditRepository,
   PostgresOrderRepository,
+  PostgresOrderMatterConversionService,
+  OrderService,
   DocumentPackageError
 } from './index.js';
 import {
@@ -95,6 +97,7 @@ import {
 import { createProductionOfficialFeeSourceRoutesV1 } from './production-official-fee-source-http.js';
 import { PostgresProductionQuoteServiceV1 } from './production-quote.js';
 import { createProductionQuoteRoutesV1 } from './production-quote-http.js';
+import { ProductionOrderCommercialSourceProvider } from './production-order-commercial-source.js';
 import { PostgresCustomerRelationshipStore } from './customer-relationship.js';
 import { createCustomerRelationshipRoutes } from './customer-relationship-http.js';
 import {
@@ -342,6 +345,21 @@ if (fixtureRuntime) {
     internalServiceSecret,
     service: productionQuoteService
   });
+  const productionCustomerConfirmationRepository = new PostgresCustomerConfirmationRepository(pool);
+  const productionOrderService = new OrderService(
+    orderRepository,
+    new ProductionOrderCommercialSourceProvider(
+      productionCustomerConfirmationRepository,
+      productionQuoteService,
+      productionIntakeService,
+      productionUserSelectionService,
+      productionFeeFactsService
+    )
+  );
+  const productionOrderMatterConversionService = new PostgresOrderMatterConversionService(
+    database,
+    pool
+  );
   const customerRelationshipRoutes = createCustomerRelationshipRoutes({
     internalServiceSecret,
     store: new PostgresCustomerRelationshipStore(database, pool)
@@ -412,12 +430,31 @@ if (fixtureRuntime) {
   })();
   runtime = createRuntime({
     milestoneTestRuntime: durableMilestoneOwners,
-    customerConfirmationRepository: new PostgresCustomerConfirmationRepository(pool),
+    customerConfirmationRepository: productionCustomerConfirmationRepository,
+    customerConfirmationQuoteSource: async (principal, quoteId) => {
+      const quote = await productionQuoteService.get(principal, quoteId);
+      const selection = await productionUserSelectionService.get(principal, quote.selection.id);
+      return {
+        quoteId: quote.quoteId,
+        pricingRuleVersion: String(quote.version),
+        status: quote.status,
+        currency: quote.currency,
+        total: quote.total,
+        lines: quote.lines,
+        selectedOptionCode: selection.selectedOptionCode,
+        recommendationId: quote.recommendation.id,
+        assumptions: quote.assumptions,
+        limitations: quote.limitations,
+        validUntil: quote.validUntil
+      };
+    },
     matterDraftRepository: new PostgresMatterDraftRepository(pool),
     formalMatterRepository,
     documentPackageService,
     preparationRepository: new FailClosedPreparationRepository(),
     auditRepository: new PostgresMarkRegAuditRepository(pool),
+    orderService: productionOrderService,
+    orderMatterConversionService: productionOrderMatterConversionService,
     internalServiceSecret,
     executionUrl,
     extraRoutes: [

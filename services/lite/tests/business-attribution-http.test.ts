@@ -11,7 +11,7 @@ const principal = {
   workspaceId: '11111111-1111-4111-8111-111111111111',
   membershipId: 'membership_1',
   role: 'WORKSPACE_ADMIN' as const,
-  permissions: ['workspace:read' as const, 'workspace:manage' as const],
+  permissions: ['workspace:read' as const, 'workspace:manage' as const, 'matter:create' as const],
   sessionExpiresAt: '2099-01-01T00:00:00.000Z'
 };
 function request(
@@ -43,7 +43,7 @@ describe('Business attribution HTTP boundary', () => {
     const create = vi.fn(() => Promise.resolve({ ok: true } as never));
     const routes = createBusinessAttributionRoutes({
       internalServiceSecret: secret,
-      store: { create, find: vi.fn() }
+      store: { create, find: vi.fn(), summarizeSiteInbound: vi.fn() }
     });
     const body = {
       motionKind: 'PORTFOLIO_GROWTH',
@@ -70,7 +70,7 @@ describe('Business attribution HTTP boundary', () => {
     const find = vi.fn(() => Promise.resolve(undefined));
     const routes = createBusinessAttributionRoutes({
       internalServiceSecret: secret,
-      store: { create: vi.fn(), find }
+      store: { create: vi.fn(), find, summarizeSiteInbound: vi.fn() }
     });
     await expect(
       route(routes, '/v1/business-attribution-links/:linkId').handle(
@@ -78,5 +78,31 @@ describe('Business attribution HTTP boundary', () => {
       )
     ).rejects.toMatchObject({ status: 404 });
     expect(find).toHaveBeenCalledWith(principal.workspaceId, 'business-attribution_missing');
+  });
+
+  it('admits Site-owned Intake attribution with matter:create and exposes the bounded summary', async () => {
+    const create = vi.fn(() => Promise.resolve({ ok: true } as never));
+    const summarizeSiteInbound = vi.fn(() =>
+      Promise.resolve({ schemaVersion: 1, intakeCount: 1 } as never)
+    );
+    const routes = createBusinessAttributionRoutes({
+      internalServiceSecret: secret,
+      store: { create, find: vi.fn(), summarizeSiteInbound }
+    });
+    const body = {
+      motionKind: 'SITE_INBOUND',
+      sourceRefs: [{}],
+      touchpointRefs: [],
+      downstreamRef: {},
+      attributionState: 'DIRECT',
+      evidenceBasis: 'EXACT_LINEAGE'
+    };
+    await route(routes, '/v1/site-inbound-attribution-links').handle(request('POST', body));
+    expect(create).toHaveBeenCalledWith(expect.objectContaining({ motionKind: 'SITE_INBOUND' }));
+    const result = await route(
+      routes,
+      '/v1/business-attribution-links/site-inbound/summary'
+    ).handle(request('GET', undefined));
+    expect(result).toMatchObject({ status: 200, body: { intakeCount: 1 } });
   });
 });

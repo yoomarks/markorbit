@@ -3,6 +3,10 @@ import type {
   CreateProductionIntakeCommandV1,
   ProductionIntakeV1
 } from '@markorbit/contracts/markreg-early-funnel';
+import {
+  noSiteInboundAcquisitionAuthorityConsequencesV1,
+  siteInboundAcquisitionFingerprintSha256V1
+} from '@markorbit/contracts/site-inbound-attribution';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -118,6 +122,54 @@ describe('production durable Intake planning', () => {
       goodsServices: { sourceText: draft.goodsServices },
       filingGoal: draft.filingGoal
     });
+  });
+
+  it('shows bounded Site/source/content lineage without implying identity or conversion', () => {
+    const material = {
+      schemaVersion: 1 as const,
+      attributionState: 'ATTRIBUTED' as const,
+      landingPath: '/services/us-trademark',
+      source: 'ai-answer',
+      contentRef: {
+        owner: 'LITE' as const,
+        kind: 'PUBLISH_PACKAGE' as const,
+        id: 'publish-package_us',
+        version: 5,
+        fingerprintSha256: 'b'.repeat(64)
+      },
+      observedAt: record.createdAt,
+      authorityConsequences: noSiteInboundAcquisitionAuthorityConsequencesV1
+    };
+    render(
+      <ProductionIntakePlanning
+        client={client()}
+        workspaceId={workspaceId}
+        fixtureRecord={{
+          ...record,
+          siteSource: {
+            siteId: 'site_reference',
+            siteOwnerWorkspaceId: 'workspace_site_owner',
+            siteVersion: 2,
+            configurationVersion: 3,
+            hostBindingId: 'site_host_reference',
+            hostBindingVersion: 4,
+            hostname: 'brand.example',
+            locale: 'en-US',
+            observedAt: record.createdAt,
+            fingerprintSha256: 'c'.repeat(64),
+            acquisition: {
+              ...material,
+              fingerprintSha256: siteInboundAcquisitionFingerprintSha256V1(material)
+            }
+          }
+        }}
+      />
+    );
+    expect(screen.getByText('ATTRIBUTED')).toBeTruthy();
+    expect(screen.getByText('ai-answer')).toBeTruthy();
+    expect(screen.getByText('/services/us-trademark')).toBeTruthy();
+    expect(screen.getByText('publish-package_us · v5')).toBeTruthy();
+    expect(screen.getByText(/does not mean a Recommendation, legal conclusion/i)).toBeTruthy();
   });
 
   it('creates durable Intake, reads it back from the owner route and never renders fixture options', async () => {

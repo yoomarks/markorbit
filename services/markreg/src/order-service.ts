@@ -53,8 +53,15 @@ export class OrderServiceError extends Error {
  * later runtime wiring may resolve the source from Quote/Confirmation/preparation truth.
  */
 export interface OrderCommercialSourceProvider {
-  resolve(command: CreateOrderCommand): Promise<CommercialSourceSnapshot | null>;
-  isCurrent(workspaceId: string, source: Readonly<CommercialSourceSnapshot>): Promise<boolean>;
+  resolve(
+    principal: WorkspacePrincipal,
+    command: CreateOrderCommand
+  ): Promise<CommercialSourceSnapshot | null>;
+  isCurrent(
+    principal: WorkspacePrincipal,
+    workspaceId: string,
+    source: Readonly<CommercialSourceSnapshot>
+  ): Promise<boolean>;
 }
 
 /** Bounded product-safe Order view; the immutable full commercial snapshot remains owner-only. */
@@ -191,12 +198,19 @@ export class InMemoryOrderCommercialSourceProvider implements OrderCommercialSou
     this.invalid.add(this.key(workspaceId, confirmationId));
   }
 
-  resolve(command: CreateOrderCommand): Promise<CommercialSourceSnapshot | null> {
+  resolve(
+    _principal: WorkspacePrincipal,
+    command: CreateOrderCommand
+  ): Promise<CommercialSourceSnapshot | null> {
     const value = this.values.get(this.key(command.workspaceId, command.customerConfirmationId));
     return Promise.resolve(value ? clone(value) : null);
   }
 
-  isCurrent(workspaceId: string, source: Readonly<CommercialSourceSnapshot>): Promise<boolean> {
+  isCurrent(
+    _principal: WorkspacePrincipal,
+    workspaceId: string,
+    source: Readonly<CommercialSourceSnapshot>
+  ): Promise<boolean> {
     const key = this.key(workspaceId, source.customerConfirmation.confirmationId);
     const current = this.values.get(key);
     return Promise.resolve(
@@ -233,7 +247,7 @@ export class OrderService {
         commandFingerprint
       );
       if (replay) return project(replay);
-      const source = await this.sources.resolve(command);
+      const source = await this.sources.resolve(principal, command);
       if (!source || !sourceMatches(command, source))
         throw new OrderServiceError(
           'STALE_SOURCE',
@@ -418,7 +432,11 @@ export class OrderService {
         );
       if (
         requireCurrentSource &&
-        !(await this.sources.isCurrent(command.workspaceId, current.commercialSourceSnapshot))
+        !(await this.sources.isCurrent(
+          principal,
+          command.workspaceId,
+          current.commercialSourceSnapshot
+        ))
       )
         throw new OrderServiceError(
           'STALE_SOURCE',

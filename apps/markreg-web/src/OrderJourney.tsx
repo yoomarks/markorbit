@@ -1,4 +1,4 @@
-import type { CustomerConfirmation } from '@markorbit/contracts';
+import type { Channel, CustomerConfirmation, RelationshipModel } from '@markorbit/contracts';
 import type { OrderStatus } from '@markorbit/contracts/order';
 import {
   Alert,
@@ -21,6 +21,9 @@ import { serializeMarkregRoute } from './routing/markreg-route.js';
 
 export interface OrderCommercialSource {
   confirmation: CustomerConfirmation;
+  channel?: Channel;
+  relationshipModel?: RelationshipModel;
+  siteInbound?: Readonly<{ intakeId: string; quoteId: string }>;
 }
 
 type Problem =
@@ -107,6 +110,8 @@ export function OrderJourney({
   const [state, setState] = useState<JourneyState>(orderId ? 'LOADING' : 'READY');
   const [order, setOrder] = useState<OrderView>();
   const [conversion, setConversion] = useState<OrderMatterConversionView>();
+  const [attributionId, setAttributionId] = useState<string>();
+  const [attributionProblem, setAttributionProblem] = useState(false);
   const [problem, setProblem] = useState<Problem>();
 
   const remember = (value: OrderView, mode: 'push' | 'replace' = 'replace') => {
@@ -197,8 +202,8 @@ export function OrderJourney({
         expectedQuoteVersion: source.confirmation.quoteSnapshot.quoteVersion,
         customerConfirmationId: source.confirmation.confirmationId,
         expectedCustomerConfirmationVersion: confirmationVersion(source.confirmation),
-        channel: 'MARKREG_DIRECT',
-        relationshipModel: 'DIRECT',
+        channel: source.channel ?? 'MARKREG_DIRECT',
+        relationshipModel: source.relationshipModel ?? 'DIRECT',
         idempotencyKey: `order-create:${source.confirmation.confirmationId}:${confirmationVersion(source.confirmation)}`
       });
       remember(value, 'push');
@@ -230,6 +235,21 @@ export function OrderJourney({
       setConversion(value);
       const reloaded = await client.get(order.orderId);
       remember(reloaded);
+      if (source?.siteInbound) {
+        try {
+          const attribution = await client.recordSiteInboundOutcome({
+            formalMatterId: value.formalMatterId,
+            intakeId: source.siteInbound.intakeId,
+            quoteId: source.siteInbound.quoteId,
+            orderId: value.orderId,
+            idempotencyKey: `site-outcome:${value.formalMatterId}:${value.formalMatterVersion}`
+          });
+          setAttributionId(attribution.businessAttributionLinkId);
+          setAttributionProblem(false);
+        } catch {
+          setAttributionProblem(true);
+        }
+      }
     } catch (error) {
       setProblem(classify(error));
       setState('READY');
@@ -427,6 +447,18 @@ export function OrderJourney({
           >
             Open Formal Matter
           </a>
+        </Alert>
+      )}
+      {attributionId && (
+        <Alert tone="success" title="Inbound lineage recorded">
+          Site, Intake, Quote, Confirmation, Order, and Formal Matter lineage is linked by{' '}
+          {attributionId}. This is observational attribution, not a causal or ROI claim.
+        </Alert>
+      )}
+      {attributionProblem && (
+        <Alert tone="warning" title="Inbound lineage needs retry">
+          The Formal Matter and Order are saved. Their Site attribution link could not be confirmed;
+          no conversion claim was recorded.
         </Alert>
       )}
     </main>

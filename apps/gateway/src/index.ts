@@ -87,6 +87,7 @@ import { createGatewayKnowledgeSuperAdminRoutes } from './knowledge-super-admin-
 import { createGatewayWorkspaceSuperAdminRoutes } from './workspace-super-admin-http.js';
 import { createGatewayWorkspaceCommercialRoutesV1 } from './workspace-commercial-http.js';
 import { createGatewaySiteRoutesV1 } from './site-http.js';
+import { createGatewaySiteInboundOutcomeRoutesV1 } from './site-inbound-outcome-http.js';
 import { createGatewayMarkRegEarlyFunnelRoutes } from './markreg-early-funnel-http.js';
 import { createGatewayPreparationLockHandler } from './preparation-lock-http.js';
 import { createGatewayFilingGovernanceHandler } from './filing-governance-http.js';
@@ -468,6 +469,7 @@ export function createRuntime(options: GatewayOptions = {}) {
         ...createGatewayMarkRegEarlyFunnelRoutes({
           markRegUrl,
           siteUrl: options.siteUrl ?? process.env.SITE_URL ?? 'http://127.0.0.1:4109',
+          liteUrl,
           trustedProxy: options.trustedProxy ?? process.env.MO_TRUST_PROXY === '1',
           ...(authenticationClient ? { authenticationClient } : {}),
           ...((options.internalServiceSecret ?? process.env.MO_INTERNAL_SERVICE_SECRET)
@@ -605,6 +607,19 @@ export function createRuntime(options: GatewayOptions = {}) {
           csrfSecret,
           allowedOrigins,
           trustedProxy: options.trustedProxy ?? process.env.MO_TRUST_PROXY === '1'
+        }),
+        ...createGatewaySiteInboundOutcomeRoutesV1({
+          markRegUrl,
+          liteUrl,
+          ...(authenticationClient ? { authenticationClient } : {}),
+          ...((options.internalServiceSecret ?? process.env.MO_INTERNAL_SERVICE_SECRET)
+            ? {
+                internalServiceSecret: (options.internalServiceSecret ??
+                  process.env.MO_INTERNAL_SERVICE_SECRET)!
+              }
+            : {}),
+          csrfSecret,
+          allowedOrigins
         }),
         ...createGatewayCapabilityRoutes({
           capabilityEngineUrl,

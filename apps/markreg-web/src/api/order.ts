@@ -73,6 +73,13 @@ export interface OrderClient {
   createMatter(command: CreateMatterFromOrderCommand): Promise<OrderMatterConversionView>;
   linkMatter(command: LinkExistingMatterToOrderCommand): Promise<OrderMatterConversionView>;
   cancel(command: CancelOrderCommand): Promise<OrderView>;
+  recordSiteInboundOutcome(command: {
+    formalMatterId: string;
+    intakeId: string;
+    quoteId: string;
+    orderId: string;
+    idempotencyKey: string;
+  }): Promise<{ businessAttributionLinkId: string }>;
 }
 
 function key(command: { idempotencyKey: string }) {
@@ -135,6 +142,13 @@ export function createOrderClient(api: ApiClient = createApiClient()): OrderClie
       return api.post<OrderView>(
         `/api/markreg/orders/${encodeURIComponent(command.orderId)}/cancel`,
         command,
+        key(command)
+      );
+    },
+    recordSiteInboundOutcome(command) {
+      return api.post(
+        `/api/site/markreg/formal-matters/${encodeURIComponent(command.formalMatterId)}/attribution`,
+        { intakeId: command.intakeId, quoteId: command.quoteId, orderId: command.orderId },
         key(command)
       );
     }

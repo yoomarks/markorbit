@@ -91,7 +91,7 @@ function send(request: IncomingMessage, response: ServerResponse, result: JsonRe
           'access-control-allow-credentials': 'true',
           vary: 'Origin',
           'access-control-allow-headers':
-            'content-type, idempotency-key, x-correlation-id, x-markorbit-csrf-token, x-markorbit-workspace-id',
+            'content-type, idempotency-key, x-correlation-id, x-markorbit-csrf-token, x-markorbit-workspace-id, x-markorbit-site-referrer-host',
           'access-control-allow-methods': 'GET, POST, PATCH, OPTIONS'
         }
       : {}),
@@ -151,7 +151,7 @@ export function createServiceRuntime(
               'access-control-allow-credentials': 'true',
               vary: 'Origin',
               'access-control-allow-headers':
-                'content-type, idempotency-key, x-correlation-id, x-markorbit-csrf-token, x-markorbit-workspace-id',
+                'content-type, idempotency-key, x-correlation-id, x-markorbit-csrf-token, x-markorbit-workspace-id, x-markorbit-site-referrer-host',
               'access-control-allow-methods': 'GET, POST, PATCH, OPTIONS'
             });
             response.end();

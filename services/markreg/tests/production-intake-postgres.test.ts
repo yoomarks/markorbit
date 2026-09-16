@@ -5,6 +5,10 @@ import {
   noEarlyFunnelAuthorityConsequences,
   type CreateProductionIntakeCommandV1
 } from '@markorbit/contracts/markreg-early-funnel';
+import {
+  noSiteInboundAcquisitionAuthorityConsequencesV1,
+  siteInboundAcquisitionFingerprintSha256V1
+} from '@markorbit/contracts/site-inbound-attribution';
 import { ManagedDatabase, loadMigrationsForOwner } from '@markorbit/persistence';
 import { PostgresProductionIntakeService } from '../src/production-intake.js';
 import {
@@ -21,6 +25,13 @@ const suite = url ? describe : describe.skip;
 const workspaceId = '60606060-6060-4606-8606-606060606060';
 const otherWorkspaceId = '61616161-6161-4616-8616-616161616161';
 const at = '2026-09-02T13:00:00.000Z';
+const acquisitionMaterial = {
+  schemaVersion: 1 as const,
+  attributionState: 'DIRECT' as const,
+  landingPath: '/',
+  observedAt: at,
+  authorityConsequences: noSiteInboundAcquisitionAuthorityConsequencesV1
+};
 const siteSource = {
   siteId: 'site_markreg_reference' as const,
   siteOwnerWorkspaceId: 'workspace_site_owner',
@@ -31,7 +42,11 @@ const siteSource = {
   hostname: 'markreg.com',
   locale: 'en-US',
   observedAt: at,
-  fingerprintSha256: 'a'.repeat(64)
+  fingerprintSha256: 'a'.repeat(64),
+  acquisition: {
+    ...acquisitionMaterial,
+    fingerprintSha256: siteInboundAcquisitionFingerprintSha256V1(acquisitionMaterial)
+  }
 };
 
 const principal = (

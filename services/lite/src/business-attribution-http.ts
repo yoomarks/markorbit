@@ -1,5 +1,9 @@
 import { timingSafeEqual } from 'node:crypto';
-import { parseInternalWorkspacePrincipal, type WorkspacePrincipal } from '@markorbit/contracts';
+import {
+  parseInternalWorkspacePrincipal,
+  type Permission,
+  type WorkspacePrincipal
+} from '@markorbit/contracts';
 import type {
   BusinessAttributionEvidenceBasisV1,
   BusinessAttributionLinkIdV1,
@@ -13,7 +17,7 @@ import {
   type PostgresBusinessAttributionStore
 } from './business-attribution.js';
 
-type Store = Pick<PostgresBusinessAttributionStore, 'create' | 'find'>;
+type Store = Pick<PostgresBusinessAttributionStore, 'create' | 'find' | 'summarizeSiteInbound'>;
 type Body = Record<string, unknown>;
 function trusted(configured: string, supplied: string | undefined): boolean {
   if (Buffer.byteLength(configured) < 32)
@@ -26,7 +30,7 @@ function trusted(configured: string, supplied: string | undefined): boolean {
 function principalOf(
   request: JsonRequest,
   secret: string,
-  permission: 'workspace:read' | 'workspace:manage'
+  permission: Permission
 ): WorkspacePrincipal {
   if (!trusted(secret, request.headers['x-markorbit-internal-authorization'])) {
     throw new HttpError(
@@ -122,6 +126,45 @@ export function createBusinessAttributionRoutes(options: {
   return [
     {
       method: 'POST',
+      path: '/v1/site-inbound-attribution-links',
+      handle: async (request) => {
+        const principal = principalOf(request, options.internalServiceSecret, 'matter:create');
+        noQuery(request);
+        const body = bodyOf(request);
+        exact(body);
+        try {
+          return json(
+            201,
+            await options.store.create({
+              workspaceId: principal.workspaceId,
+              actorPrincipalId: principal.userId,
+              idempotencyKey: text(request.headers['idempotency-key'], 'Idempotency-Key'),
+              motionKind: text(body.motionKind, 'motionKind') as BusinessAttributionMotionKindV1,
+              sourceRefs: refs(body.sourceRefs, 'sourceRefs'),
+              touchpointRefs: refs(body.touchpointRefs, 'touchpointRefs'),
+              ...(body.downstreamRef === undefined
+                ? {}
+                : { downstreamRef: ref(body.downstreamRef) }),
+              attributionState: text(
+                body.attributionState,
+                'attributionState'
+              ) as BusinessAttributionStateV1,
+              evidenceBasis: text(
+                body.evidenceBasis,
+                'evidenceBasis'
+              ) as BusinessAttributionEvidenceBasisV1,
+              ...(body.evaluatedAt === undefined
+                ? {}
+                : { evaluatedAt: text(body.evaluatedAt, 'evaluatedAt') })
+            })
+          );
+        } catch (error) {
+          return map(error);
+        }
+      }
+    },
+    {
+      method: 'POST',
       path: '/v1/business-attribution-links',
       handle: async (request) => {
         const principal = principalOf(request, options.internalServiceSecret, 'workspace:manage');
@@ -154,6 +197,19 @@ export function createBusinessAttributionRoutes(options: {
                 : { evaluatedAt: text(body.evaluatedAt, 'evaluatedAt') })
             })
           );
+        } catch (error) {
+          return map(error);
+        }
+      }
+    },
+    {
+      method: 'GET',
+      path: '/v1/business-attribution-links/site-inbound/summary',
+      handle: async (request) => {
+        const principal = principalOf(request, options.internalServiceSecret, 'workspace:read');
+        noQuery(request);
+        try {
+          return json(200, await options.store.summarizeSiteInbound(principal.workspaceId));
         } catch (error) {
           return map(error);
         }

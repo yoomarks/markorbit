@@ -17,7 +17,9 @@ const intake = {
   intakeId: 'production-intake_wif07_panel',
   workspaceId,
   version: 1,
-  fingerprintSha256: 'a'.repeat(64)
+  fingerprintSha256: 'a'.repeat(64),
+  channel: 'MARKREG_WHITE_LABEL',
+  relationshipModel: 'WHITE_LABEL'
 } as unknown as ProductionIntakeV1;
 const recommendation = {
   recommendationId: 'production-recommendation_wif07_panel',
@@ -29,7 +31,9 @@ const selection = {
   selectionId: 'production-selection_wif07_panel',
   workspaceId,
   version: 3,
-  fingerprintSha256: 'c'.repeat(64)
+  fingerprintSha256: 'c'.repeat(64),
+  selectedOptionCode: 'B',
+  selectedAt: '2026-09-15T06:03:00.000Z'
 } as unknown as UserSelectionV1;
 const quote = {
   quoteId: 'quote_wif07_panel',
@@ -48,6 +52,7 @@ const quote = {
     fingerprintSha256: selection.fingerprintSha256
   },
   pricingSource: { sourceId: 'markreg.production-quote.composite-pricing.v1' },
+  currency: 'USD',
   lines: [
     {
       description: 'Estimated official fee',
@@ -59,6 +64,11 @@ const quote = {
     }
   ],
   total: { amountMinor: 64900, currency: 'USD' },
+  subtotal: { amountMinor: 64900, currency: 'USD' },
+  estimatedOfficialFees: { amountMinor: 35000, currency: 'USD' },
+  estimatedServiceFees: { amountMinor: 29900, currency: 'USD' },
+  estimatedDisbursements: { amountMinor: 0, currency: 'USD' },
+  estimatedTaxes: { amountMinor: 0, currency: 'USD' },
   assumptions: [{ code: 'CURRENT_SOURCE', text: 'Current governed pricing applies.' }],
   limitations: ['Quote does not create an Order, Payment, Invoice, or filing authorization.'],
   validUntil: '2026-09-29T06:04:00.000Z',
@@ -107,6 +117,23 @@ describe('ProductionQuotePanel', () => {
       screen.getAllByText(/does not create an Order, Payment, Invoice/i).length
     ).toBeGreaterThan(0);
     expect(sessionStorage.getItem(pointerKey)).toContain(quote.quoteId);
+  });
+
+  it('continues the exact production Quote into Customer Confirmation', async () => {
+    const user = userEvent.setup();
+    render(
+      <ProductionQuotePanel
+        intake={intake}
+        recommendation={recommendation}
+        selection={selection}
+        client={client()}
+      />
+    );
+    await user.click(
+      await screen.findByRole('button', { name: 'Continue to confirmation and Order' })
+    );
+    expect(await screen.findByRole('heading', { name: 'Customer Confirmation' })).toBeTruthy();
+    expect(screen.getByText(/quote_wif07_panel/)).toBeTruthy();
   });
 
   it('fails closed on missing Fee Facts and retries after an explicit facts-save signal', async () => {
