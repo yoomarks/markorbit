@@ -713,30 +713,8 @@ export class WorkspaceCommercialServiceV1 {
       currency?: string;
     }>
   ): Promise<AppliedRateSnapshotV1> {
-    const at = instant(input.asOf, 'asOf');
-    const candidates = (await this.repository.listRatePolicies(input.kind)).filter(
-      (v) =>
-        v.lifecycle === 'ACTIVE' &&
-        activeAt(v, at) &&
-        applicabilityKey(v.applicability) === applicabilityKey(input.applicability)
-    );
-    if (!candidates.length)
-      throw new WorkspaceCommercialError('NO_APPLICABLE_RATE', 'No active rate policy applies.');
-    candidates.sort(
-      (a, b) =>
-        instant(b.effectiveFrom, 'effectiveFrom') - instant(a.effectiveFrom, 'effectiveFrom') ||
-        b.version - a.version
-    );
-    if (
-      candidates[1] &&
-      candidates[1].effectiveFrom === candidates[0]!.effectiveFrom &&
-      candidates[1].version === candidates[0]!.version
-    )
-      throw new WorkspaceCommercialError(
-        'AMBIGUOUS_RATE',
-        'Multiple equally current rate policies apply.'
-      );
-    const policy = candidates[0]!;
+    const policy = await this.resolveRatePolicy(input);
+    instant(input.asOf, 'asOf');
     let calculatedAmountMinor: number | undefined;
     let currency: string | undefined;
     if (policy.calculation.kind === 'FIXED_AMOUNT') {
@@ -773,5 +751,38 @@ export class WorkspaceCommercialServiceV1 {
       appliedAt: input.asOf,
       sourceRef: input.sourceRef
     };
+  }
+
+  async resolveRatePolicy(
+    input: Readonly<{
+      kind: RatePolicyKindV1;
+      applicability: RatePolicyApplicabilityV1;
+      asOf: string;
+    }>
+  ): Promise<RatePolicyVersionV1> {
+    const at = instant(input.asOf, 'asOf');
+    const candidates = (await this.repository.listRatePolicies(input.kind)).filter(
+      (v) =>
+        v.lifecycle === 'ACTIVE' &&
+        activeAt(v, at) &&
+        applicabilityKey(v.applicability) === applicabilityKey(input.applicability)
+    );
+    if (!candidates.length)
+      throw new WorkspaceCommercialError('NO_APPLICABLE_RATE', 'No active rate policy applies.');
+    candidates.sort(
+      (a, b) =>
+        instant(b.effectiveFrom, 'effectiveFrom') - instant(a.effectiveFrom, 'effectiveFrom') ||
+        b.version - a.version
+    );
+    if (
+      candidates[1] &&
+      candidates[1].effectiveFrom === candidates[0]!.effectiveFrom &&
+      candidates[1].version === candidates[0]!.version
+    )
+      throw new WorkspaceCommercialError(
+        'AMBIGUOUS_RATE',
+        'Multiple equally current rate policies apply.'
+      );
+    return clone(candidates[0]!);
   }
 }

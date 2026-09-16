@@ -44,6 +44,23 @@ function fixture() {
   );
   const recordOffer = vi.fn((value) => Promise.resolve(value));
   const recordRatePolicy = vi.fn((value) => Promise.resolve(value));
+  const resolveRatePolicy = vi.fn(() =>
+    Promise.resolve({
+      schemaVersion: 1 as const,
+      policyId: 'rate-policy_partner-referral-v1',
+      version: 1,
+      kind: 'REFERRAL_COMMISSION' as const,
+      lifecycle: 'ACTIVE' as const,
+      applicability: {
+        partnerRef: 'LITE:WORKSPACE_DIRECTORY_ENTRY:workspace-directory-entry_partner-a@1',
+        referralSourceRef: 'SITE_REFERRAL_CODE:partner-a'
+      },
+      calculation: { kind: 'NEGOTIATED' as const, agreementRef: 'agreement_partner-a' },
+      effectiveFrom: '2026-09-15T00:00:00.000Z',
+      sourceRef: 'commercial-admin:test',
+      recordedAt: '2026-09-15T00:00:00.000Z'
+    })
+  );
   const resolveSiteRuntimeAccess = vi.fn((value) =>
     Promise.resolve({ schemaVersion: 1, ...value })
   );
@@ -53,13 +70,21 @@ function fixture() {
       resolveEntitlement,
       resolveSiteRuntimeAccess,
       recordOffer,
-      recordRatePolicy
+      recordRatePolicy,
+      resolveRatePolicy
     },
     currentWorkspaceAuthority: { validate },
     internalServiceSecret: secret,
     now: () => new Date('2026-09-15T00:00:00.000Z')
   });
-  return { routes, validate, resolveEntitlement, resolveSiteRuntimeAccess, recordOffer };
+  return {
+    routes,
+    validate,
+    resolveEntitlement,
+    resolveSiteRuntimeAccess,
+    recordOffer,
+    resolveRatePolicy
+  };
 }
 
 describe('Workspace commercial HTTP boundary', () => {
@@ -142,6 +167,31 @@ describe('Workspace commercial HTTP boundary', () => {
       )
     ).rejects.toMatchObject({ status: 401, code: 'INTERNAL_SERVICE_UNAUTHORIZED' });
     expect(validate).not.toHaveBeenCalled();
+  });
+
+  it('resolves an exact active referral commission policy for a trusted service', async () => {
+    const { routes, resolveRatePolicy } = fixture();
+    const route = routes.find(
+      (candidate) => candidate.path === '/internal/commercial/rate-policies/resolve'
+    );
+    expect(route).toBeDefined();
+    const applicability = {
+      partnerRef: 'LITE:WORKSPACE_DIRECTORY_ENTRY:workspace-directory-entry_partner-a@1',
+      referralSourceRef: 'SITE_REFERRAL_CODE:partner-a'
+    };
+    const result = await route!.handle(
+      request('/internal/commercial/rate-policies/resolve', {
+        kind: 'REFERRAL_COMMISSION',
+        applicability,
+        asOf: '2026-09-17T00:00:00.000Z'
+      })
+    );
+    expect(result.status).toBe(200);
+    expect(resolveRatePolicy).toHaveBeenCalledWith({
+      kind: 'REFERRAL_COMMISSION',
+      applicability,
+      asOf: '2026-09-17T00:00:00.000Z'
+    });
   });
 
   it('exposes a service-authenticated read seam without inventing a Workspace member', async () => {

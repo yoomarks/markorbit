@@ -50,6 +50,7 @@ const acquisition = {
   attributionState: 'ATTRIBUTED',
   landingPath: '/services/us-trademark',
   source: 'ai-answer',
+  referral: 'partner-a',
   observedAt: at,
   fingerprintSha256: sha('b'),
   authorityConsequences: {
@@ -147,6 +148,16 @@ describe('Gateway Site inbound downstream attribution', () => {
           expect.objectContaining({ kind: 'PRODUCTION_QUOTE' }),
           expect.objectContaining({ kind: 'ORDER' }),
           expect.objectContaining({ kind: 'CUSTOMER_CONFIRMATION' })
+        ])
+      );
+      expect(body.sourceRefs).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            owner: 'SITE',
+            kind: 'SITE_REFERRAL_CODE',
+            id: 'site_reference|partner-a',
+            fingerprintSha256: acquisition.fingerprintSha256
+          })
         ])
       );
       return json({ businessAttributionLinkId: 'business-attribution_outcome' }, 201);

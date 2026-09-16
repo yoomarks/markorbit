@@ -258,6 +258,11 @@ describe('durable Production Intake Gateway boundary', () => {
         attributionState: 'ATTRIBUTED',
         downstreamRef: { kind: 'PRODUCTION_INTAKE', id: 'production-intake_698' }
       });
+      expect(body.sourceRefs).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ kind: 'SITE_REFERRAL_CODE', id: 'site_pilot|partner-a' })
+        ])
+      );
       return response(201, { businessAttributionLinkId: 'business-attribution_intake' });
     });
     vi.stubGlobal('fetch', downstream);
@@ -271,7 +276,7 @@ describe('durable Production Intake Gateway boundary', () => {
           host: 'ignored.example.com',
           'x-forwarded-host': 'pilot.example.com',
           referer:
-            'https://pilot.example.com/services/us-trademark?utm_source=ai-answer&utm_campaign=launch',
+            'https://pilot.example.com/services/us-trademark?utm_source=ai-answer&utm_campaign=launch&mo_referral=partner-a',
           'x-markorbit-site-referrer-host': 'answer.example'
         }
       )

@@ -19,7 +19,7 @@ export interface WorkspaceCommercialHttpOptionsV1 {
     WorkspaceCommercialServiceV1,
     'listCurrentInstallations' | 'resolveEntitlement' | 'recordOffer' | 'recordRatePolicy'
   > &
-    Partial<Pick<WorkspaceCommercialServiceV1, 'resolveSiteRuntimeAccess'>>;
+    Partial<Pick<WorkspaceCommercialServiceV1, 'resolveSiteRuntimeAccess' | 'resolveRatePolicy'>>;
   currentWorkspaceAuthority: Pick<CurrentWorkspaceAuthorityService, 'validate'>;
   internalServiceSecret: string;
   now?: () => Date;
@@ -230,6 +230,42 @@ export function createWorkspaceCommercialRoutesV1(
               installationId: text(value.installationId, 'installationId'),
               installationVersion: expected(value.installationVersion, 'installationVersion')!,
               entitlementKeys,
+              asOf: text(value.asOf, 'asOf')
+            })
+          );
+        } catch (error) {
+          return translate(error);
+        }
+      }
+    },
+    {
+      method: 'POST',
+      path: '/internal/commercial/rate-policies/resolve',
+      async handle(request) {
+        internal(request, options.internalServiceSecret);
+        if (!options.service.resolveRatePolicy)
+          throw new HttpError(
+            503,
+            'WORKSPACE_COMMERCIAL_UNAVAILABLE',
+            'Rate policy authority is unavailable.',
+            true
+          );
+        const value = object(request);
+        const kind = text(value.kind, 'kind');
+        if (kind !== 'REFERRAL_COMMISSION')
+          throw new HttpError(
+            400,
+            'INVALID_REQUEST',
+            'Only REFERRAL_COMMISSION policy resolution is exposed here.'
+          );
+        if (!value.applicability || typeof value.applicability !== 'object')
+          throw new HttpError(400, 'INVALID_REQUEST', 'applicability must be an object.');
+        try {
+          return json(
+            200,
+            await options.service.resolveRatePolicy({
+              kind,
+              applicability: value.applicability,
               asOf: text(value.asOf, 'asOf')
             })
           );
