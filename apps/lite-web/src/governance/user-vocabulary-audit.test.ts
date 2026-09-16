@@ -172,6 +172,12 @@ const BASELINE: readonly VocabularyBaselineEntry[] = [
     [['REVIEW_INTERNAL', 'professional review', 6]]
   ),
   ...baselineEntries(
+    'apps/lite-web/src/features/professional-review/ProfessionalReview.tsx',
+    'USER',
+    'Known blocking-copy debt renders the raw UNKNOWN result instead of user-facing language.',
+    [['RAW_STATUS_ENUM', 'UNKNOWN', 2]]
+  ),
+  ...baselineEntries(
     'apps/lite-web/src/features/site-manager/SiteManager.tsx',
     'USER',
     'Known Site Manager owner and safety wording remains for a later product copy review.',
@@ -374,8 +380,75 @@ describe('user-facing vocabulary audit', () => {
     expect(findings).toEqual([]);
   });
 
+  it('rejects raw state enum tokens embedded in rendered user copy', () => {
+    const findings = scanVocabularySource(
+      'apps/lite-web/src/features/example/Example.tsx',
+      `export function Example() { return <p>Source status: CURRENT; fallback: UNAVAILABLE</p>; }`
+    );
+
+    expect(findings.map(({ category, phrase }) => [category, phrase])).toEqual([
+      ['RAW_STATUS_ENUM', 'CURRENT'],
+      ['RAW_STATUS_ENUM', 'UNAVAILABLE']
+    ]);
+  });
+
+  it('rejects copy that collapses unavailable information into an empty result', () => {
+    const findings = scanVocabularySource(
+      'apps/lite-web/src/features/example/Example.tsx',
+      `export function Example() { return <p>No information available</p>; }`
+    );
+
+    expect(findings).toEqual([
+      expect.objectContaining({
+        category: 'AVAILABILITY_COLLAPSE',
+        phrase: 'No information available'
+      })
+    ]);
+  });
+
+  it('rejects copy that equates distinct draft, approval, send, and publish states', () => {
+    const findings = scanVocabularySource(
+      'apps/lite-web/src/features/example/Example.tsx',
+      `export function Example() { return <><p>Draft means sent</p><p>Approved / published</p></>; }`
+    );
+
+    expect(findings.map(({ category, phrase }) => [category, phrase])).toEqual([
+      ['LIFECYCLE_COLLAPSE', 'Approved / published'],
+      ['LIFECYCLE_COLLAPSE', 'Draft means sent']
+    ]);
+  });
+
+  it('allows raw technical state only through an exact diagnostics exception', () => {
+    const file = 'apps/lite-web/src/features/example/Diagnostics.tsx';
+    const findings = scanVocabularySource(
+      file,
+      `export function Diagnostics() { return <code>Freshness: UNKNOWN</code>; }`
+    );
+    const baseline: VocabularyBaselineEntry[] = [
+      {
+        file,
+        category: 'RAW_STATUS_ENUM',
+        phrase: 'UNKNOWN',
+        count: 1,
+        surface: 'ADVANCED',
+        reason: 'Explicit support diagnostics expose the exact technical freshness state.'
+      }
+    ];
+
+    expect(compareVocabularyBaseline(findings, baseline)).toEqual([]);
+  });
+
+  it('does not flag legitimate business uses or copy that preserves state distinctions', () => {
+    const findings = scanVocabularySource(
+      'apps/lite-web/src/features/example/Example.tsx',
+      `export function Example() { return <><p>Current trademark owners</p><p>No appointments are available</p><p>Draft — not sent yet</p><p>Published portfolio</p></>; }`
+    );
+
+    expect(findings).toEqual([]);
+  });
+
   it('keeps the checked-in audit summary explicit', () => {
-    expect(BASELINE.reduce((total, entry) => total + entry.count, 0)).toBe(108);
+    expect(BASELINE.reduce((total, entry) => total + entry.count, 0)).toBe(110);
     expect(summarizeVocabularyBaseline(BASELINE)).toEqual({
       'USER:REVIEW_INTERNAL': 24,
       'USER:EXECUTION_INTERNAL': 16,
@@ -386,7 +459,7 @@ describe('user-facing vocabulary audit', () => {
       'USER:CAPABILITY_INTERNAL': 2,
       'USER:OWNER_INTERNAL': 27,
       'USER:PROTECTED_ACTION_INTERNAL': 10,
-      'USER:RAW_STATUS_ENUM': 2
+      'USER:RAW_STATUS_ENUM': 4
     });
   });
 
