@@ -215,6 +215,35 @@ suite('PostgreSQL Lite Opportunity Candidate qualification', () => {
     });
   }
 
+  it('persists a trusted exact Data Engine prospect source without resolving it a second time', async () => {
+    const prospectSource: ProductLoopSourceReference = {
+      schemaVersion: 1,
+      owner: 'DATA_ENGINE',
+      kind: 'DATA_ENGINE_APPLICANT_DISCOVERY',
+      sourceId: 'trademark-candidate_99123456',
+      sourceVersion: 'snapshot-1',
+      sourceFingerprintSha256: 'd'.repeat(64),
+      observedAt: '2026-09-15T01:00:00.000Z'
+    };
+    const created = await store().createCandidateFromVerifiedSources({
+      workspaceId,
+      title: 'US trademark application 99123456',
+      serviceNeedSummary: 'Exact Data Engine fact awaiting human qualification.',
+      sources: [prospectSource],
+      idempotencyKey: 'data-prospecting-candidate-1'
+    });
+    const replay = await store().createCandidateFromVerifiedSources({
+      workspaceId,
+      title: 'US trademark application 99123456',
+      serviceNeedSummary: 'Exact Data Engine fact awaiting human qualification.',
+      sources: [prospectSource],
+      idempotencyKey: 'data-prospecting-candidate-1'
+    });
+    expect(replay).toEqual(created);
+    expect(created.sources).toEqual([prospectSource]);
+    expect(created.status).toBe('OPEN');
+  });
+
   it('serves empty Workspaces and identical non-disclosing 404s for absent and foreign Candidates', async () => {
     const created = await candidate();
     const otherPrincipal = { ...principal, workspaceId: otherWorkspaceId };

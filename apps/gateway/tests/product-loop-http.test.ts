@@ -831,4 +831,46 @@ describe('Gateway Lite Product-loop transport boundary', () => {
     });
     expect(downstream).not.toHaveBeenCalled();
   });
+
+  it('forwards Data Prospecting admission with trusted Principal, CSRF, and idempotency', async () => {
+    const body = {
+      applicant: { applicant_candidate_id: 'applicant-1' },
+      trademark: { trademark_candidate_id: 'trademark-1' },
+      signal: 'UNREGISTERED_TRADEMARK_APPLICATION',
+      decision: 'OPEN_FOR_HUMAN_QUALIFICATION'
+    };
+    const downstream = vi.fn((url: string, init: RequestInit) => {
+      expect(url).toBe('http://lite.test/v1/data-prospecting/candidates');
+      expect(init.method).toBe('POST');
+      expect(init.body).toBe(JSON.stringify(body));
+      const headers = init.headers as Record<string, string>;
+      expect(headers['idempotency-key']).toBe('g1-admission');
+      expect(headers['x-markorbit-principal']).toBeTruthy();
+      return Promise.resolve(
+        new Response(JSON.stringify({ opportunityCandidateId: 'opportunity-candidate_g1' }), {
+          status: 201,
+          headers: { 'content-type': 'application/json' }
+        })
+      );
+    });
+    vi.stubGlobal('fetch', downstream);
+
+    const result = await route('POST', '/api/lite/data-prospecting/candidates').handle({
+      method: 'POST',
+      path: '/api/lite/data-prospecting/candidates',
+      params: {},
+      query: {},
+      headers: {
+        cookie: 'mo_session=token',
+        origin: 'https://test.markorbit.local',
+        'x-markorbit-workspace-id': workspaceId,
+        'x-markorbit-csrf-token': csrfToken(principal.sessionId, options.csrfSecret),
+        'idempotency-key': 'g1-admission'
+      },
+      body
+    });
+
+    expect(result.status).toBe(201);
+    expect(downstream).toHaveBeenCalledTimes(1);
+  });
 });

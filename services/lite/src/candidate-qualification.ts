@@ -64,6 +64,16 @@ export interface CreateOpportunityCandidateCommand {
   idempotencyKey: string;
 }
 
+/** Trusted owner adapters use this only after re-reading every exact source from its owner. */
+export interface CreateVerifiedOpportunityCandidateCommand {
+  workspaceId: string;
+  customerId?: MarkOrbitId;
+  title: string;
+  serviceNeedSummary: string;
+  sources: ReadonlyArray<Readonly<ProductLoopSourceReference>>;
+  idempotencyKey: string;
+}
+
 export interface RecordOpportunityQualificationCommand {
   workspaceId: string;
   candidate: Readonly<{ id: OpportunityCandidateId; version: number }>;
@@ -259,13 +269,6 @@ export class PostgresLiteCandidateQualificationStore {
   async createCandidate(
     command: Readonly<CreateOpportunityCandidateCommand>
   ): Promise<OpportunityCandidate> {
-    const workspaceId = cleanWorkspaceId(command.workspaceId);
-    const customerId = command.customerId
-      ? cleanMarkOrbitId(command.customerId, 'customerId')
-      : undefined;
-    const title = cleanText(command.title, 'title', 500);
-    const serviceNeedSummary = cleanText(command.serviceNeedSummary, 'serviceNeedSummary', 4000);
-    const idempotencyKey = cleanIdempotencyKey(command.idempotencyKey);
     if (!command.sources.length || command.sources.length > 8)
       throw new LiteCandidateQualificationError(
         'INVALID_INPUT',
@@ -273,7 +276,7 @@ export class PostgresLiteCandidateQualificationStore {
         422
       );
 
-    await this.assertCustomerAccessible(workspaceId, customerId);
+    const workspaceId = cleanWorkspaceId(command.workspaceId);
     const sources = (
       await Promise.all(
         command.sources.map(async (locatorValue) => {
@@ -295,6 +298,34 @@ export class PostgresLiteCandidateQualificationStore {
         })
       )
     ).sort((left, right) => sourceKey(left).localeCompare(sourceKey(right)));
+    return this.createCandidateFromVerifiedSources({ ...command, workspaceId, sources });
+  }
+
+  async createCandidateFromVerifiedSources(
+    command: Readonly<CreateVerifiedOpportunityCandidateCommand>
+  ): Promise<OpportunityCandidate> {
+    const workspaceId = cleanWorkspaceId(command.workspaceId);
+    const customerId = command.customerId
+      ? cleanMarkOrbitId(command.customerId, 'customerId')
+      : undefined;
+    const title = cleanText(command.title, 'title', 500);
+    const serviceNeedSummary = cleanText(command.serviceNeedSummary, 'serviceNeedSummary', 4000);
+    const idempotencyKey = cleanIdempotencyKey(command.idempotencyKey);
+    if (!command.sources.length || command.sources.length > 8)
+      throw new LiteCandidateQualificationError(
+        'INVALID_INPUT',
+        'An Opportunity Candidate requires between one and eight exact sources.',
+        422
+      );
+    await this.assertCustomerAccessible(workspaceId, customerId);
+    const sources = command.sources
+      .map((source) =>
+        normalizeSource(
+          { owner: source.owner, kind: source.kind, sourceId: source.sourceId },
+          source
+        )
+      )
+      .sort((left, right) => sourceKey(left).localeCompare(sourceKey(right)));
     if (new Set(sources.map(sourceKey)).size !== sources.length)
       throw new LiteCandidateQualificationError(
         'INVALID_INPUT',
