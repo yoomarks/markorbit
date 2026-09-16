@@ -77,3 +77,5 @@ export * from './business-attribution-http.js';
 export * from './content-led-demand.js';
 export * from './partner-referral.js';
 export * from './partner-referral-http.js';
+export * from './education-community.js';
+export * from './education-community-http.js';

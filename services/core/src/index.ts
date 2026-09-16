@@ -7,6 +7,7 @@ import {
 } from '@markorbit/contracts';
 import { parseReadyPackageContentExportV1 } from '@markorbit/contracts/knowledge-content-export';
 import { READY_PACKAGE_V2_DELIVERY_PROTOCOL_VERSION } from '@markorbit/contracts';
+import { educationCommunityWorkspaceActivationFingerprintSha256V1 } from '@markorbit/contracts/education-community';
 import {
   createServiceRuntime,
   HttpError,
@@ -485,8 +486,19 @@ export function createRuntime(options: CoreRuntimeOptions = {}) {
                     throw new HttpError(404, 'WORKSPACE_NOT_FOUND', 'Workspace was not found.');
                   return json(200, {
                     workspace: {
+                      owner: 'CORE',
+                      kind: 'WORKSPACE_ACTIVATION',
                       workspaceId: workspace.workspaceId,
-                      status: workspace.status
+                      status: workspace.status,
+                      version: workspace.version,
+                      observedAt: workspace.updatedAt,
+                      fingerprintSha256: educationCommunityWorkspaceActivationFingerprintSha256V1({
+                        owner: 'CORE',
+                        kind: 'WORKSPACE_ACTIVATION',
+                        id: workspace.workspaceId,
+                        version: workspace.version,
+                        observedAt: workspace.updatedAt
+                      })
                     }
                   });
                 })

@@ -160,6 +160,10 @@
       "types": "./dist/outbound-contact-policy-http.d.ts",
       "import": "./dist/outbound-contact-policy-http.js"
     },
+    "./education-community": {
+      "types": "./dist/education-community.d.ts",
+      "import": "./dist/education-community.js"
+    },
     "./http": {
       "types": "./dist/http.d.ts",
       "import": "./dist/http.js"

@@ -55,6 +55,12 @@ import {
   PartnerReferralService,
   PostgresPartnerReferralStore
 } from './partner-referral.js';
+import { createEducationCommunityRoutes } from './education-community-http.js';
+import {
+  EducationCommunityService,
+  HttpCoreEducationCommunityWorkspaceReader,
+  PostgresEducationCommunityWorkItemReader
+} from './education-community.js';
 import { createCommunicationLinkRoutes } from './communication-link-http.js';
 import { CommunicationLinkService, PostgresCommunicationLinkStore } from './communication-link.js';
 import {
@@ -184,6 +190,14 @@ const workspaceWatchStore = new PostgresWorkspaceWatchStore(database, pool);
 const workspaceDirectoryStore = new PostgresWorkspaceDirectoryStore(database, pool);
 const outboundContactPolicyStore = new PostgresOutboundContactPolicyStore(database, pool);
 const businessAttributionStore = new PostgresBusinessAttributionStore(database, pool);
+const educationCommunityService = new EducationCommunityService(
+  database,
+  pool,
+  outboundContactPolicyStore,
+  new PostgresEducationCommunityWorkItemReader(pool),
+  new HttpCoreEducationCommunityWorkspaceReader(coreUrl, internalServiceSecret),
+  businessAttributionStore
+);
 const partnerReferralStore = new PostgresPartnerReferralStore(database, pool);
 const partnerReferralService = new PartnerReferralService(
   workspaceDirectoryStore,
@@ -529,6 +543,10 @@ const runtime = createServiceRuntime(serviceManifest, {
     ...createPartnerReferralRoutes({
       internalServiceSecret,
       service: partnerReferralService
+    }),
+    ...createEducationCommunityRoutes({
+      internalServiceSecret,
+      service: educationCommunityService
     }),
     ...createAgencyLineageRoutes({ internalServiceSecret, service: agencyLineage }),
     ...createDiscoveredTrademarkAdmissionRoutes({

@@ -1,6 +1,10 @@
 export const outboundContactChannels = ['EMAIL'] as const;
 export type OutboundContactChannelV1 = (typeof outboundContactChannels)[number];
-export const outboundContactPurposes = ['PROSPECT_OUTREACH', 'PARTNER_OUTREACH'] as const;
+export const outboundContactPurposes = [
+  'PROSPECT_OUTREACH',
+  'PARTNER_OUTREACH',
+  'EDUCATION_INVITATION'
+] as const;
 export type OutboundContactPurposeV1 = (typeof outboundContactPurposes)[number];
 export const outboundContactBasisStates = ['ASSERTED_ALLOWED', 'ASSERTED_BLOCKED'] as const;
 export type OutboundContactBasisStateV1 = (typeof outboundContactBasisStates)[number];
@@ -9,7 +13,8 @@ export type OutboundContactBasisStatusV1 = (typeof outboundContactBasisStatuses)
 export const outboundContactSuppressionScopes = [
   'ALL_OUTBOUND',
   'PROSPECT_OUTREACH',
-  'PARTNER_OUTREACH'
+  'PARTNER_OUTREACH',
+  'EDUCATION_INVITATION'
 ] as const;
 export type OutboundContactSuppressionScopeV1 = (typeof outboundContactSuppressionScopes)[number];
 export const outboundContactSuppressionStatuses = ['ACTIVE', 'CLEARED'] as const;
