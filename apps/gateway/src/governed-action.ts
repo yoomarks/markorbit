@@ -13,7 +13,8 @@ import {
   WORKSPACE_HEADER_NAME,
   type CoreAuthenticationClient,
   type GovernedHumanActionReceiptKind,
-  type GovernedHumanActionReceiptMaterializationV1
+  type GovernedHumanActionReceiptMaterializationV1,
+  type GovernedHumanActionReceiptV1
 } from './auth.js';
 
 export type GovernedMutationIdempotency = 'REQUIRED' | 'OPTIONAL';
@@ -46,6 +47,7 @@ export interface GovernedWorkspaceMutationContext {
   body: Readonly<Record<string, unknown>>;
   idempotencyKey?: string;
   humanActionEnvelope?: string;
+  humanActionReceipt?: Readonly<GovernedHumanActionReceiptV1>;
 }
 
 function bodyRecord(request: JsonRequest): Record<string, unknown> {
@@ -166,7 +168,7 @@ async function humanActionEnvelope(
   authentication: CoreAuthenticationClient,
   key: string,
   correlationId?: string
-): Promise<string> {
+): Promise<Readonly<{ envelope: string; receipt: GovernedHumanActionReceiptV1 }>> {
   const authenticatedAt = principal.sessionCreatedAt;
   if (!authenticatedAt || !Number.isFinite(Date.parse(authenticatedAt)))
     throw new HttpError(
@@ -249,7 +251,7 @@ async function humanActionEnvelope(
       true
     );
 
-  return Buffer.from(
+  const envelope = Buffer.from(
     JSON.stringify({
       schemaVersion: 1,
       kind,
@@ -266,6 +268,7 @@ async function humanActionEnvelope(
     }),
     'utf8'
   ).toString('base64url');
+  return { envelope, receipt };
 }
 
 export async function authorizeGovernedWorkspaceMutation(
@@ -318,7 +321,7 @@ export async function authorizeGovernedWorkspaceMutation(
     const body = policy.bindTrustedWorkspaceField
       ? { ...rawBody, [policy.bindTrustedWorkspaceField]: principal.workspaceId }
       : { ...rawBody };
-    const envelope = policy.humanAction
+    const humanAction = policy.humanAction
       ? await humanActionEnvelope(
           request,
           principal,
@@ -333,7 +336,12 @@ export async function authorizeGovernedWorkspaceMutation(
       principal,
       body,
       ...(key ? { idempotencyKey: key } : {}),
-      ...(envelope ? { humanActionEnvelope: envelope } : {})
+      ...(humanAction
+        ? {
+            humanActionEnvelope: humanAction.envelope,
+            humanActionReceipt: humanAction.receipt
+          }
+        : {})
     };
   } catch (error) {
     return mapAuthentication(error);

@@ -31,6 +31,8 @@ export * from './trading-studio-run.js';
 export * from './trading-listing.js';
 export * from './trading-listing-asset.js';
 export * from './trading-marketplace-target-binding.js';
+export * from './trading-listing-publication-currentness.js';
+export * from './trading-listing-publication-currentness-http.js';
 export * from './trading-ai-profile.js';
 export * from './trading-ai-profile-generation.js';
 export * from './trading-ai-profile-checkpoint.js';

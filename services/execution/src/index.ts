@@ -60,6 +60,9 @@ export * from './evidence-review-postgres.js';
 export * from './provider-execution-source.js';
 export * from './provider-execution-http.js';
 export * from './durable-provider-execution.js';
+export * from './protected-external-action.js';
+export * from './protected-external-action-postgres.js';
+export * from './protected-external-action-http.js';
 export const serviceManifest = Object.freeze({
   name: 'execution',
   port: Number(process.env.PORT ?? '4104'),

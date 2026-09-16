@@ -119,6 +119,11 @@ import {
   TradingAiProfileGenerator
 } from './trading-ai-profile-generation.js';
 import { PostgresTradingBrandDnaStore } from './trading-brand-dna.js';
+import { PostgresTradingListingStore } from './trading-listing.js';
+import { PostgresTradingListingAssetStore } from './trading-listing-asset.js';
+import { PostgresTradingMarketplaceTargetBindingStore } from './trading-marketplace-target-binding.js';
+import { TradingListingPublicationCurrentnessResolver } from './trading-listing-publication-currentness.js';
+import { createTradingListingPublicationCurrentnessRoutes } from './trading-listing-publication-currentness-http.js';
 import { TrademarkAssetAiGuidePreparer } from './trademark-asset-ai-guide.js';
 import { PostgresTrademarkAssetCommerceStore } from './trademark-asset-commerce.js';
 import { PostgresTrademarkAssetManagementDispositionStore } from './trademark-asset-management-disposition.js';
@@ -501,9 +506,18 @@ const visualBridgeService = new VisualBridgeService(
   new UnavailableVisualEngineConsumer(),
   liteVisualStyleId
 );
+const tradingListingPublicationCurrentness = new TradingListingPublicationCurrentnessResolver(
+  new PostgresTradingListingStore(database, pool),
+  new PostgresTradingListingAssetStore(database, pool),
+  new PostgresTradingMarketplaceTargetBindingStore(database, pool)
+);
 const runtime = createServiceRuntime(serviceManifest, {
   routes: [
     ...createLiteAdminRoutesV1({ internalServiceSecret }),
+    ...createTradingListingPublicationCurrentnessRoutes({
+      internalServiceSecret,
+      resolver: tradingListingPublicationCurrentness
+    }),
     ...createTradingStudioReadRoutes({
       internalServiceSecret,
       runs: tradingStudioRunStore,

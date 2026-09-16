@@ -23,6 +23,13 @@ import {
 } from './reviewed-source-handoff-http.js';
 import { createTrademarkServiceExecutionRoutes } from './trademark-service-execution-http.js';
 import { PostgresTrademarkServiceExecutionRepository } from './trademark-service-execution-postgres.js';
+import { ProtectedExternalActionService } from './protected-external-action.js';
+import { PostgresProtectedExternalActionRepository } from './protected-external-action-postgres.js';
+import {
+  createProtectedExternalActionRoutes,
+  HttpCoreHumanReceiptCurrentnessClient,
+  HttpTradingPublicationCurrentnessClient
+} from './protected-external-action-http.js';
 
 const fixtureRuntime = process.env.MO_MILESTONE_TEST_RUNTIME === '1';
 const durableMilestoneOwners = process.env.MO_MILESTONE_DURABLE_OWNERS === '1';
@@ -38,6 +45,8 @@ if (fixtureRuntime) {
   if (!internalServiceSecret || Buffer.byteLength(internalServiceSecret) < 32)
     throw new Error('MO_INTERNAL_SERVICE_SECRET must contain at least 32 bytes.');
   const markRegUrl = process.env.MARKREG_URL ?? 'http://127.0.0.1:4105';
+  const coreUrl = process.env.CORE_URL ?? 'http://127.0.0.1:4101';
+  const liteUrl = process.env.LITE_URL ?? 'http://127.0.0.1:4107';
   const { ManagedDatabase, parseDatabaseConfig } = await import('@markorbit/persistence');
   const database = new ManagedDatabase(
     parseDatabaseConfig({
@@ -159,6 +168,11 @@ if (fixtureRuntime) {
     internalServiceSecret,
     repository: trademarkServiceExecutionRepository
   });
+  const protectedExternalActionService = new ProtectedExternalActionService(
+    new PostgresProtectedExternalActionRepository(database, pool),
+    new HttpCoreHumanReceiptCurrentnessClient(coreUrl, internalServiceSecret),
+    new HttpTradingPublicationCurrentnessClient(liteUrl, internalServiceSecret)
+  );
 
   runtime = createRuntime({
     milestoneTestRuntime: durableMilestoneOwners,
@@ -176,7 +190,11 @@ if (fixtureRuntime) {
       ...reviewedSourceRoutes,
       ...evidenceProvenanceRoutes,
       ...capabilityObservationSourceRoutes,
-      ...trademarkServiceExecutionRoutes
+      ...trademarkServiceExecutionRoutes,
+      ...createProtectedExternalActionRoutes({
+        internalServiceSecret,
+        service: protectedExternalActionService
+      })
     ],
     internalServiceSecret,
     markRegUrl
