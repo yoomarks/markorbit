@@ -387,8 +387,12 @@ export function createRuntime(options: MarkRegOptions = {}) {
   const durableConfirmations = options.customerConfirmationRepository
     ? new CustomerConfirmationService(
         options.customerConfirmationRepository,
-        options.customerConfirmationQuoteSource ??
-          ((_principal, id) => Promise.resolve(repository.getQuote(id) ?? null)),
+        async (principal, id) =>
+          (options.customerConfirmationQuoteSource
+            ? await options.customerConfirmationQuoteSource(principal, id)
+            : null) ??
+          repository.getQuote(id) ??
+          null,
         now
       )
     : undefined;

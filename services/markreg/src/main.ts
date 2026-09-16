@@ -95,7 +95,7 @@ import {
   ProductionOfficialFeeSourceServiceV1
 } from './production-official-fee-source.js';
 import { createProductionOfficialFeeSourceRoutesV1 } from './production-official-fee-source-http.js';
-import { PostgresProductionQuoteServiceV1 } from './production-quote.js';
+import { ProductionQuoteError, PostgresProductionQuoteServiceV1 } from './production-quote.js';
 import { createProductionQuoteRoutesV1 } from './production-quote-http.js';
 import { ProductionOrderCommercialSourceProvider } from './production-order-commercial-source.js';
 import { PostgresCustomerRelationshipStore } from './customer-relationship.js';
@@ -432,7 +432,15 @@ if (fixtureRuntime) {
     milestoneTestRuntime: durableMilestoneOwners,
     customerConfirmationRepository: productionCustomerConfirmationRepository,
     customerConfirmationQuoteSource: async (principal, quoteId) => {
-      const quote = await productionQuoteService.get(principal, quoteId);
+      let quote: Awaited<ReturnType<PostgresProductionQuoteServiceV1['get']>>;
+      try {
+        quote = await productionQuoteService.get(principal, quoteId);
+      } catch (error) {
+        if (error instanceof ProductionQuoteError && error.code === 'PRODUCTION_QUOTE_NOT_FOUND') {
+          return null;
+        }
+        throw error;
+      }
       const selection = await productionUserSelectionService.get(principal, quote.selection.id);
       return {
         quoteId: quote.quoteId,
