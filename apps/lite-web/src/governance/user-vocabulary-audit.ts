@@ -4,8 +4,10 @@ import { fileURLToPath } from 'node:url';
 import ts from 'typescript';
 
 export type VocabularyCategory =
+  | 'AVAILABILITY_COLLAPSE'
   | 'CAPABILITY_INTERNAL'
   | 'EXECUTION_INTERNAL'
+  | 'LIFECYCLE_COLLAPSE'
   | 'OWNER_INTERNAL'
   | 'PREPARATION_INTERNAL'
   | 'PROTECTED_ACTION_INTERNAL'
@@ -70,8 +72,18 @@ const RULES: readonly VocabularyRule[] = [
   },
   {
     category: 'RAW_STATUS_ENUM',
-    pattern: /^(?:CURRENT|STALE|UNKNOWN|UNAVAILABLE)$/gu,
+    pattern: /\b(?:CURRENT|STALE|UNKNOWN|UNAVAILABLE)\b/gu,
     directRenderOnly: true
+  },
+  {
+    category: 'AVAILABILITY_COLLAPSE',
+    pattern:
+      /\b(?:no|zero)\s+(?:data|information|records?|results?|items?)\s+(?:is\s+)?available\b/giu
+  },
+  {
+    category: 'LIFECYCLE_COLLAPSE',
+    pattern:
+      /\b(?:draft|prepared|approved|sent|published)\b\s*(?:\/|=|means\b|is\s+(?:the\s+)?same\s+as\b|aka\b)\s*\b(?:draft|prepared|approved|sent|published)\b/giu
   }
 ] as const;
 
