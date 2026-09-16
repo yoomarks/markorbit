@@ -6,6 +6,12 @@ import {
   DATA_ENGINE_SOURCE_OWNER
 } from '@markorbit/contracts/data-engine';
 import { PostgresWorkspaceWatchStore } from '../src/workspace-watch.js';
+import { PostgresLiteTrademarkAssetStore } from '../src/trademark-asset.js';
+import { PostgresProtectionMonitoringRepository } from '../src/protection-monitoring.js';
+import {
+  noProtectionMonitoringAuthorityConsequencesV1,
+  protectionMonitoringFingerprintSha256V1
+} from '@markorbit/contracts/protection-monitoring';
 
 const url = process.env.LITE_WORKSPACE_WATCH_TEST_DATABASE_URL;
 const required = process.env.LITE_WORKSPACE_WATCH_POSTGRES_TEST_REQUIRED === '1';
@@ -106,7 +112,7 @@ suite('PostgreSQL Workspace Watch owner runtime', () => {
     await database
       .getPool()
       .query(
-        'TRUNCATE lite_workspace_watch_commands,lite_workspace_watch_heads,lite_workspace_watch_versions CASCADE'
+        'TRUNCATE lite_protection_monitoring_commands,lite_protection_monitoring_candidates,lite_trademark_asset_commands,lite_trademark_asset_identifiers,lite_trademark_assets,lite_workspace_watch_commands,lite_workspace_watch_heads,lite_workspace_watch_versions CASCADE'
       );
   });
   afterAll(async () => {
@@ -225,5 +231,109 @@ suite('PostgreSQL Workspace Watch owner runtime', () => {
     await expect(
       service.getExact(workspaceId, created.workspaceWatchTargetId, 1)
     ).rejects.toMatchObject({ code: 'INTEGRITY_FAILURE' });
+  });
+
+  it('persists and replays a Workspace-isolated protection candidate and HUMAN disposition', async () => {
+    const watchTarget = await store().create({
+      ...create('protection-watch'),
+      purpose: 'ENFORCEMENT'
+    });
+    const assets = new PostgresLiteTrademarkAssetStore(database, database.getPool());
+    const asset = await assets.admit({
+      workspaceId,
+      identity: { jurisdiction: 'CN', markText: 'MARKORBIT' },
+      workspaceRelationships: [{ kind: 'MANAGED', sourceAssetEditableByWorkspace: false }],
+      sourceReferences: [
+        {
+          owner: 'WORKSPACE_USER',
+          kind: 'WORKSPACE_ADMISSION',
+          sourceId: 'protection-monitoring-fixture',
+          sourceVersion: '1',
+          observedAt: '2026-09-17T00:00:00.000Z',
+          freshness: 'CURRENT'
+        }
+      ],
+      idempotencyKey: 'protection-asset'
+    });
+    const observedTrademark = {
+      candidate_type: 'DISCOVERED_TRADEMARK' as const,
+      trademark_candidate_id: 'protection-trademark-1',
+      applicant: applicant(),
+      jurisdiction: 'CN' as const,
+      mark_text: 'MARK ORBIT',
+      application_number: 'CN20260001',
+      registration_number: null,
+      classes: [9],
+      source_reference: trademarkTarget().sourceReference,
+      official_truth_verified: false as const,
+      legal_conclusion_created: false as const,
+      workspace_relationship_established: false as const
+    };
+    const base = {
+      schemaVersion: 1 as const,
+      protectionMonitoringCandidateId: 'protection-monitoring-candidate_postgres' as const,
+      workspaceId,
+      version: 1 as const,
+      asset: { id: asset.trademarkAssetId, version: asset.version },
+      watchTarget: { id: watchTarget.workspaceWatchTargetId, version: watchTarget.version },
+      applicant: applicant(),
+      observedTrademark,
+      relevance: {
+        method: 'NORMALIZED_MARK_TEXT_BIGRAM_DICE_V1' as const,
+        managedMarkNormalized: 'markorbit',
+        observedMarkNormalized: 'markorbit',
+        scoreBasisPoints: 10_000,
+        explanation: 'Exact normalized text match for human review only.',
+        algorithmicSimilarityIsLegalConclusion: false as const,
+        likelihoodOfConfusionConcluded: false as const,
+        infringementConcluded: false as const
+      },
+      authorityConsequences: noProtectionMonitoringAuthorityConsequencesV1,
+      createdAt: '2026-09-17T00:00:00.000Z',
+      updatedAt: '2026-09-17T00:00:00.000Z'
+    };
+    const candidate = {
+      ...base,
+      candidateFingerprintSha256: protectionMonitoringFingerprintSha256V1(base)
+    };
+    const repository = new PostgresProtectionMonitoringRepository(database, database.getPool());
+    const created = await repository.create(candidate, 'protection-admit', 'a'.repeat(64));
+    await expect(
+      new PostgresProtectionMonitoringRepository(database, database.getPool()).create(
+        candidate,
+        'protection-admit',
+        'a'.repeat(64)
+      )
+    ).resolves.toEqual(created);
+    await expect(
+      repository.get(otherWorkspaceId, candidate.protectionMonitoringCandidateId)
+    ).resolves.toBeUndefined();
+    const decision = {
+      schemaVersion: 1 as const,
+      protectionMonitoringDecisionId: 'protection-monitoring-decision_postgres' as const,
+      workspaceId,
+      version: 1 as const,
+      candidate: { id: candidate.protectionMonitoringCandidateId, version: 1 as const },
+      expectedCandidateFingerprintSha256: candidate.candidateFingerprintSha256,
+      disposition: 'WATCH' as const,
+      decidedByPrincipalId: 'user_watch_owner',
+      rationale: 'Continue monitoring; no legal conclusion or external action.',
+      decidedAt: '2026-09-17T01:00:00.000Z',
+      externalActionExecuted: false as const,
+      legalConclusionCreated: false as const
+    };
+    await expect(
+      repository.decide(decision, 'protection-decision', 'b'.repeat(64))
+    ).resolves.toEqual(decision);
+    await expect(
+      new PostgresProtectionMonitoringRepository(database, database.getPool()).decide(
+        decision,
+        'protection-decision',
+        'b'.repeat(64)
+      )
+    ).resolves.toEqual(decision);
+    await expect(
+      repository.decision(workspaceId, candidate.protectionMonitoringCandidateId)
+    ).resolves.toEqual(decision);
   });
 });

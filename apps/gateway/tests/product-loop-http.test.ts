@@ -874,6 +874,47 @@ describe('Gateway Lite Product-loop transport boundary', () => {
     expect(downstream).toHaveBeenCalledTimes(1);
   });
 
+  it('forwards Protection Monitoring admission through the governed Workspace mutation boundary', async () => {
+    const body = {
+      asset: { id: 'trademark-asset_gateway-1', version: 1 },
+      watchTarget: { id: 'workspace-watch-target_gateway-1', version: 1 },
+      applicant: { applicant_candidate_id: 'applicant-1' },
+      trademark: { trademark_candidate_id: 'trademark-1' }
+    };
+    const downstream = vi.fn((url: string, init: RequestInit) => {
+      expect(url).toBe('http://lite.test/v1/protection-monitoring/candidates');
+      expect(init.method).toBe('POST');
+      expect(init.body).toBe(JSON.stringify(body));
+      return Promise.resolve(
+        new Response(
+          JSON.stringify({
+            protectionMonitoringCandidateId: 'protection-monitoring-candidate_gateway-1'
+          }),
+          { status: 201, headers: { 'content-type': 'application/json' } }
+        )
+      );
+    });
+    vi.stubGlobal('fetch', downstream);
+
+    const result = await route('POST', '/api/lite/protection-monitoring/candidates').handle({
+      method: 'POST',
+      path: '/api/lite/protection-monitoring/candidates',
+      params: {},
+      query: {},
+      headers: {
+        cookie: 'mo_session=token',
+        origin: 'https://test.markorbit.local',
+        'x-markorbit-workspace-id': workspaceId,
+        'x-markorbit-csrf-token': csrfToken(principal.sessionId, options.csrfSecret),
+        'idempotency-key': 'g9-admission'
+      },
+      body
+    });
+
+    expect(result.status).toBe(201);
+    expect(downstream).toHaveBeenCalledTimes(1);
+  });
+
   it('forwards Partner Intelligence admission through the governed Workspace mutation boundary', async () => {
     const body = {
       knowledgeReadyPackageId: 'ready-package_partner-1',

@@ -6,7 +6,8 @@ export const businessAttributionMotionKinds = [
   'PARTNER_DEVELOPMENT',
   'SITE_INBOUND',
   'CONTENT_LED_DEMAND',
-  'EDUCATION_COMMUNITY'
+  'EDUCATION_COMMUNITY',
+  'PROTECTION_MONITORING'
 ] as const;
 export type BusinessAttributionMotionKindV1 = (typeof businessAttributionMotionKinds)[number];
 
