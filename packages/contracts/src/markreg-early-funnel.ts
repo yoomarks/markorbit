@@ -92,6 +92,21 @@ export interface CreateProductionIntakeCommandV1 {
   input: Readonly<ProductionIntakeInputV1>;
   idempotencyKey: string;
   correlationId: MarkOrbitId;
+  /** Trusted Site admission lineage. Browsers must not supply this field. */
+  siteSource?: Readonly<SiteIntakeSourceV1>;
+}
+
+export interface SiteIntakeSourceV1 {
+  siteId: `site_${string}`;
+  siteOwnerWorkspaceId: string;
+  siteVersion: number;
+  configurationVersion: number;
+  hostBindingId: `site_host_${string}`;
+  hostBindingVersion: number;
+  hostname: string;
+  locale: string;
+  observedAt: string;
+  fingerprintSha256: string;
 }
 
 export interface ProductionIntakeV1 {
@@ -104,6 +119,7 @@ export interface ProductionIntakeV1 {
   relationshipModel: RelationshipModel;
   input: Readonly<ProductionIntakeInputV1>;
   sourceClass: 'CUSTOMER_SUPPLIED';
+  siteSource?: Readonly<SiteIntakeSourceV1>;
   fingerprintSha256: string;
   createdAt: string;
   updatedAt: string;
@@ -489,6 +505,28 @@ function parseIntakeInput(value: unknown): ProductionIntakeInputV1 {
   };
 }
 
+function parseSiteIntakeSource(value: unknown): SiteIntakeSourceV1 {
+  const v = record(value, 'siteSource');
+  const siteId = text(v.siteId, 'siteSource.siteId');
+  const hostBindingId = text(v.hostBindingId, 'siteSource.hostBindingId');
+  if (!siteId.startsWith('site_'))
+    throw new ContractValidationError('siteSource.siteId must be a Site identifier.');
+  if (!hostBindingId.startsWith('site_host_'))
+    throw new ContractValidationError('siteSource.hostBindingId must be a Site host identifier.');
+  return {
+    siteId: siteId as `site_${string}`,
+    siteOwnerWorkspaceId: text(v.siteOwnerWorkspaceId, 'siteSource.siteOwnerWorkspaceId'),
+    siteVersion: version(v.siteVersion, 'siteSource.siteVersion'),
+    configurationVersion: version(v.configurationVersion, 'siteSource.configurationVersion'),
+    hostBindingId: hostBindingId as `site_host_${string}`,
+    hostBindingVersion: version(v.hostBindingVersion, 'siteSource.hostBindingVersion'),
+    hostname: text(v.hostname, 'siteSource.hostname'),
+    locale: text(v.locale, 'siteSource.locale'),
+    observedAt: timestamp(v.observedAt, 'siteSource.observedAt'),
+    fingerprintSha256: sha256(v.fingerprintSha256, 'siteSource.fingerprintSha256')
+  };
+}
+
 function parseArtifactReference(value: unknown, name: string): EarlyFunnelArtifactReferenceV1 {
   const v = record(value, name);
   return {
@@ -579,7 +617,8 @@ export function parseCreateProductionIntakeCommandV1(
     relationshipModel: parseRelationshipModel(v.relationshipModel),
     input: parseIntakeInput(v.input),
     idempotencyKey: text(v.idempotencyKey, 'command.idempotencyKey'),
-    correlationId: markOrbitId(v.correlationId, 'command.correlationId')
+    correlationId: markOrbitId(v.correlationId, 'command.correlationId'),
+    ...(v.siteSource === undefined ? {} : { siteSource: parseSiteIntakeSource(v.siteSource) })
   };
 }
 
@@ -600,6 +639,7 @@ export function parseProductionIntakeV1(value: unknown): ProductionIntakeV1 {
     relationshipModel: parseRelationshipModel(v.relationshipModel),
     input: parseIntakeInput(v.input),
     sourceClass: 'CUSTOMER_SUPPLIED',
+    ...(v.siteSource === undefined ? {} : { siteSource: parseSiteIntakeSource(v.siteSource) }),
     fingerprintSha256: sha256(v.fingerprintSha256, 'intake.fingerprintSha256'),
     createdAt: timestamp(v.createdAt, 'intake.createdAt'),
     updatedAt: timestamp(v.updatedAt, 'intake.updatedAt'),

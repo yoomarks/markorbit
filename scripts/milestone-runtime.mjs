@@ -164,17 +164,22 @@ export async function assertPortAvailable(port) {
   });
 }
 
-export async function waitForHealth(name, url, child, timeoutMs = 30_000) {
+export async function waitForHealth(name, url, child, timeoutMs = 30_000, signal) {
   const deadline = Date.now() + timeoutMs;
   while (Date.now() < deadline) {
+    if (signal?.aborted) throw signal.reason ?? new Error(`${name} health check was aborted.`);
     if (child.exitCode !== null)
       throw new Error(
         `${name} exited before its health check became ready (exit ${child.exitCode}).`
       );
     try {
-      const response = await fetch(url);
+      const probeSignal = AbortSignal.timeout(Math.min(1_000, Math.max(1, deadline - Date.now())));
+      const response = await fetch(url, {
+        signal: signal ? AbortSignal.any([signal, probeSignal]) : probeSignal
+      });
       if (response.ok) return;
-    } catch {
+    } catch (error) {
+      if (signal?.aborted) throw signal.reason ?? error;
       /* the process is still starting */
     }
     await new Promise((resolvePromise) => setTimeout(resolvePromise, 100));
@@ -288,7 +293,13 @@ export async function startMilestoneRuntime(options = {}) {
       ]);
       const entry = { ...definition, child, log, outputFinished, detached };
       children.push(entry);
-      await waitForHealth(definition.name, definition.health, child, options.timeoutMs);
+      await waitForHealth(
+        definition.name,
+        definition.health,
+        child,
+        options.timeoutMs,
+        options.signal
+      );
     }
     return { children, logDirectory, ports: configuration.ports, urls: configuration.urls, stop };
   } catch (error) {

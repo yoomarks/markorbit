@@ -15,15 +15,36 @@ export interface ProductionIntakeClient {
 }
 
 export function createProductionIntakeClient(
-  api: ApiClient = createApiClient()
+  api: ApiClient = createApiClient(),
+  createPath = '/api/markreg/production-intakes'
 ): ProductionIntakeClient {
   return {
     create(command) {
       const { idempotencyKey, correlationId, ...body } = command;
-      return api.post<ProductionIntakeEnvelopeV1>('/api/markreg/production-intakes', body, {
+      return api.post<ProductionIntakeEnvelopeV1>(createPath, body, {
         'Idempotency-Key': idempotencyKey,
         'X-Correlation-ID': correlationId
       });
+    },
+    get(intakeId) {
+      return api.get<ProductionIntakeEnvelopeV1>(
+        `/api/markreg/production-intakes/${encodeURIComponent(intakeId)}`
+      );
+    }
+  };
+}
+
+export function createSiteProductionIntakeClient(
+  api: ApiClient = createApiClient()
+): ProductionIntakeClient {
+  return {
+    create(command) {
+      const { idempotencyKey, correlationId, input, schemaVersion } = command;
+      return api.post<ProductionIntakeEnvelopeV1>(
+        '/api/site/markreg/production-intakes',
+        { schemaVersion, input },
+        { 'Idempotency-Key': idempotencyKey, 'X-Correlation-ID': correlationId }
+      );
     },
     get(intakeId) {
       return api.get<ProductionIntakeEnvelopeV1>(

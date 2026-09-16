@@ -225,13 +225,18 @@ const defaultClient = createProductionIntakeClient();
 export function ProductionIntakePlanning({
   client = defaultClient,
   guidanceClient,
-  workspaceId = currentWorkspaceId()
+  workspaceId = currentWorkspaceId(),
+  storageScope = 'direct'
 }: {
   client?: ProductionIntakeClient;
   guidanceClient?: ProductionGuidanceClient;
   workspaceId?: string;
+  storageScope?: string;
 }) {
-  const storageSuffix = workspaceId ?? 'no-workspace';
+  const storageSuffix =
+    storageScope === 'direct'
+      ? (workspaceId ?? 'no-workspace')
+      : `${storageScope}:${workspaceId ?? 'no-workspace'}`;
   const draftKey = `markreg-production-intake-draft-v1:${storageSuffix}`;
   const pointerKey = `markreg-production-intake-pointer-v1:${storageSuffix}`;
   const pendingKey = `markreg-production-intake-pending-v1:${storageSuffix}`;
@@ -687,7 +692,18 @@ function ReceivedIntake({
               { key: 'State', value: record.status },
               { key: 'Source class', value: record.sourceClass },
               { key: 'Updated', value: record.updatedAt },
-              { key: 'Fingerprint', value: record.fingerprintSha256 }
+              { key: 'Fingerprint', value: record.fingerprintSha256 },
+              ...(record.siteSource
+                ? [
+                    { key: 'Source Site', value: record.siteSource.siteId },
+                    {
+                      key: 'Site configuration',
+                      value: `${record.siteSource.configurationVersion}`
+                    },
+                    { key: 'Source host', value: record.siteSource.hostname },
+                    { key: 'Site lineage', value: record.siteSource.fingerprintSha256 }
+                  ]
+                : [])
             ]}
           />
         </details>

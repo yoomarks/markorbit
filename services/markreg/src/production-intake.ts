@@ -58,7 +58,8 @@ function requestMaterial(command: CreateProductionIntakeCommandV1) {
     schemaVersion: command.schemaVersion,
     channel: command.channel,
     relationshipModel: command.relationshipModel,
-    input: command.input
+    input: command.input,
+    siteSource: command.siteSource
   };
 }
 
@@ -108,6 +109,7 @@ export class PostgresProductionIntakeService {
             relationshipModel: command.relationshipModel,
             input: command.input,
             sourceClass: 'CUSTOMER_SUPPLIED',
+            ...(command.siteSource ? { siteSource: command.siteSource } : {}),
             createdAt: at,
             updatedAt: at,
             authorityConsequences: noEarlyFunnelAuthorityConsequences
@@ -160,7 +162,8 @@ export class PostgresProductionIntakeService {
               JSON.stringify({
                 schemaVersion: 1,
                 sourceClass: 'CUSTOMER_SUPPLIED',
-                inputFingerprintSha256: sha256(value.input)
+                inputFingerprintSha256: sha256(value.input),
+                ...(value.siteSource ? { siteSource: value.siteSource } : {})
               }),
               requestFingerprint,
               principal.userId,
