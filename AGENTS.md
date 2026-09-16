@@ -132,6 +132,12 @@ branch onto current remote main, run `pnpm task:refresh`, rerun affected validat
 conflict is explicitly resolved. On Windows, use `pnpm.cmd` when PowerShell execution policy blocks
 `pnpm.ps1`.
 
+After the exact-head PR merges, follow `docs/development/task-lifecycle.md`: run the read-only
+doctor, preview the exact task closeout, apply it only when its current proof is `READY`, and finish
+with the read-only hygiene report. Unknown, dirty, detached, protected or authority-unavailable
+states are stop conditions. Never replace explicit closeout with blanket worktree pruning or branch
+deletion.
+
 Avoid replacing execution with long speculative discussion. Ask the user only when a genuine product, authority, destructive-action or scope decision cannot be resolved from existing sources.
 
 ## 6. Verification and CI
