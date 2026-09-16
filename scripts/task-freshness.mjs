@@ -71,7 +71,7 @@ export function fetchRemoteMain(repoRoot, remote, defaultBranch) {
   });
 }
 
-function parseGitHubRepository(remoteUrl) {
+export function parseGitHubRepository(remoteUrl) {
   const match = remoteUrl.match(
     /(?:https?:\/\/github\.com\/|git@github\.com:|ssh:\/\/git@github\.com\/)([^/]+)\/([^/]+?)(?:\.git)?$/
   );
@@ -349,6 +349,32 @@ export async function inspectConcurrentWork({ repoRoot, remote, baseSha, default
     });
   }
   return { repository: repository.slug, pulls: summaries };
+}
+
+export async function inspectPullRequestsForBranch({ repoRoot, remote, defaultBranch, branch }) {
+  const remoteUrl = runGit(repoRoot, ['remote', 'get-url', remote]);
+  const repository = parseGitHubRepository(remoteUrl);
+  const pulls = await githubJson(
+    `https://api.github.com/repos/${repository.owner}/${repository.name}/pulls?state=all&base=${encodeURIComponent(defaultBranch)}&head=${encodeURIComponent(`${repository.owner}:${branch}`)}&per_page=100`
+  );
+  if (!Array.isArray(pulls) || pulls.length === 100) {
+    throw new GuardError('PR_METADATA_UNAVAILABLE', {
+      detail: 'Branch pull request inventory is invalid or exceeds the bounded 99-PR scan.'
+    });
+  }
+  return {
+    repository: repository.slug,
+    pulls: pulls.map((pull) => ({
+      number: pull.number,
+      state: pull.state,
+      mergedAt: pull.merged_at,
+      mergeCommitSha: pull.merge_commit_sha ?? null,
+      headSha: pull.head?.sha ?? null,
+      headRef: pull.head?.ref ?? null,
+      baseRef: pull.base?.ref ?? null,
+      url: pull.html_url
+    }))
+  };
 }
 
 function scopeMatchesFile(scope, file) {
