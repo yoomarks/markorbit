@@ -3,6 +3,7 @@ export type AgencyPrototypeSurface =
   | 'cases'
   | 'case-detail'
   | 'trademarks'
+  | 'trademark-change'
   | 'clients'
   | 'inbox'
   | 'more'

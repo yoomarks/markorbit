@@ -38,6 +38,20 @@ describe('AgencyIaPrototype', () => {
     );
   });
 
+  it('opens an inspectable trademark change and keeps the client update as a draft', async () => {
+    const user = userEvent.setup();
+    render(<AgencyIaPrototype />);
+    await user.click(screen.getByRole('button', { name: 'Review change' }));
+    expect(screen.getByRole('heading', { name: 'NORTHSTAR status change' })).toBeInTheDocument();
+    expect(screen.getByText('Response received')).toBeInTheDocument();
+    expect(screen.getAllByText('Response accepted')).toHaveLength(2);
+    expect(screen.getByText('United States Patent and Trademark Office')).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Prepare client update' }));
+    expect(
+      screen.getByText('This is a draft. Nothing has been sent to the client or outside counsel.')
+    ).toBeInTheDocument();
+  });
+
   it('distinguishes official, workspace, and AI information', () => {
     render(<AgencyIaPrototype initialSurface="sources" />);
     const main = screen.getByRole('main');

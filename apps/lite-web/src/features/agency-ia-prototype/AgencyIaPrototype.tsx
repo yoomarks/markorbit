@@ -99,7 +99,13 @@ function TrustLabel({ kind }: { kind: 'official' | 'workspace' | 'ai' }) {
   return <span className={`agency-trust agency-trust--${kind}`}>{labels[kind]}</span>;
 }
 
-function TodayView({ onOpenInbox }: { onOpenInbox: () => void }) {
+function TodayView({
+  onOpenInbox,
+  onReviewTrademarkChange
+}: {
+  onOpenInbox: () => void;
+  onReviewTrademarkChange: () => void;
+}) {
   return (
     <section>
       <PageHeader
@@ -137,7 +143,9 @@ function TodayView({ onOpenInbox }: { onOpenInbox: () => void }) {
             <p>
               <TrustLabel kind="official" /> Checked 18 minutes ago
             </p>
-            <Button variant="secondary">Review change</Button>
+            <Button variant="secondary" onClick={onReviewTrademarkChange}>
+              Review change
+            </Button>
           </Card>
         </div>
       </section>
@@ -160,6 +168,75 @@ function TodayView({ onOpenInbox }: { onOpenInbox: () => void }) {
             <Button variant="secondary">Prepare update</Button>
           </Card>
         </section>
+      </div>
+    </section>
+  );
+}
+
+function TrademarkChangeView({ onBack }: { onBack: () => void }) {
+  const [draftPrepared, setDraftPrepared] = useState(false);
+  return (
+    <section>
+      <button className="agency-back" onClick={onBack}>
+        ← Back to Today
+      </button>
+      <PageHeader
+        title="NORTHSTAR status change"
+        description="United States trademark · Northstar Robotics Ltd."
+        actions={<Badge>Checked 18 minutes ago</Badge>}
+      />
+      <div className="agency-case-layout agency-section">
+        <div className="agency-stack">
+          <Card>
+            <TrustLabel kind="official" />
+            <div className="agency-section__heading">
+              <div>
+                <p className="agency-eyebrow">Status changed today at 9:02 AM</p>
+                <h2>Response accepted</h2>
+              </div>
+              <Badge>Up to date</Badge>
+            </div>
+            <p>
+              The official record changed from <strong>Response received</strong> to{' '}
+              <strong>Response accepted</strong>.
+            </p>
+            <KeyValueList
+              items={[
+                { key: 'Official source', value: 'United States Patent and Trademark Office' },
+                { key: 'Application', value: 'US 98/421,091' },
+                { key: 'Last checked', value: 'Today at 9:20 AM' }
+              ]}
+            />
+          </Card>
+          <Card>
+            <TrustLabel kind="workspace" />
+            <h2>Related work</h2>
+            <KeyValueList
+              items={[
+                { key: 'Client', value: 'Northstar Robotics Ltd.' },
+                { key: 'Case', value: 'US Section 8 maintenance' },
+                { key: 'Next action', value: 'Review updated specimen instructions' },
+                { key: 'Due', value: 'Today · 4:00 PM' }
+              ]}
+            />
+          </Card>
+        </div>
+        <aside className="agency-stack" aria-label="Suggested next step">
+          <Card className="agency-suggestion">
+            <TrustLabel kind="ai" />
+            <h2>Client update may be needed</h2>
+            <p>
+              Prepare a short summary for review. The suggestion is not an official record and will
+              not contact the client.
+            </p>
+            <Button onClick={() => setDraftPrepared(true)}>Prepare client update</Button>
+          </Card>
+          {draftPrepared && (
+            <Alert title="Client update draft prepared">
+              This is a draft. Nothing has been sent to the client or outside counsel.
+            </Alert>
+          )}
+        </aside>
       </div>
     </section>
   );
@@ -715,12 +792,21 @@ export function AgencyIaPrototype({
   const [newOpen, setNewOpen] = useState(false);
   const [askOpen, setAskOpen] = useState(false);
   const [status, setStatus] = useState('');
-  const activePrimary = surface === 'case-detail' ? 'cases' : surface;
+  const activePrimary =
+    surface === 'case-detail' ? 'cases' : surface === 'trademark-change' ? 'trademarks' : surface;
   const content = useMemo(() => {
-    if (surface === 'today') return <TodayView onOpenInbox={() => setSurface('inbox')} />;
+    if (surface === 'today')
+      return (
+        <TodayView
+          onOpenInbox={() => setSurface('inbox')}
+          onReviewTrademarkChange={() => setSurface('trademark-change')}
+        />
+      );
     if (surface === 'cases') return <CasesView onOpenCase={() => setSurface('case-detail')} />;
     if (surface === 'case-detail') return <CaseDetailView onBack={() => setSurface('cases')} />;
     if (surface === 'trademarks') return <TrademarksView />;
+    if (surface === 'trademark-change')
+      return <TrademarkChangeView onBack={() => setSurface('today')} />;
     if (surface === 'clients') return <ClientsView />;
     if (surface === 'inbox')
       return <InboxView {...(initialMessageId ? { initialMessageId } : {})} />;
@@ -820,9 +906,11 @@ export function AgencyIaPrototype({
                     Ask MO about{' '}
                     {surface === 'case-detail'
                       ? 'this case'
-                      : surface === 'inbox'
-                        ? 'this message'
-                        : 'this workspace'}
+                      : surface === 'trademark-change'
+                        ? 'this trademark change'
+                        : surface === 'inbox'
+                          ? 'this message'
+                          : 'this workspace'}
                   </strong>
                   <TextInput label="Question" placeholder="What should I do next?" />
                   <p>
