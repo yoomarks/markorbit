@@ -26,6 +26,7 @@
     "test:task-freshness": "node --test scripts/task-freshness.test.mjs",
     "test:task-doctor": "node --test scripts/task-lifecycle-doctor.test.mjs",
     "test:task-hygiene": "node --test scripts/task-lifecycle-hygiene.test.mjs",
+    "test:task-lifecycle": "node --test scripts/task-lifecycle.e2e.test.mjs",
     "test:task-closeout": "node --test scripts/task-lifecycle-closeout.test.mjs",
     "test:e2e:headed": "playwright test --headed",
     "test:visual": "playwright test --config playwright.config.ts --grep @visual",
