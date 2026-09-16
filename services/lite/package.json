@@ -13,7 +13,8 @@
     "typecheck": "tsc --noEmit",
     "lint": "eslint src tests",
     "test:work-item:postgres": "vitest run tests/lite-work-item-postgres.test.ts",
-    "test:workspace-watch:postgres": "vitest run tests/workspace-watch-postgres.test.ts"
+    "test:workspace-watch:postgres": "vitest run tests/workspace-watch-postgres.test.ts",
+    "test:business-attribution:postgres": "vitest run tests/business-attribution-postgres.test.ts"
   },
   "dependencies": {
     "@markorbit/contracts": "workspace:*",

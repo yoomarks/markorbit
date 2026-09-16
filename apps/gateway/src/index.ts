@@ -37,6 +37,7 @@ export * from './commercial-admin-mgsn-http.js';
 export * from './mgsn-http.js';
 export * from './product-loop-http.js';
 export * from './outbound-contact-policy-http.js';
+export * from './business-attribution-http.js';
 export * from './data-engine-product-http.js';
 export * from './data-control-plane-http.js';
 export * from './knowledge-control-plane-http.js';
@@ -78,6 +79,7 @@ import { createGatewayExecutionSuperAdminRoutes } from './execution-super-admin-
 import { createGatewayLiteSuperAdminRoutes } from './lite-super-admin-http.js';
 import { createGatewayProductLoopRoutes } from './product-loop-http.js';
 import { createGatewayOutboundContactPolicyRoutes } from './outbound-contact-policy-http.js';
+import { createGatewayBusinessAttributionRoutes } from './business-attribution-http.js';
 import { createGatewayDataEngineRoutes } from './data-engine-product-http.js';
 import { createGatewayDataControlPlaneRoutes } from './data-control-plane-http.js';
 import { createGatewayKnowledgeControlPlaneRoutes } from './knowledge-control-plane-http.js';
@@ -629,6 +631,18 @@ export function createRuntime(options: GatewayOptions = {}) {
           allowedOrigins
         }),
         ...createGatewayOutboundContactPolicyRoutes({
+          liteUrl,
+          ...(authenticationClient ? { authenticationClient } : {}),
+          ...((options.internalServiceSecret ?? process.env.MO_INTERNAL_SERVICE_SECRET)
+            ? {
+                internalServiceSecret: (options.internalServiceSecret ??
+                  process.env.MO_INTERNAL_SERVICE_SECRET)!
+              }
+            : {}),
+          csrfSecret,
+          allowedOrigins
+        }),
+        ...createGatewayBusinessAttributionRoutes({
           liteUrl,
           ...(authenticationClient ? { authenticationClient } : {}),
           ...((options.internalServiceSecret ?? process.env.MO_INTERNAL_SERVICE_SECRET)
