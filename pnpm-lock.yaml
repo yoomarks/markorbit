@@ -215,6 +215,8 @@ importers:
 
   apps/provider-web: {}
 
+  apps/wechat-miniprogram: {}
+
   packages/ai:
     dependencies:
       '@markorbit/contracts':

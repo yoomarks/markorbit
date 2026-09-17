@@ -1,0 +1,4 @@
+{
+  "desc": "The public Workspace Site entry can be indexed; account and intake remain Web-owned.",
+  "rules": [{ "action": "allow", "page": "pages/site/index" }]
+}

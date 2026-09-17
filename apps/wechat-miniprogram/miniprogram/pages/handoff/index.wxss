@@ -1,0 +1,7 @@
+.handoff-error {
+  margin: 48rpx;
+  padding: 32rpx;
+  border-left: 8rpx solid #b42318;
+  background: #ffffff;
+  line-height: 1.55;
+}
