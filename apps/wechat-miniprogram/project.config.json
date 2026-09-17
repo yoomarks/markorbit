@@ -1,0 +1,11 @@
+{
+  "description": "MarkOrbit Workspace Site renderer; operator AppID required for platform acceptance",
+  "miniprogramRoot": "miniprogram/",
+  "projectname": "markorbit-site-renderer",
+  "appid": "",
+  "setting": {
+    "es6": true,
+    "minified": false,
+    "urlCheck": true
+  }
+}

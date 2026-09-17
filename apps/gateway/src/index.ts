@@ -50,6 +50,7 @@ export * from './lite-super-admin-http.js';
 export * from './workspace-super-admin-http.js';
 export * from './workspace-commercial-http.js';
 export * from './site-http.js';
+export * from './site-wechat-miniprogram-http.js';
 export * from './markreg-early-funnel-http.js';
 export * from './preparation-lock-http.js';
 export * from './filing-governance-http.js';
@@ -88,6 +89,7 @@ import { createGatewayKnowledgeSuperAdminRoutes } from './knowledge-super-admin-
 import { createGatewayWorkspaceSuperAdminRoutes } from './workspace-super-admin-http.js';
 import { createGatewayWorkspaceCommercialRoutesV1 } from './workspace-commercial-http.js';
 import { createGatewaySiteRoutesV1 } from './site-http.js';
+import { createGatewayWechatMiniProgramRoutesV1 } from './site-wechat-miniprogram-http.js';
 import { createGatewaySiteInboundOutcomeRoutesV1 } from './site-inbound-outcome-http.js';
 import { createGatewayMarkRegEarlyFunnelRoutes } from './markreg-early-funnel-http.js';
 import { createGatewayPreparationLockHandler } from './preparation-lock-http.js';
@@ -118,6 +120,7 @@ export interface GatewayOptions {
   internalServiceSecret?: string;
   coreUrl?: string;
   siteUrl?: string;
+  wechatMiniProgramSiteHostname?: string;
   trustedProxy?: boolean;
   csrfSecret?: string;
   allowedOrigins?: readonly string[];
@@ -146,6 +149,8 @@ export function createRuntime(options: GatewayOptions = {}) {
   const knowledgeTimeoutMs =
     options.knowledgeTimeoutMs ??
     (process.env.KNOWLEDGE_TIMEOUT_MS ? Number(process.env.KNOWLEDGE_TIMEOUT_MS) : undefined);
+  const wechatMiniProgramSiteHostname =
+    options.wechatMiniProgramSiteHostname ?? process.env.WECHAT_MINIPROGRAM_SITE_HOSTNAME;
   const milestoneTestRuntime =
     options.milestoneTestRuntime ?? process.env.MO_MILESTONE_TEST_RUNTIME === '1';
   const allowedOrigins =
@@ -621,6 +626,16 @@ export function createRuntime(options: GatewayOptions = {}) {
           csrfSecret,
           allowedOrigins,
           trustedProxy: options.trustedProxy ?? process.env.MO_TRUST_PROXY === '1'
+        }),
+        ...createGatewayWechatMiniProgramRoutesV1({
+          siteUrl: options.siteUrl ?? process.env.SITE_URL ?? 'http://127.0.0.1:4109',
+          ...(wechatMiniProgramSiteHostname ? { siteHostname: wechatMiniProgramSiteHostname } : {}),
+          ...((options.internalServiceSecret ?? process.env.MO_INTERNAL_SERVICE_SECRET)
+            ? {
+                internalServiceSecret: (options.internalServiceSecret ??
+                  process.env.MO_INTERNAL_SERVICE_SECRET)!
+              }
+            : {})
         }),
         ...createGatewaySiteInboundOutcomeRoutesV1({
           markRegUrl,
