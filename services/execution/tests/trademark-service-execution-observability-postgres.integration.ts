@@ -136,6 +136,9 @@ suite('M15-WP-07 durable sandbox recovery observability', () => {
     const pool = database.getPool();
     await pool.query(
       `DROP TABLE IF EXISTS
+         execution_protected_action_commands,
+         execution_protected_action_releases,
+         execution_protected_action_authorizations,
          execution_trademark_service_artifacts,
          execution_trademark_service_protected_action_replays,
          execution_trademark_service_sessions
@@ -191,7 +194,7 @@ suite('M15-WP-07 durable sandbox recovery observability', () => {
     recordedAt
   });
 
-  it('reuses the existing Execution migration set without adding a new persistence table', async () => {
+  it('reuses the existing trademark-service tables without adding recovery persistence', async () => {
     const owned = await migrations();
     expect(owned.map((migration) => `${migration.version}_${migration.name}`)).toEqual(
       expect.arrayContaining([
@@ -199,7 +202,18 @@ suite('M15-WP-07 durable sandbox recovery observability', () => {
         '0062_execution_trademark_service_sandbox_policy'
       ])
     );
-    expect(owned.some((migration) => Number(migration.version) > 62)).toBe(false);
+    const trademarkServiceTables = await database.getPool().query<{ table_name: string }>(
+      `SELECT table_name
+         FROM information_schema.tables
+        WHERE table_schema = 'public'
+          AND table_name LIKE 'execution_trademark_service_%'
+        ORDER BY table_name`
+    );
+    expect(trademarkServiceTables.rows.map(({ table_name }) => table_name)).toEqual([
+      'execution_trademark_service_artifacts',
+      'execution_trademark_service_protected_action_replays',
+      'execution_trademark_service_sessions'
+    ]);
     expect(
       (await migrationStatus(database.getPool(), namespace, owned)).every(
         (migration) => migration.state === 'applied'

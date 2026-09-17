@@ -53,6 +53,7 @@ export * from './site-http.js';
 export * from './markreg-early-funnel-http.js';
 export * from './preparation-lock-http.js';
 export * from './filing-governance-http.js';
+export * from './protected-external-action-http.js';
 import {
   clearSessionCookie,
   csrfToken,
@@ -91,6 +92,7 @@ import { createGatewaySiteInboundOutcomeRoutesV1 } from './site-inbound-outcome-
 import { createGatewayMarkRegEarlyFunnelRoutes } from './markreg-early-funnel-http.js';
 import { createGatewayPreparationLockHandler } from './preparation-lock-http.js';
 import { createGatewayFilingGovernanceHandler } from './filing-governance-http.js';
+import { createGatewayProtectedExternalActionRoutes } from './protected-external-action-http.js';
 export const serviceManifest = Object.freeze({
   name: 'gateway',
   port: Number(process.env.PORT ?? '4000'),
@@ -465,6 +467,18 @@ export function createRuntime(options: GatewayOptions = {}) {
           csrfSecret,
           allowedOrigins,
           secureCookies: options.secureCookies ?? process.env.NODE_ENV === 'production'
+        }),
+        ...createGatewayProtectedExternalActionRoutes({
+          executionUrl,
+          ...(authenticationClient ? { authenticationClient } : {}),
+          ...((options.internalServiceSecret ?? process.env.MO_INTERNAL_SERVICE_SECRET)
+            ? {
+                internalServiceSecret: (options.internalServiceSecret ??
+                  process.env.MO_INTERNAL_SERVICE_SECRET)!
+              }
+            : {}),
+          csrfSecret,
+          allowedOrigins
         }),
         ...createGatewayMarkRegEarlyFunnelRoutes({
           markRegUrl,

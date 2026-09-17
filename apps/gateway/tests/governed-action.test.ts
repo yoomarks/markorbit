@@ -304,5 +304,6 @@ describe('Trading Listing Publish governed Gateway composition', () => {
     });
     expect(envelope).not.toHaveProperty('executionReleaseId');
     expect(envelope).not.toHaveProperty('published');
+    expect(result.humanActionReceipt).toEqual(receipt(input));
   });
 });

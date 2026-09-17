@@ -4,6 +4,7 @@ import {
   assertTradingListingDraftV1,
   assertTradingPublishedListingV1,
   tradingListingReviewStates,
+  type TradingListingReviewId,
   type TradingListingDraftId,
   type TradingListingDraftV1,
   type TradingListingPublishReviewV1,
@@ -18,7 +19,7 @@ const DRAFT_ID = /^trading-listing-draft_[A-Za-z0-9_-]+$/u;
 const REVIEW_ID = /^trading-listing-review_[A-Za-z0-9_-]+$/u;
 const LISTING_ID = /^trading-listing_[A-Za-z0-9_-]+$/u;
 
-export type TradingListingReviewId = `trading-listing-review_${string}`;
+export type { TradingListingReviewId } from '@markorbit/contracts';
 
 export interface TradingListingReviewRecordV1 {
   schemaVersion: 1;

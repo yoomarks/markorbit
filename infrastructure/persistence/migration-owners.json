@@ -203,6 +203,7 @@
     "0127_lite_content_led_demand_attribution": "@markorbit/lite-service",
     "0128_lite_partner_referral_eligibility": "@markorbit/lite-service",
     "0129_lite_education_community": "@markorbit/lite-service",
-    "0130_lite_protection_monitoring": "@markorbit/lite-service"
+    "0130_lite_protection_monitoring": "@markorbit/lite-service",
+    "0131_execution_protected_external_actions": "@markorbit/execution-service"
   }
 }
