@@ -175,6 +175,11 @@
       "import": "./dist/fact-candidate-v1.js",
       "default": "./dist/fact-candidate-v1.js"
     },
+    "./trademark-intelligence-method-family-v1": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    },
     "./data-engine-discovery": {
       "types": "./dist/data-engine-discovery.d.ts",
       "import": "./dist/data-engine-discovery.js",
