@@ -1,0 +1,52 @@
+{
+  "contractVersion": "MARKORBIT_FACT_CANDIDATE_V1",
+  "objectType": "FACT_CANDIDATE",
+  "candidateId": "fac_01ARZ3NDEKTSV4RRFFQ69G5FAY",
+  "factType": "CITED_AS_REFERENCE_FOR_REFUSAL",
+  "jurisdiction": "CN",
+  "subject": {
+    "resourceType": "TRADEMARK",
+    "applicationNumber": "202312345678.9",
+    "registrationNumber": null
+  },
+  "object": {
+    "resourceType": "TRADEMARK",
+    "applicationNumber": null,
+    "registrationNumber": "12345678"
+  },
+  "eventDate": "2026-08-21",
+  "effectiveDate": null,
+  "sourceDocument": {
+    "owner": "MARKORBIT_KNOWLEDGE",
+    "sourceId": "src_01ARZ3NDEKTSV4RRFFQ69G5FAW",
+    "documentId": "std_01ARZ3NDEKTSV4RRFFQ69G5FAZ",
+    "documentVersion": 2,
+    "documentSha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+    "sourceUri": "https://sbj.cnipa.gov.cn/document/example"
+  },
+  "evidenceLocator": {
+    "locatorType": "PAGE_TEXT_RANGE",
+    "pageNumber": 2,
+    "startOffset": 188,
+    "endOffset": 244,
+    "textSha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+  },
+  "sourceAuthority": "DIRECT_OFFICIAL",
+  "extractionMethod": {
+    "owner": "MARKORBIT_BRAIN_METHOD",
+    "methodId": "cn-trademark-citation-extraction",
+    "methodVersion": "1.0.0"
+  },
+  "confidence": {
+    "scoreBasisPoints": 9800,
+    "evidenceLevel": "EXPLICIT_DOCUMENT_TEXT"
+  },
+  "candidateFingerprintSha256": "1835061cebbcae850978c9ff9716bd2c215e2bda3a7db241a0d190f3e2eabdb2",
+  "ingestion": {
+    "status": "PROPOSED",
+    "validation": null,
+    "admission": null
+  },
+  "producedAt": "2026-09-18T00:01:00.000Z",
+  "legalConclusion": false
+}
