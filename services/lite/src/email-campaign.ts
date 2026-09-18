@@ -16,7 +16,12 @@ import type { QueryClient } from '@markorbit/persistence';
 import type { LiteTransactionHost } from './content-preparation.js';
 
 type Row = Record<string, unknown>;
-type CommandType = 'SAVE_AUDIENCE' | 'SAVE_CONTENT' | 'SAVE_BRAND' | 'SAVE_CAMPAIGN' | 'SAVE_REVIEW';
+type CommandType =
+  | 'SAVE_AUDIENCE'
+  | 'SAVE_CONTENT'
+  | 'SAVE_BRAND'
+  | 'SAVE_CAMPAIGN'
+  | 'SAVE_REVIEW';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const SHA256 = /^[0-9a-f]{64}$/;
@@ -78,7 +83,11 @@ function cleanWorkspaceId(value: string): string {
 
 function positiveVersion(value: number, field = 'version'): number {
   if (!Number.isSafeInteger(value) || value < 1)
-    throw new EmailCampaignPersistenceError('INVALID_INPUT', `${field} must be a positive integer.`, 422);
+    throw new EmailCampaignPersistenceError(
+      'INVALID_INPUT',
+      `${field} must be a positive integer.`,
+      422
+    );
   return value;
 }
 
@@ -105,13 +114,21 @@ function required(value: string, field: string, max = 500): string {
 
 function iso(value: string, field: string): string {
   if (!Number.isFinite(Date.parse(value)))
-    throw new EmailCampaignPersistenceError('INVALID_INPUT', `${field} must be an ISO timestamp.`, 422);
+    throw new EmailCampaignPersistenceError(
+      'INVALID_INPUT',
+      `${field} must be an ISO timestamp.`,
+      422
+    );
   return new Date(value).toISOString();
 }
 
 function sha(value: string, field: string): string {
   if (!SHA256.test(value))
-    throw new EmailCampaignPersistenceError('INVALID_INPUT', `${field} must be lowercase SHA-256 hex.`, 422);
+    throw new EmailCampaignPersistenceError(
+      'INVALID_INPUT',
+      `${field} must be lowercase SHA-256 hex.`,
+      422
+    );
   return value;
 }
 
@@ -151,7 +168,11 @@ function assertAudience(value: Readonly<CampaignAudienceSnapshotV1>): void {
   positiveVersion(value.version);
   iso(value.capturedAt, 'capturedAt');
   if (value.channel !== 'EMAIL')
-    throw new EmailCampaignPersistenceError('INVALID_INPUT', 'Audience channel must be EMAIL.', 422);
+    throw new EmailCampaignPersistenceError(
+      'INVALID_INPUT',
+      'Audience channel must be EMAIL.',
+      422
+    );
 }
 
 function assertContent(value: Readonly<CampaignContentProjectionV1>): void {
@@ -201,7 +222,11 @@ function assertCampaign(value: Readonly<EmailCampaignV1>): void {
   id(value.campaignId, CAMPAIGN_ID, 'campaignId');
   positiveVersion(value.version);
   if (value.featureKey !== 'EMAIL_CAMPAIGN')
-    throw new EmailCampaignPersistenceError('INVALID_INPUT', 'featureKey must be EMAIL_CAMPAIGN.', 422);
+    throw new EmailCampaignPersistenceError(
+      'INVALID_INPUT',
+      'featureKey must be EMAIL_CAMPAIGN.',
+      422
+    );
   if (!emailCampaignStatusesV1.includes(value.status))
     throw new EmailCampaignPersistenceError('INVALID_INPUT', 'Campaign status is invalid.', 422);
   id(value.audience.audienceSnapshotId, AUDIENCE_ID, 'audience.audienceSnapshotId');
@@ -217,9 +242,17 @@ function assertCampaign(value: Readonly<EmailCampaignV1>): void {
   iso(value.createdAt, 'createdAt');
   iso(value.updatedAt, 'updatedAt');
   if (Date.parse(value.updatedAt) < Date.parse(value.createdAt))
-    throw new EmailCampaignPersistenceError('INVALID_INPUT', 'Campaign updatedAt cannot precede createdAt.', 422);
+    throw new EmailCampaignPersistenceError(
+      'INVALID_INPUT',
+      'Campaign updatedAt cannot precede createdAt.',
+      422
+    );
   if (!value.humanReviewRequired)
-    throw new EmailCampaignPersistenceError('INVALID_INPUT', 'Campaign human review must remain required.', 422);
+    throw new EmailCampaignPersistenceError(
+      'INVALID_INPUT',
+      'Campaign human review must remain required.',
+      422
+    );
   assertAuthorityLocks(value.authority, 'Campaign');
 }
 
@@ -234,7 +267,11 @@ function assertReview(value: Readonly<CampaignReviewDecisionV1>): void {
   required(value.rationale, 'rationale', 4000);
   iso(value.reviewedAt, 'reviewedAt');
   if (!value.deliveryPreparationOnly)
-    throw new EmailCampaignPersistenceError('INVALID_INPUT', 'Review must remain delivery-preparation-only.', 422);
+    throw new EmailCampaignPersistenceError(
+      'INVALID_INPUT',
+      'Review must remain delivery-preparation-only.',
+      422
+    );
   assertAuthorityLocks(value.authority, 'Review');
 }
 
@@ -242,7 +279,11 @@ function asIntegrity<T>(parse: () => T, message: string): T {
   try {
     return parse();
   } catch (error) {
-    if (error instanceof EmailCampaignPersistenceError && error.code === 'INTEGRITY_FAILURE') throw error;
+    if (
+      error instanceof EmailCampaignPersistenceError &&
+      error.code === 'INTEGRITY_FAILURE'
+    )
+      throw error;
     throw new EmailCampaignPersistenceError(
       'INTEGRITY_FAILURE',
       message,
@@ -272,7 +313,11 @@ function parseAudienceRow(row: Row): CampaignAudienceSnapshotV1 {
       value.entries.length !== Number(row.recipient_count) ||
       !sameTimestamp(row.captured_at, value.capturedAt)
     )
-      throw new EmailCampaignPersistenceError('INTEGRITY_FAILURE', 'Audience row/document mismatch.', 500);
+      throw new EmailCampaignPersistenceError(
+        'INTEGRITY_FAILURE',
+        'Audience row/document mismatch.',
+        500
+      );
     return value;
   }, 'Persisted Audience Snapshot failed integrity validation.');
 }
@@ -287,12 +332,17 @@ function parseContentRow(row: Row): CampaignContentProjectionV1 {
       value.version !== Number(row.version) ||
       value.publishPackageRef.publishPackageId !== String(row.publish_package_id) ||
       value.publishPackageRef.version !== Number(row.publish_package_version) ||
-      value.publishPackageRef.fingerprintSha256 !== String(row.publish_package_fingerprint_sha256) ||
+      value.publishPackageRef.fingerprintSha256 !==
+        String(row.publish_package_fingerprint_sha256) ||
       value.reviewedSendFingerprintSha256 !== String(row.reviewed_send_fingerprint_sha256) ||
       value.projectionFingerprintSha256 !== String(row.projection_fingerprint_sha256) ||
       !sameTimestamp(row.created_at, value.createdAt)
     )
-      throw new EmailCampaignPersistenceError('INTEGRITY_FAILURE', 'Content row/document mismatch.', 500);
+      throw new EmailCampaignPersistenceError(
+        'INTEGRITY_FAILURE',
+        'Content row/document mismatch.',
+        500
+      );
     return value;
   }, 'Persisted Content Projection failed integrity validation.');
 }
@@ -310,7 +360,11 @@ function parseBrandRow(row: Row): CampaignBrandProjectionV1 {
       value.brandProjectionFingerprintSha256 !== String(row.brand_projection_fingerprint_sha256) ||
       !sameTimestamp(row.captured_at, value.capturedAt)
     )
-      throw new EmailCampaignPersistenceError('INTEGRITY_FAILURE', 'Brand row/document mismatch.', 500);
+      throw new EmailCampaignPersistenceError(
+        'INTEGRITY_FAILURE',
+        'Brand row/document mismatch.',
+        500
+      );
     return value;
   }, 'Persisted Brand Projection failed integrity validation.');
 }
@@ -335,7 +389,11 @@ function parseCampaignRow(row: Row): EmailCampaignV1 {
       !sameTimestamp(row.created_at, value.createdAt) ||
       !sameTimestamp(row.updated_at, value.updatedAt)
     )
-      throw new EmailCampaignPersistenceError('INTEGRITY_FAILURE', 'Campaign row/document mismatch.', 500);
+      throw new EmailCampaignPersistenceError(
+        'INTEGRITY_FAILURE',
+        'Campaign row/document mismatch.',
+        500
+      );
     return value;
   }, 'Persisted Campaign failed integrity validation.');
 }
@@ -350,12 +408,17 @@ function parseReviewRow(row: Row): CampaignReviewDecisionV1 {
       value.version !== Number(row.version) ||
       value.campaign.campaignId !== String(row.campaign_id) ||
       value.campaign.version !== Number(row.campaign_version) ||
-      value.expectedCampaignFingerprintSha256 !== String(row.expected_campaign_fingerprint_sha256) ||
+      value.expectedCampaignFingerprintSha256 !==
+        String(row.expected_campaign_fingerprint_sha256) ||
       value.outcome !== String(row.outcome) ||
       value.reviewerPrincipalId !== String(row.reviewer_principal_id) ||
       !sameTimestamp(row.reviewed_at, value.reviewedAt)
     )
-      throw new EmailCampaignPersistenceError('INTEGRITY_FAILURE', 'Review row/document mismatch.', 500);
+      throw new EmailCampaignPersistenceError(
+        'INTEGRITY_FAILURE',
+        'Review row/document mismatch.',
+        500
+      );
     return value;
   }, 'Persisted Campaign Review failed integrity validation.');
 }
@@ -721,10 +784,18 @@ export class PostgresEmailCampaignStore {
     const workspace = cleanWorkspaceId(workspaceId);
     const limit = options.limit ?? 50;
     if (!Number.isSafeInteger(limit) || limit < 1 || limit > 100)
-      throw new EmailCampaignPersistenceError('INVALID_INPUT', 'limit must be between 1 and 100.', 422);
+      throw new EmailCampaignPersistenceError(
+        'INVALID_INPUT',
+        'limit must be between 1 and 100.',
+        422
+      );
     const statuses = options.statuses ? [...new Set(options.statuses)] : undefined;
     if (statuses?.some((status) => !emailCampaignStatusesV1.includes(status)))
-      throw new EmailCampaignPersistenceError('INVALID_INPUT', 'statuses contains an invalid status.', 422);
+      throw new EmailCampaignPersistenceError(
+        'INVALID_INPUT',
+        'statuses contains an invalid status.',
+        422
+      );
     try {
       const result = await this.query.query<Row>(
         `SELECT * FROM (
@@ -917,7 +988,12 @@ export class PostgresEmailCampaignStore {
     try {
       const result = await this.query.query<Row>(sql, [...params]);
       const row = result.rows[0];
-      if (!row) throw new EmailCampaignPersistenceError('NOT_FOUND', 'Campaign object was not found.', 404);
+      if (!row)
+        throw new EmailCampaignPersistenceError(
+          'NOT_FOUND',
+          'Campaign object was not found.',
+          404
+        );
       return parse(row);
     } catch (error) {
       if (error instanceof EmailCampaignPersistenceError) throw error;
@@ -1009,7 +1085,11 @@ export class PostgresEmailCampaignStore {
     );
     const row = result.rows[0];
     if (!row)
-      throw new EmailCampaignPersistenceError('NOT_FOUND', 'Referenced Campaign object was not found.', 404);
+      throw new EmailCampaignPersistenceError(
+        'NOT_FOUND',
+        'Referenced Campaign object was not found.',
+        404
+      );
     return parse(row);
   }
 
