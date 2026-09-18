@@ -25,12 +25,9 @@ import {
 } from '../src/email-campaign-delivery-currentness.js';
 
 const workspaceId = '14141414-1414-4414-8414-141414141414';
-const hash = (value: unknown) =>
-  createHash('sha256').update(JSON.stringify(value)).digest('hex');
+const hash = (value: unknown) => createHash('sha256').update(JSON.stringify(value)).digest('hex');
 const endpoint = 'person@example.com';
-const endpointFingerprintSha256 = createHash('sha256')
-  .update(endpoint)
-  .digest('hex');
+const endpointFingerprintSha256 = createHash('sha256').update(endpoint).digest('hex');
 
 const audience: CampaignAudienceSnapshotV1 = {
   schemaVersion: 1,
@@ -177,8 +174,7 @@ const receipt: CoreHumanActionReceiptBindingV1 = {
   membershipId: '018f0000-0000-7000-8000-000000001356',
   principalReference: 'core-workspace-principal:currentness',
   kind: 'EMAIL_CAMPAIGN_SEND',
-  mutationRoute:
-    '/api/execution/protected-external-actions/email-campaign-send/authorizations',
+  mutationRoute: '/api/execution/protected-external-actions/email-campaign-send/authorizations',
   reviewedActionDigest: '9'.repeat(64),
   idempotencyKey: 'authorize-currentness',
   authenticatedAt: '2026-09-19T00:00:00.000Z',
@@ -249,12 +245,15 @@ function intent(): EmailCampaignSendIntentV1 {
   };
 }
 
-function harness(options: {
-  endpointState?: 'CURRENT' | 'STALE' | 'NOT_FOUND' | 'UNKNOWN' | 'UNAVAILABLE';
-  readiness?: 'READY_FOR_HUMAN_SEND' | 'BLOCKED' | 'UNKNOWN';
-  entitlement?: 'CURRENT' | 'DENIED' | 'UNAVAILABLE';
-  senderState?: 'CURRENT_ELIGIBLE' | 'SUSPENDED' | 'REVOKED' | 'STALE' | 'UNKNOWN' | 'UNAVAILABLE';
-} = {}) {
+function harness(
+  options: {
+    endpointState?: 'CURRENT' | 'STALE' | 'NOT_FOUND' | 'UNKNOWN' | 'UNAVAILABLE';
+    readiness?: 'READY_FOR_HUMAN_SEND' | 'BLOCKED' | 'UNKNOWN';
+    entitlement?: 'CURRENT' | 'DENIED' | 'UNAVAILABLE';
+    senderState?:
+      'CURRENT_ELIGIBLE' | 'SUSPENDED' | 'REVOKED' | 'STALE' | 'UNKNOWN' | 'UNAVAILABLE';
+  } = {}
+) {
   const campaigns = {
     loadReviewedAggregate: vi.fn(() =>
       Promise.resolve({ campaign, audience, content: contentProjection, brand, review })
@@ -389,11 +388,7 @@ describe('Email Campaign delivery currentness', () => {
 
   it('fails closed when Workspace or delivery-plan fingerprints drift', async () => {
     await expect(
-      harness().resolve(
-        '15151515-1515-4515-8515-151515151515',
-        intent(),
-        receipt
-      )
+      harness().resolve('15151515-1515-4515-8515-151515151515', intent(), receipt)
     ).resolves.toMatchObject({ state: 'UNKNOWN', reason: 'WORKSPACE_MISMATCH' });
     await expect(
       harness().resolve(
