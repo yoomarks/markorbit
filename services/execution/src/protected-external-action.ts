@@ -483,8 +483,7 @@ export class ProtectedExternalActionService {
     const reviewedActionDigest = digest(command.intent);
     assertReceipt(command.humanReceipt, command, {
       kind: 'EMAIL_CAMPAIGN_SEND',
-      mutationRoute:
-        '/api/execution/protected-external-actions/email-campaign-send/authorizations',
+      mutationRoute: '/api/execution/protected-external-actions/email-campaign-send/authorizations',
       reviewedActionDigest
     });
     const requestFingerprint = digest({
@@ -526,8 +525,7 @@ export class ProtectedExternalActionService {
       currentness.workspaceId !== command.workspaceId ||
       currentness.actionKind !== 'EMAIL_CAMPAIGN_SEND' ||
       currentness.effectFingerprintSha256 !== command.intent.effectFingerprintSha256 ||
-      currentness.deliveryPlanFingerprintSha256 !==
-        command.intent.deliveryPlanFingerprintSha256
+      currentness.deliveryPlanFingerprintSha256 !== command.intent.deliveryPlanFingerprintSha256
     )
       throw new ProtectedExternalActionError(
         'EMAIL_CAMPAIGN_INTENT_STALE',
@@ -602,10 +600,7 @@ export class ProtectedExternalActionService {
         'Authorization version is not exact and current.'
       );
     if (authorization.authorizationStatus === 'REVOKED')
-      throw new ProtectedExternalActionError(
-        'AUTHORIZATION_REVOKED',
-        'Authorization is revoked.'
-      );
+      throw new ProtectedExternalActionError('AUTHORIZATION_REVOKED', 'Authorization is revoked.');
     if (
       authorization.authorizationStatus === 'EXPIRED' ||
       Date.parse(authorization.expiresAt) <= this.clock().getTime()
@@ -615,10 +610,7 @@ export class ProtectedExternalActionService {
         command.authorizationId,
         'EXPIRED'
       );
-      throw new ProtectedExternalActionError(
-        'AUTHORIZATION_EXPIRED',
-        'Authorization is expired.'
-      );
+      throw new ProtectedExternalActionError('AUTHORIZATION_EXPIRED', 'Authorization is expired.');
     }
     if (!this.emailCampaign)
       throw new ProtectedExternalActionError(
@@ -661,5 +653,4 @@ export class ProtectedExternalActionService {
     };
     return this.repository.createRelease(release, requestFingerprint);
   }
-
 }
