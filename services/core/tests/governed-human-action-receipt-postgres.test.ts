@@ -168,18 +168,16 @@ integration('PostgreSQL governed human-action receipt authority', () => {
 
   it('persists an Email Campaign Send receipt across reconnect after migration 0134', async () => {
     await cleanup();
-    expect((await coreMigrations()).map((migration) => `${migration.version}_${migration.name}`)).toContain(
-      '0134_core_governed_human_action_receipts_email_campaign_send'
-    );
+    expect(
+      (await coreMigrations()).map((migration) => `${migration.version}_${migration.name}`)
+    ).toContain('0134_core_governed_human_action_receipts_email_campaign_send');
     const emailCampaign = receipt({
       receiptId: '018f0000-0000-7000-8000-000000000107',
-      authorityReference:
-        'core-governed-human-action-receipt:018f0000-0000-7000-8000-000000000107',
+      authorityReference: 'core-governed-human-action-receipt:018f0000-0000-7000-8000-000000000107',
       affirmativeHumanActionEvidenceReference:
         'core-governed-human-action-evidence:018f0000-0000-7000-8000-000000000107',
       kind: 'EMAIL_CAMPAIGN_SEND',
-      mutationRoute:
-        '/api/execution/protected-external-actions/email-campaign-send/authorizations',
+      mutationRoute: '/api/execution/protected-external-actions/email-campaign-send/authorizations',
       reviewedActionDigest: 'e'.repeat(64),
       idempotencyKey: 'durable-email-campaign-send-1'
     });
@@ -214,5 +212,4 @@ integration('PostgreSQL governed human-action receipt authority', () => {
     ])
       expect(names).not.toContain(forbidden);
   });
-
 });
