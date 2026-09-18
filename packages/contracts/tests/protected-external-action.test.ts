@@ -121,5 +121,11 @@ describe('bounded protected external action contract', () => {
         senderProfile: { ...emailIntent.senderProfile, fingerprintSha256: 'secret@example.com' }
       })
     ).toThrow(/SHA-256/);
+    expect(() =>
+      assertEmailCampaignSendIntentV1({
+        ...emailIntent,
+        rawEmail: 'person@example.com'
+      } as unknown as EmailCampaignSendIntentV1)
+    ).toThrow(/not allowed|raw email/);
   });
 });
