@@ -43,11 +43,15 @@ export interface EmailCampaignEndpointResolver {
   ): Promise<EmailEndpointResolution>;
 }
 
+export type EmailCampaignEntitlementResolution =
+  | Readonly<{ state: 'CURRENT'; access: ChannelEntitlementAccessV1 }>
+  | Readonly<{ state: 'UNAVAILABLE' }>;
+
 export interface EmailCampaignEntitlementReader {
   resolve(
     workspaceId: string,
     humanReceipt: Readonly<CoreHumanActionReceiptBindingV1>
-  ): Promise<Readonly<ChannelEntitlementAccessV1>>;
+  ): Promise<EmailCampaignEntitlementResolution>;
 }
 
 export interface EmailCampaignReadinessEvaluator {
@@ -113,7 +117,7 @@ export class HttpCoreEmailCampaignEntitlementReader implements EmailCampaignEnti
   async resolve(
     workspaceId: string,
     humanReceipt: Readonly<CoreHumanActionReceiptBindingV1>
-  ): Promise<Readonly<ChannelEntitlementAccessV1>> {
+  ): Promise<EmailCampaignEntitlementResolution> {
     let response: Response;
     try {
       response = await fetch(
@@ -140,48 +144,15 @@ export class HttpCoreEmailCampaignEntitlementReader implements EmailCampaignEnti
         }
       );
     } catch {
-      return {
-        schemaVersion: 1,
-        workspaceId,
-        featureKey: 'EMAIL_CAMPAIGN',
-        entitlementKey: 'lite.channel.email.campaign',
-        status: 'NOT_ENTITLED',
-        allowed: false,
-        authority: {
-          credentialAuthorityGranted: false,
-          providerSelectionAuthorityGranted: false,
-          protectedActionAuthorized: false,
-          externalSendAuthorized: false,
-          externalPublicationCreated: false,
-          customerTruthCreated: false,
-          orderCreated: false,
-          matterCreated: false,
-          trademarkTruthCreated: false
-        }
-      };
+      return { state: 'UNAVAILABLE' };
     }
     if (!response.ok)
-      return {
-        schemaVersion: 1,
-        workspaceId,
-        featureKey: 'EMAIL_CAMPAIGN',
-        entitlementKey: 'lite.channel.email.campaign',
-        status: 'NOT_ENTITLED',
-        allowed: false,
-        authority: {
-          credentialAuthorityGranted: false,
-          providerSelectionAuthorityGranted: false,
-          protectedActionAuthorized: false,
-          externalSendAuthorized: false,
-          externalPublicationCreated: false,
-          customerTruthCreated: false,
-          orderCreated: false,
-          matterCreated: false,
-          trademarkTruthCreated: false
-        }
-      };
+      return { state: 'UNAVAILABLE' };
     const resolved = (await response.json()) as ResolvedEntitlementV1;
-    return assessChannelEntitlementV1(workspaceId, 'EMAIL_CAMPAIGN', [resolved]);
+    return {
+      state: 'CURRENT',
+      access: assessChannelEntitlementV1(workspaceId, 'EMAIL_CAMPAIGN', [resolved])
+    };
   }
 }
 
@@ -237,7 +208,9 @@ export class EmailCampaignDeliveryCurrentnessResolver {
         return result('UNKNOWN', 'FINGERPRINT_MISMATCH');
 
       const entitlement = await this.entitlements.resolve(workspaceId, humanReceipt);
-      if (!entitlement.allowed) return result('REVOKED', 'ENTITLEMENT_REVOKED');
+      if (entitlement.state === 'UNAVAILABLE')
+        return result('UNAVAILABLE', 'OWNER_UNAVAILABLE');
+      if (!entitlement.access.allowed) return result('REVOKED', 'ENTITLEMENT_REVOKED');
 
       const aggregate = await this.campaigns.loadReviewedAggregate(
         workspaceId,
