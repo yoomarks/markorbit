@@ -1,7 +1,7 @@
 import type {
   CoreHumanActionReceiptBindingV1,
   EmailCampaignSendIntentV1
-} from '@markorbit/contracts/protected-external-action';
+} from '@markorbit/contracts';
 import { HttpError, json, type JsonRequest, type JsonRoute } from '@markorbit/service-kit';
 import type { EmailCampaignDeliveryCurrentnessResolver } from './email-campaign-delivery-currentness.js';
 
