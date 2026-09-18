@@ -201,18 +201,15 @@ suite('PostgreSQL Workspace Email Sender Profile owner', () => {
     });
     await store().createSenderProfile({ value: b, idempotencyKey: 'shared-key' });
 
-    expect(
-      (await store().getLatestSenderProfile(workspaceA, a.senderProfileId)).workspaceId
-    ).toBe(workspaceA);
-    expect(
-      (await store().getLatestSenderProfile(workspaceB, b.senderProfileId)).workspaceId
-    ).toBe(workspaceB);
+    expect((await store().getLatestSenderProfile(workspaceA, a.senderProfileId)).workspaceId).toBe(
+      workspaceA
+    );
+    expect((await store().getLatestSenderProfile(workspaceB, b.senderProfileId)).workspaceId).toBe(
+      workspaceB
+    );
 
     await expect(
-      store().getLatestSenderProfile(
-        '16161616-1616-4616-8616-161616161616',
-        a.senderProfileId
-      )
+      store().getLatestSenderProfile('16161616-1616-4616-8616-161616161616', a.senderProfileId)
     ).rejects.toMatchObject({ code: 'NOT_FOUND' });
   });
 
