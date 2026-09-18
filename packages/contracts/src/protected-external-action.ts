@@ -304,9 +304,91 @@ function exactFingerprint<Id extends string>(
   return { ...exactValue, fingerprintSha256: value.fingerprintSha256 } as const;
 }
 
+function assertEmailCampaignSendNoEscapeHatches(value: unknown, field = 'intent'): void {
+  if (Array.isArray(value)) {
+    value.forEach((entry, index) =>
+      assertEmailCampaignSendNoEscapeHatches(entry, `${field}[${index}]`)
+    );
+    return;
+  }
+  if (!value || typeof value !== 'object') {
+    if (typeof value === 'string' && value.includes('@'))
+      throw new ProtectedExternalActionContractError(
+        `${field} cannot contain raw email addresses.`
+      );
+    return;
+  }
+  const forbidden = new Set([
+    'rawemail',
+    'emailaddress',
+    'recipientemail',
+    'provider',
+    'providercredential',
+    'credential',
+    'credentials',
+    'apikey',
+    'accesstoken',
+    'refreshtoken',
+    'password',
+    'secret'
+  ]);
+  for (const [key, nested] of Object.entries(value as Record<string, unknown>)) {
+    const normalized = key.replace(/[^A-Za-z0-9]/gu, '').toLowerCase();
+    if (forbidden.has(normalized))
+      throw new ProtectedExternalActionContractError(
+        `${field}.${key} is not allowed in provider-neutral Email Campaign intent.`
+      );
+    assertEmailCampaignSendNoEscapeHatches(nested, `${field}.${key}`);
+  }
+}
+
+function exactObjectKeys(
+  value: object,
+  allowed: readonly string[],
+  field: string
+): void {
+  const extras = Object.keys(value).filter((key) => !allowed.includes(key));
+  if (extras.length)
+    throw new ProtectedExternalActionContractError(
+      `${field} contains unsupported fields: ${extras.join(', ')}.`
+    );
+}
+
 export function canonicalEmailCampaignSendIntentPayloadV1(
   intent: Readonly<EmailCampaignSendIntentV1>
 ) {
+  assertEmailCampaignSendNoEscapeHatches(intent);
+  exactObjectKeys(
+    intent,
+    [
+      'schemaVersion',
+      'actionKind',
+      'workspaceId',
+      'campaign',
+      'campaignReview',
+      'senderProfile',
+      'audience',
+      'content',
+      'brand',
+      'recipientCount',
+      'deliveryPlanFingerprintSha256',
+      'effectFingerprintSha256'
+    ],
+    'intent'
+  );
+  for (const [field, reference, fingerprinted] of [
+    ['campaign', intent.campaign, true],
+    ['campaignReview', intent.campaignReview, false],
+    ['senderProfile', intent.senderProfile, true],
+    ['audience', intent.audience, true],
+    ['content', intent.content, true],
+    ['brand', intent.brand, true]
+  ] as const)
+    exactObjectKeys(
+      reference,
+      fingerprinted ? ['id', 'version', 'fingerprintSha256'] : ['id', 'version'],
+      field
+    );
   if (
     intent.schemaVersion !== 1 ||
     intent.actionKind !== 'EMAIL_CAMPAIGN_SEND' ||
