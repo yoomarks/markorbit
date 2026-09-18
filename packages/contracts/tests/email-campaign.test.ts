@@ -2,13 +2,15 @@ import { describe, expect, it } from 'vitest';
 import {
   assessCampaignAudienceReadinessV1,
   assessCampaignPublishPackageV1,
+  assessCampaignReviewDecisionV1,
   assessEmailCampaignAssemblyV1,
+  assertCampaignAudienceSnapshotSafetyV1,
   noEmailCampaignAuthorityConsequencesV1,
-  parseCampaignAudienceSnapshotV1,
-  parseCampaignBrandProjectionV1,
-  parseCampaignContentProjectionV1,
-  parseCampaignReviewDecisionV1,
-  parseEmailCampaignV1
+  type CampaignAudienceSnapshotV1,
+  type CampaignBrandProjectionV1,
+  type CampaignContentProjectionV1,
+  type CampaignReviewDecisionV1,
+  type EmailCampaignV1
 } from '../src/email-campaign.js';
 
 const hashA = 'a'.repeat(64);
@@ -55,7 +57,7 @@ const readiness = {
   }
 } as const;
 
-const audienceInput = {
+const audience = {
   schemaVersion: 1,
   audienceSnapshotId: 'campaign-audience_01',
   workspaceId: 'workspace_01',
@@ -83,9 +85,9 @@ const audienceInput = {
   capturedAt: '2026-09-18T09:11:00Z',
   legalConsentVerifiedByMarkOrbit: false,
   externalSendAuthorized: false
-} as const;
+} as const satisfies CampaignAudienceSnapshotV1;
 
-const contentInput = {
+const content = {
   schemaVersion: 1,
   contentProjectionId: 'campaign-content_01',
   workspaceId: 'workspace_01',
@@ -102,9 +104,9 @@ const contentInput = {
   projectionFingerprintSha256: hashB,
   createdAt: '2026-09-18T09:12:00Z',
   externalSendAuthorized: false
-} as const;
+} as const satisfies CampaignContentProjectionV1;
 
-const brandInput = {
+const brand = {
   schemaVersion: 1,
   brandProjectionId: 'campaign-brand_01',
   workspaceId: 'workspace_01',
@@ -125,11 +127,9 @@ const brandInput = {
   brandProjectionFingerprintSha256: hashD,
   capturedAt: '2026-09-18T09:13:00Z',
   canonicalWorkspaceBrandCreated: false
-} as const;
+} as const satisfies CampaignBrandProjectionV1;
 
-const authority = noEmailCampaignAuthorityConsequencesV1;
-
-const campaignInput = {
+const campaign = {
   schemaVersion: 1,
   campaignId: 'email-campaign_01',
   workspaceId: 'workspace_01',
@@ -137,32 +137,52 @@ const campaignInput = {
   featureKey: 'EMAIL_CAMPAIGN',
   purpose: 'PROSPECT_OUTREACH',
   audience: {
-    audienceSnapshotId: 'campaign-audience_01',
-    version: 1,
-    fingerprintSha256: hashA
+    audienceSnapshotId: audience.audienceSnapshotId,
+    version: audience.version,
+    fingerprintSha256: audience.audienceFingerprintSha256
   },
   content: {
-    contentProjectionId: 'campaign-content_01',
-    version: 1,
-    fingerprintSha256: hashB
+    contentProjectionId: content.contentProjectionId,
+    version: content.version,
+    fingerprintSha256: content.projectionFingerprintSha256
   },
   brand: {
-    brandProjectionId: 'campaign-brand_01',
-    version: 1,
-    fingerprintSha256: hashD
+    brandProjectionId: brand.brandProjectionId,
+    version: brand.version,
+    fingerprintSha256: brand.brandProjectionFingerprintSha256
   },
   campaignFingerprintSha256: hashA,
   status: 'READY_FOR_HUMAN_REVIEW',
   humanReviewRequired: true,
   createdAt: '2026-09-18T09:14:00Z',
   updatedAt: '2026-09-18T09:14:00Z',
-  authority
-} as const;
+  authority: noEmailCampaignAuthorityConsequencesV1
+} as const satisfies EmailCampaignV1;
+
+const review = {
+  schemaVersion: 1,
+  campaignReviewDecisionId: 'campaign-review_01',
+  workspaceId: 'workspace_01',
+  version: 1,
+  campaign: { campaignId: campaign.campaignId, version: campaign.version },
+  expectedCampaignFingerprintSha256: campaign.campaignFingerprintSha256,
+  outcome: 'APPROVED_FOR_DELIVERY_PREPARATION',
+  reviewerPrincipalId: 'principal_01',
+  rationale: 'Reviewed audience, content and brand projection.',
+  reviewedAt: '2026-09-18T09:15:00Z',
+  deliveryPreparationOnly: true,
+  authority: noEmailCampaignAuthorityConsequencesV1
+} as const satisfies CampaignReviewDecisionV1;
 
 describe('email campaign core contracts', () => {
-  it('accepts an audience snapshot containing only opaque target/readiness lineage', () => {
-    const snapshot = parseCampaignAudienceSnapshotV1(audienceInput);
-    expect(snapshot.entries[0]).toMatchObject({
+  it('keeps Campaign preparation separate from provider/execution/communication authority', () => {
+    expect(campaign.featureKey).toBe('EMAIL_CAMPAIGN');
+    expect(Object.values(campaign.authority).every((value) => value === false)).toBe(true);
+  });
+
+  it('accepts only opaque deduplicated audience entries bound to the exact reviewed send', () => {
+    expect(() => assertCampaignAudienceSnapshotSafetyV1(audience)).not.toThrow();
+    expect(audience.entries[0]).toMatchObject({
       targetRef: { id: 'prospect_01', version: 2 },
       endpointFingerprintSha256: hashB,
       readiness: {
@@ -170,17 +190,15 @@ describe('email campaign core contracts', () => {
         outcome: 'READY_FOR_HUMAN_SEND'
       }
     });
-    expect(snapshot.externalSendAuthorized).toBe(false);
-    expect(snapshot.legalConsentVerifiedByMarkOrbit).toBe(false);
   });
 
   it('rejects raw email material from the audience target reference', () => {
     expect(() =>
-      parseCampaignAudienceSnapshotV1({
-        ...audienceInput,
+      assertCampaignAudienceSnapshotSafetyV1({
+        ...audience,
         entries: [
           {
-            ...audienceInput.entries[0],
+            ...audience.entries[0],
             targetRef: { ...readiness.targetRef, id: 'person@example.com' }
           }
         ]
@@ -190,13 +208,13 @@ describe('email campaign core contracts', () => {
 
   it('rejects stale readiness for a different reviewed send fingerprint', () => {
     expect(() =>
-      parseCampaignAudienceSnapshotV1({
-        ...audienceInput,
+      assertCampaignAudienceSnapshotSafetyV1({
+        ...audience,
         entries: [
           {
-            ...audienceInput.entries[0],
+            ...audience.entries[0],
             readiness: {
-              ...audienceInput.entries[0].readiness,
+              ...audience.entries[0].readiness,
               reviewedSendFingerprintSha256: hashD
             }
           }
@@ -205,11 +223,19 @@ describe('email campaign core contracts', () => {
     ).toThrow('exact reviewed send');
   });
 
+  it('rejects duplicate recipient endpoints inside one immutable audience snapshot', () => {
+    expect(() =>
+      assertCampaignAudienceSnapshotSafetyV1({
+        ...audience,
+        entries: [audience.entries[0], { ...audience.entries[0], targetRef: { ...readiness.targetRef, id: 'prospect_02' } }]
+      })
+    ).toThrow('cannot duplicate an email endpoint');
+  });
+
   it('references exact reviewed PublishPackage truth without copying body into Campaign', () => {
-    const projection = parseCampaignContentProjectionV1(contentInput);
-    expect(projection.bodyOwnedByPublishPackage).toBe(true);
-    expect('body' in projection).toBe(false);
-    expect(assessCampaignPublishPackageV1(projection, publishPackage)).toEqual({
+    expect('body' in content).toBe(false);
+    expect(content.bodyOwnedByPublishPackage).toBe(true);
+    expect(assessCampaignPublishPackageV1(content, publishPackage)).toEqual({
       matches: true,
       reason: 'MATCH',
       createsSendAuthority: false
@@ -217,94 +243,82 @@ describe('email campaign core contracts', () => {
   });
 
   it('fails PublishPackage assessment closed on version or fingerprint drift', () => {
-    const projection = parseCampaignContentProjectionV1(contentInput);
     expect(
-      assessCampaignPublishPackageV1(projection, { ...publishPackage, version: 4 })
+      assessCampaignPublishPackageV1(content, { ...publishPackage, version: 4 })
     ).toMatchObject({ matches: false, reason: 'PUBLISH_PACKAGE_VERSION_MISMATCH' });
     expect(
-      assessCampaignPublishPackageV1(projection, {
+      assessCampaignPublishPackageV1(content, {
         ...publishPackage,
         publishPackageFingerprintSha256: hashD
       })
     ).toMatchObject({ matches: false, reason: 'PUBLISH_PACKAGE_FINGERPRINT_MISMATCH' });
   });
 
-  it('captures a Site-backed brand presentation without creating canonical Workspace brand truth', () => {
-    const brand = parseCampaignBrandProjectionV1(brandInput);
+  it('captures Site-backed presentation without creating canonical Workspace brand truth', () => {
     expect(brand).toMatchObject({
       source: { kind: 'SITE_CONFIGURATION', configurationVersion: 4 },
       presentation: { displayName: 'Agency Brand' },
       canonicalWorkspaceBrandCreated: false
     });
+    const localBrand: CampaignBrandProjectionV1 = {
+      ...brand,
+      source: { kind: 'CAMPAIGN_LOCAL_PRESENTATION', sourceRef: 'campaign-local:brand:01' }
+    };
+    expect(localBrand.source.kind).toBe('CAMPAIGN_LOCAL_PRESENTATION');
+    expect(localBrand.canonicalWorkspaceBrandCreated).toBe(false);
   });
 
-  it('supports a bounded campaign-local brand presentation when no Site source exists', () => {
-    const brand = parseCampaignBrandProjectionV1({
-      ...brandInput,
-      source: {
-        kind: 'CAMPAIGN_LOCAL_PRESENTATION',
-        sourceRef: 'campaign-local:brand:01'
-      }
+  it('matches an Audience entry only to the exact current readiness lineage', () => {
+    expect(assessCampaignAudienceReadinessV1(audience.entries[0], readiness)).toEqual({
+      matches: true,
+      reason: 'MATCH',
+      createsSendAuthority: false
     });
-    expect(brand.source.kind).toBe('CAMPAIGN_LOCAL_PRESENTATION');
-    expect(brand.canonicalWorkspaceBrandCreated).toBe(false);
-  });
-
-  it('keeps Campaign preparation separate from provider/execution/communication authority', () => {
-    const campaign = parseEmailCampaignV1(campaignInput);
-    expect(campaign.featureKey).toBe('EMAIL_CAMPAIGN');
-    expect(Object.values(campaign.authority).every((value) => value === false)).toBe(true);
+    expect(
+      assessCampaignAudienceReadinessV1(audience.entries[0], {
+        ...readiness,
+        readinessFingerprintSha256: hashA
+      })
+    ).toMatchObject({ matches: false, reason: 'READINESS_FINGERPRINT_MISMATCH' });
   });
 
   it('assembles only exact same-workspace, same-purpose, same-reviewed-send projections', () => {
-    const campaign = parseEmailCampaignV1(campaignInput);
-    const audience = parseCampaignAudienceSnapshotV1(audienceInput);
-    const content = parseCampaignContentProjectionV1(contentInput);
-    const brand = parseCampaignBrandProjectionV1(brandInput);
     expect(assessEmailCampaignAssemblyV1(campaign, audience, content, brand)).toEqual({
       matches: true,
       reason: 'MATCH',
       createsSendAuthority: false
     });
     expect(
-      assessEmailCampaignAssemblyV1(campaign, audience, { ...content, reviewedSendFingerprintSha256: hashD }, brand)
-    ).toMatchObject({
-      matches: false,
-      reason: 'REVIEWED_SEND_FINGERPRINT_MISMATCH'
-    });
+      assessEmailCampaignAssemblyV1(
+        campaign,
+        audience,
+        { ...content, reviewedSendFingerprintSha256: hashD },
+        brand
+      )
+    ).toMatchObject({ matches: false, reason: 'REVIEWED_SEND_FINGERPRINT_MISMATCH' });
   });
 
-  it('reviews only for delivery preparation and never authorizes a send', () => {
-    const decision = parseCampaignReviewDecisionV1({
-      schemaVersion: 1,
-      campaignReviewDecisionId: 'campaign-review_01',
-      workspaceId: 'workspace_01',
-      version: 1,
-      campaign: { campaignId: 'email-campaign_01', version: 1 },
-      expectedCampaignFingerprintSha256: hashA,
-      outcome: 'APPROVED_FOR_DELIVERY_PREPARATION',
-      reviewerPrincipalId: 'principal_01',
-      rationale: 'Reviewed audience, content and brand projection.',
-      reviewedAt: '2026-09-18T09:15:00Z',
-      deliveryPreparationOnly: true,
-      authority
-    });
-    expect(decision.deliveryPreparationOnly).toBe(true);
-    expect(decision.authority.externalSendAuthorized).toBe(false);
-  });
-
-  it('matches an Audience entry only to the exact current readiness evidence', () => {
-    const snapshot = parseCampaignAudienceSnapshotV1(audienceInput);
-    expect(assessCampaignAudienceReadinessV1(snapshot.entries[0], readiness)).toEqual({
+  it('human approval permits delivery preparation only and still creates no send authority', () => {
+    expect(assessCampaignReviewDecisionV1(review, campaign)).toEqual({
       matches: true,
+      approvedForDeliveryPreparation: true,
       reason: 'MATCH',
       createsSendAuthority: false
     });
+    expect(review.deliveryPreparationOnly).toBe(true);
+    expect(review.authority.externalSendAuthorized).toBe(false);
+  });
+
+  it('fails review closed when the Campaign fingerprint drifts', () => {
     expect(
-      assessCampaignAudienceReadinessV1(snapshot.entries[0], {
-        ...readiness,
-        readinessFingerprintSha256: hashA
+      assessCampaignReviewDecisionV1(review, {
+        ...campaign,
+        campaignFingerprintSha256: hashD
       })
-    ).toMatchObject({ matches: false, reason: 'READINESS_FINGERPRINT_MISMATCH' });
+    ).toMatchObject({
+      matches: false,
+      approvedForDeliveryPreparation: false,
+      reason: 'CAMPAIGN_FINGERPRINT_MISMATCH'
+    });
   });
 });
