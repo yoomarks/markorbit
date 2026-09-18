@@ -23,8 +23,7 @@ function profile(
   version = 1,
   overrides: Partial<WorkspaceEmailSenderProfileV1> = {}
 ): WorkspaceEmailSenderProfileV1 {
-  const updatedAt =
-    version === 1 ? '2026-09-18T12:00:00.000Z' : '2026-09-18T13:00:00.000Z';
+  const updatedAt = version === 1 ? '2026-09-18T12:00:00.000Z' : '2026-09-18T13:00:00.000Z';
   return {
     schemaVersion: 1,
     senderProfileId: 'email-sender-profile_primary',
@@ -115,17 +114,11 @@ suite('PostgreSQL Workspace Email Sender Profile owner', () => {
 
     const restarted = store();
     expect(
-      await restarted.getExactSenderProfile(
-        workspaceA,
-        created.senderProfileId,
-        created.version
-      )
+      await restarted.getExactSenderProfile(workspaceA, created.senderProfileId, created.version)
     ).toEqual(created);
     expect(
       Object.values(
-        (
-          await restarted.getLatestSenderProfile(workspaceA, created.senderProfileId)
-        ).authority
+        (await restarted.getLatestSenderProfile(workspaceA, created.senderProfileId)).authority
       ).every((value) => value === false)
     ).toBe(true);
   });
@@ -162,12 +155,12 @@ suite('PostgreSQL Workspace Email Sender Profile owner', () => {
     });
 
     const restarted = store();
-    expect(
-      await restarted.getExactSenderProfile(workspaceA, first.senderProfileId, 1)
-    ).toEqual(first);
-    expect(
-      await restarted.getLatestSenderProfile(workspaceA, first.senderProfileId)
-    ).toEqual(second);
+    expect(await restarted.getExactSenderProfile(workspaceA, first.senderProfileId, 1)).toEqual(
+      first
+    );
+    expect(await restarted.getLatestSenderProfile(workspaceA, first.senderProfileId)).toEqual(
+      second
+    );
   });
 
   it('rejects stale expectedVersion without mutating the head', async () => {
@@ -186,9 +179,7 @@ suite('PostgreSQL Workspace Email Sender Profile owner', () => {
       })
     ).rejects.toMatchObject({ code: 'VERSION_CONFLICT' });
 
-    expect(
-      await service.getLatestSenderProfile(workspaceA, first.senderProfileId)
-    ).toEqual(first);
+    expect(await service.getLatestSenderProfile(workspaceA, first.senderProfileId)).toEqual(first);
   });
 
   it('isolates exact identities and command keys by Workspace', async () => {
@@ -197,18 +188,15 @@ suite('PostgreSQL Workspace Email Sender Profile owner', () => {
     await store().createSenderProfile({ value: a, idempotencyKey: 'shared-key' });
     await store().createSenderProfile({ value: b, idempotencyKey: 'shared-key' });
 
-    expect(
-      (await store().getLatestSenderProfile(workspaceA, a.senderProfileId)).workspaceId
-    ).toBe(workspaceA);
-    expect(
-      (await store().getLatestSenderProfile(workspaceB, b.senderProfileId)).workspaceId
-    ).toBe(workspaceB);
+    expect((await store().getLatestSenderProfile(workspaceA, a.senderProfileId)).workspaceId).toBe(
+      workspaceA
+    );
+    expect((await store().getLatestSenderProfile(workspaceB, b.senderProfileId)).workspaceId).toBe(
+      workspaceB
+    );
 
     await expect(
-      store().getLatestSenderProfile(
-        '16161616-1616-4616-8616-161616161616',
-        a.senderProfileId
-      )
+      store().getLatestSenderProfile('16161616-1616-4616-8616-161616161616', a.senderProfileId)
     ).rejects.toMatchObject({ code: 'NOT_FOUND' });
   });
 
@@ -230,12 +218,10 @@ suite('PostgreSQL Workspace Email Sender Profile owner', () => {
     });
 
     expect(await service.listSenderProfiles(workspaceA)).toEqual([suspended]);
-    expect(
-      await service.listSenderProfiles(workspaceA, { statuses: ['ACTIVE'] })
-    ).toEqual([]);
-    expect(
-      await service.listSenderProfiles(workspaceA, { statuses: ['SUSPENDED'] })
-    ).toEqual([suspended]);
+    expect(await service.listSenderProfiles(workspaceA, { statuses: ['ACTIVE'] })).toEqual([]);
+    expect(await service.listSenderProfiles(workspaceA, { statuses: ['SUSPENDED'] })).toEqual([
+      suspended
+    ]);
   });
 
   it('fails closed when queryable columns drift from document_json', async () => {
@@ -294,11 +280,7 @@ suite('PostgreSQL Workspace Email Sender Profile owner', () => {
     ).toMatchObject({ state: 'CURRENT_ELIGIBLE', createsSendAuthority: false });
 
     expect(
-      await service.evaluateSenderProfileCurrentness(
-        workspaceA,
-        first.senderProfileId,
-        1
-      )
+      await service.evaluateSenderProfileCurrentness(workspaceA, first.senderProfileId, 1)
     ).toMatchObject({ state: 'STALE', createsSendAuthority: false });
 
     const unavailable = profile(workspaceA, 2, {
