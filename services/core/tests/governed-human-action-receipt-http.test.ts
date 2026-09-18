@@ -189,20 +189,17 @@ describe('Trading Listing Publish receipt internal HTTP admission', () => {
   });
 });
 
-
 describe('Email Campaign Send receipt internal HTTP admission', () => {
   it('admits the exact EMAIL_CAMPAIGN_SEND kind and bounded authorization route', async () => {
     const emailCampaign: MaterializeGovernedHumanActionReceiptRequest = {
       ...command,
       kind: 'EMAIL_CAMPAIGN_SEND',
-      mutationRoute:
-        '/api/execution/protected-external-actions/email-campaign-send/authorizations',
+      mutationRoute: '/api/execution/protected-external-actions/email-campaign-send/authorizations',
       reviewedActionDigest: 'e'.repeat(64),
       idempotencyKey: 'email-campaign-send-1'
     };
-    const materialize = vi.fn(
-      (input: Readonly<MaterializeGovernedHumanActionReceiptRequest>) =>
-        Promise.resolve({ ...receipt, ...input })
+    const materialize = vi.fn((input: Readonly<MaterializeGovernedHumanActionReceiptRequest>) =>
+      Promise.resolve({ ...receipt, ...input })
     );
     const f = routes({ materialize });
     const response = await f.result[0]!.handle(
