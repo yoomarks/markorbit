@@ -6,6 +6,7 @@ import {
   type EmailCampaignSendIntentV1
 } from '@markorbit/contracts/protected-external-action';
 import type { OutboundContactReadinessV1 } from '@markorbit/contracts/outbound-contact-policy';
+import type { OutboundContactReadinessV1 } from '@markorbit/contracts/outbound-contact-policy';
 import {
   noEmailCampaignAuthorityConsequencesV1,
   type CampaignAudienceSnapshotV1,
@@ -287,66 +288,69 @@ function harness(
     )
   };
   const outbound: EmailCampaignReadinessEvaluator = {
-    evaluate: vi.fn((command: Parameters<EmailCampaignReadinessEvaluator['evaluate']>[0]) =>
-      Promise.resolve({
-        schemaVersion: 1,
-        workspaceId,
-        evaluatedByPrincipalId: command.actorPrincipalId,
-        targetRef: command.targetRef,
-        channel: 'EMAIL',
-        endpointFingerprintSha256: command.endpointFingerprintSha256,
-        purpose: 'PROSPECT_OUTREACH',
-        policyRef: command.policyRef,
-        reviewedSendFingerprintSha256: command.reviewedSendFingerprintSha256,
-        outcome: options.readiness ?? 'READY_FOR_HUMAN_SEND',
-        reason:
-          options.readiness === 'BLOCKED'
-            ? 'ACTIVE_SUPPRESSION'
-            : options.readiness === 'UNKNOWN'
-              ? 'NO_CURRENT_ASSERTION'
-              : 'CURRENT_ALLOWED_ASSERTION',
-        basisAssertionRef: {
-          assertionId: 'outbound-contact-basis_currentness',
-          version: 1
-        },
-        suppressionRefs: [],
-        evaluatedAt: '2026-09-19T00:10:00.000Z',
-        readinessFingerprintSha256: '8'.repeat(64),
-        authorityConsequences: {
-          legalConsentVerifiedByMarkOrbit: false,
-          externalMessageSent: false,
-          protectedActionAuthorized: false
-        }
-      })
+    evaluate: vi.fn(
+      (
+        command: Parameters<EmailCampaignReadinessEvaluator['evaluate']>[0]
+      ): Promise<OutboundContactReadinessV1> =>
+        Promise.resolve({
+          schemaVersion: 1,
+          workspaceId,
+          evaluatedByPrincipalId: command.actorPrincipalId,
+          targetRef: command.targetRef,
+          channel: 'EMAIL',
+          endpointFingerprintSha256: command.endpointFingerprintSha256,
+          purpose: 'PROSPECT_OUTREACH',
+          policyRef: command.policyRef,
+          reviewedSendFingerprintSha256: command.reviewedSendFingerprintSha256,
+          outcome: options.readiness ?? 'READY_FOR_HUMAN_SEND',
+          reason:
+            options.readiness === 'BLOCKED'
+              ? 'ACTIVE_SUPPRESSION'
+              : options.readiness === 'UNKNOWN'
+                ? 'NO_CURRENT_ASSERTION'
+                : 'CURRENT_ALLOWED_ASSERTION',
+          basisAssertionRef: {
+            assertionId: 'outbound-contact-basis_currentness',
+            version: 1
+          },
+          suppressionRefs: [],
+          evaluatedAt: '2026-09-19T00:10:00.000Z',
+          readinessFingerprintSha256: '8'.repeat(64),
+          authorityConsequences: {
+            legalConsentVerifiedByMarkOrbit: false,
+            externalMessageSent: false,
+            protectedActionAuthorized: false
+          }
+        })
     )
   };
   const entitlements: EmailCampaignEntitlementReader = {
     resolve: vi.fn(
       (): Promise<EmailCampaignEntitlementResolution> => {
-      if (options.entitlement === 'UNAVAILABLE')
-        return Promise.resolve({ state: 'UNAVAILABLE' as const });
-      return Promise.resolve({
-        state: 'CURRENT',
-        access: {
-          schemaVersion: 1,
-          workspaceId,
-          featureKey: 'EMAIL_CAMPAIGN',
-          entitlementKey: 'lite.channel.email.campaign',
-          status: options.entitlement === 'DENIED' ? 'DISABLED' : 'ENABLED',
-          allowed: options.entitlement !== 'DENIED',
-          authority: {
-            credentialAuthorityGranted: false,
-            providerSelectionAuthorityGranted: false,
-            protectedActionAuthorized: false,
-            externalSendAuthorized: false,
-            externalPublicationCreated: false,
-            customerTruthCreated: false,
-            orderCreated: false,
-            matterCreated: false,
-            trademarkTruthCreated: false
+        if (options.entitlement === 'UNAVAILABLE')
+          return Promise.resolve({ state: 'UNAVAILABLE' });
+        return Promise.resolve({
+          state: 'CURRENT',
+          access: {
+            schemaVersion: 1,
+            workspaceId,
+            featureKey: 'EMAIL_CAMPAIGN',
+            entitlementKey: 'lite.channel.email.campaign',
+            status: options.entitlement === 'DENIED' ? 'DISABLED' : 'ENABLED',
+            allowed: options.entitlement !== 'DENIED',
+            authority: {
+              credentialAuthorityGranted: false,
+              providerSelectionAuthorityGranted: false,
+              protectedActionAuthorized: false,
+              externalSendAuthorized: false,
+              externalPublicationCreated: false,
+              customerTruthCreated: false,
+              orderCreated: false,
+              matterCreated: false,
+              trademarkTruthCreated: false
+            }
           }
-        }
-      });
+        });
       }
     )
   };
