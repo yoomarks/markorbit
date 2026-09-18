@@ -122,5 +122,4 @@ describe('bounded protected external action contract', () => {
       })
     ).toThrow(/SHA-256/);
   });
-
 });
