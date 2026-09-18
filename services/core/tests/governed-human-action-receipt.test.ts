@@ -309,13 +309,11 @@ describe('Trading Listing Publish HUMAN_USER receipt domain', () => {
   });
 });
 
-
 describe('Email Campaign Send HUMAN_USER receipt domain', () => {
   const emailCampaignCommand = (): MaterializeGovernedHumanActionReceiptRequest => ({
     ...command(),
     kind: 'EMAIL_CAMPAIGN_SEND',
-    mutationRoute:
-      '/api/execution/protected-external-actions/email-campaign-send/authorizations',
+    mutationRoute: '/api/execution/protected-external-actions/email-campaign-send/authorizations',
     idempotencyKey: 'email-campaign-send-1',
     reviewedActionDigest: 'e'.repeat(64)
   });
@@ -325,8 +323,7 @@ describe('Email Campaign Send HUMAN_USER receipt domain', () => {
     const receipt = await f.service.materializeOrResolve(emailCampaignCommand());
     expect(receipt).toMatchObject({
       kind: 'EMAIL_CAMPAIGN_SEND',
-      mutationRoute:
-        '/api/execution/protected-external-actions/email-campaign-send/authorizations',
+      mutationRoute: '/api/execution/protected-external-actions/email-campaign-send/authorizations',
       reviewedActionDigest: 'e'.repeat(64),
       source: 'CORE',
       actorKind: 'HUMAN_USER'
