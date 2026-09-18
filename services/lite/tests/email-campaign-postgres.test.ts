@@ -399,12 +399,13 @@ suite('PostgreSQL Email Campaign preparation owner', () => {
 
   it('rejects raw email material before Audience persistence', async () => {
     const value = audience();
+    const firstEntry = value.entries[0]!;
     const unsafe: CampaignAudienceSnapshotV1 = {
       ...value,
       entries: [
         {
-          ...value.entries[0],
-          targetRef: { ...value.entries[0].targetRef, id: 'person@example.com' }
+          ...firstEntry,
+          targetRef: { ...firstEntry.targetRef, id: 'person@example.com' }
         }
       ]
     };
