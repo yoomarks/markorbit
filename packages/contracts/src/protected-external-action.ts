@@ -342,11 +342,7 @@ function assertEmailCampaignSendNoEscapeHatches(value: unknown, field = 'intent'
   }
 }
 
-function exactObjectKeys(
-  value: object,
-  allowed: readonly string[],
-  field: string
-): void {
+function exactObjectKeys(value: object, allowed: readonly string[], field: string): void {
   const extras = Object.keys(value).filter((key) => !allowed.includes(key));
   if (extras.length)
     throw new ProtectedExternalActionContractError(
