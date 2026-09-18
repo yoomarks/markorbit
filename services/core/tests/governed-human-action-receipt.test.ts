@@ -308,3 +308,88 @@ describe('Trading Listing Publish HUMAN_USER receipt domain', () => {
     });
   });
 });
+
+
+describe('Email Campaign Send HUMAN_USER receipt domain', () => {
+  const emailCampaignCommand = (): MaterializeGovernedHumanActionReceiptRequest => ({
+    ...command(),
+    kind: 'EMAIL_CAMPAIGN_SEND',
+    mutationRoute:
+      '/api/execution/protected-external-actions/email-campaign-send/authorizations',
+    idempotencyKey: 'email-campaign-send-1',
+    reviewedActionDigest: 'e'.repeat(64)
+  });
+
+  it('materializes only the exact reviewed Email Campaign authorization action', async () => {
+    const f = service();
+    const receipt = await f.service.materializeOrResolve(emailCampaignCommand());
+    expect(receipt).toMatchObject({
+      kind: 'EMAIL_CAMPAIGN_SEND',
+      mutationRoute:
+        '/api/execution/protected-external-actions/email-campaign-send/authorizations',
+      reviewedActionDigest: 'e'.repeat(64),
+      source: 'CORE',
+      actorKind: 'HUMAN_USER'
+    });
+    for (const field of [
+      'campaign',
+      'recipients',
+      'rawEmail',
+      'providerCredential',
+      'executionAuthorizationId',
+      'executionReleaseId'
+    ])
+      expect(receipt).not.toHaveProperty(field);
+  });
+
+  it.each([
+    '/api/execution/protected-external-actions/trading-listing-publish/authorizations',
+    '/api/execution/protected-external-actions/email-campaign-send/authorizations/extra',
+    '/api/mgsn/governed-network/selections'
+  ])('rejects Email Campaign send on a non-canonical route: %s', async (mutationRoute) => {
+    const f = service();
+    await expect(
+      f.service.materializeOrResolve({ ...emailCampaignCommand(), mutationRoute })
+    ).rejects.toMatchObject({
+      code: 'INVALID_GOVERNED_HUMAN_ACTION_REQUEST',
+      status: 400
+    });
+  });
+
+  it('cannot replay one Workspace idempotency key across Trading and Email Campaign domains', async () => {
+    const store = new MemoryStore();
+    const f = service({ store });
+    await f.service.materializeOrResolve(emailCampaignCommand());
+
+    await expect(
+      f.service.materializeOrResolve({
+        ...emailCampaignCommand(),
+        kind: 'TRADING_LISTING_PUBLISH',
+        mutationRoute:
+          '/api/execution/protected-external-actions/trading-listing-publish/authorizations'
+      })
+    ).rejects.toMatchObject({
+      code: 'GOVERNED_HUMAN_ACTION_REPLAY_CONFLICT',
+      status: 409
+    });
+  });
+
+  it('rejects reviewed delivery-authorization digest drift on replay', async () => {
+    const store = new MemoryStore();
+    const f = service({ store });
+    const first = await f.service.materializeOrResolve(emailCampaignCommand());
+    expect((await f.service.materializeOrResolve(emailCampaignCommand())).receiptId).toBe(
+      first.receiptId
+    );
+
+    await expect(
+      f.service.materializeOrResolve({
+        ...emailCampaignCommand(),
+        reviewedActionDigest: 'f'.repeat(64)
+      })
+    ).rejects.toMatchObject({
+      code: 'GOVERNED_HUMAN_ACTION_REPLAY_CONFLICT',
+      status: 409
+    });
+  });
+});
