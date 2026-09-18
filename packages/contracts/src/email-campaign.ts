@@ -33,12 +33,6 @@ export const campaignReviewOutcomesV1 = [
 ] as const;
 export type CampaignReviewOutcomeV1 = (typeof campaignReviewOutcomesV1)[number];
 
-export const campaignBrandSourceKindsV1 = [
-  'SITE_CONFIGURATION',
-  'CAMPAIGN_LOCAL_PRESENTATION'
-] as const;
-export type CampaignBrandSourceKindV1 = (typeof campaignBrandSourceKindsV1)[number];
-
 export const noEmailCampaignAuthorityConsequencesV1 = Object.freeze({
   legalConsentVerifiedByMarkOrbit: false,
   providerSelectionAuthorityGranted: false,
@@ -55,28 +49,30 @@ export const noEmailCampaignAuthorityConsequencesV1 = Object.freeze({
 export type EmailCampaignAuthorityConsequencesV1 =
   typeof noEmailCampaignAuthorityConsequencesV1;
 
+export interface CampaignAudienceReadinessRefV1 {
+  evaluatedAt: string;
+  readinessFingerprintSha256: string;
+  reviewedSendFingerprintSha256: string;
+  outcome: 'READY_FOR_HUMAN_SEND';
+  reason: 'CURRENT_ALLOWED_ASSERTION';
+  basisAssertionRef: Readonly<{
+    assertionId: OutboundContactBasisAssertionIdV1;
+    version: number;
+  }>;
+  suppressionRefs: readonly Readonly<{
+    suppressionId: OutboundContactSuppressionIdV1;
+    version: number;
+    scope: OutboundContactSuppressionScopeV1;
+    status: 'ACTIVE' | 'CLEARED';
+  }>[];
+}
+
 export interface CampaignAudienceEntryV1 {
   targetRef: Readonly<OutboundContactTargetReferenceV1>;
   endpointFingerprintSha256: string;
   purpose: OutboundContactPurposeV1;
   policyRef: Readonly<OutboundContactPolicyReferenceV1>;
-  readiness: Readonly<{
-    evaluatedAt: string;
-    readinessFingerprintSha256: string;
-    reviewedSendFingerprintSha256: string;
-    outcome: 'READY_FOR_HUMAN_SEND';
-    reason: 'CURRENT_ALLOWED_ASSERTION';
-    basisAssertionRef: Readonly<{
-      assertionId: OutboundContactBasisAssertionIdV1;
-      version: number;
-    }>;
-    suppressionRefs: readonly Readonly<{
-      suppressionId: OutboundContactSuppressionIdV1;
-      version: number;
-      scope: OutboundContactSuppressionScopeV1;
-      status: 'ACTIVE' | 'CLEARED';
-    }>[];
-  }>;
+  readiness: Readonly<CampaignAudienceReadinessRefV1>;
 }
 
 export interface CampaignAudienceSnapshotV1 {
@@ -196,545 +192,97 @@ export class EmailCampaignContractError extends TypeError {
   }
 }
 
-type JsonRecord = Record<string, unknown>;
 const SHA256 = /^[a-f0-9]{64}$/u;
-const ID_PATTERNS = {
-  campaignId: /^email-campaign_[A-Za-z0-9_-]+$/u,
-  audienceSnapshotId: /^campaign-audience_[A-Za-z0-9_-]+$/u,
-  contentProjectionId: /^campaign-content_[A-Za-z0-9_-]+$/u,
-  brandProjectionId: /^campaign-brand_[A-Za-z0-9_-]+$/u,
-  campaignReviewDecisionId: /^campaign-review_[A-Za-z0-9_-]+$/u
-} as const;
 
-function object(value: unknown, field: string): JsonRecord {
-  if (typeof value !== 'object' || value === null || Array.isArray(value))
-    throw new EmailCampaignContractError(`${field} must be an object.`);
-  return value as JsonRecord;
-}
-function exactKeys(value: JsonRecord, allowed: readonly string[], field: string): void {
-  const extra = Object.keys(value).filter((key) => !allowed.includes(key));
-  const missing = allowed.filter((key) => !(key in value));
-  if (extra.length || missing.length)
-    throw new EmailCampaignContractError(`${field} must contain exactly the bounded V1 fields.`);
-}
-function text(value: unknown, field: string, maximum = 500): string {
-  if (typeof value !== 'string' || !value.trim() || value.trim().length > maximum)
-    throw new EmailCampaignContractError(`${field} is invalid.`);
-  return value.trim();
-}
-function opaque(value: unknown, field: string, maximum = 500): string {
-  const result = text(value, field, maximum);
-  if (result.includes('@'))
-    throw new EmailCampaignContractError(`${field} must be opaque and cannot contain raw email.`);
-  return result;
-}
-function positive(value: unknown, field: string): number {
-  if (!Number.isSafeInteger(value) || Number(value) < 1)
-    throw new EmailCampaignContractError(`${field} must be a positive integer.`);
-  return Number(value);
-}
-function timestamp(value: unknown, field: string): string {
-  const result = text(value, field, 80);
-  if (!Number.isFinite(Date.parse(result)))
-    throw new EmailCampaignContractError(`${field} must be a timestamp.`);
-  return result;
-}
-function sha256(value: unknown, field: string): string {
-  const result = text(value, field, 64);
-  if (!SHA256.test(result))
+function assertSha256(value: string, field: string): void {
+  if (!SHA256.test(value))
     throw new EmailCampaignContractError(`${field} must be lowercase SHA-256 hex.`);
-  return result;
-}
-function one<T extends string>(value: unknown, allowed: readonly T[], field: string): T {
-  const result = typeof value === 'string' ? allowed.find((item) => item === value) : undefined;
-  if (!result) throw new EmailCampaignContractError(`${field} is invalid.`);
-  return result;
-}
-function id<T extends string>(
-  value: unknown,
-  field: keyof typeof ID_PATTERNS,
-  pattern: RegExp
-): T {
-  const result = text(value, field, 240);
-  if (!pattern.test(result)) throw new EmailCampaignContractError(`${field} is invalid.`);
-  return result as T;
-}
-function assertFalseAuthority(value: unknown): void {
-  const authority = object(value, 'authority');
-  exactKeys(authority, Object.keys(noEmailCampaignAuthorityConsequencesV1), 'authority');
-  if (Object.values(authority).some((entry) => entry !== false))
-    throw new EmailCampaignContractError('Campaign authority locks must remain false.');
-}
-function targetRef(value: unknown): OutboundContactTargetReferenceV1 {
-  const item = object(value, 'targetRef');
-  exactKeys(item, ['owner', 'kind', 'id', 'version'], 'targetRef');
-  return {
-    owner: text(item.owner, 'targetRef.owner', 120),
-    kind: text(item.kind, 'targetRef.kind', 120),
-    id: opaque(item.id, 'targetRef.id'),
-    version: positive(item.version, 'targetRef.version')
-  };
-}
-function policyRef(value: unknown): OutboundContactPolicyReferenceV1 {
-  const item = object(value, 'policyRef');
-  exactKeys(item, ['policyId', 'version'], 'policyRef');
-  return {
-    policyId: opaque(item.policyId, 'policyRef.policyId', 240),
-    version: positive(item.version, 'policyRef.version')
-  };
 }
 
-export function parseCampaignAudienceSnapshotV1(value: unknown): CampaignAudienceSnapshotV1 {
-  const input = object(value, 'audienceSnapshot');
-  exactKeys(
-    input,
-    [
-      'schemaVersion',
-      'audienceSnapshotId',
-      'workspaceId',
-      'version',
-      'channel',
-      'reviewedSendFingerprintSha256',
-      'entries',
-      'audienceFingerprintSha256',
-      'capturedAt',
-      'legalConsentVerifiedByMarkOrbit',
-      'externalSendAuthorized'
-    ],
-    'audienceSnapshot'
+function assertOpaqueReference(value: string, field: string): void {
+  if (!value.trim() || value.includes('@'))
+    throw new EmailCampaignContractError(`${field} must be opaque and cannot contain raw email.`);
+}
+
+function sameTarget(
+  left: Readonly<OutboundContactTargetReferenceV1>,
+  right: Readonly<OutboundContactTargetReferenceV1>
+): boolean {
+  return (
+    left.owner === right.owner &&
+    left.kind === right.kind &&
+    left.id === right.id &&
+    left.version === right.version
   );
-  if (input.schemaVersion !== 1 || input.channel !== 'EMAIL')
-    throw new EmailCampaignContractError('Audience snapshot schema/channel is invalid.');
-  if (input.legalConsentVerifiedByMarkOrbit !== false || input.externalSendAuthorized !== false)
-    throw new EmailCampaignContractError('Audience snapshot authority locks must remain false.');
-  if (!Array.isArray(input.entries) || input.entries.length < 1 || input.entries.length > 10000)
-    throw new EmailCampaignContractError('entries must contain 1 to 10000 bounded recipients.');
-  const reviewedSend = sha256(
-    input.reviewedSendFingerprintSha256,
-    'reviewedSendFingerprintSha256'
+}
+
+function samePolicy(
+  left: Readonly<OutboundContactPolicyReferenceV1>,
+  right: Readonly<OutboundContactPolicyReferenceV1>
+): boolean {
+  return left.policyId === right.policyId && left.version === right.version;
+}
+
+function sameSuppressions(
+  left: readonly CampaignAudienceReadinessRefV1['suppressionRefs'][number][],
+  right: readonly CampaignAudienceReadinessRefV1['suppressionRefs'][number][]
+): boolean {
+  return (
+    left.length === right.length &&
+    left.every((entry, index) => {
+      const candidate = right[index];
+      return (
+        candidate !== undefined &&
+        entry.suppressionId === candidate.suppressionId &&
+        entry.version === candidate.version &&
+        entry.scope === candidate.scope &&
+        entry.status === candidate.status
+      );
+    })
   );
-  const entries = input.entries.map((raw, index): CampaignAudienceEntryV1 => {
-    const item = object(raw, `entries[${index}]`);
-    exactKeys(
-      item,
-      ['targetRef', 'endpointFingerprintSha256', 'purpose', 'policyRef', 'readiness'],
-      `entries[${index}]`
+}
+
+/**
+ * C2A has no persistence/API parser. This guard only proves the frozen audience
+ * shape cannot smuggle raw email endpoints or stale reviewed-send readiness.
+ */
+export function assertCampaignAudienceSnapshotSafetyV1(
+  snapshot: Readonly<CampaignAudienceSnapshotV1>
+): void {
+  if (snapshot.entries.length < 1 || snapshot.entries.length > 10000)
+    throw new EmailCampaignContractError('Audience snapshot must contain 1 to 10000 entries.');
+  assertSha256(snapshot.reviewedSendFingerprintSha256, 'reviewedSendFingerprintSha256');
+  assertSha256(snapshot.audienceFingerprintSha256, 'audienceFingerprintSha256');
+  if (snapshot.legalConsentVerifiedByMarkOrbit || snapshot.externalSendAuthorized)
+    throw new EmailCampaignContractError('Audience authority locks must remain false.');
+
+  const endpointFingerprints = new Set<string>();
+  for (const [index, entry] of snapshot.entries.entries()) {
+    assertOpaqueReference(entry.targetRef.id, `entries[${index}].targetRef.id`);
+    assertSha256(entry.endpointFingerprintSha256, `entries[${index}].endpointFingerprintSha256`);
+    assertSha256(
+      entry.readiness.readinessFingerprintSha256,
+      `entries[${index}].readiness.readinessFingerprintSha256`
     );
-    const readiness = object(item.readiness, `entries[${index}].readiness`);
-    exactKeys(
-      readiness,
-      [
-        'evaluatedAt',
-        'readinessFingerprintSha256',
-        'reviewedSendFingerprintSha256',
-        'outcome',
-        'reason',
-        'basisAssertionRef',
-        'suppressionRefs'
-      ],
-      `entries[${index}].readiness`
-    );
-    const basis = object(readiness.basisAssertionRef, `entries[${index}].readiness.basisAssertionRef`);
-    exactKeys(basis, ['assertionId', 'version'], `entries[${index}].readiness.basisAssertionRef`);
-    if (!Array.isArray(readiness.suppressionRefs) || readiness.suppressionRefs.length > 20)
-      throw new EmailCampaignContractError('suppressionRefs must be a bounded array.');
-    const entryReviewedSend = sha256(
-      readiness.reviewedSendFingerprintSha256,
+    assertSha256(
+      entry.readiness.reviewedSendFingerprintSha256,
       `entries[${index}].readiness.reviewedSendFingerprintSha256`
     );
-    if (entryReviewedSend !== reviewedSend)
+    if (entry.readiness.reviewedSendFingerprintSha256 !== snapshot.reviewedSendFingerprintSha256)
       throw new EmailCampaignContractError('Audience readiness must bind the exact reviewed send.');
-    return {
-      targetRef: targetRef(item.targetRef),
-      endpointFingerprintSha256: sha256(
-        item.endpointFingerprintSha256,
-        `entries[${index}].endpointFingerprintSha256`
-      ),
-      purpose: one(
-        item.purpose,
-        ['PROSPECT_OUTREACH', 'PARTNER_OUTREACH', 'EDUCATION_INVITATION'] as const,
-        `entries[${index}].purpose`
-      ),
-      policyRef: policyRef(item.policyRef),
-      readiness: {
-        evaluatedAt: timestamp(readiness.evaluatedAt, `entries[${index}].readiness.evaluatedAt`),
-        readinessFingerprintSha256: sha256(
-          readiness.readinessFingerprintSha256,
-          `entries[${index}].readiness.readinessFingerprintSha256`
-        ),
-        reviewedSendFingerprintSha256: entryReviewedSend,
-        outcome: one(
-          readiness.outcome,
-          ['READY_FOR_HUMAN_SEND'] as const,
-          `entries[${index}].readiness.outcome`
-        ),
-        reason: one(
-          readiness.reason,
-          ['CURRENT_ALLOWED_ASSERTION'] as const,
-          `entries[${index}].readiness.reason`
-        ),
-        basisAssertionRef: {
-          assertionId: opaque(
-            basis.assertionId,
-            `entries[${index}].readiness.basisAssertionRef.assertionId`,
-            240
-          ) as OutboundContactBasisAssertionIdV1,
-          version: positive(
-            basis.version,
-            `entries[${index}].readiness.basisAssertionRef.version`
-          )
-        },
-        suppressionRefs: readiness.suppressionRefs.map((rawSuppression, suppressionIndex) => {
-          const suppression = object(
-            rawSuppression,
-            `entries[${index}].readiness.suppressionRefs[${suppressionIndex}]`
-          );
-          exactKeys(
-            suppression,
-            ['suppressionId', 'version', 'scope', 'status'],
-            `entries[${index}].readiness.suppressionRefs[${suppressionIndex}]`
-          );
-          return {
-            suppressionId: opaque(
-              suppression.suppressionId,
-              `entries[${index}].readiness.suppressionRefs[${suppressionIndex}].suppressionId`,
-              240
-            ) as OutboundContactSuppressionIdV1,
-            version: positive(
-              suppression.version,
-              `entries[${index}].readiness.suppressionRefs[${suppressionIndex}].version`
-            ),
-            scope: one(
-              suppression.scope,
-              [
-                'ALL_OUTBOUND',
-                'PROSPECT_OUTREACH',
-                'PARTNER_OUTREACH',
-                'EDUCATION_INVITATION'
-              ] as const,
-              `entries[${index}].readiness.suppressionRefs[${suppressionIndex}].scope`
-            ),
-            status: one(
-              suppression.status,
-              ['ACTIVE', 'CLEARED'] as const,
-              `entries[${index}].readiness.suppressionRefs[${suppressionIndex}].status`
-            )
-          };
-        })
-      }
-    };
-  });
-  return {
-    schemaVersion: 1,
-    audienceSnapshotId: id<CampaignAudienceSnapshotIdV1>(
-      input.audienceSnapshotId,
-      'audienceSnapshotId',
-      ID_PATTERNS.audienceSnapshotId
-    ),
-    workspaceId: text(input.workspaceId, 'workspaceId', 80),
-    version: positive(input.version, 'version'),
-    channel: 'EMAIL',
-    reviewedSendFingerprintSha256: reviewedSend,
-    entries,
-    audienceFingerprintSha256: sha256(input.audienceFingerprintSha256, 'audienceFingerprintSha256'),
-    capturedAt: timestamp(input.capturedAt, 'capturedAt'),
-    legalConsentVerifiedByMarkOrbit: false,
-    externalSendAuthorized: false
-  };
-}
-
-export function parseCampaignContentProjectionV1(value: unknown): CampaignContentProjectionV1 {
-  const input = object(value, 'contentProjection');
-  const allowed = [
-    'schemaVersion',
-    'contentProjectionId',
-    'workspaceId',
-    'version',
-    'publishPackageRef',
-    'subject',
-    'preheader',
-    'reviewedSendFingerprintSha256',
-    'bodyOwnedByPublishPackage',
-    'projectionFingerprintSha256',
-    'createdAt',
-    'externalSendAuthorized'
-  ].filter((key) => key !== 'preheader' || input.preheader !== undefined);
-  exactKeys(input, allowed, 'contentProjection');
-  if (
-    input.schemaVersion !== 1 ||
-    input.bodyOwnedByPublishPackage !== true ||
-    input.externalSendAuthorized !== false
-  )
-    throw new EmailCampaignContractError('Content projection authority/ownership locks are invalid.');
-  const ref = object(input.publishPackageRef, 'publishPackageRef');
-  exactKeys(ref, ['publishPackageId', 'version', 'fingerprintSha256'], 'publishPackageRef');
-  return {
-    schemaVersion: 1,
-    contentProjectionId: id<CampaignContentProjectionIdV1>(
-      input.contentProjectionId,
-      'contentProjectionId',
-      ID_PATTERNS.contentProjectionId
-    ),
-    workspaceId: text(input.workspaceId, 'workspaceId', 80),
-    version: positive(input.version, 'version'),
-    publishPackageRef: {
-      publishPackageId: opaque(
-        ref.publishPackageId,
-        'publishPackageRef.publishPackageId',
-        240
-      ) as PublishPackageId,
-      version: positive(ref.version, 'publishPackageRef.version'),
-      fingerprintSha256: sha256(ref.fingerprintSha256, 'publishPackageRef.fingerprintSha256')
-    },
-    subject: text(input.subject, 'subject', 240),
-    ...(input.preheader === undefined
-      ? {}
-      : { preheader: text(input.preheader, 'preheader', 300) }),
-    reviewedSendFingerprintSha256: sha256(
-      input.reviewedSendFingerprintSha256,
-      'reviewedSendFingerprintSha256'
-    ),
-    bodyOwnedByPublishPackage: true,
-    projectionFingerprintSha256: sha256(
-      input.projectionFingerprintSha256,
-      'projectionFingerprintSha256'
-    ),
-    createdAt: timestamp(input.createdAt, 'createdAt'),
-    externalSendAuthorized: false
-  };
-}
-
-export function parseCampaignBrandProjectionV1(value: unknown): CampaignBrandProjectionV1 {
-  const input = object(value, 'brandProjection');
-  exactKeys(
-    input,
-    [
-      'schemaVersion',
-      'brandProjectionId',
-      'workspaceId',
-      'version',
-      'source',
-      'presentation',
-      'brandProjectionFingerprintSha256',
-      'capturedAt',
-      'canonicalWorkspaceBrandCreated'
-    ],
-    'brandProjection'
-  );
-  if (input.schemaVersion !== 1 || input.canonicalWorkspaceBrandCreated !== false)
-    throw new EmailCampaignContractError('Brand projection ownership lock is invalid.');
-  const source = object(input.source, 'source');
-  const kind = one(source.kind, campaignBrandSourceKindsV1, 'source.kind');
-  exactKeys(
-    source,
-    kind === 'SITE_CONFIGURATION'
-      ? ['kind', 'siteId', 'configurationVersion', 'sourceRef']
-      : ['kind', 'sourceRef'],
-    'source'
-  );
-  const presentation = object(input.presentation, 'presentation');
-  const presentationAllowed = [
-    'displayName',
-    'logoAssetRef',
-    'primaryColor',
-    'accentColor',
-    'colorMode'
-  ].filter((key) => presentation[key] !== undefined || key === 'displayName');
-  exactKeys(presentation, presentationAllowed, 'presentation');
-  return {
-    schemaVersion: 1,
-    brandProjectionId: id<CampaignBrandProjectionIdV1>(
-      input.brandProjectionId,
-      'brandProjectionId',
-      ID_PATTERNS.brandProjectionId
-    ),
-    workspaceId: text(input.workspaceId, 'workspaceId', 80),
-    version: positive(input.version, 'version'),
-    source:
-      kind === 'SITE_CONFIGURATION'
-        ? {
-            kind,
-            siteId: opaque(source.siteId, 'source.siteId', 240) as SiteIdV1,
-            configurationVersion: positive(source.configurationVersion, 'source.configurationVersion'),
-            sourceRef: opaque(source.sourceRef, 'source.sourceRef')
-          }
-        : {
-            kind,
-            sourceRef: opaque(source.sourceRef, 'source.sourceRef')
-          },
-    presentation: {
-      displayName: text(presentation.displayName, 'presentation.displayName', 160),
-      ...(presentation.logoAssetRef === undefined
-        ? {}
-        : { logoAssetRef: opaque(presentation.logoAssetRef, 'presentation.logoAssetRef') }),
-      ...(presentation.primaryColor === undefined
-        ? {}
-        : { primaryColor: text(presentation.primaryColor, 'presentation.primaryColor', 32) }),
-      ...(presentation.accentColor === undefined
-        ? {}
-        : { accentColor: text(presentation.accentColor, 'presentation.accentColor', 32) }),
-      ...(presentation.colorMode === undefined
-        ? {}
-        : {
-            colorMode: one(
-              presentation.colorMode,
-              ['LIGHT', 'DARK', 'SYSTEM'] as const,
-              'presentation.colorMode'
-            )
-          })
-    },
-    brandProjectionFingerprintSha256: sha256(
-      input.brandProjectionFingerprintSha256,
-      'brandProjectionFingerprintSha256'
-    ),
-    capturedAt: timestamp(input.capturedAt, 'capturedAt'),
-    canonicalWorkspaceBrandCreated: false
-  };
-}
-
-export function parseEmailCampaignV1(value: unknown): EmailCampaignV1 {
-  const input = object(value, 'campaign');
-  exactKeys(
-    input,
-    [
-      'schemaVersion',
-      'campaignId',
-      'workspaceId',
-      'version',
-      'featureKey',
-      'purpose',
-      'audience',
-      'content',
-      'brand',
-      'campaignFingerprintSha256',
-      'status',
-      'humanReviewRequired',
-      'createdAt',
-      'updatedAt',
-      'authority'
-    ],
-    'campaign'
-  );
-  if (input.schemaVersion !== 1 || input.featureKey !== 'EMAIL_CAMPAIGN')
-    throw new EmailCampaignContractError('Campaign schema/feature is invalid.');
-  if (input.humanReviewRequired !== true)
-    throw new EmailCampaignContractError('Campaign requires human review.');
-  assertFalseAuthority(input.authority);
-  const ref = <TId extends string>(
-    raw: unknown,
-    field: string,
-    idField: string
-  ): { id: TId; version: number; fingerprintSha256: string } => {
-    const item = object(raw, field);
-    exactKeys(item, [idField, 'version', 'fingerprintSha256'], field);
-    return {
-      id: opaque(item[idField], `${field}.${idField}`, 240) as TId,
-      version: positive(item.version, `${field}.version`),
-      fingerprintSha256: sha256(item.fingerprintSha256, `${field}.fingerprintSha256`)
-    };
-  };
-  const audience = ref<CampaignAudienceSnapshotIdV1>(
-    input.audience,
-    'audience',
-    'audienceSnapshotId'
-  );
-  const content = ref<CampaignContentProjectionIdV1>(
-    input.content,
-    'content',
-    'contentProjectionId'
-  );
-  const brand = ref<CampaignBrandProjectionIdV1>(
-    input.brand,
-    'brand',
-    'brandProjectionId'
-  );
-  return {
-    schemaVersion: 1,
-    campaignId: id<EmailCampaignIdV1>(input.campaignId, 'campaignId', ID_PATTERNS.campaignId),
-    workspaceId: text(input.workspaceId, 'workspaceId', 80),
-    version: positive(input.version, 'version'),
-    featureKey: 'EMAIL_CAMPAIGN',
-    purpose: one(
-      input.purpose,
-      ['PROSPECT_OUTREACH', 'PARTNER_OUTREACH', 'EDUCATION_INVITATION'] as const,
-      'purpose'
-    ),
-    audience: {
-      audienceSnapshotId: audience.id,
-      version: audience.version,
-      fingerprintSha256: audience.fingerprintSha256
-    },
-    content: {
-      contentProjectionId: content.id,
-      version: content.version,
-      fingerprintSha256: content.fingerprintSha256
-    },
-    brand: {
-      brandProjectionId: brand.id,
-      version: brand.version,
-      fingerprintSha256: brand.fingerprintSha256
-    },
-    campaignFingerprintSha256: sha256(
-      input.campaignFingerprintSha256,
-      'campaignFingerprintSha256'
-    ),
-    status: one(input.status, emailCampaignStatusesV1, 'status'),
-    humanReviewRequired: true,
-    createdAt: timestamp(input.createdAt, 'createdAt'),
-    updatedAt: timestamp(input.updatedAt, 'updatedAt'),
-    authority: noEmailCampaignAuthorityConsequencesV1
-  };
-}
-
-export function parseCampaignReviewDecisionV1(value: unknown): CampaignReviewDecisionV1 {
-  const input = object(value, 'campaignReviewDecision');
-  exactKeys(
-    input,
-    [
-      'schemaVersion',
-      'campaignReviewDecisionId',
-      'workspaceId',
-      'version',
-      'campaign',
-      'expectedCampaignFingerprintSha256',
-      'outcome',
-      'reviewerPrincipalId',
-      'rationale',
-      'reviewedAt',
-      'deliveryPreparationOnly',
-      'authority'
-    ],
-    'campaignReviewDecision'
-  );
-  if (input.schemaVersion !== 1 || input.deliveryPreparationOnly !== true)
-    throw new EmailCampaignContractError('Review decision boundary is invalid.');
-  assertFalseAuthority(input.authority);
-  const campaign = object(input.campaign, 'campaign');
-  exactKeys(campaign, ['campaignId', 'version'], 'campaign');
-  return {
-    schemaVersion: 1,
-    campaignReviewDecisionId: id<CampaignReviewDecisionIdV1>(
-      input.campaignReviewDecisionId,
-      'campaignReviewDecisionId',
-      ID_PATTERNS.campaignReviewDecisionId
-    ),
-    workspaceId: text(input.workspaceId, 'workspaceId', 80),
-    version: positive(input.version, 'version'),
-    campaign: {
-      campaignId: opaque(campaign.campaignId, 'campaign.campaignId', 240) as EmailCampaignIdV1,
-      version: positive(campaign.version, 'campaign.version')
-    },
-    expectedCampaignFingerprintSha256: sha256(
-      input.expectedCampaignFingerprintSha256,
-      'expectedCampaignFingerprintSha256'
-    ),
-    outcome: one(input.outcome, campaignReviewOutcomesV1, 'outcome'),
-    reviewerPrincipalId: opaque(input.reviewerPrincipalId, 'reviewerPrincipalId', 240),
-    rationale: text(input.rationale, 'rationale', 1000),
-    reviewedAt: timestamp(input.reviewedAt, 'reviewedAt'),
-    deliveryPreparationOnly: true,
-    authority: noEmailCampaignAuthorityConsequencesV1
-  };
+    if (
+      entry.readiness.outcome !== 'READY_FOR_HUMAN_SEND' ||
+      entry.readiness.reason !== 'CURRENT_ALLOWED_ASSERTION'
+    )
+      throw new EmailCampaignContractError('Audience entry is not current READY_FOR_HUMAN_SEND.');
+    if (!entry.readiness.basisAssertionRef)
+      throw new EmailCampaignContractError('Audience entry requires exact basis assertion lineage.');
+    if (entry.readiness.suppressionRefs.length > 20)
+      throw new EmailCampaignContractError('Audience suppression lineage exceeds the V1 bound.');
+    if (endpointFingerprints.has(entry.endpointFingerprintSha256))
+      throw new EmailCampaignContractError('Audience snapshot cannot duplicate an email endpoint.');
+    endpointFingerprints.add(entry.endpointFingerprintSha256);
+  }
 }
 
 export function assessCampaignPublishPackageV1(
@@ -781,6 +329,8 @@ export function assessCampaignAudienceReadinessV1(
     | 'POLICY_MISMATCH'
     | 'READINESS_FINGERPRINT_MISMATCH'
     | 'REVIEWED_SEND_FINGERPRINT_MISMATCH'
+    | 'BASIS_ASSERTION_MISMATCH'
+    | 'SUPPRESSION_LINEAGE_MISMATCH'
     | 'READINESS_NOT_READY';
   createsSendAuthority: false;
 }> {
@@ -792,28 +342,35 @@ export function assessCampaignAudienceReadinessV1(
     | 'POLICY_MISMATCH'
     | 'READINESS_FINGERPRINT_MISMATCH'
     | 'REVIEWED_SEND_FINGERPRINT_MISMATCH'
+    | 'BASIS_ASSERTION_MISMATCH'
+    | 'SUPPRESSION_LINEAGE_MISMATCH'
     | 'READINESS_NOT_READY' = 'MATCH';
-  const a = entry.targetRef;
-  const b = readiness.targetRef;
-  if (a.owner !== b.owner || a.kind !== b.kind || a.id !== b.id || a.version !== b.version)
-    reason = 'TARGET_MISMATCH';
+
+  if (!sameTarget(entry.targetRef, readiness.targetRef)) reason = 'TARGET_MISMATCH';
   else if (entry.endpointFingerprintSha256 !== readiness.endpointFingerprintSha256)
     reason = 'ENDPOINT_FINGERPRINT_MISMATCH';
   else if (entry.purpose !== readiness.purpose) reason = 'PURPOSE_MISMATCH';
-  else if (
-    entry.policyRef.policyId !== readiness.policyRef.policyId ||
-    entry.policyRef.version !== readiness.policyRef.version
-  )
-    reason = 'POLICY_MISMATCH';
+  else if (!samePolicy(entry.policyRef, readiness.policyRef)) reason = 'POLICY_MISMATCH';
   else if (entry.readiness.readinessFingerprintSha256 !== readiness.readinessFingerprintSha256)
     reason = 'READINESS_FINGERPRINT_MISMATCH';
   else if (entry.readiness.reviewedSendFingerprintSha256 !== readiness.reviewedSendFingerprintSha256)
     reason = 'REVIEWED_SEND_FINGERPRINT_MISMATCH';
-  else if (readiness.outcome !== 'READY_FOR_HUMAN_SEND' || readiness.reason !== 'CURRENT_ALLOWED_ASSERTION')
+  else if (
+    !readiness.basisAssertionRef ||
+    entry.readiness.basisAssertionRef.assertionId !== readiness.basisAssertionRef.assertionId ||
+    entry.readiness.basisAssertionRef.version !== readiness.basisAssertionRef.version
+  )
+    reason = 'BASIS_ASSERTION_MISMATCH';
+  else if (!sameSuppressions(entry.readiness.suppressionRefs, readiness.suppressionRefs))
+    reason = 'SUPPRESSION_LINEAGE_MISMATCH';
+  else if (
+    readiness.outcome !== 'READY_FOR_HUMAN_SEND' ||
+    readiness.reason !== 'CURRENT_ALLOWED_ASSERTION'
+  )
     reason = 'READINESS_NOT_READY';
+
   return { matches: reason === 'MATCH', reason, createsSendAuthority: false };
 }
-
 
 export function assessEmailCampaignAssemblyV1(
   campaign: Readonly<EmailCampaignV1>,
@@ -840,6 +397,7 @@ export function assessEmailCampaignAssemblyV1(
     | 'CONTENT_REF_MISMATCH'
     | 'BRAND_REF_MISMATCH'
     | 'REVIEWED_SEND_FINGERPRINT_MISMATCH' = 'MATCH';
+
   if (
     campaign.workspaceId !== audience.workspaceId ||
     campaign.workspaceId !== content.workspaceId ||
@@ -868,5 +426,45 @@ export function assessEmailCampaignAssemblyV1(
     reason = 'BRAND_REF_MISMATCH';
   else if (audience.reviewedSendFingerprintSha256 !== content.reviewedSendFingerprintSha256)
     reason = 'REVIEWED_SEND_FINGERPRINT_MISMATCH';
+
   return { matches: reason === 'MATCH', reason, createsSendAuthority: false };
+}
+
+export function assessCampaignReviewDecisionV1(
+  decision: Readonly<CampaignReviewDecisionV1>,
+  campaign: Readonly<EmailCampaignV1>
+): Readonly<{
+  matches: boolean;
+  approvedForDeliveryPreparation: boolean;
+  reason:
+    | 'MATCH'
+    | 'WORKSPACE_MISMATCH'
+    | 'CAMPAIGN_REF_MISMATCH'
+    | 'CAMPAIGN_FINGERPRINT_MISMATCH'
+    | 'NOT_APPROVED';
+  createsSendAuthority: false;
+}> {
+  let reason:
+    | 'MATCH'
+    | 'WORKSPACE_MISMATCH'
+    | 'CAMPAIGN_REF_MISMATCH'
+    | 'CAMPAIGN_FINGERPRINT_MISMATCH'
+    | 'NOT_APPROVED' = 'MATCH';
+
+  if (decision.workspaceId !== campaign.workspaceId) reason = 'WORKSPACE_MISMATCH';
+  else if (
+    decision.campaign.campaignId !== campaign.campaignId ||
+    decision.campaign.version !== campaign.version
+  )
+    reason = 'CAMPAIGN_REF_MISMATCH';
+  else if (decision.expectedCampaignFingerprintSha256 !== campaign.campaignFingerprintSha256)
+    reason = 'CAMPAIGN_FINGERPRINT_MISMATCH';
+  else if (decision.outcome !== 'APPROVED_FOR_DELIVERY_PREPARATION') reason = 'NOT_APPROVED';
+
+  return {
+    matches: reason === 'MATCH',
+    approvedForDeliveryPreparation: reason === 'MATCH',
+    reason,
+    createsSendAuthority: false
+  };
 }
