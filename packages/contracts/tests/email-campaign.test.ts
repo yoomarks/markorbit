@@ -227,7 +227,13 @@ describe('email campaign core contracts', () => {
     expect(() =>
       assertCampaignAudienceSnapshotSafetyV1({
         ...audience,
-        entries: [audience.entries[0], { ...audience.entries[0], targetRef: { ...readiness.targetRef, id: 'prospect_02' } }]
+        entries: [
+          audience.entries[0],
+          {
+            ...audience.entries[0],
+            targetRef: { ...readiness.targetRef, id: 'prospect_02' }
+          }
+        ]
       })
     ).toThrow('cannot duplicate an email endpoint');
   });
