@@ -171,9 +171,7 @@ function text(value: unknown, field: string, maximum = 500): string {
 
 function positiveInteger(value: unknown, field: string): number {
   if (!Number.isSafeInteger(value) || (value as number) < 1)
-    throw new WorkspaceEmailSenderProfileContractError(
-      `${field} must be a positive safe integer.`
-    );
+    throw new WorkspaceEmailSenderProfileContractError(`${field} must be a positive safe integer.`);
   return value as number;
 }
 
@@ -233,11 +231,7 @@ function parseVerification(value: unknown): WorkspaceEmailSenderVerificationV1 {
       'verification.evidenceRefs must not contain duplicates.'
     );
   return {
-    status: oneOf(
-      item.status,
-      workspaceEmailSenderVerificationStatusesV1,
-      'verification.status'
-    ),
+    status: oneOf(item.status, workspaceEmailSenderVerificationStatusesV1, 'verification.status'),
     evidenceRefs,
     observedAt: timestamp(item.observedAt, 'verification.observedAt')
   };
@@ -271,9 +265,7 @@ function parseReplyTo(value: unknown): WorkspaceEmailReplyToV1 {
   };
 }
 
-export function parseWorkspaceEmailSenderProfileV1(
-  value: unknown
-): WorkspaceEmailSenderProfileV1 {
+export function parseWorkspaceEmailSenderProfileV1(value: unknown): WorkspaceEmailSenderProfileV1 {
   rejectSensitiveMaterial(value);
   const item = object(value, 'emailSenderProfile');
   exactKeys(
@@ -309,9 +301,7 @@ export function parseWorkspaceEmailSenderProfileV1(
   const fromDomain = domain(item.fromDomain, 'fromDomain');
   const fromAddress = email(item.fromAddress, 'fromAddress');
   if (fromAddress.slice(fromAddress.lastIndexOf('@') + 1) !== fromDomain)
-    throw new WorkspaceEmailSenderProfileContractError(
-      'fromAddress domain must equal fromDomain.'
-    );
+    throw new WorkspaceEmailSenderProfileContractError('fromAddress domain must equal fromDomain.');
   const verification = parseVerification(item.verification);
   const status = oneOf(item.status, workspaceEmailSenderProfileStatusesV1, 'status');
   if (status === 'ACTIVE' && verification.status !== 'VERIFIED')
@@ -321,9 +311,7 @@ export function parseWorkspaceEmailSenderProfileV1(
   const createdAt = timestamp(item.createdAt, 'createdAt');
   const updatedAt = timestamp(item.updatedAt, 'updatedAt');
   if (Date.parse(updatedAt) < Date.parse(createdAt))
-    throw new WorkspaceEmailSenderProfileContractError(
-      'updatedAt cannot precede createdAt.'
-    );
+    throw new WorkspaceEmailSenderProfileContractError('updatedAt cannot precede createdAt.');
   if (Date.parse(verification.observedAt) > Date.parse(updatedAt))
     throw new WorkspaceEmailSenderProfileContractError(
       'verification.observedAt cannot be after updatedAt.'
@@ -371,10 +359,7 @@ export function evaluateWorkspaceEmailSenderCurrentnessV1(
   else if (parsed.verification.status === 'UNAVAILABLE') state = 'UNAVAILABLE';
   else if (parsed.status === 'PENDING_VERIFICATION') state = 'PENDING_VERIFICATION';
   else if (parsed.verification.status !== 'VERIFIED') state = 'PENDING_VERIFICATION';
-  else if (
-    Date.parse(now) - Date.parse(parsed.verification.observedAt) >
-    verificationMaximumAgeMs
-  )
+  else if (Date.parse(now) - Date.parse(parsed.verification.observedAt) > verificationMaximumAgeMs)
     state = 'STALE';
   else state = 'CURRENT_ELIGIBLE';
 
