@@ -111,7 +111,9 @@ function brand(workspaceId = workspaceA): CampaignBrandProjectionV1 {
 function campaign(
   workspaceId = workspaceA,
   version = 1,
-  overrides: Partial<Pick<EmailCampaignV1, 'status' | 'campaignFingerprintSha256' | 'updatedAt'>> = {}
+  overrides: Partial<
+    Pick<EmailCampaignV1, 'status' | 'campaignFingerprintSha256' | 'updatedAt'>
+  > = {}
 ): EmailCampaignV1 {
   return {
     schemaVersion: 1,
@@ -278,7 +280,9 @@ suite('PostgreSQL Email Campaign preparation owner', () => {
       brand: prepared.b,
       review: approved
     });
-    expect(Object.values(aggregate.campaign.authority).every((value) => value === false)).toBe(true);
+    expect(
+      Object.values(aggregate.campaign.authority).every((value) => value === false)
+    ).toBe(true);
     expect(aggregate.review.deliveryPreparationOnly).toBe(true);
     expect(aggregate.review.authority.externalSendAuthorized).toBe(false);
   });
@@ -322,7 +326,9 @@ suite('PostgreSQL Email Campaign preparation owner', () => {
 
     const restarted = store();
     expect(await restarted.getLatestCampaign(workspaceA, second.campaignId)).toEqual(second);
-    expect(await restarted.getCampaignVersion(workspaceA, second.campaignId, 1)).toEqual(prepared.cp);
+    expect(await restarted.getCampaignVersion(workspaceA, second.campaignId, 1)).toEqual(
+      prepared.cp
+    );
     const historical = await restarted.loadReviewedAggregate(
       workspaceA,
       prepared.cp.campaignId,
