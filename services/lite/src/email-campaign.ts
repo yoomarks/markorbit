@@ -71,7 +71,7 @@ export interface ReviewedEmailCampaignAggregateV1 {
   review: CampaignReviewDecisionV1;
 }
 
-const clone = <T>(value: T): T => structuredClone(value);
+const clone = <T,>(value: T): T => structuredClone(value);
 const fingerprint = (value: unknown): string =>
   createHash('sha256').update(JSON.stringify(value)).digest('hex');
 
@@ -139,11 +139,7 @@ function id(value: string, pattern: RegExp, field: string): string {
 }
 
 function assertAuthorityLocks(authority: Readonly<Record<string, boolean>>, field: string): void {
-  if (
-    Object.keys(noEmailCampaignAuthorityConsequencesV1).some(
-      (key) => authority[key] !== false
-    )
-  )
+  if (Object.keys(noEmailCampaignAuthorityConsequencesV1).some((key) => authority[key] !== false))
     throw new EmailCampaignPersistenceError(
       'INVALID_INPUT',
       `${field} authority consequences must remain false.`,
@@ -279,18 +275,11 @@ function asIntegrity<T>(parse: () => T, message: string): T {
   try {
     return parse();
   } catch (error) {
-    if (
-      error instanceof EmailCampaignPersistenceError &&
-      error.code === 'INTEGRITY_FAILURE'
-    )
+    if (error instanceof EmailCampaignPersistenceError && error.code === 'INTEGRITY_FAILURE')
       throw error;
-    throw new EmailCampaignPersistenceError(
-      'INTEGRITY_FAILURE',
-      message,
-      500,
-      false,
-      { cause: error instanceof Error ? error : undefined }
-    );
+    throw new EmailCampaignPersistenceError('INTEGRITY_FAILURE', message, 500, false, {
+      cause: error instanceof Error ? error : undefined
+    });
   }
 }
 
@@ -654,9 +643,7 @@ export class PostgresEmailCampaignStore {
           value.campaign.campaignId,
           value.campaign.version
         );
-        if (
-          value.expectedCampaignFingerprintSha256 !== campaign.campaignFingerprintSha256
-        )
+        if (value.expectedCampaignFingerprintSha256 !== campaign.campaignFingerprintSha256)
           throw new EmailCampaignPersistenceError(
             'VERSION_CONFLICT',
             'Campaign Review must bind the exact persisted Campaign fingerprint.'
@@ -989,11 +976,7 @@ export class PostgresEmailCampaignStore {
       const result = await this.query.query<Row>(sql, [...params]);
       const row = result.rows[0];
       if (!row)
-        throw new EmailCampaignPersistenceError(
-          'NOT_FOUND',
-          'Campaign object was not found.',
-          404
-        );
+        throw new EmailCampaignPersistenceError('NOT_FOUND', 'Campaign object was not found.', 404);
       return parse(row);
     } catch (error) {
       if (error instanceof EmailCampaignPersistenceError) throw error;
