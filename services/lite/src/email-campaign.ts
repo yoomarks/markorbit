@@ -67,7 +67,7 @@ export interface ReviewedEmailCampaignAggregateV1 {
   review: CampaignReviewDecisionV1;
 }
 
-const clone = <T,>(value: T): T => structuredClone(value);
+const clone = <T>(value: T): T => structuredClone(value);
 const fingerprint = (value: unknown): string =>
   createHash('sha256').update(JSON.stringify(value)).digest('hex');
 
