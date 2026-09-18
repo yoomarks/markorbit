@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   assessCampaignAudienceReadinessV1,
   assessCampaignPublishPackageV1,
+  assessEmailCampaignAssemblyV1,
   noEmailCampaignAuthorityConsequencesV1,
   parseCampaignAudienceSnapshotV1,
   parseCampaignBrandProjectionV1,
@@ -150,6 +151,7 @@ const campaignInput = {
     version: 1,
     fingerprintSha256: hashD
   },
+  campaignFingerprintSha256: hashA,
   status: 'READY_FOR_HUMAN_REVIEW',
   humanReviewRequired: true,
   createdAt: '2026-09-18T09:14:00Z',
@@ -252,6 +254,24 @@ describe('email campaign core contracts', () => {
     const campaign = parseEmailCampaignV1(campaignInput);
     expect(campaign.featureKey).toBe('EMAIL_CAMPAIGN');
     expect(Object.values(campaign.authority).every((value) => value === false)).toBe(true);
+  });
+
+  it('assembles only exact same-workspace, same-purpose, same-reviewed-send projections', () => {
+    const campaign = parseEmailCampaignV1(campaignInput);
+    const audience = parseCampaignAudienceSnapshotV1(audienceInput);
+    const content = parseCampaignContentProjectionV1(contentInput);
+    const brand = parseCampaignBrandProjectionV1(brandInput);
+    expect(assessEmailCampaignAssemblyV1(campaign, audience, content, brand)).toEqual({
+      matches: true,
+      reason: 'MATCH',
+      createsSendAuthority: false
+    });
+    expect(
+      assessEmailCampaignAssemblyV1(campaign, audience, { ...content, reviewedSendFingerprintSha256: hashD }, brand)
+    ).toMatchObject({
+      matches: false,
+      reason: 'REVIEWED_SEND_FINGERPRINT_MISMATCH'
+    });
   });
 
   it('reviews only for delivery preparation and never authorizes a send', () => {
