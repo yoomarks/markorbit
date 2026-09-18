@@ -131,11 +131,8 @@ describe('workspace email sender profile contract', () => {
       ).state
     ).toBe('SUSPENDED');
     expect(
-      evaluateWorkspaceEmailSenderCurrentnessV1(
-        revoked,
-        '2026-09-18T12:30:00.000Z',
-        60 * 60 * 1000
-      ).state
+      evaluateWorkspaceEmailSenderCurrentnessV1(revoked, '2026-09-18T12:30:00.000Z', 60 * 60 * 1000)
+        .state
     ).toBe('REVOKED');
   });
 
