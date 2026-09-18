@@ -316,7 +316,7 @@ export class HttpEmailCampaignSendCurrentnessClient implements EmailCampaignSend
             'x-markorbit-internal-authorization': this.internalServiceSecret,
             'x-markorbit-workspace-id': intent.workspaceId
           },
-          body: JSON.stringify(intent),
+          body: JSON.stringify({ intent, humanReceipt }),
           signal: AbortSignal.timeout(this.timeoutMs)
         }
       );
