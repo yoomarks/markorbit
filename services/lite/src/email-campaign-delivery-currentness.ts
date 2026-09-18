@@ -14,6 +14,7 @@ import {
 } from '@markorbit/contracts/channel-platform';
 import type { ResolvedEntitlementV1 } from '@markorbit/contracts/workspace-commercial';
 import type {
+  OutboundContactPurposeV1,
   OutboundContactReadinessV1,
   OutboundContactTargetReferenceV1
 } from '@markorbit/contracts/outbound-contact-policy';
@@ -60,7 +61,7 @@ export interface EmailCampaignReadinessEvaluator {
     actorPrincipalId: string;
     targetRef: Readonly<OutboundContactTargetReferenceV1>;
     endpointFingerprintSha256: string;
-    purpose: string;
+    purpose: OutboundContactPurposeV1;
     policyRef: Readonly<{ policyId: string; version: number }>;
     reviewedSendFingerprintSha256: string;
   }): Promise<OutboundContactReadinessV1>;
