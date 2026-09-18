@@ -834,3 +834,4 @@ export * from './oauth-credential-postgres.js';
 export * from './workspace-commercial.js';
 export * from './workspace-commercial-postgres.js';
 export * from './workspace-commercial-http.js';
+export * from './cnipa-citation-fact-candidate.js';
