@@ -87,7 +87,6 @@ function release(auth: ProtectedExternalActionAuthorizationV1): ProtectedExterna
   };
 }
 
-
 function emailAuthorization(workspaceId = workspaceA): ProtectedExternalActionAuthorizationV1 {
   return {
     schemaVersion: 1,
@@ -118,8 +117,7 @@ function emailAuthorization(workspaceId = workspaceA): ProtectedExternalActionAu
       ...authorization(workspaceId).humanReceipt,
       receiptId: '88888888-8888-4888-8888-888888881176',
       kind: 'EMAIL_CAMPAIGN_SEND',
-      mutationRoute:
-        '/api/execution/protected-external-actions/email-campaign-send/authorizations',
+      mutationRoute: '/api/execution/protected-external-actions/email-campaign-send/authorizations',
       reviewedActionDigest: '8'.repeat(64),
       idempotencyKey: 'authorize-email-pg-1176'
     },
@@ -266,7 +264,7 @@ suite('PostgreSQL protected external action persistence', () => {
       database
         .getPool()
         .query(
-          "UPDATE execution_protected_action_releases SET released_at=released_at WHERE workspace_id=$1 AND release_id=$2",
+          'UPDATE execution_protected_action_releases SET released_at=released_at WHERE workspace_id=$1 AND release_id=$2',
           [workspaceA, durableRelease.releaseId]
         )
     ).rejects.toThrow(/immutable/);
@@ -294,5 +292,4 @@ suite('PostgreSQL protected external action persistence', () => {
         expect(names).not.toContain(forbidden);
     }
   });
-
 });
