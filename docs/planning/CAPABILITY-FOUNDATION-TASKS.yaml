@@ -441,6 +441,18 @@ roadmap_only_domain_capabilities:
       likely_consumers: [MarkReg, Lite]
     - id: MO-CAP-DOMAIN-CLIENT-OPPORTUNITY
       title: Client Opportunity / Service Readiness
+      capability_class: DISCOVERY
+      canonical_parent: Discovery Capability
+      child_method_families:
+        [
+          deadline_maintenance,
+          examination_office_action,
+          renewal,
+          status_change,
+          relationship_cited_mark,
+          contact_readiness,
+          market_portfolio
+        ]
       likely_consumers: [Lite, MarkReg]
 
 program_metrics:
