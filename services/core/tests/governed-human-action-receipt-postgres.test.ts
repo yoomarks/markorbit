@@ -165,4 +165,51 @@ integration('PostgreSQL governed human-action receipt authority', () => {
     await expect(restartedStore.findById(created.receiptId)).resolves.toEqual(created);
     await expect(restartedStore.materializeOrResolve(trading)).resolves.toEqual(created);
   });
+
+  it('persists an Email Campaign Send receipt across reconnect after migration 0134', async () => {
+    await cleanup();
+    expect(
+      (await coreMigrations()).map((migration) => `${migration.version}_${migration.name}`)
+    ).toContain('0134_core_governed_human_action_receipts_email_campaign_send');
+    const emailCampaign = receipt({
+      receiptId: '018f0000-0000-7000-8000-000000000107',
+      authorityReference: 'core-governed-human-action-receipt:018f0000-0000-7000-8000-000000000107',
+      affirmativeHumanActionEvidenceReference:
+        'core-governed-human-action-evidence:018f0000-0000-7000-8000-000000000107',
+      kind: 'EMAIL_CAMPAIGN_SEND',
+      mutationRoute: '/api/execution/protected-external-actions/email-campaign-send/authorizations',
+      reviewedActionDigest: 'e'.repeat(64),
+      idempotencyKey: 'durable-email-campaign-send-1'
+    });
+    const firstStore = new PostgresGovernedHumanActionReceiptStore(database);
+    const created = await firstStore.materializeOrResolve(emailCampaign);
+
+    await database.close();
+    database = new ManagedDatabase(config());
+    await database.start();
+
+    const restartedStore = new PostgresGovernedHumanActionReceiptStore(database);
+    await expect(restartedStore.findById(created.receiptId)).resolves.toEqual(created);
+    await expect(restartedStore.materializeOrResolve(emailCampaign)).resolves.toEqual(created);
+  });
+
+  it('does not add raw Campaign, email endpoint or provider credential columns for Email Campaign receipts', async () => {
+    const columns = await database.getPool().query<{ column_name: string }>(
+      `SELECT column_name
+         FROM information_schema.columns
+        WHERE table_schema='public' AND table_name='core_governed_human_action_receipts'
+        ORDER BY column_name`
+    );
+    const names = columns.rows.map((row) => row.column_name);
+    for (const forbidden of [
+      'campaign_json',
+      'recipient_email',
+      'raw_email',
+      'provider',
+      'provider_credential',
+      'api_key',
+      'access_token'
+    ])
+      expect(names).not.toContain(forbidden);
+  });
 });
