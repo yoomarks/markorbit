@@ -276,7 +276,9 @@ export function assertCampaignAudienceSnapshotSafetyV1(
     )
       throw new EmailCampaignContractError('Audience entry is not current READY_FOR_HUMAN_SEND.');
     if (!entry.readiness.basisAssertionRef)
-      throw new EmailCampaignContractError('Audience entry requires exact basis assertion lineage.');
+      throw new EmailCampaignContractError(
+        'Audience entry requires exact basis assertion lineage.'
+      );
     if (entry.readiness.suppressionRefs.length > 20)
       throw new EmailCampaignContractError('Audience suppression lineage exceeds the V1 bound.');
     if (endpointFingerprints.has(entry.endpointFingerprintSha256))
@@ -310,7 +312,8 @@ export function assessCampaignPublishPackageV1(
   else if (projection.publishPackageRef.version !== publishPackage.version)
     reason = 'PUBLISH_PACKAGE_VERSION_MISMATCH';
   else if (
-    projection.publishPackageRef.fingerprintSha256 !== publishPackage.publishPackageFingerprintSha256
+    projection.publishPackageRef.fingerprintSha256 !==
+    publishPackage.publishPackageFingerprintSha256
   )
     reason = 'PUBLISH_PACKAGE_FINGERPRINT_MISMATCH';
   return { matches: reason === 'MATCH', reason, createsSendAuthority: false };
@@ -353,7 +356,9 @@ export function assessCampaignAudienceReadinessV1(
   else if (!samePolicy(entry.policyRef, readiness.policyRef)) reason = 'POLICY_MISMATCH';
   else if (entry.readiness.readinessFingerprintSha256 !== readiness.readinessFingerprintSha256)
     reason = 'READINESS_FINGERPRINT_MISMATCH';
-  else if (entry.readiness.reviewedSendFingerprintSha256 !== readiness.reviewedSendFingerprintSha256)
+  else if (
+    entry.readiness.reviewedSendFingerprintSha256 !== readiness.reviewedSendFingerprintSha256
+  )
     reason = 'REVIEWED_SEND_FINGERPRINT_MISMATCH';
   else if (
     !readiness.basisAssertionRef ||
