@@ -22,6 +22,7 @@ export type EmailSenderProfilePersistenceErrorCode =
   | 'NOT_FOUND'
   | 'IDEMPOTENCY_CONFLICT'
   | 'VERSION_CONFLICT'
+  | 'IDENTITY_CONFLICT'
   | 'INTEGRITY_FAILURE'
   | 'PERSISTENCE_UNAVAILABLE';
 
@@ -331,6 +332,17 @@ export class PostgresEmailSenderProfileStore {
           return persisted(prior.result_json);
         }
 
+        await this.lock(client, `email-sender-profile:from:${value.fromAddress}`);
+        await this.lock(
+          client,
+          `email-sender-profile:routing:${value.providerRoutingPartitionRef}`
+        );
+        await this.lock(
+          client,
+          `email-sender-profile:reputation:${value.reputationIsolationKey}`
+        );
+        await this.assertWorkspaceIsolation(client, value);
+
         await this.lock(client, `${w}:email-sender-profile:${id}`);
         const actual = await this.latestVersion(client, w, id);
         if (actual !== expected)
@@ -372,6 +384,34 @@ export class PostgresEmailSenderProfileStore {
       if (error instanceof EmailSenderProfilePersistenceError) throw error;
       throw this.persistenceError(error);
     }
+  }
+
+  private async assertWorkspaceIsolation(
+    client: QueryClient,
+    value: Readonly<WorkspaceEmailSenderProfileV1>
+  ): Promise<void> {
+    const conflict = await client.query<Row>(
+      `SELECT workspace_id
+         FROM lite_email_sender_profile_versions
+        WHERE workspace_id <> $1
+          AND (
+            from_address = $2 OR
+            (document_json->>'providerRoutingPartitionRef') = $3 OR
+            reputation_isolation_key = $4
+          )
+        LIMIT 1`,
+      [
+        value.workspaceId,
+        value.fromAddress,
+        value.providerRoutingPartitionRef,
+        value.reputationIsolationKey
+      ]
+    );
+    if (conflict.rows[0])
+      throw new EmailSenderProfilePersistenceError(
+        'IDENTITY_CONFLICT',
+        'Sender identity/routing/reputation isolation is already bound to another Workspace.'
+      );
   }
 
   private async latestVersion(
