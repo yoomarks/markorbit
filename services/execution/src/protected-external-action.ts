@@ -412,6 +412,11 @@ export class ProtectedExternalActionService {
         'Authorization Workspace mismatch.',
         403
       );
+    if (authorization.actionKind !== 'TRADING_LISTING_PUBLISH')
+      throw new ProtectedExternalActionError(
+        'AUTHORIZATION_STALE',
+        'Authorization action kind does not match Trading publish.'
+      );
     if (authorization.version !== command.authorizationVersion)
       throw new ProtectedExternalActionError(
         'AUTHORIZATION_STALE',
