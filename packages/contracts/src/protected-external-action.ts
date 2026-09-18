@@ -38,8 +38,9 @@ export interface TradingListingPublicationIntentV1 {
   effectFingerprintSha256: string;
 }
 
-export interface ProtectedActionExactFingerprintReferenceV1<Id extends string = string>
-  extends ProtectedActionExactVersionReferenceV1<Id> {
+export interface ProtectedActionExactFingerprintReferenceV1<
+  Id extends string = string
+> extends ProtectedActionExactVersionReferenceV1<Id> {
   fingerprintSha256: string;
 }
 
@@ -48,21 +49,13 @@ export interface EmailCampaignSendIntentV1 {
   actionKind: 'EMAIL_CAMPAIGN_SEND';
   workspaceId: string;
   campaign: Readonly<ProtectedActionExactFingerprintReferenceV1<EmailCampaignIdV1>>;
-  campaignReview: Readonly<
-    ProtectedActionExactVersionReferenceV1<CampaignReviewDecisionIdV1>
-  >;
+  campaignReview: Readonly<ProtectedActionExactVersionReferenceV1<CampaignReviewDecisionIdV1>>;
   senderProfile: Readonly<
     ProtectedActionExactFingerprintReferenceV1<WorkspaceEmailSenderProfileId>
   >;
-  audience: Readonly<
-    ProtectedActionExactFingerprintReferenceV1<CampaignAudienceSnapshotIdV1>
-  >;
-  content: Readonly<
-    ProtectedActionExactFingerprintReferenceV1<CampaignContentProjectionIdV1>
-  >;
-  brand: Readonly<
-    ProtectedActionExactFingerprintReferenceV1<CampaignBrandProjectionIdV1>
-  >;
+  audience: Readonly<ProtectedActionExactFingerprintReferenceV1<CampaignAudienceSnapshotIdV1>>;
+  content: Readonly<ProtectedActionExactFingerprintReferenceV1<CampaignContentProjectionIdV1>>;
+  brand: Readonly<ProtectedActionExactFingerprintReferenceV1<CampaignBrandProjectionIdV1>>;
   recipientCount: number;
   deliveryPlanFingerprintSha256: string;
   effectFingerprintSha256: string;
@@ -344,9 +337,7 @@ export function canonicalEmailCampaignSendIntentPayloadV1(
   };
 }
 
-export function assertEmailCampaignSendIntentV1(
-  intent: Readonly<EmailCampaignSendIntentV1>
-): void {
+export function assertEmailCampaignSendIntentV1(intent: Readonly<EmailCampaignSendIntentV1>): void {
   canonicalEmailCampaignSendIntentPayloadV1(intent);
   if (
     !SHA256.test(intent.deliveryPlanFingerprintSha256) ||
