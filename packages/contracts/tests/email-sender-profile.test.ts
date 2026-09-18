@@ -155,7 +155,7 @@ describe('workspace email sender profile contract', () => {
           '2026-09-18T12:30:00.000Z',
           60 * 60 * 1000
         ).state
-      ).toBe('PENDING_VERIFICATION');
+      ).toBe(status);
     }
   });
 });
