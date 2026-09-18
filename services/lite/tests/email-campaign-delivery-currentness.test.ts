@@ -5,6 +5,7 @@ import {
   type CoreHumanActionReceiptBindingV1,
   type EmailCampaignSendIntentV1
 } from '@markorbit/contracts/protected-external-action';
+import type { OutboundContactReadinessV1 } from '@markorbit/contracts/outbound-contact-policy';
 import {
   noEmailCampaignAuthorityConsequencesV1,
   type CampaignAudienceSnapshotV1,
@@ -21,6 +22,7 @@ import {
   EmailCampaignDeliveryCurrentnessResolver,
   type EmailCampaignEndpointResolver,
   type EmailCampaignEntitlementReader,
+  type EmailCampaignEntitlementResolution,
   type EmailCampaignReadinessEvaluator
 } from '../src/email-campaign-delivery-currentness.js';
 
@@ -319,11 +321,12 @@ function harness(
     )
   };
   const entitlements: EmailCampaignEntitlementReader = {
-    resolve: vi.fn(() => {
+    resolve: vi.fn(
+      (): Promise<EmailCampaignEntitlementResolution> => {
       if (options.entitlement === 'UNAVAILABLE')
         return Promise.resolve({ state: 'UNAVAILABLE' as const });
       return Promise.resolve({
-        state: 'CURRENT' as const,
+        state: 'CURRENT',
         access: {
           schemaVersion: 1,
           workspaceId,
@@ -344,7 +347,8 @@ function harness(
           }
         }
       });
-    })
+      }
+    )
   };
   return new EmailCampaignDeliveryCurrentnessResolver(
     campaigns,
