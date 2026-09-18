@@ -15,20 +15,20 @@ No Provider, credential, webhook, external send or ManagedCommunication fan-out 
 
 ## Owner matrix
 
-| Durable object | Owner | C2B rule |
-| --- | --- | --- |
-| Email Campaign preparation/version state | Lite Campaign owner | Persist exact immutable versions and one current head |
-| Audience Snapshot | Lite Campaign owner | Persist exact snapshot; no raw email; no CRM/contact ownership |
-| Outbound basis/suppression/readiness truth | Existing Outbound Contact Policy owner | Store exact lineage/fingerprints only; never copy owner truth |
-| Content Projection | Lite Campaign owner | Store exact projection only |
-| PublishPackage body/review truth | Product Loop / Content Studio | Reference exact id/version/fingerprint; never copy body truth |
-| Brand Projection | Lite Campaign owner | Store exact projection/snapshot only |
-| Canonical Site configuration | Site owner | Store exact lineage only |
-| Canonical Workspace brand | None created by C2B | `canonicalWorkspaceBrandCreated=false` remains authoritative |
-| Campaign Review Decision | Lite Campaign owner | Persist exact decision bound to exact Campaign version/fingerprint |
-| Entitlement | Workspace Commercial / Capability runtime | Not duplicated in Campaign persistence |
-| Provider selection / send | Future C3 | Must remain absent |
-| One-to-one reply mail | Managed Communication | Not created by C2B |
+| Durable object                             | Owner                                     | C2B rule                                                           |
+| ------------------------------------------ | ----------------------------------------- | ------------------------------------------------------------------ |
+| Email Campaign preparation/version state   | Lite Campaign owner                       | Persist exact immutable versions and one current head              |
+| Audience Snapshot                          | Lite Campaign owner                       | Persist exact snapshot; no raw email; no CRM/contact ownership     |
+| Outbound basis/suppression/readiness truth | Existing Outbound Contact Policy owner    | Store exact lineage/fingerprints only; never copy owner truth      |
+| Content Projection                         | Lite Campaign owner                       | Store exact projection only                                        |
+| PublishPackage body/review truth           | Product Loop / Content Studio             | Reference exact id/version/fingerprint; never copy body truth      |
+| Brand Projection                           | Lite Campaign owner                       | Store exact projection/snapshot only                               |
+| Canonical Site configuration               | Site owner                                | Store exact lineage only                                           |
+| Canonical Workspace brand                  | None created by C2B                       | `canonicalWorkspaceBrandCreated=false` remains authoritative       |
+| Campaign Review Decision                   | Lite Campaign owner                       | Persist exact decision bound to exact Campaign version/fingerprint |
+| Entitlement                                | Workspace Commercial / Capability runtime | Not duplicated in Campaign persistence                             |
+| Provider selection / send                  | Future C3                                 | Must remain absent                                                 |
+| One-to-one reply mail                      | Managed Communication                     | Not created by C2B                                                 |
 
 ## Why persistence is justified
 
@@ -49,9 +49,11 @@ Use five exact-version tables plus one command receipt table.
 ### 1. `lite_email_campaign_versions`
 
 Primary key:
+
 - `(workspace_id, campaign_id, version)`
 
 Queryable columns:
+
 - workspace_id
 - campaign_id
 - version
@@ -66,15 +68,18 @@ Queryable columns:
 - document_json
 
 Indexes:
+
 - latest by workspace/campaign/version desc
 - workspace/status/updated_at for bounded read model
 
 ### 2. `lite_campaign_audience_snapshot_versions`
 
 Primary key:
+
 - `(workspace_id, audience_snapshot_id, version)`
 
 Queryable columns should stay aggregate-level only:
+
 - reviewed_send_fingerprint_sha256
 - audience_fingerprint_sha256
 - recipient_count
@@ -86,9 +91,11 @@ Do **not** create a recipient table in C2B. Recipient-level rows would invite a 
 ### 3. `lite_campaign_content_projection_versions`
 
 Primary key:
+
 - `(workspace_id, content_projection_id, version)`
 
 Queryable columns:
+
 - publish_package_id
 - publish_package_version
 - publish_package_fingerprint_sha256
@@ -102,9 +109,11 @@ No body column.
 ### 4. `lite_campaign_brand_projection_versions`
 
 Primary key:
+
 - `(workspace_id, brand_projection_id, version)`
 
 Queryable columns:
+
 - source_kind
 - source_ref
 - brand_projection_fingerprint_sha256
@@ -116,9 +125,11 @@ No canonical WorkspaceBrand table is introduced.
 ### 5. `lite_campaign_review_decision_versions`
 
 Primary key:
+
 - `(workspace_id, campaign_review_decision_id, version)`
 
 Queryable columns:
+
 - campaign_id
 - campaign_version
 - expected_campaign_fingerprint_sha256
@@ -132,9 +143,11 @@ Foreign-key exact Campaign version where practical.
 ### 6. `lite_campaign_commands`
 
 Primary key:
+
 - `(workspace_id, idempotency_key)`
 
 Columns:
+
 - command_type
 - request_fingerprint_sha256
 - result_json
@@ -147,6 +160,7 @@ This follows the Work Item command-receipt pattern and prevents replay ambiguity
 C2B should not denormalize all five contracts into one mutable row.
 
 Reasons:
+
 - Audience/Content/Brand projections are immutable exact-version artifacts and may be reused by a later Campaign version;
 - Review Decision is an evidence object with its own identity/version;
 - exact foreign references make drift detectable;
@@ -165,6 +179,7 @@ Minimum owner-local command surface:
 - `saveReviewDecision(command)`
 
 Each command should require:
+
 - trusted Workspace context;
 - exact next version;
 - caller idempotency key;
@@ -198,6 +213,7 @@ Latest-head is a query over the highest version for one `campaign_id`; a dedicat
 ## Review semantics
 
 A persisted Review Decision is valid only when:
+
 - Workspace matches;
 - Campaign id/version matches;
 - expected Campaign fingerprint matches;
@@ -206,6 +222,7 @@ A persisted Review Decision is valid only when:
 `APPROVED_FOR_DELIVERY_PREPARATION` remains preparation-only.
 
 Persistence must never turn review approval into:
+
 - provider selection;
 - protected action authorization;
 - external send;
@@ -216,6 +233,7 @@ Persistence must never turn review approval into:
 C2B must preserve historical exact refs exactly as reviewed.
 
 It must **not** silently replace:
+
 - PublishPackage version with latest;
 - Site configuration with latest;
 - Outbound Contact readiness with latest;
@@ -226,6 +244,7 @@ C3 will perform JIT currentness/revalidation before any send preparation. Histor
 ## Integrity rules
 
 On every read, validate:
+
 - contract parser/guard succeeds;
 - Workspace in document matches row Workspace;
 - object id/version match row identity;
@@ -243,6 +262,7 @@ Persistence unavailability is explicit and retryable; no silent in-memory produc
 Use one transaction per command.
 
 Recommended locking:
+
 - advisory transaction lock on `workspace + object-kind + object-id`;
 - separate advisory lock on `workspace + idempotency-key` when command receipt is shared;
 - verify actual latest version equals `expectedVersion`;
@@ -255,6 +275,7 @@ This mirrors existing Lite store behavior and avoids last-write-wins ambiguity.
 Every table primary key begins with `workspace_id`. Every read and mutation predicate includes Workspace.
 
 Required negative tests:
+
 - Workspace B cannot read Workspace A exact objects;
 - Workspace B cannot replay Workspace A idempotency key;
 - foreign refs cannot bind across Workspace;
@@ -280,6 +301,7 @@ PostgreSQL acceptance should prove:
 C2B read model is operational preparation state only.
 
 Recommended list fields:
+
 - campaignId
 - version
 - purpose
@@ -297,11 +319,13 @@ A migration is required.
 At baseline, `migration-owners.json` ends at `0131_execution_protected_external_actions` and no open issue was found reserving `0132`.
 
 C2B code may therefore request the next verified free migration, expected:
+
 - `0132_lite_email_campaigns.sql`
 
 Before branch activation, fresh-main and open-PR migration claims must be checked again. If `0132` is occupied, renumber; never collide.
 
 Recommended namespace:
+
 - `lite_email_campaigns -> @markorbit/lite-service`
 
 Because the audit itself is docs-only, #1342 does **not** reserve `0132`.
