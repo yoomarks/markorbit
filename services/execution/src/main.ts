@@ -28,6 +28,7 @@ import { PostgresProtectedExternalActionRepository } from './protected-external-
 import {
   createProtectedExternalActionRoutes,
   HttpCoreHumanReceiptCurrentnessClient,
+  HttpEmailCampaignSendCurrentnessClient,
   HttpTradingPublicationCurrentnessClient
 } from './protected-external-action-http.js';
 
@@ -171,7 +172,10 @@ if (fixtureRuntime) {
   const protectedExternalActionService = new ProtectedExternalActionService(
     new PostgresProtectedExternalActionRepository(database, pool),
     new HttpCoreHumanReceiptCurrentnessClient(coreUrl, internalServiceSecret),
-    new HttpTradingPublicationCurrentnessClient(liteUrl, internalServiceSecret)
+    new HttpTradingPublicationCurrentnessClient(liteUrl, internalServiceSecret),
+    undefined,
+    15 * 60_000,
+    new HttpEmailCampaignSendCurrentnessClient(liteUrl, internalServiceSecret)
   );
 
   runtime = createRuntime({
