@@ -257,7 +257,8 @@ function harness(
   const campaigns = {
     loadReviewedAggregate: vi.fn(() =>
       Promise.resolve({ campaign, audience, content: contentProjection, brand, review })
-    )
+    ),
+    getLatestCampaign: vi.fn(() => Promise.resolve(campaign))
   };
   const senders = {
     getExactSenderProfile: vi.fn(() => Promise.resolve(sender)),
