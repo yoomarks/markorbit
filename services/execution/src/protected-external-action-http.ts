@@ -294,10 +294,7 @@ export class HttpTradingPublicationCurrentnessClient implements TradingPublicati
   }
 }
 
-
-export class HttpEmailCampaignSendCurrentnessClient
-  implements EmailCampaignSendCurrentnessClient
-{
+export class HttpEmailCampaignSendCurrentnessClient implements EmailCampaignSendCurrentnessClient {
   constructor(
     private readonly liteUrl: string,
     private readonly internalServiceSecret: string,
