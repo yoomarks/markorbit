@@ -46,8 +46,7 @@ export const noEmailCampaignAuthorityConsequencesV1 = Object.freeze({
   trademarkTruthCreated: false,
   publicationCreated: false
 });
-export type EmailCampaignAuthorityConsequencesV1 =
-  typeof noEmailCampaignAuthorityConsequencesV1;
+export type EmailCampaignAuthorityConsequencesV1 = typeof noEmailCampaignAuthorityConsequencesV1;
 
 export interface CampaignAudienceReadinessRefV1 {
   evaluatedAt: string;
