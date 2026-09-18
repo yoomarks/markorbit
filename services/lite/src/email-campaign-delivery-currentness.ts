@@ -7,7 +7,7 @@ import {
   type EmailCampaignSendCurrentnessStateV1,
   type EmailCampaignSendCurrentnessV1,
   type EmailCampaignSendIntentV1
-} from '@markorbit/contracts/protected-external-action';
+} from '@markorbit/contracts';
 import {
   assessChannelEntitlementV1,
   type ChannelEntitlementAccessV1
