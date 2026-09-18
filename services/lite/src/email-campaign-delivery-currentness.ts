@@ -25,11 +25,7 @@ import type { PostgresOutboundContactPolicyStore } from './outbound-contact-poli
 import type { PostgresWorkspaceDirectoryStore } from './workspace-directory.js';
 
 export type EmailEndpointResolutionState =
-  | 'CURRENT'
-  | 'STALE'
-  | 'NOT_FOUND'
-  | 'UNKNOWN'
-  | 'UNAVAILABLE';
+  'CURRENT' | 'STALE' | 'NOT_FOUND' | 'UNKNOWN' | 'UNAVAILABLE';
 
 export interface EmailEndpointResolution {
   state: EmailEndpointResolutionState;
@@ -74,7 +70,9 @@ const jsonFingerprint = (value: unknown): string =>
   createHash('sha256').update(JSON.stringify(value)).digest('hex');
 
 export class WorkspaceDirectoryEmailEndpointResolver implements EmailCampaignEndpointResolver {
-  constructor(private readonly directory: Pick<PostgresWorkspaceDirectoryStore, 'getExact' | 'getLatest'>) {}
+  constructor(
+    private readonly directory: Pick<PostgresWorkspaceDirectoryStore, 'getExact' | 'getLatest'>
+  ) {}
 
   async resolve(
     workspaceId: string,
@@ -147,8 +145,7 @@ export class HttpCoreEmailCampaignEntitlementReader implements EmailCampaignEnti
     } catch {
       return { state: 'UNAVAILABLE' };
     }
-    if (!response.ok)
-      return { state: 'UNAVAILABLE' };
+    if (!response.ok) return { state: 'UNAVAILABLE' };
     const resolved = (await response.json()) as ResolvedEntitlementV1;
     return {
       state: 'CURRENT',
@@ -209,8 +206,7 @@ export class EmailCampaignDeliveryCurrentnessResolver {
         return result('UNKNOWN', 'FINGERPRINT_MISMATCH');
 
       const entitlement = await this.entitlements.resolve(workspaceId, humanReceipt);
-      if (entitlement.state === 'UNAVAILABLE')
-        return result('UNAVAILABLE', 'OWNER_UNAVAILABLE');
+      if (entitlement.state === 'UNAVAILABLE') return result('UNAVAILABLE', 'OWNER_UNAVAILABLE');
       if (!entitlement.access.allowed) return result('REVOKED', 'ENTITLEMENT_REVOKED');
 
       const aggregate = await this.campaigns.loadReviewedAggregate(
@@ -240,8 +236,7 @@ export class EmailCampaignDeliveryCurrentnessResolver {
         aggregate.review.outcome !== 'APPROVED_FOR_DELIVERY_PREPARATION' ||
         aggregate.review.campaign.campaignId !== intent.campaign.id ||
         aggregate.review.campaign.version !== intent.campaign.version ||
-        aggregate.review.expectedCampaignFingerprintSha256 !==
-          intent.campaign.fingerprintSha256
+        aggregate.review.expectedCampaignFingerprintSha256 !== intent.campaign.fingerprintSha256
       )
         return result('STALE', 'REVIEW_CAMPAIGN_BINDING_DRIFT');
       if (aggregate.audience.entries.length !== intent.recipientCount)
@@ -261,8 +256,7 @@ export class EmailCampaignDeliveryCurrentnessResolver {
       );
       if (senderCurrentness.version !== intent.senderProfile.version)
         return result('STALE', 'SENDER_PROFILE_STALE');
-      if (senderCurrentness.state === 'REVOKED')
-        return result('REVOKED', 'SENDER_PROFILE_REVOKED');
+      if (senderCurrentness.state === 'REVOKED') return result('REVOKED', 'SENDER_PROFILE_REVOKED');
       if (senderCurrentness.state === 'UNKNOWN' || senderCurrentness.state === 'UNAVAILABLE')
         return result('UNAVAILABLE', 'SENDER_PROFILE_UNAVAILABLE');
       if (senderCurrentness.state !== 'CURRENT_ELIGIBLE')
@@ -270,8 +264,7 @@ export class EmailCampaignDeliveryCurrentnessResolver {
 
       for (const entry of aggregate.audience.entries) {
         const endpoint = await this.endpoints.resolve(workspaceId, entry.targetRef);
-        if (endpoint.state === 'UNAVAILABLE')
-          return result('UNAVAILABLE', 'ENDPOINT_UNAVAILABLE');
+        if (endpoint.state === 'UNAVAILABLE') return result('UNAVAILABLE', 'ENDPOINT_UNAVAILABLE');
         if (endpoint.state === 'UNKNOWN' || endpoint.state === 'NOT_FOUND')
           return result('UNKNOWN', 'OWNER_DATA_UNKNOWN');
         if (
@@ -298,8 +291,7 @@ export class EmailCampaignDeliveryCurrentnessResolver {
       return result('CURRENT', 'EXACT_DELIVERY_PLAN_CURRENT');
     } catch (error) {
       const code = (error as { code?: string }).code;
-      if (code === 'PERSISTENCE_UNAVAILABLE')
-        return result('UNAVAILABLE', 'OWNER_UNAVAILABLE');
+      if (code === 'PERSISTENCE_UNAVAILABLE') return result('UNAVAILABLE', 'OWNER_UNAVAILABLE');
       return result('UNKNOWN', 'OWNER_DATA_UNKNOWN');
     }
   }
@@ -318,9 +310,6 @@ export function createEmailCampaignDeliveryCurrentnessResolver(options: {
     options.senders,
     new WorkspaceDirectoryEmailEndpointResolver(options.directory),
     options.outbound,
-    new HttpCoreEmailCampaignEntitlementReader(
-      options.coreUrl,
-      options.internalServiceSecret
-    )
+    new HttpCoreEmailCampaignEntitlementReader(options.coreUrl, options.internalServiceSecret)
   );
 }
