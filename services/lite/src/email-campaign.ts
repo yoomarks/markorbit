@@ -17,11 +17,7 @@ import type { LiteTransactionHost } from './content-preparation.js';
 
 type Row = Record<string, unknown>;
 type CommandType =
-  | 'SAVE_AUDIENCE'
-  | 'SAVE_CONTENT'
-  | 'SAVE_BRAND'
-  | 'SAVE_CAMPAIGN'
-  | 'SAVE_REVIEW';
+  'SAVE_AUDIENCE' | 'SAVE_CONTENT' | 'SAVE_BRAND' | 'SAVE_CAMPAIGN' | 'SAVE_REVIEW';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const SHA256 = /^[0-9a-f]{64}$/;
