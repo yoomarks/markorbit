@@ -182,21 +182,37 @@ suite('PostgreSQL Workspace Email Sender Profile owner', () => {
     expect(await service.getLatestSenderProfile(workspaceA, first.senderProfileId)).toEqual(first);
   });
 
-  it('isolates exact identities and command keys by Workspace', async () => {
+  it('isolates exact identities, routing and command keys by Workspace', async () => {
     const a = profile(workspaceA);
-    const b = profile(workspaceB);
     await store().createSenderProfile({ value: a, idempotencyKey: 'shared-key' });
-    await store().createSenderProfile({ value: b, idempotencyKey: 'shared-key' });
-
-    expect((await store().getLatestSenderProfile(workspaceA, a.senderProfileId)).workspaceId).toBe(
-      workspaceA
-    );
-    expect((await store().getLatestSenderProfile(workspaceB, b.senderProfileId)).workspaceId).toBe(
-      workspaceB
-    );
 
     await expect(
-      store().getLatestSenderProfile('16161616-1616-4616-8616-161616161616', a.senderProfileId)
+      store().createSenderProfile({
+        value: profile(workspaceB),
+        idempotencyKey: 'shared-key'
+      })
+    ).rejects.toMatchObject({ code: 'IDENTITY_CONFLICT' });
+
+    const b = profile(workspaceB, 1, {
+      fromDomain: 'mail.example.net',
+      fromAddress: 'hello@mail.example.net',
+      providerRoutingPartitionRef: 'routing-partition:workspace-b',
+      reputationIsolationKey: 'workspace-reputation:b'
+    });
+    await store().createSenderProfile({ value: b, idempotencyKey: 'shared-key' });
+
+    expect(
+      (await store().getLatestSenderProfile(workspaceA, a.senderProfileId)).workspaceId
+    ).toBe(workspaceA);
+    expect(
+      (await store().getLatestSenderProfile(workspaceB, b.senderProfileId)).workspaceId
+    ).toBe(workspaceB);
+
+    await expect(
+      store().getLatestSenderProfile(
+        '16161616-1616-4616-8616-161616161616',
+        a.senderProfileId
+      )
     ).rejects.toMatchObject({ code: 'NOT_FOUND' });
   });
 
@@ -288,7 +304,7 @@ suite('PostgreSQL Workspace Email Sender Profile owner', () => {
       verification: {
         status: 'UNAVAILABLE',
         evidenceRefs: ['verification-service:unavailable'],
-        observedAt: '2026-09-18T13:00:00.000Z'
+        observedAt: '2026-09-18T12:20:00.000Z'
       }
     });
     await service.recordVerificationObservation({
