@@ -280,9 +280,9 @@ suite('PostgreSQL Email Campaign preparation owner', () => {
       brand: prepared.b,
       review: approved
     });
-    expect(
-      Object.values(aggregate.campaign.authority).every((value) => value === false)
-    ).toBe(true);
+    expect(Object.values(aggregate.campaign.authority).every((value) => value === false)).toBe(
+      true
+    );
     expect(aggregate.review.deliveryPreparationOnly).toBe(true);
     expect(aggregate.review.authority.externalSendAuthorized).toBe(false);
   });
@@ -352,11 +352,7 @@ suite('PostgreSQL Email Campaign preparation owner', () => {
     );
 
     await expect(
-      store().getCampaignVersion(
-        '16161616-1616-4616-8616-161616161616',
-        'email-campaign_test',
-        1
-      )
+      store().getCampaignVersion('16161616-1616-4616-8616-161616161616', 'email-campaign_test', 1)
     ).rejects.toMatchObject({ code: 'NOT_FOUND' });
   });
 
@@ -389,14 +385,12 @@ suite('PostgreSQL Email Campaign preparation owner', () => {
   it('fails closed when queryable Campaign columns drift from document_json', async () => {
     const service = store();
     const prepared = await savePreparation(service);
-    await database
-      .getPool()
-      .query(
-        `UPDATE lite_email_campaign_versions
+    await database.getPool().query(
+      `UPDATE lite_email_campaign_versions
             SET campaign_fingerprint_sha256=$1
           WHERE workspace_id=$2 AND campaign_id=$3 AND version=1`,
-        [hashE, workspaceA, prepared.cp.campaignId]
-      );
+      [hashE, workspaceA, prepared.cp.campaignId]
+    );
 
     await expect(
       service.getCampaignVersion(workspaceA, prepared.cp.campaignId, 1)
