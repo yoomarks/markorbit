@@ -325,34 +325,31 @@ function harness(
     )
   };
   const entitlements: EmailCampaignEntitlementReader = {
-    resolve: vi.fn(
-      (): Promise<EmailCampaignEntitlementResolution> => {
-        if (options.entitlement === 'UNAVAILABLE')
-          return Promise.resolve({ state: 'UNAVAILABLE' });
-        return Promise.resolve({
-          state: 'CURRENT',
-          access: {
-            schemaVersion: 1,
-            workspaceId,
-            featureKey: 'EMAIL_CAMPAIGN',
-            entitlementKey: 'lite.channel.email.campaign',
-            status: options.entitlement === 'DENIED' ? 'DISABLED' : 'ENABLED',
-            allowed: options.entitlement !== 'DENIED',
-            authority: {
-              credentialAuthorityGranted: false,
-              providerSelectionAuthorityGranted: false,
-              protectedActionAuthorized: false,
-              externalSendAuthorized: false,
-              externalPublicationCreated: false,
-              customerTruthCreated: false,
-              orderCreated: false,
-              matterCreated: false,
-              trademarkTruthCreated: false
-            }
+    resolve: vi.fn((): Promise<EmailCampaignEntitlementResolution> => {
+      if (options.entitlement === 'UNAVAILABLE') return Promise.resolve({ state: 'UNAVAILABLE' });
+      return Promise.resolve({
+        state: 'CURRENT',
+        access: {
+          schemaVersion: 1,
+          workspaceId,
+          featureKey: 'EMAIL_CAMPAIGN',
+          entitlementKey: 'lite.channel.email.campaign',
+          status: options.entitlement === 'DENIED' ? 'DISABLED' : 'ENABLED',
+          allowed: options.entitlement !== 'DENIED',
+          authority: {
+            credentialAuthorityGranted: false,
+            providerSelectionAuthorityGranted: false,
+            protectedActionAuthorized: false,
+            externalSendAuthorized: false,
+            externalPublicationCreated: false,
+            customerTruthCreated: false,
+            orderCreated: false,
+            matterCreated: false,
+            trademarkTruthCreated: false
           }
-        });
-      }
-    )
+        }
+      });
+    })
   };
   return new EmailCampaignDeliveryCurrentnessResolver(
     campaigns,
