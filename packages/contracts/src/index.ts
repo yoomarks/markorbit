@@ -1249,5 +1249,6 @@ export * from './email-campaign.js';
 export * from './email-sender-profile.js';
 export * from './site.js';
 export * from './trademark-intelligence-method-family-v1.js';
+export * from './brain-us-trademark-citation-extraction-method.js';
 
 export * from './outbound-contact-policy.js';
