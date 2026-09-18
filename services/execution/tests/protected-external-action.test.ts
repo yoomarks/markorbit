@@ -217,7 +217,6 @@ describe('Execution protected Trading publish authorization and release', () => 
   });
 });
 
-
 const emailIntent: EmailCampaignSendIntentV1 = {
   schemaVersion: 1,
   actionKind: 'EMAIL_CAMPAIGN_SEND',
@@ -240,11 +239,8 @@ const emailIntent: EmailCampaignSendIntentV1 = {
 const emailReceipt: CoreHumanActionReceiptBindingV1 = {
   ...receipt,
   kind: 'EMAIL_CAMPAIGN_SEND',
-  mutationRoute:
-    '/api/execution/protected-external-actions/email-campaign-send/authorizations',
-  reviewedActionDigest: createHash('sha256')
-    .update(JSON.stringify(emailIntent))
-    .digest('hex'),
+  mutationRoute: '/api/execution/protected-external-actions/email-campaign-send/authorizations',
+  reviewedActionDigest: createHash('sha256').update(JSON.stringify(emailIntent)).digest('hex'),
   idempotencyKey: 'authorize-email-1176'
 };
 
@@ -307,7 +303,9 @@ function emailHarness(state: EmailCampaignSendCurrentnessStateV1 = 'CURRENT') {
 
 const authorizeEmail = (
   service: ProtectedExternalActionService,
-  overrides: Partial<Parameters<ProtectedExternalActionService['authorizeEmailCampaignSend']>[0]> = {}
+  overrides: Partial<
+    Parameters<ProtectedExternalActionService['authorizeEmailCampaignSend']>[0]
+  > = {}
 ) =>
   service.authorizeEmailCampaignSend({
     workspaceId,
