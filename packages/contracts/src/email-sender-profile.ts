@@ -367,9 +367,9 @@ export function evaluateWorkspaceEmailSenderCurrentnessV1(
   let state: WorkspaceEmailSenderCurrentnessStateV1;
   if (parsed.status === 'REVOKED') state = 'REVOKED';
   else if (parsed.status === 'SUSPENDED') state = 'SUSPENDED';
-  else if (parsed.status === 'PENDING_VERIFICATION') state = 'PENDING_VERIFICATION';
   else if (parsed.verification.status === 'UNKNOWN') state = 'UNKNOWN';
   else if (parsed.verification.status === 'UNAVAILABLE') state = 'UNAVAILABLE';
+  else if (parsed.status === 'PENDING_VERIFICATION') state = 'PENDING_VERIFICATION';
   else if (parsed.verification.status !== 'VERIFIED') state = 'PENDING_VERIFICATION';
   else if (
     Date.parse(now) - Date.parse(parsed.verification.observedAt) >
