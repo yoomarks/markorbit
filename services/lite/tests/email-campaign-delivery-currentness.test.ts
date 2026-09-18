@@ -6,7 +6,6 @@ import {
   type EmailCampaignSendIntentV1
 } from '@markorbit/contracts/protected-external-action';
 import type { OutboundContactReadinessV1 } from '@markorbit/contracts/outbound-contact-policy';
-import type { OutboundContactReadinessV1 } from '@markorbit/contracts/outbound-contact-policy';
 import {
   noEmailCampaignAuthorityConsequencesV1,
   type CampaignAudienceSnapshotV1,
