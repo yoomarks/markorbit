@@ -188,3 +188,45 @@ describe('Trading Listing Publish receipt internal HTTP admission', () => {
     expect(f.materializeOrResolve).not.toHaveBeenCalled();
   });
 });
+
+
+describe('Email Campaign Send receipt internal HTTP admission', () => {
+  it('admits the exact EMAIL_CAMPAIGN_SEND kind and bounded authorization route', async () => {
+    const emailCampaign: MaterializeGovernedHumanActionReceiptRequest = {
+      ...command,
+      kind: 'EMAIL_CAMPAIGN_SEND',
+      mutationRoute:
+        '/api/execution/protected-external-actions/email-campaign-send/authorizations',
+      reviewedActionDigest: 'e'.repeat(64),
+      idempotencyKey: 'email-campaign-send-1'
+    };
+    const materialize = vi.fn(
+      (input: Readonly<MaterializeGovernedHumanActionReceiptRequest>) =>
+        Promise.resolve({ ...receipt, ...input })
+    );
+    const f = routes({ materialize });
+    const response = await f.result[0]!.handle(
+      request('/internal/auth/governed-human-actions/receipts', emailCampaign)
+    );
+    expect(response.status).toBe(200);
+    expect(materialize).toHaveBeenCalledWith(emailCampaign);
+  });
+
+  it('still rejects generic marketing/provider authority expansion', async () => {
+    const f = routes();
+    for (const kind of ['EMAIL_SEND', 'MARKETING_SEND', 'PROVIDER_EMAIL_SEND']) {
+      await expect(
+        f.result[0]!.handle(
+          request('/internal/auth/governed-human-actions/receipts', {
+            ...command,
+            kind
+          })
+        )
+      ).rejects.toMatchObject({
+        status: 400,
+        code: 'INVALID_GOVERNED_HUMAN_ACTION_REQUEST'
+      });
+    }
+    expect(f.materializeOrResolve).not.toHaveBeenCalled();
+  });
+});
