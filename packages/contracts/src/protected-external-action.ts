@@ -1,8 +1,19 @@
+import type {
+  CampaignAudienceSnapshotIdV1,
+  CampaignBrandProjectionIdV1,
+  CampaignContentProjectionIdV1,
+  CampaignReviewDecisionIdV1,
+  EmailCampaignIdV1
+} from './email-campaign.js';
+import type { WorkspaceEmailSenderProfileId } from './email-sender-profile.js';
 import type { TradingListingAssetId } from './trading-asset-classification.js';
 import type { TradingListingDraftId } from './trading-listing.js';
 import type { TradingMarketplaceTargetBindingId } from './trading-marketplace-target-binding.js';
 
-export const protectedExternalActionKindsV1 = ['TRADING_LISTING_PUBLISH'] as const;
+export const protectedExternalActionKindsV1 = [
+  'TRADING_LISTING_PUBLISH',
+  'EMAIL_CAMPAIGN_SEND'
+] as const;
 export type ProtectedExternalActionKindV1 = (typeof protectedExternalActionKindsV1)[number];
 
 export type TradingListingReviewId = `trading-listing-review_${string}`;
@@ -25,6 +36,78 @@ export interface TradingListingPublicationIntentV1 {
     ProtectedActionExactVersionReferenceV1<TradingMarketplaceTargetBindingId>
   >;
   effectFingerprintSha256: string;
+}
+
+export interface ProtectedActionExactFingerprintReferenceV1<Id extends string = string>
+  extends ProtectedActionExactVersionReferenceV1<Id> {
+  fingerprintSha256: string;
+}
+
+export interface EmailCampaignSendIntentV1 {
+  schemaVersion: 1;
+  actionKind: 'EMAIL_CAMPAIGN_SEND';
+  workspaceId: string;
+  campaign: Readonly<ProtectedActionExactFingerprintReferenceV1<EmailCampaignIdV1>>;
+  campaignReview: Readonly<
+    ProtectedActionExactVersionReferenceV1<CampaignReviewDecisionIdV1>
+  >;
+  senderProfile: Readonly<
+    ProtectedActionExactFingerprintReferenceV1<WorkspaceEmailSenderProfileId>
+  >;
+  audience: Readonly<
+    ProtectedActionExactFingerprintReferenceV1<CampaignAudienceSnapshotIdV1>
+  >;
+  content: Readonly<
+    ProtectedActionExactFingerprintReferenceV1<CampaignContentProjectionIdV1>
+  >;
+  brand: Readonly<
+    ProtectedActionExactFingerprintReferenceV1<CampaignBrandProjectionIdV1>
+  >;
+  recipientCount: number;
+  deliveryPlanFingerprintSha256: string;
+  effectFingerprintSha256: string;
+}
+
+export const emailCampaignSendCurrentnessStatesV1 = [
+  'CURRENT',
+  'STALE',
+  'REVOKED',
+  'SUPPRESSED',
+  'UNKNOWN',
+  'UNAVAILABLE'
+] as const;
+export type EmailCampaignSendCurrentnessStateV1 =
+  (typeof emailCampaignSendCurrentnessStatesV1)[number];
+
+export const emailCampaignSendCurrentnessReasonsV1 = [
+  'EXACT_DELIVERY_PLAN_CURRENT',
+  'CAMPAIGN_STALE',
+  'REVIEW_STALE',
+  'REVIEW_CAMPAIGN_BINDING_DRIFT',
+  'SENDER_PROFILE_STALE',
+  'SENDER_PROFILE_REVOKED',
+  'SENDER_PROFILE_UNAVAILABLE',
+  'ENDPOINT_DRIFT',
+  'ENDPOINT_UNAVAILABLE',
+  'OUTBOUND_POLICY_STALE',
+  'OUTBOUND_POLICY_SUPPRESSED',
+  'ENTITLEMENT_REVOKED',
+  'OWNER_DATA_UNKNOWN',
+  'OWNER_UNAVAILABLE',
+  'FINGERPRINT_MISMATCH',
+  'WORKSPACE_MISMATCH'
+] as const;
+export type EmailCampaignSendCurrentnessReasonV1 =
+  (typeof emailCampaignSendCurrentnessReasonsV1)[number];
+
+export interface EmailCampaignSendCurrentnessV1 {
+  schemaVersion: 1;
+  workspaceId: string;
+  actionKind: 'EMAIL_CAMPAIGN_SEND';
+  effectFingerprintSha256: string;
+  deliveryPlanFingerprintSha256: string;
+  state: EmailCampaignSendCurrentnessStateV1;
+  reason: EmailCampaignSendCurrentnessReasonV1;
 }
 
 export const tradingListingPublicationCurrentnessStatesV1 = [
@@ -70,8 +153,10 @@ export interface CoreHumanActionReceiptBindingV1 {
   userId: string;
   membershipId: string;
   principalReference: string;
-  kind: 'TRADING_LISTING_PUBLISH';
-  mutationRoute: '/api/execution/protected-external-actions/trading-listing-publish/authorizations';
+  kind: ProtectedExternalActionKindV1;
+  mutationRoute:
+    | '/api/execution/protected-external-actions/trading-listing-publish/authorizations'
+    | '/api/execution/protected-external-actions/email-campaign-send/authorizations';
   reviewedActionDigest: string;
   idempotencyKey: string;
   authenticatedAt: string;
@@ -94,13 +179,11 @@ export const protectedExternalActionAuthorizationStatusesV1 = [
 export type ProtectedExternalActionAuthorizationStatusV1 =
   (typeof protectedExternalActionAuthorizationStatusesV1)[number];
 
-export interface ProtectedExternalActionAuthorizationV1 {
+interface ProtectedExternalActionAuthorizationBaseV1 {
   schemaVersion: 1;
   authorizationId: ProtectedExternalActionAuthorizationId;
   version: 1;
   workspaceId: string;
-  actionKind: 'TRADING_LISTING_PUBLISH';
-  intent: Readonly<TradingListingPublicationIntentV1>;
   effectFingerprintSha256: string;
   humanReceipt: Readonly<CoreHumanActionReceiptBindingV1>;
   authorizationStatus: ProtectedExternalActionAuthorizationStatusV1;
@@ -111,12 +194,21 @@ export interface ProtectedExternalActionAuthorizationV1 {
   idempotencyKey: string;
 }
 
-export interface ProtectedExternalActionReleaseV1 {
+export type ProtectedExternalActionAuthorizationV1 =
+  | (ProtectedExternalActionAuthorizationBaseV1 & {
+      actionKind: 'TRADING_LISTING_PUBLISH';
+      intent: Readonly<TradingListingPublicationIntentV1>;
+    })
+  | (ProtectedExternalActionAuthorizationBaseV1 & {
+      actionKind: 'EMAIL_CAMPAIGN_SEND';
+      intent: Readonly<EmailCampaignSendIntentV1>;
+    });
+
+interface ProtectedExternalActionReleaseBaseV1 {
   schemaVersion: 1;
   releaseId: ProtectedExternalActionReleaseId;
   version: 1;
   workspaceId: string;
-  actionKind: 'TRADING_LISTING_PUBLISH';
   authorization: Readonly<
     ProtectedActionExactVersionReferenceV1<ProtectedExternalActionAuthorizationId>
   >;
@@ -126,6 +218,14 @@ export interface ProtectedExternalActionReleaseV1 {
   releasedAt: string;
   idempotencyKey: string;
 }
+
+export type ProtectedExternalActionReleaseV1 =
+  | (ProtectedExternalActionReleaseBaseV1 & {
+      actionKind: 'TRADING_LISTING_PUBLISH';
+    })
+  | (ProtectedExternalActionReleaseBaseV1 & {
+      actionKind: 'EMAIL_CAMPAIGN_SEND';
+    });
 
 export class ProtectedExternalActionContractError extends TypeError {
   constructor(message: string) {
@@ -196,5 +296,63 @@ export function assertTradingListingPublicationIntentV1(
   if (!SHA256.test(intent.effectFingerprintSha256))
     throw new ProtectedExternalActionContractError(
       'effectFingerprintSha256 must be a lowercase SHA-256 digest.'
+    );
+}
+
+function exactFingerprint<Id extends string>(
+  value: Readonly<ProtectedActionExactFingerprintReferenceV1<Id>>,
+  field: string
+) {
+  const exactValue = exact(value, field);
+  if (!SHA256.test(value.fingerprintSha256))
+    throw new ProtectedExternalActionContractError(
+      `${field}.fingerprintSha256 must be a lowercase SHA-256 digest.`
+    );
+  return { ...exactValue, fingerprintSha256: value.fingerprintSha256 } as const;
+}
+
+export function canonicalEmailCampaignSendIntentPayloadV1(
+  intent: Readonly<EmailCampaignSendIntentV1>
+) {
+  if (
+    intent.schemaVersion !== 1 ||
+    intent.actionKind !== 'EMAIL_CAMPAIGN_SEND' ||
+    !UUID.test(intent.workspaceId)
+  )
+    throw new ProtectedExternalActionContractError(
+      'Email Campaign send intent identity or Workspace is invalid.'
+    );
+  if (!Number.isSafeInteger(intent.recipientCount) || intent.recipientCount < 1)
+    throw new ProtectedExternalActionContractError(
+      'Email Campaign send intent recipientCount must be a positive safe integer.'
+    );
+  if (intent.recipientCount > 10_000)
+    throw new ProtectedExternalActionContractError(
+      'Email Campaign send intent recipientCount exceeds the bounded maximum.'
+    );
+  return {
+    schemaVersion: 1 as const,
+    actionKind: 'EMAIL_CAMPAIGN_SEND' as const,
+    workspaceId: intent.workspaceId.toLowerCase(),
+    campaign: exactFingerprint(intent.campaign, 'campaign'),
+    campaignReview: exact(intent.campaignReview, 'campaignReview'),
+    senderProfile: exactFingerprint(intent.senderProfile, 'senderProfile'),
+    audience: exactFingerprint(intent.audience, 'audience'),
+    content: exactFingerprint(intent.content, 'content'),
+    brand: exactFingerprint(intent.brand, 'brand'),
+    recipientCount: intent.recipientCount
+  };
+}
+
+export function assertEmailCampaignSendIntentV1(
+  intent: Readonly<EmailCampaignSendIntentV1>
+): void {
+  canonicalEmailCampaignSendIntentPayloadV1(intent);
+  if (
+    !SHA256.test(intent.deliveryPlanFingerprintSha256) ||
+    !SHA256.test(intent.effectFingerprintSha256)
+  )
+    throw new ProtectedExternalActionContractError(
+      'Email Campaign send fingerprints must be lowercase SHA-256 digests.'
     );
 }
