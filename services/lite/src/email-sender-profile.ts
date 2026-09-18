@@ -337,10 +337,7 @@ export class PostgresEmailSenderProfileStore {
           client,
           `email-sender-profile:routing:${value.providerRoutingPartitionRef}`
         );
-        await this.lock(
-          client,
-          `email-sender-profile:reputation:${value.reputationIsolationKey}`
-        );
+        await this.lock(client, `email-sender-profile:reputation:${value.reputationIsolationKey}`);
         await this.assertWorkspaceIsolation(client, value);
 
         await this.lock(client, `${w}:email-sender-profile:${id}`);
