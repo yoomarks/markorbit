@@ -285,9 +285,8 @@ function harness(
     )
   };
   const outbound: EmailCampaignReadinessEvaluator = {
-    evaluate: vi.fn(
-      (command: Parameters<EmailCampaignReadinessEvaluator['evaluate']>[0]) =>
-        Promise.resolve({
+    evaluate: vi.fn((command: Parameters<EmailCampaignReadinessEvaluator['evaluate']>[0]) =>
+      Promise.resolve({
         schemaVersion: 1,
         workspaceId,
         evaluatedByPrincipalId: command.actorPrincipalId,
@@ -311,12 +310,12 @@ function harness(
         suppressionRefs: [],
         evaluatedAt: '2026-09-19T00:10:00.000Z',
         readinessFingerprintSha256: '8'.repeat(64),
-          authorityConsequences: {
-            legalConsentVerifiedByMarkOrbit: false,
-            externalMessageSent: false,
-            protectedActionAuthorized: false
-          }
-        })
+        authorityConsequences: {
+          legalConsentVerifiedByMarkOrbit: false,
+          externalMessageSent: false,
+          protectedActionAuthorized: false
+        }
+      })
     )
   };
   const entitlements: EmailCampaignEntitlementReader = {
