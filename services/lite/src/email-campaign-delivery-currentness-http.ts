@@ -29,7 +29,11 @@ export function createEmailCampaignDeliveryCurrentnessRoutes(options: {
       handle: async (request) => {
         const workspaceId = workspaceOf(request, options.internalServiceSecret);
         if (!request.body || typeof request.body !== 'object' || Array.isArray(request.body))
-          throw new HttpError(400, 'INVALID_REQUEST', 'Email Campaign currentness body is required.');
+          throw new HttpError(
+            400,
+            'INVALID_REQUEST',
+            'Email Campaign currentness body is required.'
+          );
         const body = request.body as Record<string, unknown>;
         if (
           Object.keys(body).some((field) => !['intent', 'humanReceipt'].includes(field)) ||
