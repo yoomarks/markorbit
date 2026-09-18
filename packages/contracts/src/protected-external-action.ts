@@ -172,7 +172,7 @@ export const protectedExternalActionAuthorizationStatusesV1 = [
 export type ProtectedExternalActionAuthorizationStatusV1 =
   (typeof protectedExternalActionAuthorizationStatusesV1)[number];
 
-interface ProtectedExternalActionAuthorizationBaseV1 {
+export interface ProtectedExternalActionAuthorizationBaseV1 {
   schemaVersion: 1;
   authorizationId: ProtectedExternalActionAuthorizationId;
   version: 1;
@@ -197,7 +197,7 @@ export type ProtectedExternalActionAuthorizationV1 =
       intent: Readonly<EmailCampaignSendIntentV1>;
     });
 
-interface ProtectedExternalActionReleaseBaseV1 {
+export interface ProtectedExternalActionReleaseBaseV1 {
   schemaVersion: 1;
   releaseId: ProtectedExternalActionReleaseId;
   version: 1;
