@@ -166,6 +166,7 @@ export interface EmailCampaignV1 {
     version: number;
     fingerprintSha256: string;
   }>;
+  campaignFingerprintSha256: string;
   status: EmailCampaignStatusV1;
   humanReviewRequired: true;
   createdAt: string;
@@ -605,6 +606,7 @@ export function parseEmailCampaignV1(value: unknown): EmailCampaignV1 {
       'audience',
       'content',
       'brand',
+      'campaignFingerprintSha256',
       'status',
       'humanReviewRequired',
       'createdAt',
@@ -672,6 +674,10 @@ export function parseEmailCampaignV1(value: unknown): EmailCampaignV1 {
       version: brand.version,
       fingerprintSha256: brand.fingerprintSha256
     },
+    campaignFingerprintSha256: sha256(
+      input.campaignFingerprintSha256,
+      'campaignFingerprintSha256'
+    ),
     status: one(input.status, emailCampaignStatusesV1, 'status'),
     humanReviewRequired: true,
     createdAt: timestamp(input.createdAt, 'createdAt'),
@@ -805,5 +811,62 @@ export function assessCampaignAudienceReadinessV1(
     reason = 'REVIEWED_SEND_FINGERPRINT_MISMATCH';
   else if (readiness.outcome !== 'READY_FOR_HUMAN_SEND' || readiness.reason !== 'CURRENT_ALLOWED_ASSERTION')
     reason = 'READINESS_NOT_READY';
+  return { matches: reason === 'MATCH', reason, createsSendAuthority: false };
+}
+
+
+export function assessEmailCampaignAssemblyV1(
+  campaign: Readonly<EmailCampaignV1>,
+  audience: Readonly<CampaignAudienceSnapshotV1>,
+  content: Readonly<CampaignContentProjectionV1>,
+  brand: Readonly<CampaignBrandProjectionV1>
+): Readonly<{
+  matches: boolean;
+  reason:
+    | 'MATCH'
+    | 'WORKSPACE_MISMATCH'
+    | 'PURPOSE_MISMATCH'
+    | 'AUDIENCE_REF_MISMATCH'
+    | 'CONTENT_REF_MISMATCH'
+    | 'BRAND_REF_MISMATCH'
+    | 'REVIEWED_SEND_FINGERPRINT_MISMATCH';
+  createsSendAuthority: false;
+}> {
+  let reason:
+    | 'MATCH'
+    | 'WORKSPACE_MISMATCH'
+    | 'PURPOSE_MISMATCH'
+    | 'AUDIENCE_REF_MISMATCH'
+    | 'CONTENT_REF_MISMATCH'
+    | 'BRAND_REF_MISMATCH'
+    | 'REVIEWED_SEND_FINGERPRINT_MISMATCH' = 'MATCH';
+  if (
+    campaign.workspaceId !== audience.workspaceId ||
+    campaign.workspaceId !== content.workspaceId ||
+    campaign.workspaceId !== brand.workspaceId
+  )
+    reason = 'WORKSPACE_MISMATCH';
+  else if (audience.entries.some((entry) => entry.purpose !== campaign.purpose))
+    reason = 'PURPOSE_MISMATCH';
+  else if (
+    campaign.audience.audienceSnapshotId !== audience.audienceSnapshotId ||
+    campaign.audience.version !== audience.version ||
+    campaign.audience.fingerprintSha256 !== audience.audienceFingerprintSha256
+  )
+    reason = 'AUDIENCE_REF_MISMATCH';
+  else if (
+    campaign.content.contentProjectionId !== content.contentProjectionId ||
+    campaign.content.version !== content.version ||
+    campaign.content.fingerprintSha256 !== content.projectionFingerprintSha256
+  )
+    reason = 'CONTENT_REF_MISMATCH';
+  else if (
+    campaign.brand.brandProjectionId !== brand.brandProjectionId ||
+    campaign.brand.version !== brand.version ||
+    campaign.brand.fingerprintSha256 !== brand.brandProjectionFingerprintSha256
+  )
+    reason = 'BRAND_REF_MISMATCH';
+  else if (audience.reviewedSendFingerprintSha256 !== content.reviewedSendFingerprintSha256)
+    reason = 'REVIEWED_SEND_FINGERPRINT_MISMATCH';
   return { matches: reason === 'MATCH', reason, createsSendAuthority: false };
 }
