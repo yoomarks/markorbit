@@ -3,9 +3,9 @@ import { describe, expect, it, vi } from 'vitest';
 import {
   canonicalEmailCampaignSendIntentPayloadV1,
   type CoreHumanActionReceiptBindingV1,
-  type EmailCampaignSendIntentV1
+  type EmailCampaignSendIntentV1,
+  type OutboundContactReadinessV1
 } from '@markorbit/contracts';
-import type { OutboundContactReadinessV1 } from '@markorbit/contracts/outbound-contact-policy';
 import {
   noEmailCampaignAuthorityConsequencesV1,
   type CampaignAudienceSnapshotV1,
