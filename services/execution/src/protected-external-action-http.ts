@@ -267,7 +267,7 @@ export class HttpTradingPublicationCurrentnessClient implements TradingPublicati
             'x-markorbit-internal-authorization': this.internalServiceSecret,
             'x-markorbit-workspace-id': intent.workspaceId
           },
-          body: JSON.stringify({ intent, humanReceipt }),
+          body: JSON.stringify(intent),
           signal: AbortSignal.timeout(this.timeoutMs)
         }
       );
