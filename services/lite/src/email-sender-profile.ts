@@ -2,6 +2,7 @@ import { createHash } from 'node:crypto';
 import {
   evaluateWorkspaceEmailSenderCurrentnessV1,
   parseWorkspaceEmailSenderProfileV1,
+  workspaceEmailSenderProfileStatusesV1,
   type WorkspaceEmailSenderCurrentnessV1,
   type WorkspaceEmailSenderProfileId,
   type WorkspaceEmailSenderProfileStatusV1,
@@ -240,6 +241,12 @@ export class PostgresEmailSenderProfileStore {
         422
       );
     const statuses = options.statuses ? [...new Set(options.statuses)] : null;
+    if (statuses?.some((status) => !workspaceEmailSenderProfileStatusesV1.includes(status)))
+      throw new EmailSenderProfilePersistenceError(
+        'INVALID_INPUT',
+        'statuses contains an invalid sender profile status.',
+        422
+      );
     try {
       const result = await this.query.query<Row>(
         `SELECT * FROM (
