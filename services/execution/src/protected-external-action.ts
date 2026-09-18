@@ -122,7 +122,7 @@ export interface AuthorizeEmailCampaignSendCommand {
   idempotencyKey: string;
 }
 
-export interface ReleaseEmailCampaignSendCommand extends ReleaseTradingListingPublishCommand {}
+export type ReleaseEmailCampaignSendCommand = ReleaseTradingListingPublishCommand;
 
 const digest = (value: unknown) => createHash('sha256').update(JSON.stringify(value)).digest('hex');
 const bounded = (value: string, maximum = 300) =>
