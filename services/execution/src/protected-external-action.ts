@@ -93,7 +93,8 @@ export interface TradingPublicationCurrentnessClient {
 
 export interface EmailCampaignSendCurrentnessClient {
   validateCurrent(
-    intent: Readonly<EmailCampaignSendIntentV1>
+    intent: Readonly<EmailCampaignSendIntentV1>,
+    humanReceipt: Readonly<CoreHumanActionReceiptBindingV1>
   ): Promise<EmailCampaignSendCurrentnessV1>;
 }
 
@@ -517,7 +518,10 @@ export class ProtectedExternalActionService {
         true
       );
     await this.core.validateCurrent(command.humanReceipt);
-    const currentness = await this.emailCampaign.validateCurrent(command.intent);
+    const currentness = await this.emailCampaign.validateCurrent(
+      command.intent,
+      command.humanReceipt
+    );
     if (
       currentness.workspaceId !== command.workspaceId ||
       currentness.actionKind !== 'EMAIL_CAMPAIGN_SEND' ||
@@ -624,7 +628,10 @@ export class ProtectedExternalActionService {
         true
       );
     await this.core.validateCurrent(authorization.humanReceipt);
-    const currentness = await this.emailCampaign.validateCurrent(authorization.intent);
+    const currentness = await this.emailCampaign.validateCurrent(
+      authorization.intent,
+      authorization.humanReceipt
+    );
     if (
       currentness.workspaceId !== authorization.workspaceId ||
       currentness.effectFingerprintSha256 !== authorization.effectFingerprintSha256 ||
