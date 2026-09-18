@@ -280,8 +280,9 @@ function asIntegrity<T>(parse: () => T, message: string): T {
 }
 
 function sameTimestamp(rowValue: unknown, documentValue: string): boolean {
-  if (rowValue === null || rowValue === undefined) return false;
-  const left = rowValue instanceof Date ? rowValue.getTime() : Date.parse(String(rowValue));
+  if (rowValue instanceof Date) return rowValue.getTime() === Date.parse(documentValue);
+  if (typeof rowValue !== 'string') return false;
+  const left = Date.parse(rowValue);
   return Number.isFinite(left) && left === Date.parse(documentValue);
 }
 
