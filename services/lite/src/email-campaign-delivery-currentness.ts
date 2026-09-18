@@ -156,7 +156,10 @@ export class HttpCoreEmailCampaignEntitlementReader implements EmailCampaignEnti
 
 export class EmailCampaignDeliveryCurrentnessResolver {
   constructor(
-    private readonly campaigns: Pick<PostgresEmailCampaignStore, 'loadReviewedAggregate'>,
+    private readonly campaigns: Pick<
+      PostgresEmailCampaignStore,
+      'loadReviewedAggregate' | 'getLatestCampaign'
+    >,
     private readonly senders: Pick<
       PostgresEmailSenderProfileStore,
       'getExactSenderProfile' | 'evaluateSenderProfileCurrentness'
@@ -209,13 +212,18 @@ export class EmailCampaignDeliveryCurrentnessResolver {
       if (entitlement.state === 'UNAVAILABLE') return result('UNAVAILABLE', 'OWNER_UNAVAILABLE');
       if (!entitlement.access.allowed) return result('REVOKED', 'ENTITLEMENT_REVOKED');
 
-      const aggregate = await this.campaigns.loadReviewedAggregate(
-        workspaceId,
-        intent.campaign.id,
-        intent.campaign.version,
-        intent.campaignReview.id,
-        intent.campaignReview.version
-      );
+      const [aggregate, latestCampaign] = await Promise.all([
+        this.campaigns.loadReviewedAggregate(
+          workspaceId,
+          intent.campaign.id,
+          intent.campaign.version,
+          intent.campaignReview.id,
+          intent.campaignReview.version
+        ),
+        this.campaigns.getLatestCampaign(workspaceId, intent.campaign.id)
+      ]);
+      if (latestCampaign.version !== intent.campaign.version)
+        return result('STALE', 'CAMPAIGN_STALE');
       if (
         aggregate.campaign.campaignFingerprintSha256 !== intent.campaign.fingerprintSha256 ||
         aggregate.audience.audienceFingerprintSha256 !== intent.audience.fingerprintSha256 ||
