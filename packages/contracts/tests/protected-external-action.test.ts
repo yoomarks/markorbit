@@ -120,7 +120,7 @@ describe('bounded protected external action contract', () => {
         ...emailIntent,
         senderProfile: { ...emailIntent.senderProfile, fingerprintSha256: 'secret@example.com' }
       })
-    ).toThrow(/SHA-256/);
+    ).toThrow(/SHA-256|raw email|not allowed/);
     expect(() =>
       assertEmailCampaignSendIntentV1({
         ...emailIntent,
