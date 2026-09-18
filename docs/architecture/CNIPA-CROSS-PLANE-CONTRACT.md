@@ -64,32 +64,32 @@ Data Engine objective facts ---------+
 
 ## 2. Permanent ownership matrix
 
-| Object / responsibility | Owner | Explicit non-owner |
-| --- | --- | --- |
-| CNIPA browser/session/authentication | Knowledge | Data Engine, Brain, Product |
-| LIST scheduling, pagination, retry, backfill windows | Knowledge | Data Engine |
-| DETAIL slow queue, pacing, retry/backoff | Knowledge | Data Engine |
-| Raw LIST response bytes | Knowledge | Data Engine |
-| Raw DETAIL response bytes | Knowledge | Data Engine |
-| Canonical Markdown / document versions | Knowledge | Data Engine |
-| Retrieval/indexing over documents | Knowledge | Data Engine |
-| CNIPA LIST structured source facts | Data Engine | Knowledge as canonical fact owner |
-| Objective official relationships | Data Engine after governed admission | Knowledge, Product |
-| Reusable interpretation/reasoning method | Brain | Knowledge, Data Engine |
-| Case-specific cognitive interpretation | Brain runtime / consuming Product according to contract | Data Engine as canonical fact |
-| Client / portfolio / managed trademark asset | MarkReg / Workspace | Data Engine |
-| Matter / task / reminder / notification target | MarkReg / Workspace | Data Engine |
-| External action execution | Capability / Execution | Brain, Knowledge, Data Engine |
+| Object / responsibility                              | Owner                                                   | Explicit non-owner                |
+| ---------------------------------------------------- | ------------------------------------------------------- | --------------------------------- |
+| CNIPA browser/session/authentication                 | Knowledge                                               | Data Engine, Brain, Product       |
+| LIST scheduling, pagination, retry, backfill windows | Knowledge                                               | Data Engine                       |
+| DETAIL slow queue, pacing, retry/backoff             | Knowledge                                               | Data Engine                       |
+| Raw LIST response bytes                              | Knowledge                                               | Data Engine                       |
+| Raw DETAIL response bytes                            | Knowledge                                               | Data Engine                       |
+| Canonical Markdown / document versions               | Knowledge                                               | Data Engine                       |
+| Retrieval/indexing over documents                    | Knowledge                                               | Data Engine                       |
+| CNIPA LIST structured source facts                   | Data Engine                                             | Knowledge as canonical fact owner |
+| Objective official relationships                     | Data Engine after governed admission                    | Knowledge, Product                |
+| Reusable interpretation/reasoning method             | Brain                                                   | Knowledge, Data Engine            |
+| Case-specific cognitive interpretation               | Brain runtime / consuming Product according to contract | Data Engine as canonical fact     |
+| Client / portfolio / managed trademark asset         | MarkReg / Workspace                                     | Data Engine                       |
+| Matter / task / reminder / notification target       | MarkReg / Workspace                                     | Data Engine                       |
+| External action execution                            | Capability / Execution                                  | Brain, Knowledge, Data Engine     |
 
 ## 3. Source identities
 
 Stable source identity is library-specific:
 
-| Library | Stable source record id |
-| --- | --- |
-| Registration examination | `adjuOpenId` |
-| Opposition decision | `adjuOpenId` |
-| Review adjudication | `pubId` |
+| Library                  | Stable source record id |
+| ------------------------ | ----------------------- |
+| Registration examination | `adjuOpenId`            |
+| Opposition decision      | `adjuOpenId`            |
+| Review adjudication      | `pubId`                 |
 
 These source identities are the cross-plane join anchors. Systems should not invent a second CNIPA document identity when the official source identity is available.
 
