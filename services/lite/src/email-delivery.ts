@@ -208,7 +208,13 @@ export class PostgresEmailDeliveryStore {
         'New delivery attempt must start as PLANNED.',
         422
       );
-    return this.command('CREATE_ATTEMPT', value.workspaceId, command.idempotencyKey, value, async (client) => {
+    return this.command(
+      'CREATE_ATTEMPT',
+      value.workspaceId,
+      command.idempotencyKey,
+      value,
+      persistedAttempt,
+      async (client) => {
       await this.lock(client, `${value.workspaceId}:email-delivery:${value.deliveryAttemptId}`);
       const existing = await client.query<Row>(
         `SELECT * FROM lite_email_delivery_attempts
@@ -244,8 +250,9 @@ export class PostgresEmailDeliveryStore {
           value.updatedAt
         ]
       );
-      return structuredClone(value);
-    });
+        return structuredClone(value);
+      }
+    );
   }
 
   async updateAttempt(
@@ -263,10 +270,16 @@ export class PostgresEmailDeliveryStore {
         { cause: error instanceof Error ? error : undefined }
       );
     }
-    return this.command('UPDATE_ATTEMPT', value.workspaceId, command.idempotencyKey, {
-      value,
-      expectedStatus: command.expectedStatus
-    }, async (client) => {
+    return this.command(
+      'UPDATE_ATTEMPT',
+      value.workspaceId,
+      command.idempotencyKey,
+      {
+        value,
+        expectedStatus: command.expectedStatus
+      },
+      persistedAttempt,
+      async (client) => {
       await this.lock(client, `${value.workspaceId}:email-delivery:${value.deliveryAttemptId}`);
       const currentResult = await client.query<Row>(
         `SELECT * FROM lite_email_delivery_attempts
@@ -304,8 +317,9 @@ export class PostgresEmailDeliveryStore {
           value.updatedAt
         ]
       );
-      return structuredClone(value);
-    });
+        return structuredClone(value);
+      }
+    );
   }
 
   async recordObservation(
@@ -328,6 +342,7 @@ export class PostgresEmailDeliveryStore {
       value.workspaceId,
       command.idempotencyKey,
       value,
+      persistedObservation,
       async (client) => {
         await this.lock(client, `${value.workspaceId}:email-delivery-event:${value.eventIdentity}`);
         const attempt = await client.query<Row>(
@@ -415,6 +430,7 @@ export class PostgresEmailDeliveryStore {
     workspaceId: string,
     idempotencyKey: string,
     request: unknown,
+    parseReplay: (value: unknown) => T,
     execute: (client: QueryClient) => Promise<T>
   ): Promise<T> {
     const w = workspace(workspaceId);
@@ -439,7 +455,7 @@ export class PostgresEmailDeliveryStore {
               'IDEMPOTENCY_CONFLICT',
               'Idempotency key was used with a different email delivery command.'
             );
-          return structuredClone(prior.result_json as T);
+          return structuredClone(parseReplay(prior.result_json));
         }
         const result = await execute(client);
         await client.query(
