@@ -7,9 +7,7 @@ import type { ManagedCommunicationExactEvidenceStoreV1 } from './managed-communi
 import type { ManagedCommunicationFoundationStoreV1 } from './managed-communication-foundation.js';
 
 export type ManagedCommunicationReplyReferenceErrorCode =
-  | 'EXACT_EVIDENCE_NOT_FOUND'
-  | 'LINEAGE_MISMATCH'
-  | 'TOO_MANY_REFERENCES';
+  'EXACT_EVIDENCE_NOT_FOUND' | 'LINEAGE_MISMATCH' | 'TOO_MANY_REFERENCES';
 
 export class ManagedCommunicationReplyReferenceError extends Error {
   constructor(
