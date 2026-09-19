@@ -1,3 +1,4 @@
+import './email-campaign-reply-handoff-postgres.test.js';
 import path from 'node:path';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import {

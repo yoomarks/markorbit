@@ -1254,3 +1254,7 @@ export * from './trademark-intelligence-method-family-v1.js';
 export * from './brain-us-trademark-citation-extraction-method.js';
 
 export * from './outbound-contact-policy.js';
+
+export * from './email-campaign-reply-handoff.js';
+
+export * from './managed-communication-reply-reference.js';

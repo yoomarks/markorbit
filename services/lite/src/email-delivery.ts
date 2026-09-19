@@ -72,6 +72,17 @@ function key(value: string): string {
   return result;
 }
 
+function providerSubmissionRef(value: string): string {
+  const result = value.trim();
+  if (!result || result.length > 500)
+    throw new EmailDeliveryPersistenceError(
+      'INVALID_INPUT',
+      'providerSubmissionRef must contain 1 to 500 characters.',
+      422
+    );
+  return result;
+}
+
 function persistedAttempt(value: unknown): EmailDeliveryAttemptV1 {
   try {
     return parseEmailDeliveryAttemptV1(value);
@@ -408,6 +419,31 @@ export class PostgresEmailDeliveryStore {
           404
         );
       return attemptFromRow(result.rows[0]);
+    } catch (error) {
+      if (error instanceof EmailDeliveryPersistenceError) throw error;
+      throw this.persistenceError(error);
+    }
+  }
+
+  async findAttemptByProviderSubmissionRef(
+    workspaceId: string,
+    submissionRef: string
+  ): Promise<EmailDeliveryAttemptV1 | undefined> {
+    try {
+      const result = await this.query.query<Row>(
+        `SELECT * FROM lite_email_delivery_attempts
+          WHERE workspace_id=$1 AND provider_submission_ref=$2
+          ORDER BY delivery_attempt_id ASC
+          LIMIT 2`,
+        [workspace(workspaceId), providerSubmissionRef(submissionRef)]
+      );
+      if (result.rows.length > 1)
+        throw new EmailDeliveryPersistenceError(
+          'INTEGRITY_FAILURE',
+          'Provider submission reference maps to multiple delivery attempts.',
+          500
+        );
+      return result.rows[0] ? attemptFromRow(result.rows[0]) : undefined;
     } catch (error) {
       if (error instanceof EmailDeliveryPersistenceError) throw error;
       throw this.persistenceError(error);
