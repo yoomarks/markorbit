@@ -158,6 +158,8 @@ export class AmazonSesV2EmailTransport implements EmailTransportProviderV1 {
         : {})
     };
 
+    const tags = emailTags(materialized.metadataTags);
+
     try {
       const response = await this.client.sendEmail(bounded(routing.region, 'region', 80), {
         FromEmailAddress: fromAddress,
@@ -176,7 +178,7 @@ export class AmazonSesV2EmailTransport implements EmailTransportProviderV1 {
         },
         ConfigurationSetName: bounded(routing.configurationSetName, 'configurationSetName', 64),
         TenantName: bounded(routing.tenantName, 'tenantName', 128),
-        EmailTags: emailTags(materialized.metadataTags)
+        EmailTags: tags
       });
       const messageId = response.MessageId?.trim();
       if (!messageId) return { status: 'UNKNOWN', reasonCode: 'SES_ACCEPTED_WITHOUT_MESSAGE_ID' };
