@@ -1,3 +1,5 @@
+[Reading 270 lines from start (total: 270 lines, 0 remaining)]
+
 import { createHash } from 'node:crypto';
 import { describe, expect, it, vi } from 'vitest';
 import {
@@ -6,6 +8,7 @@ import {
 } from '@markorbit/contracts/channel-notification';
 import type { ChannelNotificationAutomationRuleV1 } from '@markorbit/contracts/channel-notification-automation';
 import type { PublishPackage } from '@markorbit/contracts/product-loop';
+import { noChannelPlatformAuthorityConsequencesV1 } from '@markorbit/contracts/channel-platform';
 import {
   noWorkspaceEmailSenderProfileAuthorityConsequencesV1,
   type WorkspaceEmailSenderProfileV1
@@ -185,23 +188,13 @@ function harness(
     resolve: vi.fn(() => {
       if (options.entitlementUnavailable) return Promise.resolve({ unavailable: true as const });
       return Promise.resolve({
-        schemaVersion: 1,
+        schemaVersion: 1 as const,
         workspaceId,
         featureKey: 'EMAIL_NOTIFICATION' as const,
         entitlementKey: 'lite.channel.email.notification',
         status: options.entitlementAllowed === false ? ('DISABLED' as const) : ('ENABLED' as const),
         allowed: options.entitlementAllowed !== false,
-        authority: {
-          credentialAuthorityGranted: false,
-          providerSelectionAuthorityGranted: false,
-          protectedActionAuthorized: false,
-          externalSendAuthorized: false,
-          externalPublicationCreated: false,
-          customerTruthCreated: false,
-          orderCreated: false,
-          matterCreated: false,
-          trademarkTruthCreated: false
-        }
+        authority: noChannelPlatformAuthorityConsequencesV1
       });
     })
   };
@@ -277,3 +270,5 @@ describe('Notification Automation Rule currentness', () => {
     ).resolves.toMatchObject({ state: 'UNAVAILABLE', reason: 'OWNER_UNAVAILABLE' });
   });
 });
+
+[executed on device: MarkOrbit (710fa508-4ac4-4899-bf0a-594e530d3e21)]
