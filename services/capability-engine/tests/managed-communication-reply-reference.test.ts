@@ -76,8 +76,7 @@ describe('Managed Communication reply-reference derivation', () => {
         },
         {
           name: 'References',
-          value:
-            '<older@example.net> <010001reply-000000@email.amazonses.com>'
+          value: '<older@example.net> <010001reply-000000@email.amazonses.com>'
         },
         { name: 'Subject', value: 'Re: private campaign' },
         { name: 'X-Custom', value: 'private-header-value' }
@@ -95,10 +94,7 @@ describe('Managed Communication reply-reference derivation', () => {
       accountRef: 'managed-account_reply',
       messageId: 'managed-message_reply',
       inReplyToMessageIds: ['010001reply-000000@email.amazonses.com'],
-      referenceMessageIds: [
-        'older@example.net',
-        '010001reply-000000@email.amazonses.com'
-      ],
+      referenceMessageIds: ['older@example.net', '010001reply-000000@email.amazonses.com'],
       exactEvidence: {
         evidenceRef: 'commevidence_reply',
         sha256: '1'.repeat(64)
