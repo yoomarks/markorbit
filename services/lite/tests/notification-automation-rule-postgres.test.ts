@@ -1,9 +1,7 @@
 import path from 'node:path';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { ManagedDatabase, loadMigrationsForOwner, migrate } from '@markorbit/persistence';
-import type {
-  ChannelNotificationAutomationGovernanceEvidenceV1
-} from '@markorbit/contracts/channel-notification-automation';
+import type { ChannelNotificationAutomationGovernanceEvidenceV1 } from '@markorbit/contracts/channel-notification-automation';
 import {
   PostgresNotificationAutomationRuleStore,
   type NotificationAutomationGovernanceVerificationRequestV1,
@@ -37,8 +35,7 @@ class ExactGovernanceVerifier implements NotificationAutomationGovernanceVerifie
       authorizedRuleVersion: request.candidateRuleVersion,
       authorizedRuleFingerprintSha256: request.candidateRuleFingerprintSha256,
       evidenceRef: request.governanceEvidenceRef,
-      evidenceFingerprintSha256:
-        request.action === 'ACTIVATE' ? 'a'.repeat(64) : 'b'.repeat(64),
+      evidenceFingerprintSha256: request.action === 'ACTIVATE' ? 'a'.repeat(64) : 'b'.repeat(64),
       verifiedAt: '2026-09-19T09:59:00.000Z'
     };
   }
@@ -86,7 +83,9 @@ suite('PostgreSQL Notification Automation Rule owner', () => {
     ratePolicyRef: 'notification-rate-policy_default'
   });
 
-  function store(verifier: NotificationAutomationGovernanceVerifierV1 = new ExactGovernanceVerifier()) {
+  function store(
+    verifier: NotificationAutomationGovernanceVerifierV1 = new ExactGovernanceVerifier()
+  ) {
     return new PostgresNotificationAutomationRuleStore(
       database,
       database.getPool(),
@@ -185,7 +184,9 @@ suite('PostgreSQL Notification Automation Rule owner', () => {
       })
     ).rejects.toMatchObject({ code: 'GOVERNANCE_VERIFIER_UNAVAILABLE' });
 
-    expect((await noVerifier.getLatest(workspaceA, draft.notificationRuleId))?.status).toBe('DRAFT');
+    expect((await noVerifier.getLatest(workspaceA, draft.notificationRuleId))?.status).toBe(
+      'DRAFT'
+    );
   });
 
   it('activates only with exact verified human-action evidence and replays without re-verifying', async () => {
@@ -257,13 +258,9 @@ suite('PostgreSQL Notification Automation Rule owner', () => {
       governanceEvidenceRef: 'governed-human-action-receipt_revoke'
     });
 
-    expect([draft.status, active.status, suspended.status, resumed.status, revoked.status]).toEqual([
-      'DRAFT',
-      'ACTIVE',
-      'SUSPENDED',
-      'ACTIVE',
-      'REVOKED'
-    ]);
+    expect([draft.status, active.status, suspended.status, resumed.status, revoked.status]).toEqual(
+      ['DRAFT', 'ACTIVE', 'SUSPENDED', 'ACTIVE', 'REVOKED']
+    );
     expect(suspended.activationEvidence).toEqual(active.activationEvidence);
     expect(resumed.activationEvidence?.authorizedRuleVersion).toBe(4);
     expect(revoked.revocationEvidence).toMatchObject({
@@ -379,9 +376,9 @@ suite('PostgreSQL Notification Automation Rule owner', () => {
         ORDER BY column_name`
     );
     const names = columns.rows.map((row) => row.column_name);
-    expect(names.some((name) => /recipient|email_address|message_body|credential|secret/iu.test(name))).toBe(
-      false
-    );
+    expect(
+      names.some((name) => /recipient|email_address|message_body|credential|secret/iu.test(name))
+    ).toBe(false);
     expect(names).toContain('publish_package_fingerprint_sha256');
     expect(names).toContain('sender_profile_fingerprint_sha256');
     expect(names).toContain('rule_fingerprint_sha256');
