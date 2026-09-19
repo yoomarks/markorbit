@@ -230,11 +230,7 @@ function object(value: unknown): SesEventRecord {
 }
 
 function scalar(value: unknown): string {
-  if (
-    typeof value === 'string' ||
-    typeof value === 'number' ||
-    typeof value === 'boolean'
-  )
+  if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean')
     return String(value).trim();
   return '';
 }
