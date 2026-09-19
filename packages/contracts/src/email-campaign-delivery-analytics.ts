@@ -1,7 +1,4 @@
-import type {
-  CampaignAudienceSnapshotIdV1,
-  EmailCampaignIdV1
-} from './email-campaign.js';
+import type { CampaignAudienceSnapshotIdV1, EmailCampaignIdV1 } from './email-campaign.js';
 
 export const noEmailCampaignDeliveryAnalyticsAuthorityConsequencesV1 = Object.freeze({
   businessSuccessCreated: false,
@@ -109,9 +106,7 @@ function authority(value: unknown): EmailCampaignDeliveryAnalyticsAuthorityConse
     keyof EmailCampaignDeliveryAnalyticsAuthorityConsequencesV1
   >) {
     if (item[key] !== false)
-      throw new EmailCampaignDeliveryAnalyticsContractError(
-        `authority.${key} must remain false.`
-      );
+      throw new EmailCampaignDeliveryAnalyticsContractError(`authority.${key} must remain false.`);
   }
   return expected;
 }
