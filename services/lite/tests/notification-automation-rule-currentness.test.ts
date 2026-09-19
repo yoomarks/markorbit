@@ -138,7 +138,7 @@ function harness(options: {
   exact?: ChannelNotificationAutomationRuleV1;
   entitlementAllowed?: boolean;
   entitlementUnavailable?: boolean;
-  packageValue?: PublishPackage;
+  packageValue?: PublishPackage | null;
   senderValue?: WorkspaceEmailSenderProfileV1;
   senderState?:
     | 'CURRENT_ELIGIBLE'
@@ -155,7 +155,13 @@ function harness(options: {
   };
   const content = {
     findPublishPackage: vi.fn(() =>
-      Promise.resolve(options.packageValue === undefined ? publishPackage : options.packageValue)
+      Promise.resolve(
+        options.packageValue === undefined
+          ? publishPackage
+          : options.packageValue === null
+            ? undefined
+            : options.packageValue
+      )
     )
   };
   const senders = {
@@ -233,7 +239,7 @@ describe('Notification Automation Rule currentness', () => {
       harness({ entitlementAllowed: false }).resolve(workspaceId, ruleId, 2)
     ).resolves.toMatchObject({ state: 'REVOKED', reason: 'ENTITLEMENT_REVOKED' });
     await expect(
-      harness({ packageValue: undefined as unknown as PublishPackage }).resolve(workspaceId, ruleId, 2)
+      harness({ packageValue: null }).resolve(workspaceId, ruleId, 2)
     ).resolves.toMatchObject({ state: 'UNKNOWN', reason: 'CONTENT_NOT_FOUND' });
   });
 
