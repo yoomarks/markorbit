@@ -245,6 +245,31 @@ describe('Amazon SES event normalization', () => {
     expect(JSON.stringify(value)).not.toContain('person@example.com');
   });
 
+  it('prefers provider event chronology and native event identity', () => {
+    const value = normalizeAmazonSesEvent(
+      {
+        eventType: 'Delivery',
+        mail: {
+          messageId: 'ses-message-chronology',
+          timestamp: '2026-09-19T00:00:00.000Z',
+          destination: ['person@example.com']
+        },
+        delivery: {
+          timestamp: '2026-09-19T00:06:00.000Z'
+        }
+      },
+      {
+        authenticated: true,
+        workspaceId,
+        deliveryAttemptId: 'email-delivery-attempt_primary',
+        observedAt: '2026-09-19T00:06:01.000Z',
+        providerEventId: 'eventbridge-event-123'
+      }
+    );
+    expect(value.eventAt).toBe('2026-09-19T00:06:00.000Z');
+    expect(value.eventIdentity).toBe('ses-event:eventbridge-event-123');
+  });
+
   it('distinguishes permanent and transient SES bounces', () => {
     const base = {
       mail: {
