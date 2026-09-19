@@ -1260,3 +1260,5 @@ export * from './email-campaign-reply-handoff.js';
 export * from './managed-communication-reply-reference.js';
 
 export * from './channel-notification.js';
+
+export * from './channel-notification-automation.js';
