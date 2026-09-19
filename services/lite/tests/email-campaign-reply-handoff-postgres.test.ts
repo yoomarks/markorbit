@@ -84,8 +84,8 @@ function handoff(): EmailCampaignReplyHandoffV1 {
       sha256: '5'.repeat(64)
     },
     outboundProviderSubmissionRef: '010001replypg-000000',
-    correlationMethod: 'RFC_IN_REPLY_TO',
-    evidenceFingerprintSha256: '6'.repeat(64),
+    correlationMethod: 'PROVIDER_MESSAGE_REFERENCE',
+    correlationEvidenceFingerprintSha256: '6'.repeat(64),
     status: 'CORRELATED',
     createdAt: '2026-09-19T06:01:00.000Z',
     authority: noEmailCampaignReplyHandoffAuthorityConsequencesV1
@@ -196,7 +196,7 @@ suite('PostgreSQL Email Campaign reply handoff owner', () => {
     });
     await database.getPool().query(
       `UPDATE lite_email_campaign_reply_handoff_commands
-          SET result_json=jsonb_set(result_json,'{correlationMethod}','"RFC_REFERENCES"'::jsonb)
+          SET result_json=jsonb_set(result_json,'{correlationMethod}','"PROVIDER_MESSAGE_REFERENCE"'::jsonb)
         WHERE workspace_id=$1 AND idempotency_key=$2`,
       [workspaceId, 'reply-pg-tamper']
     );
