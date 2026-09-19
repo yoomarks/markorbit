@@ -462,7 +462,9 @@ export class PostgresEmailDeliveryStore {
               'IDEMPOTENCY_CONFLICT',
               'Idempotency key was used with a different email delivery command.'
             );
-          return structuredClone(parseReplay(prior.result_json));
+          const parsed = parseReplay(prior.result_json);
+          await this.verifyReplayIntegrity(client, commandType, parsed);
+          return structuredClone(parsed);
         }
         const result = await execute(client);
         await client.query(
@@ -477,6 +479,41 @@ export class PostgresEmailDeliveryStore {
       if (error instanceof EmailDeliveryPersistenceError) throw error;
       throw this.persistenceError(error);
     }
+  }
+
+  private async verifyReplayIntegrity(
+    client: QueryClient,
+    commandType: CommandType,
+    parsed: unknown
+  ): Promise<void> {
+    if (commandType === 'CREATE_ATTEMPT' || commandType === 'UPDATE_ATTEMPT') {
+      const replay = persistedAttempt(parsed);
+      const durable = await client.query<Row>(
+        `SELECT * FROM lite_email_delivery_attempts
+          WHERE workspace_id=$1 AND delivery_attempt_id=$2`,
+        [replay.workspaceId, replay.deliveryAttemptId]
+      );
+      if (!durable.rows[0] || hash(attemptFromRow(durable.rows[0])) !== hash(replay))
+        throw new EmailDeliveryPersistenceError(
+          'INTEGRITY_FAILURE',
+          'Email delivery command replay does not match durable attempt truth.',
+          500
+        );
+      return;
+    }
+
+    const replay = persistedObservation(parsed);
+    const durable = await client.query<Row>(
+      `SELECT * FROM lite_email_delivery_observations
+        WHERE workspace_id=$1 AND observation_id=$2`,
+      [replay.workspaceId, replay.observationId]
+    );
+    if (!durable.rows[0] || hash(observationFromRow(durable.rows[0])) !== hash(replay))
+      throw new EmailDeliveryPersistenceError(
+        'INTEGRITY_FAILURE',
+        'Email delivery command replay does not match durable observation truth.',
+        500
+      );
   }
 
   private async lock(client: QueryClient, value: string): Promise<void> {
