@@ -23,8 +23,6 @@ type CommandType = 'CREATE_DRAFT' | 'ACTIVATE' | 'SUSPEND' | 'REVOKE';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu;
 const RULE_ID = /^channel-notification-rule_[A-Za-z0-9_-]+$/u;
-const SHA256 = /^[0-9a-f]{64}$/u;
-
 export type NotificationAutomationRuleRuntimeErrorCode =
   | 'INVALID_INPUT'
   | 'NOT_FOUND'
@@ -251,7 +249,7 @@ function specFingerprintInput(
   notificationRuleId: ChannelNotificationRuleId,
   version: number,
   definition: Readonly<NormalizedRuleDefinition>
-): unknown {
+): Record<string, unknown> {
   return {
     schemaVersion: 1,
     notificationRuleId,
