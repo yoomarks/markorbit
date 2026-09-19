@@ -4,9 +4,7 @@ import {
   noChannelNotificationAuthorityConsequencesV1,
   type ChannelNotificationRuleSpecV1
 } from '@markorbit/contracts/channel-notification';
-import type {
-  ChannelNotificationAutomationRuleV1
-} from '@markorbit/contracts/channel-notification-automation';
+import type { ChannelNotificationAutomationRuleV1 } from '@markorbit/contracts/channel-notification-automation';
 import type { PublishPackage } from '@markorbit/contracts/product-loop';
 import {
   noWorkspaceEmailSenderProfileAuthorityConsequencesV1,
@@ -34,7 +32,9 @@ function canonical(value: unknown): unknown {
 }
 
 const fingerprint = (value: unknown) =>
-  createHash('sha256').update(JSON.stringify(canonical(value))).digest('hex');
+  createHash('sha256')
+    .update(JSON.stringify(canonical(value)))
+    .digest('hex');
 
 const sender: WorkspaceEmailSenderProfileV1 = {
   schemaVersion: 1,
@@ -133,22 +133,24 @@ const activeRule: ChannelNotificationAutomationRuleV1 = {
   authority: noChannelNotificationAuthorityConsequencesV1
 };
 
-function harness(options: {
-  latest?: ChannelNotificationAutomationRuleV1;
-  exact?: ChannelNotificationAutomationRuleV1;
-  entitlementAllowed?: boolean;
-  entitlementUnavailable?: boolean;
-  packageValue?: PublishPackage | null;
-  senderValue?: WorkspaceEmailSenderProfileV1;
-  senderState?:
-    | 'CURRENT_ELIGIBLE'
-    | 'PENDING_VERIFICATION'
-    | 'SUSPENDED'
-    | 'REVOKED'
-    | 'STALE'
-    | 'UNKNOWN'
-    | 'UNAVAILABLE';
-} = {}) {
+function harness(
+  options: {
+    latest?: ChannelNotificationAutomationRuleV1;
+    exact?: ChannelNotificationAutomationRuleV1;
+    entitlementAllowed?: boolean;
+    entitlementUnavailable?: boolean;
+    packageValue?: PublishPackage | null;
+    senderValue?: WorkspaceEmailSenderProfileV1;
+    senderState?:
+      | 'CURRENT_ELIGIBLE'
+      | 'PENDING_VERIFICATION'
+      | 'SUSPENDED'
+      | 'REVOKED'
+      | 'STALE'
+      | 'UNKNOWN'
+      | 'UNAVAILABLE';
+  } = {}
+) {
   const rules = {
     getExact: vi.fn(() => Promise.resolve(options.exact ?? activeRule)),
     getLatest: vi.fn(() => Promise.resolve(options.latest ?? activeRule))
@@ -181,14 +183,13 @@ function harness(options: {
   };
   const entitlement: NotificationAutomationEntitlementReader = {
     resolve: vi.fn(() => {
-      if (options.entitlementUnavailable)
-        return Promise.resolve({ unavailable: true as const });
+      if (options.entitlementUnavailable) return Promise.resolve({ unavailable: true as const });
       return Promise.resolve({
         schemaVersion: 1,
         workspaceId,
         featureKey: 'EMAIL_NOTIFICATION' as const,
         entitlementKey: 'lite.channel.email.notification',
-        status: options.entitlementAllowed === false ? 'DISABLED' as const : 'ENABLED' as const,
+        status: options.entitlementAllowed === false ? ('DISABLED' as const) : ('ENABLED' as const),
         allowed: options.entitlementAllowed !== false,
         authority: {
           credentialAuthorityGranted: false,
@@ -229,9 +230,9 @@ describe('Notification Automation Rule currentness', () => {
       version: 3,
       spec: { ...activeRule.spec, version: 3 }
     } as ChannelNotificationAutomationRuleV1;
-    await expect(
-      harness({ latest: newer }).resolve(workspaceId, ruleId, 2)
-    ).resolves.toMatchObject({ state: 'STALE', reason: 'RULE_SUPERSEDED' });
+    await expect(harness({ latest: newer }).resolve(workspaceId, ruleId, 2)).resolves.toMatchObject(
+      { state: 'STALE', reason: 'RULE_SUPERSEDED' }
+    );
   });
 
   it('fails closed for revoked entitlement and missing content', async () => {
