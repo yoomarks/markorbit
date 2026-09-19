@@ -3,6 +3,8 @@ import { describe, expect, it, vi } from 'vitest';
 import {
   canonicalTradingListingPublicationIntentPayloadV1,
   type CoreHumanActionReceiptBindingV1,
+  type EmailCampaignSendCurrentnessStateV1,
+  type EmailCampaignSendIntentV1,
   type TradingListingPublicationCurrentnessStateV1,
   type TradingListingPublicationIntentV1
 } from '@markorbit/contracts';
@@ -212,5 +214,198 @@ describe('Execution protected Trading publish authorization and release', () => 
         idempotencyKey: 'release-cross-workspace'
       })
     ).rejects.toMatchObject({ code: 'AUTHORIZATION_NOT_FOUND' });
+  });
+});
+
+const emailIntent: EmailCampaignSendIntentV1 = {
+  schemaVersion: 1,
+  actionKind: 'EMAIL_CAMPAIGN_SEND',
+  workspaceId,
+  campaign: { id: 'email-campaign_test', version: 1, fingerprintSha256: '1'.repeat(64) },
+  campaignReview: { id: 'campaign-review_test', version: 1 },
+  senderProfile: {
+    id: 'email-sender-profile_primary',
+    version: 1,
+    fingerprintSha256: '2'.repeat(64)
+  },
+  audience: { id: 'campaign-audience_test', version: 1, fingerprintSha256: '3'.repeat(64) },
+  content: { id: 'campaign-content_test', version: 1, fingerprintSha256: '4'.repeat(64) },
+  brand: { id: 'campaign-brand_test', version: 1, fingerprintSha256: '5'.repeat(64) },
+  recipientCount: 1,
+  deliveryPlanFingerprintSha256: '6'.repeat(64),
+  effectFingerprintSha256: '7'.repeat(64)
+};
+
+const emailReceipt: CoreHumanActionReceiptBindingV1 = {
+  ...receipt,
+  kind: 'EMAIL_CAMPAIGN_SEND',
+  mutationRoute: '/api/execution/protected-external-actions/email-campaign-send/authorizations',
+  reviewedActionDigest: createHash('sha256').update(JSON.stringify(emailIntent)).digest('hex'),
+  idempotencyKey: 'authorize-email-1176'
+};
+
+function emailHarness(state: EmailCampaignSendCurrentnessStateV1 = 'CURRENT') {
+  const repository = new InMemoryProtectedExternalActionRepository();
+  const core = { validateCurrent: vi.fn(() => Promise.resolve()) };
+  const trading = {
+    validateCurrent: vi.fn(() =>
+      Promise.resolve({
+        schemaVersion: 1 as const,
+        workspaceId,
+        actionKind: 'TRADING_LISTING_PUBLISH' as const,
+        effectFingerprintSha256: intent.effectFingerprintSha256,
+        state: 'CURRENT' as const,
+        reason: 'EXACT_INTENT_CURRENT' as const
+      })
+    )
+  };
+  const emailCampaign = {
+    validateCurrent: vi.fn(() =>
+      Promise.resolve({
+        schemaVersion: 1 as const,
+        workspaceId,
+        actionKind: 'EMAIL_CAMPAIGN_SEND' as const,
+        effectFingerprintSha256: emailIntent.effectFingerprintSha256,
+        deliveryPlanFingerprintSha256: emailIntent.deliveryPlanFingerprintSha256,
+        state,
+        reason:
+          state === 'CURRENT'
+            ? ('EXACT_DELIVERY_PLAN_CURRENT' as const)
+            : state === 'REVOKED'
+              ? ('SENDER_PROFILE_REVOKED' as const)
+              : state === 'SUPPRESSED'
+                ? ('OUTBOUND_POLICY_SUPPRESSED' as const)
+                : state === 'UNAVAILABLE'
+                  ? ('OWNER_UNAVAILABLE' as const)
+                  : state === 'UNKNOWN'
+                    ? ('OWNER_DATA_UNKNOWN' as const)
+                    : ('CAMPAIGN_STALE' as const)
+      })
+    )
+  };
+  let now = new Date('2026-09-17T00:01:00.000Z');
+  const service = new ProtectedExternalActionService(
+    repository,
+    core,
+    trading,
+    () => now,
+    60_000,
+    emailCampaign
+  );
+  return {
+    repository,
+    core,
+    emailCampaign,
+    service,
+    advance: () => (now = new Date('2026-09-17T00:03:00.000Z'))
+  };
+}
+
+const authorizeEmail = (
+  service: ProtectedExternalActionService,
+  overrides: Partial<
+    Parameters<ProtectedExternalActionService['authorizeEmailCampaignSend']>[0]
+  > = {}
+) =>
+  service.authorizeEmailCampaignSend({
+    workspaceId,
+    actorUserId: userId,
+    intent: emailIntent,
+    humanReceipt: emailReceipt,
+    idempotencyKey: 'authorize-email-1176',
+    ...overrides
+  });
+
+describe('Execution protected Email Campaign send authorization and release', () => {
+  it('authorizes and releases only after Core + JIT Email currentness validation', async () => {
+    const { service, core, emailCampaign } = emailHarness();
+    const authorization = await authorizeEmail(service);
+    const release = await service.releaseEmailCampaignSend({
+      workspaceId,
+      actorUserId: userId,
+      authorizationId: authorization.authorizationId,
+      authorizationVersion: 1,
+      idempotencyKey: 'release-email-1176'
+    });
+    expect(authorization.actionKind).toBe('EMAIL_CAMPAIGN_SEND');
+    expect(release.actionKind).toBe('EMAIL_CAMPAIGN_SEND');
+    expect(core.validateCurrent).toHaveBeenCalledTimes(2);
+    expect(emailCampaign.validateCurrent).toHaveBeenCalledTimes(2);
+  });
+
+  it.each([
+    ['STALE', 'EMAIL_CAMPAIGN_INTENT_STALE'],
+    ['REVOKED', 'EMAIL_CAMPAIGN_INTENT_REVOKED'],
+    ['SUPPRESSED', 'EMAIL_CAMPAIGN_INTENT_SUPPRESSED'],
+    ['UNKNOWN', 'EMAIL_CAMPAIGN_INTENT_UNKNOWN'],
+    ['UNAVAILABLE', 'EMAIL_CAMPAIGN_INTENT_UNAVAILABLE']
+  ] as const)('fails closed for Email Campaign %s', async (state, code) => {
+    await expect(authorizeEmail(emailHarness(state).service)).rejects.toMatchObject({ code });
+  });
+
+  it('rejects receipt digest drift, wrong route and cross-kind release', async () => {
+    const { service } = emailHarness();
+    await expect(
+      authorizeEmail(service, {
+        humanReceipt: { ...emailReceipt, reviewedActionDigest: 'f'.repeat(64) }
+      })
+    ).rejects.toMatchObject({ code: 'HUMAN_RECEIPT_STALE' });
+    await expect(
+      authorizeEmail(service, {
+        humanReceipt: {
+          ...emailReceipt,
+          mutationRoute:
+            '/api/execution/protected-external-actions/trading-listing-publish/authorizations'
+        }
+      })
+    ).rejects.toMatchObject({ code: 'HUMAN_RECEIPT_STALE' });
+
+    const authorization = await authorizeEmail(service);
+    await expect(
+      service.release({
+        workspaceId,
+        actorUserId: userId,
+        authorizationId: authorization.authorizationId,
+        authorizationVersion: 1,
+        idempotencyKey: 'release-email-as-trading'
+      })
+    ).rejects.toMatchObject({ code: 'AUTHORIZATION_STALE' });
+  });
+
+  it('does not permit cross-kind idempotency reuse', async () => {
+    const { service } = emailHarness();
+    await authorizeEmail(service);
+    await expect(
+      service.authorize({
+        workspaceId,
+        actorUserId: userId,
+        intent,
+        humanReceipt: { ...receipt, idempotencyKey: 'authorize-email-1176' },
+        idempotencyKey: 'authorize-email-1176'
+      })
+    ).rejects.toMatchObject({ code: 'IDEMPOTENCY_CONFLICT' });
+  });
+
+  it('revalidates at release and fails after currentness changes', async () => {
+    const h = emailHarness();
+    const authorization = await authorizeEmail(h.service);
+    h.emailCampaign.validateCurrent.mockResolvedValueOnce({
+      schemaVersion: 1,
+      workspaceId,
+      actionKind: 'EMAIL_CAMPAIGN_SEND',
+      effectFingerprintSha256: emailIntent.effectFingerprintSha256,
+      deliveryPlanFingerprintSha256: emailIntent.deliveryPlanFingerprintSha256,
+      state: 'SUPPRESSED',
+      reason: 'OUTBOUND_POLICY_SUPPRESSED'
+    });
+    await expect(
+      h.service.releaseEmailCampaignSend({
+        workspaceId,
+        actorUserId: userId,
+        authorizationId: authorization.authorizationId,
+        authorizationVersion: 1,
+        idempotencyKey: 'release-email-suppressed'
+      })
+    ).rejects.toMatchObject({ code: 'EMAIL_CAMPAIGN_INTENT_SUPPRESSED' });
   });
 });

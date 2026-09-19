@@ -41,6 +41,10 @@ import { PostgresWorkspaceWatchStore } from './workspace-watch.js';
 import { createWorkspaceDirectoryRoutes } from './workspace-directory-http.js';
 import { PostgresWorkspaceDirectoryStore } from './workspace-directory.js';
 import { PostgresOutboundContactPolicyStore } from './outbound-contact-policy.js';
+import { PostgresEmailCampaignStore } from './email-campaign.js';
+import { PostgresEmailSenderProfileStore } from './email-sender-profile.js';
+import { createEmailCampaignDeliveryCurrentnessResolver } from './email-campaign-delivery-currentness.js';
+import { createEmailCampaignDeliveryCurrentnessRoutes } from './email-campaign-delivery-currentness-http.js';
 import { createOutboundContactPolicyRoutes } from './outbound-contact-policy-http.js';
 import { PostgresBusinessAttributionStore } from './business-attribution.js';
 import { createBusinessAttributionRoutes } from './business-attribution-http.js';
@@ -199,6 +203,16 @@ const liteWorkItemStore = new PostgresLiteWorkItemStore(database, pool);
 const workspaceWatchStore = new PostgresWorkspaceWatchStore(database, pool);
 const workspaceDirectoryStore = new PostgresWorkspaceDirectoryStore(database, pool);
 const outboundContactPolicyStore = new PostgresOutboundContactPolicyStore(database, pool);
+const emailCampaignStore = new PostgresEmailCampaignStore(database, pool);
+const emailSenderProfileStore = new PostgresEmailSenderProfileStore(database, pool);
+const emailCampaignDeliveryCurrentness = createEmailCampaignDeliveryCurrentnessResolver({
+  campaigns: emailCampaignStore,
+  senders: emailSenderProfileStore,
+  directory: workspaceDirectoryStore,
+  outbound: outboundContactPolicyStore,
+  coreUrl,
+  internalServiceSecret
+});
 const businessAttributionStore = new PostgresBusinessAttributionStore(database, pool);
 const educationCommunityService = new EducationCommunityService(
   database,
@@ -517,6 +531,10 @@ const runtime = createServiceRuntime(serviceManifest, {
     ...createTradingListingPublicationCurrentnessRoutes({
       internalServiceSecret,
       resolver: tradingListingPublicationCurrentness
+    }),
+    ...createEmailCampaignDeliveryCurrentnessRoutes({
+      internalServiceSecret,
+      resolver: emailCampaignDeliveryCurrentness
     }),
     ...createTradingStudioReadRoutes({
       internalServiceSecret,

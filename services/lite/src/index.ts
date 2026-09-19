@@ -85,3 +85,5 @@ export * from './protection-monitoring.js';
 export * from './protection-monitoring-http.js';
 export * from './email-campaign.js';
 export * from './email-sender-profile.js';
+export * from './email-campaign-delivery-currentness.js';
+export * from './email-campaign-delivery-currentness-http.js';
