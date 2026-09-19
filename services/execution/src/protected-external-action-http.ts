@@ -3,6 +3,8 @@ import {
   type CoreHumanActionReceiptBindingV1,
   type EmailCampaignSendCurrentnessV1,
   type EmailCampaignSendIntentV1,
+  type EmailNotificationSendCurrentnessV1,
+  type EmailNotificationSendIntentV1,
   type ProtectedExternalActionAuthorizationId,
   type TradingListingPublicationCurrentnessV1,
   type TradingListingPublicationIntentV1,
@@ -42,6 +44,26 @@ function principalOf(request: JsonRequest, secret: string): WorkspacePrincipal {
   return principal;
 }
 
+function serviceWorkspaceOf(request: JsonRequest, secret: string): string {
+  if (!secret || request.headers['x-markorbit-internal-authorization'] !== secret)
+    throw new HttpError(
+      401,
+      'UNTRUSTED_INTERNAL_CALLER',
+      'Trusted internal authorization is required.'
+    );
+  const workspaceId = request.headers['x-markorbit-workspace-id']?.trim().toLowerCase();
+  if (
+    !workspaceId ||
+    !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/u.test(workspaceId)
+  )
+    throw new HttpError(
+      400,
+      'INVALID_WORKSPACE_CONTEXT',
+      'Exact trusted Workspace context is required.'
+    );
+  return workspaceId;
+}
+
 function bodyOf(request: JsonRequest): Record<string, unknown> {
   if (!request.body || typeof request.body !== 'object' || Array.isArray(request.body))
     throw new HttpError(400, 'INVALID_REQUEST', 'Request body must be an object.');
@@ -64,7 +86,12 @@ export function createProtectedExternalActionRoutes(options: {
   internalServiceSecret: string;
   service: Pick<
     ProtectedExternalActionService,
-    'authorize' | 'release' | 'authorizeEmailCampaignSend' | 'releaseEmailCampaignSend'
+    | 'authorize'
+    | 'release'
+    | 'authorizeEmailCampaignSend'
+    | 'releaseEmailCampaignSend'
+    | 'authorizeEmailNotificationSend'
+    | 'releaseEmailNotificationSend'
   >;
 }): readonly JsonRoute[] {
   return [
@@ -149,6 +176,65 @@ export function createProtectedExternalActionRoutes(options: {
             await options.service.releaseEmailCampaignSend({
               workspaceId: principal.workspaceId,
               actorUserId: principal.userId,
+              authorizationId: request.params
+                .authorizationId as ProtectedExternalActionAuthorizationId,
+              authorizationVersion: body.authorizationVersion as number,
+              idempotencyKey: keyOf(request)
+            })
+          );
+        } catch (error) {
+          return mapError(error);
+        }
+      }
+    },
+    {
+      method: 'POST',
+      path: '/v1/protected-external-actions/email-notification-send/authorizations',
+      handle: async (request) => {
+        const workspaceId = serviceWorkspaceOf(request, options.internalServiceSecret);
+        const body = bodyOf(request);
+        if (
+          Object.keys(body).some((field) => field !== 'intent') ||
+          !body.intent
+        )
+          throw new HttpError(
+            400,
+            'INVALID_REQUEST',
+            'Only one exact Notification send intent is accepted.'
+          );
+        const intent = body.intent as EmailNotificationSendIntentV1;
+        if (intent.workspaceId?.toLowerCase() !== workspaceId)
+          throw new HttpError(403, 'WORKSPACE_MISMATCH', 'Trusted Workspace contexts do not match.');
+        try {
+          return json(
+            201,
+            await options.service.authorizeEmailNotificationSend({
+              workspaceId,
+              intent,
+              idempotencyKey: keyOf(request)
+            })
+          );
+        } catch (error) {
+          return mapError(error);
+        }
+      }
+    },
+    {
+      method: 'POST',
+      path: '/v1/protected-external-actions/email-notification-send/authorizations/:authorizationId/releases',
+      handle: async (request) => {
+        const workspaceId = serviceWorkspaceOf(request, options.internalServiceSecret);
+        const body = bodyOf(request);
+        if (
+          Object.keys(body).some((field) => field !== 'authorizationVersion') ||
+          !Number.isSafeInteger(body.authorizationVersion)
+        )
+          throw new HttpError(400, 'INVALID_REQUEST', 'Exact authorizationVersion is required.');
+        try {
+          return json(
+            201,
+            await options.service.releaseEmailNotificationSend({
+              workspaceId,
               authorizationId: request.params
                 .authorizationId as ProtectedExternalActionAuthorizationId,
               authorizationVersion: body.authorizationVersion as number,
@@ -342,5 +428,56 @@ export class HttpEmailCampaignSendCurrentnessClient implements EmailCampaignSend
         reason: 'OWNER_UNAVAILABLE'
       } satisfies EmailCampaignSendCurrentnessV1;
     return response.json() as Promise<EmailCampaignSendCurrentnessV1>;
+  }
+}
+
+
+export class HttpEmailNotificationSendCurrentnessClient {
+  constructor(
+    private readonly liteUrl: string,
+    private readonly internalServiceSecret: string,
+    private readonly timeoutMs = 3_000
+  ) {}
+
+  async validateCurrent(
+    intent: Readonly<EmailNotificationSendIntentV1>
+  ): Promise<EmailNotificationSendCurrentnessV1> {
+    let response: Response;
+    try {
+      response = await fetch(
+        `${this.liteUrl}/internal/notification-automation/send-intents/validate-current`,
+        {
+          method: 'POST',
+          headers: {
+            'content-type': 'application/json',
+            'x-markorbit-internal-authorization': this.internalServiceSecret,
+            'x-markorbit-workspace-id': intent.workspaceId
+          },
+          body: JSON.stringify(intent),
+          signal: AbortSignal.timeout(this.timeoutMs)
+        }
+      );
+    } catch {
+      return {
+        schemaVersion: 1,
+        workspaceId: intent.workspaceId,
+        actionKind: 'EMAIL_NOTIFICATION_SEND',
+        effectFingerprintSha256: intent.effectFingerprintSha256,
+        deliveryPlanFingerprintSha256: intent.notification.deliveryPlanFingerprintSha256,
+        state: 'UNAVAILABLE',
+        reason: 'OWNER_UNAVAILABLE'
+      };
+    }
+    if (!response.ok)
+      return {
+        schemaVersion: 1,
+        workspaceId: intent.workspaceId,
+        actionKind: 'EMAIL_NOTIFICATION_SEND',
+        effectFingerprintSha256: intent.effectFingerprintSha256,
+        deliveryPlanFingerprintSha256: intent.notification.deliveryPlanFingerprintSha256,
+        state: 'UNAVAILABLE',
+        reason: 'OWNER_UNAVAILABLE'
+      };
+    return response.json() as Promise<EmailNotificationSendCurrentnessV1>;
   }
 }
