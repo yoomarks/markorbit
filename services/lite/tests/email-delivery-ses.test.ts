@@ -13,7 +13,8 @@ import {
   type AmazonSesObservationSink,
   type AmazonSesVerifiedEventEnvelope,
   type AmazonSesRoutingResolver,
-  type AmazonSesV2Client
+  type AmazonSesV2Client,
+  type AmazonSesV2SendEmailInput
 } from '../src/email-delivery-ses.js';
 
 const workspaceId = '14141414-1414-4414-8414-141414141414';
@@ -68,7 +69,10 @@ const routing: AmazonSesRoutingResolver = {
 
 describe('Amazon SES V2 provider-neutral email transport', () => {
   it('submits a non-Campaign materialized email through the same tenant routing', async () => {
-    const sendEmail = vi.fn(() => Promise.resolve({ MessageId: 'ses-notification-123' }));
+    const sendEmail = vi.fn(
+      (_region: string, _input: Readonly<AmazonSesV2SendEmailInput>) =>
+        Promise.resolve({ MessageId: 'ses-notification-123' })
+    );
     const transport = new AmazonSesV2EmailTransport({ sendEmail }, routing);
 
     await expect(
@@ -89,18 +93,16 @@ describe('Amazon SES V2 provider-neutral email transport', () => {
       providerSubmissionRef: 'ses-notification-123'
     });
 
-    expect(sendEmail).toHaveBeenCalledWith(
-      'us-east-1',
-      expect.objectContaining({
-        TenantName: 'mo-workspace-primary',
-        ConfigurationSetName: 'mo-workspace-primary',
-        FromEmailAddress: 'hello@mail.example.com',
-        EmailTags: [
-          { Name: 'mo_workspace', Value: expect.stringMatching(/^[0-9a-f]{32}$/) },
-          { Name: 'mo_source', Value: expect.stringMatching(/^[0-9a-f]{32}$/) }
-        ]
-      })
-    );
+    expect(sendEmail).toHaveBeenCalledTimes(1);
+    const [region, input] = sendEmail.mock.calls[0]!;
+    expect(region).toBe('us-east-1');
+    expect(input).toMatchObject({
+      TenantName: 'mo-workspace-primary',
+      ConfigurationSetName: 'mo-workspace-primary',
+      FromEmailAddress: 'hello@mail.example.com'
+    });
+    expect(input.EmailTags.map((tag) => tag.Name)).toEqual(['mo_workspace', 'mo_source']);
+    for (const tag of input.EmailTags) expect(tag.Value).toMatch(/^[0-9a-f]{32}$/);
   });
 
   it('fails closed on duplicate metadata tag names', async () => {
