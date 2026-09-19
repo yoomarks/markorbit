@@ -148,8 +148,7 @@ function hash(value: unknown): string {
 }
 
 function semanticHandoffFingerprint(value: Readonly<EmailCampaignReplyHandoffV1>): string {
-  const { createdAt: _createdAt, ...semantic } = value;
-  return hash(semantic);
+  return hash({ ...value, createdAt: undefined });
 }
 
 function persisted(value: unknown): EmailCampaignReplyHandoffV1 {
