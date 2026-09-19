@@ -432,6 +432,60 @@ export class PostgresEmailDeliveryStore {
     }
   }
 
+  async listCampaignAttempts(
+    workspaceId: string,
+    campaignId: EmailDeliveryAttemptV1['campaign']['campaignId'],
+    campaignVersion: number
+  ): Promise<readonly EmailDeliveryAttemptV1[]> {
+    if (!Number.isSafeInteger(campaignVersion) || campaignVersion < 1)
+      throw new EmailDeliveryPersistenceError(
+        'INVALID_INPUT',
+        'campaignVersion must be a positive safe integer.',
+        422
+      );
+    try {
+      const result = await this.query.query<Row>(
+        `SELECT * FROM lite_email_delivery_attempts
+          WHERE workspace_id=$1 AND campaign_id=$2 AND campaign_version=$3
+          ORDER BY shard_index ASC,attempt_number ASC,delivery_attempt_id ASC`,
+        [workspace(workspaceId), campaignId, campaignVersion]
+      );
+      return result.rows.map(attemptFromRow);
+    } catch (error) {
+      if (error instanceof EmailDeliveryPersistenceError) throw error;
+      throw this.persistenceError(error);
+    }
+  }
+
+  async listCampaignObservations(
+    workspaceId: string,
+    campaignId: EmailDeliveryAttemptV1['campaign']['campaignId'],
+    campaignVersion: number
+  ): Promise<readonly EmailDeliveryObservationV1[]> {
+    if (!Number.isSafeInteger(campaignVersion) || campaignVersion < 1)
+      throw new EmailDeliveryPersistenceError(
+        'INVALID_INPUT',
+        'campaignVersion must be a positive safe integer.',
+        422
+      );
+    try {
+      const result = await this.query.query<Row>(
+        `SELECT o.*
+           FROM lite_email_delivery_observations o
+           JOIN lite_email_delivery_attempts a
+             ON a.workspace_id=o.workspace_id
+            AND a.delivery_attempt_id=o.delivery_attempt_id
+          WHERE a.workspace_id=$1 AND a.campaign_id=$2 AND a.campaign_version=$3
+          ORDER BY o.event_at ASC,o.observed_at ASC,o.observation_id ASC`,
+        [workspace(workspaceId), campaignId, campaignVersion]
+      );
+      return result.rows.map(observationFromRow);
+    } catch (error) {
+      if (error instanceof EmailDeliveryPersistenceError) throw error;
+      throw this.persistenceError(error);
+    }
+  }
+
   private async command<T>(
     commandType: CommandType,
     workspaceId: string,

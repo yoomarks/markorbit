@@ -228,6 +228,52 @@ suite('PostgreSQL email delivery evidence owner', () => {
     ).toEqual([value]);
   });
 
+  it('lists durable attempts and observations only for the exact Campaign version', async () => {
+    const service = store();
+    const primary = attempt();
+    const other: EmailDeliveryAttemptV1 = {
+      ...attempt(),
+      deliveryAttemptId: 'email-delivery-attempt_pg_other',
+      executionRelease: {
+        releaseId: 'protected-action-release_pg_other',
+        version: 1,
+        effectFingerprintSha256: '1'.repeat(64)
+      },
+      campaign: { campaignId: 'email-campaign_pg_other', version: 1 },
+      correlationId: 'delivery:pg:other'
+    };
+
+    await service.createAttempt({
+      value: primary,
+      idempotencyKey: 'delivery-campaign-read-primary'
+    });
+    await service.createAttempt({
+      value: other,
+      idempotencyKey: 'delivery-campaign-read-other'
+    });
+    const delivered = observation();
+    await service.recordObservation({
+      value: delivered,
+      idempotencyKey: 'delivery-campaign-read-observation'
+    });
+
+    expect(await service.listCampaignAttempts(workspaceId, primary.campaign.campaignId, 1)).toEqual(
+      [primary]
+    );
+    expect(
+      await service.listCampaignObservations(workspaceId, primary.campaign.campaignId, 1)
+    ).toEqual([delivered]);
+    expect(await service.listCampaignAttempts(workspaceId, other.campaign.campaignId, 1)).toEqual([
+      other
+    ]);
+    expect(
+      await service.listCampaignObservations(workspaceId, other.campaign.campaignId, 1)
+    ).toEqual([]);
+    expect(await service.listCampaignAttempts(workspaceId, primary.campaign.campaignId, 2)).toEqual(
+      []
+    );
+  });
+
   it('fails row/document integrity drift closed', async () => {
     const service = store();
     const value = attempt();
