@@ -212,4 +212,54 @@ integration('PostgreSQL governed human-action receipt authority', () => {
     ])
       expect(names).not.toContain(forbidden);
   });
+
+  it('persists a Notification Automation activation receipt after migration 0139', async () => {
+    await cleanup();
+    expect(
+      (await coreMigrations()).map((migration) => `${migration.version}_${migration.name}`)
+    ).toContain('0139_core_governed_human_action_receipts_notification_automation_activate');
+    const activation = receipt({
+      receiptId: '018f0000-0000-7000-8000-000000000108',
+      authorityReference:
+        'core-governed-human-action-receipt:018f0000-0000-7000-8000-000000000108',
+      affirmativeHumanActionEvidenceReference:
+        'core-governed-human-action-evidence:018f0000-0000-7000-8000-000000000108',
+      kind: 'NOTIFICATION_AUTOMATION_ACTIVATE',
+      mutationRoute:
+        '/api/lite/notification-automation-rules/channel-notification-rule_primary/activate',
+      reviewedActionDigest: '9'.repeat(64),
+      idempotencyKey: 'durable-notification-automation-activate-1'
+    });
+    const firstStore = new PostgresGovernedHumanActionReceiptStore(database);
+    const created = await firstStore.materializeOrResolve(activation);
+
+    await database.close();
+    database = new ManagedDatabase(config());
+    await database.start();
+
+    const restartedStore = new PostgresGovernedHumanActionReceiptStore(database);
+    await expect(restartedStore.findById(created.receiptId)).resolves.toEqual(created);
+    await expect(restartedStore.materializeOrResolve(activation)).resolves.toEqual(created);
+  });
+
+  it('does not add Notification payload, endpoint or provider credential columns for activation receipts', async () => {
+    const columns = await database.getPool().query<{ column_name: string }>(
+      `SELECT column_name
+         FROM information_schema.columns
+        WHERE table_schema='public' AND table_name='core_governed_human_action_receipts'
+        ORDER BY column_name`
+    );
+    const names = columns.rows.map((row) => row.column_name);
+    for (const forbidden of [
+      'notification_payload',
+      'recipient_email',
+      'endpoint',
+      'message_body',
+      'provider_credential',
+      'api_key',
+      'access_token'
+    ])
+      expect(names).not.toContain(forbidden);
+  });
+
 });
