@@ -10,6 +10,7 @@ import {
   type AmazonSesEventAuthenticator,
   type AmazonSesEventCorrelationVerifier,
   type AmazonSesObservationSink,
+  type AmazonSesVerifiedEventEnvelope,
   type AmazonSesRoutingResolver,
   type AmazonSesV2Client
 } from '../src/email-delivery-ses.js';
@@ -407,17 +408,16 @@ describe('Amazon SES authenticated event ingestion', () => {
   });
 
   it('rejects tenant or Workspace correlation mismatch before evidence admission', async () => {
+    const verified: AmazonSesVerifiedEventEnvelope = {
+      event: envelope,
+      workspaceId,
+      deliveryAttemptId: 'email-delivery-attempt_primary',
+      routingPartitionRef: 'routing:workspace-primary',
+      tenantName: 'mo-workspace-primary',
+      observedAt: '2026-09-19T00:05:01.000Z'
+    };
     const authenticator: AmazonSesEventAuthenticator = {
-      verifyAndExtract: vi.fn(() =>
-        Promise.resolve({
-          event: envelope,
-          workspaceId,
-          deliveryAttemptId: 'email-delivery-attempt_primary',
-          routingPartitionRef: 'routing:workspace-primary',
-          tenantName: 'mo-workspace-primary',
-          observedAt: '2026-09-19T00:05:01.000Z'
-        })
-      )
+      verifyAndExtract: vi.fn(() => Promise.resolve(verified))
     };
     const assertCorrelated = vi.fn(() => Promise.reject(new Error('tenant mismatch')));
     const admit = vi.fn((value) => Promise.resolve(value));
@@ -430,17 +430,16 @@ describe('Amazon SES authenticated event ingestion', () => {
   });
 
   it('admits only verified, correlated evidence without durable raw email', async () => {
+    const verified: AmazonSesVerifiedEventEnvelope = {
+      event: envelope,
+      workspaceId,
+      deliveryAttemptId: 'email-delivery-attempt_primary',
+      routingPartitionRef: 'routing:workspace-primary',
+      tenantName: 'mo-workspace-primary',
+      observedAt: '2026-09-19T00:05:01.000Z'
+    };
     const authenticator: AmazonSesEventAuthenticator = {
-      verifyAndExtract: vi.fn(() =>
-        Promise.resolve({
-          event: envelope,
-          workspaceId,
-          deliveryAttemptId: 'email-delivery-attempt_primary',
-          routingPartitionRef: 'routing:workspace-primary',
-          tenantName: 'mo-workspace-primary',
-          observedAt: '2026-09-19T00:05:01.000Z'
-        })
-      )
+      verifyAndExtract: vi.fn(() => Promise.resolve(verified))
     };
     const assertCorrelated = vi.fn(() => Promise.resolve());
     const admit = vi.fn((value) => Promise.resolve(value));
