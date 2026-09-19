@@ -56,22 +56,22 @@ function memoryStore() {
   let current: EmailDeliveryAttemptV1 | undefined;
   const observations: EmailDeliveryObservationV1[] = [];
   const store = {
-      createAttempt: vi.fn(({ value }: Readonly<CreateEmailDeliveryAttemptCommand>) => {
-        current ??= structuredClone(value);
-        return Promise.resolve(structuredClone(current));
-      }),
-      getAttempt: vi.fn(() => {
-        if (!current) throw new Error('missing');
-        return Promise.resolve(structuredClone(current));
-      }),
-      updateAttempt: vi.fn(({ value }: Readonly<UpdateEmailDeliveryAttemptCommand>) => {
-        current = structuredClone(value);
-        return Promise.resolve(structuredClone(current));
-      }),
-      recordObservation: vi.fn(({ value }: Readonly<RecordEmailDeliveryObservationCommand>) => {
-        observations.push(structuredClone(value));
-        return Promise.resolve(structuredClone(value));
-      })
+    createAttempt: vi.fn(({ value }: Readonly<CreateEmailDeliveryAttemptCommand>) => {
+      current ??= structuredClone(value);
+      return Promise.resolve(structuredClone(current));
+    }),
+    getAttempt: vi.fn(() => {
+      if (!current) throw new Error('missing');
+      return Promise.resolve(structuredClone(current));
+    }),
+    updateAttempt: vi.fn(({ value }: Readonly<UpdateEmailDeliveryAttemptCommand>) => {
+      current = structuredClone(value);
+      return Promise.resolve(structuredClone(current));
+    }),
+    recordObservation: vi.fn(({ value }: Readonly<RecordEmailDeliveryObservationCommand>) => {
+      observations.push(structuredClone(value));
+      return Promise.resolve(structuredClone(value));
+    })
   } satisfies Pick<
     PostgresEmailDeliveryStore,
     'createAttempt' | 'getAttempt' | 'updateAttempt' | 'recordObservation'
@@ -168,11 +168,7 @@ describe('Email delivery runtime', () => {
       Promise.resolve({ status: 'FAILED' as const, reasonCode: 'UNEXPECTED_CALL' })
     );
     const adapter: EmailDeliveryProviderAdapter = { submit };
-    const service = new EmailDeliveryRuntimeService(
-      memory.store,
-      currentness,
-      adapter
-    );
+    const service = new EmailDeliveryRuntimeService(memory.store, currentness, adapter);
     await expect(
       service.submitShard({
         attempt: planned(),
@@ -233,10 +229,7 @@ describe('Email provider observation suppression handoff', () => {
     );
     const setSuppression = vi.fn(() => Promise.resolve({}));
     const suppression: EmailDeliverySuppressionOwner = { setSuppression };
-    const service = new EmailDeliveryProviderEventService(
-      { recordObservation },
-      suppression
-    );
+    const service = new EmailDeliveryProviderEventService({ recordObservation }, suppression);
     const observation: EmailDeliveryObservationV1 = {
       schemaVersion: 1,
       observationId: `email-delivery-observation_${event.toLowerCase()}`,
