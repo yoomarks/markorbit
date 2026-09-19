@@ -5,6 +5,7 @@ import {
   type EmailDeliveryObservationV1
 } from '@markorbit/contracts/email-delivery';
 import type { AmazonSesMaterializedEmail, AmazonSesSubmissionResult } from './email-delivery-ses.js';
+import type { SetOutboundContactSuppressionCommand } from './outbound-contact-policy.js';
 import type { PostgresEmailDeliveryStore } from './email-delivery.js';
 
 export interface EmailDeliveryProviderAdapter {
@@ -195,5 +196,56 @@ export class EmailDeliveryRuntimeService {
 
   private timestamp(): string {
     return new Date(this.now()).toISOString();
+  }
+}
+
+
+export interface EmailDeliverySuppressionOwner {
+  setSuppression(
+    command: Readonly<SetOutboundContactSuppressionCommand>
+  ): Promise<unknown>;
+}
+
+export class EmailDeliveryProviderEventService {
+  constructor(
+    private readonly store: Pick<PostgresEmailDeliveryStore, 'recordObservation'>,
+    private readonly suppression: EmailDeliverySuppressionOwner,
+    private readonly actorPrincipalId = 'system:email-delivery-provider-evidence'
+  ) {}
+
+  async admit(
+    observation: Readonly<EmailDeliveryObservationV1>
+  ): Promise<EmailDeliveryObservationV1> {
+    const recorded = await this.store.recordObservation({
+      value: observation,
+      idempotencyKey: `email-delivery:event:${observation.eventIdentity}`
+    });
+    if (
+      !recorded.endpointFingerprintSha256 ||
+      !['HARD_BOUNCED', 'COMPLAINED', 'UNSUBSCRIBED'].includes(recorded.event)
+    )
+      return recorded;
+
+    const reasonCode =
+      recorded.event === 'HARD_BOUNCED'
+        ? 'HARD_BOUNCE'
+        : recorded.event === 'COMPLAINED'
+          ? 'COMPLAINT'
+          : 'RECIPIENT_OPT_OUT';
+    await this.suppression.setSuppression({
+      workspaceId: recorded.workspaceId,
+      actorPrincipalId: this.actorPrincipalId,
+      idempotencyKey: `email-delivery:suppression:${recorded.eventIdentity}`,
+      endpointFingerprintSha256: recorded.endpointFingerprintSha256,
+      scope: 'ALL_OUTBOUND',
+      reasonCode,
+      sourceClass: 'PROVIDER_OBSERVATION',
+      evidenceRefs: [
+        `email-delivery-observation:${recorded.observationId}`,
+        ...recorded.evidenceRefs
+      ],
+      effectiveAt: recorded.eventAt
+    });
+    return recorded;
   }
 }
