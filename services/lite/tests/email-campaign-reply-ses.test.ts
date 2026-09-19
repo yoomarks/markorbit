@@ -5,12 +5,7 @@ describe('Amazon SES V2 reply reference correlation', () => {
   const correlator = new AmazonSesV2ReplyReferenceCorrelatorV1();
 
   it('maps SES RFC Message-ID back to the provider submission ref', () => {
-    expect(
-      correlator.candidates(
-        ['01000199abcdef-000000@email.amazonses.com'],
-        []
-      )
-    ).toEqual([
+    expect(correlator.candidates(['01000199abcdef-000000@email.amazonses.com'], [])).toEqual([
       {
         providerSubmissionRef: '01000199abcdef-000000',
         evidenceMethod: 'RFC_IN_REPLY_TO'
@@ -38,10 +33,10 @@ describe('Amazon SES V2 reply reference correlation', () => {
 
   it('returns distinct SES candidates in bounded identifier order', () => {
     expect(
-      correlator.candidates([], [
-        '010001first-000000@email.amazonses.com',
-        '010001second-000000@email.amazonses.com'
-      ])
+      correlator.candidates(
+        [],
+        ['010001first-000000@email.amazonses.com', '010001second-000000@email.amazonses.com']
+      )
     ).toEqual([
       {
         providerSubmissionRef: '010001first-000000',
