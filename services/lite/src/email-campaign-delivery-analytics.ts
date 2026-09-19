@@ -5,7 +5,6 @@ import {
 } from '@markorbit/contracts/email-campaign-delivery-analytics';
 import type { EmailCampaignIdV1 } from '@markorbit/contracts/email-campaign';
 import type {
-  EmailDeliveryAttemptV1,
   EmailDeliveryObservationKindV1,
   EmailDeliveryObservationV1
 } from '@markorbit/contracts/email-delivery';
