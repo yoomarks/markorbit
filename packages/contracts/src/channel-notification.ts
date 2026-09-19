@@ -132,7 +132,6 @@ const forbiddenKeys = new Set([
   'fromaddress',
   'toaddress',
   'replytoaddress',
-  'subject',
   'body',
   'textbody',
   'htmlbody',
