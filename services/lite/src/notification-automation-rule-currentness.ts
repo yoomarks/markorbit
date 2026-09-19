@@ -32,15 +32,14 @@ function canonical(value: unknown): unknown {
 }
 
 function fingerprint(value: unknown): string {
-  return createHash('sha256').update(JSON.stringify(canonical(value))).digest('hex');
+  return createHash('sha256')
+    .update(JSON.stringify(canonical(value)))
+    .digest('hex');
 }
 
 export class NotificationAutomationRuleCurrentnessResolver {
   constructor(
-    private readonly rules: Pick<
-      PostgresNotificationAutomationRuleStore,
-      'getExact' | 'getLatest'
-    >,
+    private readonly rules: Pick<PostgresNotificationAutomationRuleStore, 'getExact' | 'getLatest'>,
     private readonly content: Pick<ContentPreparationStore, 'findPublishPackage'>,
     private readonly senders: Pick<
       PostgresEmailSenderProfileStore,
@@ -85,31 +84,24 @@ export class NotificationAutomationRuleCurrentnessResolver {
 
       ruleFingerprintSha256 = exact.spec.ruleFingerprintSha256;
 
-      if (latest.version !== version)
-        return result('STALE', 'RULE_SUPERSEDED');
+      if (latest.version !== version) return result('STALE', 'RULE_SUPERSEDED');
 
-      if (exact.status === 'REVOKED')
-        return result('REVOKED', 'RULE_NOT_ACTIVE');
-      if (exact.status !== 'ACTIVE')
-        return result('STALE', 'RULE_NOT_ACTIVE');
+      if (exact.status === 'REVOKED') return result('REVOKED', 'RULE_NOT_ACTIVE');
+      if (exact.status !== 'ACTIVE') return result('STALE', 'RULE_NOT_ACTIVE');
 
       const entitlement = await this.entitlement.resolve(workspaceId);
-      if ('unavailable' in entitlement)
-        return result('UNAVAILABLE', 'OWNER_UNAVAILABLE');
-      if (!entitlement.allowed)
-        return result('REVOKED', 'ENTITLEMENT_REVOKED');
+      if ('unavailable' in entitlement) return result('UNAVAILABLE', 'OWNER_UNAVAILABLE');
+      if (!entitlement.allowed) return result('REVOKED', 'ENTITLEMENT_REVOKED');
 
       const publishPackage = await this.content.findPublishPackage(
         workspaceId,
         exact.spec.content.publishPackageId,
         exact.spec.content.version
       );
-      if (!publishPackage)
-        return result('UNKNOWN', 'CONTENT_NOT_FOUND');
+      if (!publishPackage) return result('UNKNOWN', 'CONTENT_NOT_FOUND');
       if (
         publishPackage.workspaceId !== workspaceId ||
-        publishPackage.publishPackageFingerprintSha256 !==
-          exact.spec.content.fingerprintSha256
+        publishPackage.publishPackageFingerprintSha256 !== exact.spec.content.fingerprintSha256
       )
         return result('STALE', 'CONTENT_FINGERPRINT_MISMATCH');
 
@@ -122,8 +114,7 @@ export class NotificationAutomationRuleCurrentnessResolver {
         );
       } catch (error) {
         const code = (error as { code?: string }).code;
-        if (code === 'NOT_FOUND')
-          return result('UNKNOWN', 'SENDER_PROFILE_NOT_FOUND');
+        if (code === 'NOT_FOUND') return result('UNKNOWN', 'SENDER_PROFILE_NOT_FOUND');
         if (code === 'PERSISTENCE_UNAVAILABLE')
           return result('UNAVAILABLE', 'SENDER_PROFILE_UNAVAILABLE');
         return result('UNKNOWN', 'OWNER_DATA_UNKNOWN');
@@ -147,12 +138,8 @@ export class NotificationAutomationRuleCurrentnessResolver {
         senderCurrentness.state === 'PENDING_VERIFICATION'
       )
         return result('STALE', 'SENDER_PROFILE_STALE');
-      if (senderCurrentness.state === 'REVOKED')
-        return result('REVOKED', 'SENDER_PROFILE_REVOKED');
-      if (
-        senderCurrentness.state === 'UNKNOWN' ||
-        senderCurrentness.state === 'UNAVAILABLE'
-      )
+      if (senderCurrentness.state === 'REVOKED') return result('REVOKED', 'SENDER_PROFILE_REVOKED');
+      if (senderCurrentness.state === 'UNKNOWN' || senderCurrentness.state === 'UNAVAILABLE')
         return result('UNAVAILABLE', 'SENDER_PROFILE_UNAVAILABLE');
       if (senderCurrentness.state !== 'CURRENT_ELIGIBLE')
         return result('UNKNOWN', 'OWNER_DATA_UNKNOWN');
@@ -160,8 +147,7 @@ export class NotificationAutomationRuleCurrentnessResolver {
       return result('CURRENT', 'EXACT_ACTIVE_RULE_CURRENT');
     } catch (error) {
       const code = (error as { code?: string }).code;
-      if (code === 'PERSISTENCE_UNAVAILABLE')
-        return result('UNAVAILABLE', 'OWNER_UNAVAILABLE');
+      if (code === 'PERSISTENCE_UNAVAILABLE') return result('UNAVAILABLE', 'OWNER_UNAVAILABLE');
       return result('UNKNOWN', 'OWNER_DATA_UNKNOWN');
     }
   }
