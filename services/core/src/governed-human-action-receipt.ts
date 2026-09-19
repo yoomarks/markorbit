@@ -10,12 +10,15 @@ export const GOVERNED_HUMAN_ACTION_KINDS = [
   'PROVIDER_SELECTION',
   'CONTROLLED_HANDOFF',
   'TRADING_LISTING_PUBLISH',
-  'EMAIL_CAMPAIGN_SEND'
+  'EMAIL_CAMPAIGN_SEND',
+  'NOTIFICATION_AUTOMATION_ACTIVATE'
 ] as const;
 export const TRADING_LISTING_PUBLISH_AUTHORIZATION_ROUTE =
   '/api/execution/protected-external-actions/trading-listing-publish/authorizations' as const;
 export const EMAIL_CAMPAIGN_SEND_AUTHORIZATION_ROUTE =
   '/api/execution/protected-external-actions/email-campaign-send/authorizations' as const;
+export const NOTIFICATION_AUTOMATION_ACTIVATION_ROUTE =
+  /^\/api\/lite\/notification-automation-rules\/channel-notification-rule_[A-Za-z0-9_-]+\/activate$/u;
 export type GovernedHumanActionKind = (typeof GOVERNED_HUMAN_ACTION_KINDS)[number];
 
 export type GovernedHumanActionReceiptErrorCode =
@@ -90,7 +93,8 @@ function validRoute(kind: GovernedHumanActionKind, route: string): boolean {
   if (kind === 'CONTROLLED_HANDOFF') return handoff.test(route);
   if (kind === 'TRADING_LISTING_PUBLISH')
     return route === TRADING_LISTING_PUBLISH_AUTHORIZATION_ROUTE;
-  return route === EMAIL_CAMPAIGN_SEND_AUTHORIZATION_ROUTE;
+  if (kind === 'EMAIL_CAMPAIGN_SEND') return route === EMAIL_CAMPAIGN_SEND_AUTHORIZATION_ROUTE;
+  return NOTIFICATION_AUTOMATION_ACTIVATION_ROUTE.test(route);
 }
 
 function validateBinding(value: Readonly<GovernedHumanActionReceiptBinding>): void {
