@@ -116,6 +116,26 @@ suite('PostgreSQL Email Campaign reply handoff owner', () => {
       () => '2026-09-19T06:02:00.000Z'
     );
 
+  async function seedAcceptedDelivery(idempotencyPrefix: string) {
+    const accepted = attempt();
+    const planned: EmailDeliveryAttemptV1 = {
+      ...accepted,
+      status: 'PLANNED',
+      providerSubmissionRef: undefined,
+      updatedAt: accepted.createdAt
+    };
+    const service = deliveryStore();
+    await service.createAttempt({
+      value: planned,
+      idempotencyKey: `${idempotencyPrefix}-create`
+    });
+    await service.updateAttempt({
+      value: accepted,
+      expectedStatus: 'PLANNED',
+      idempotencyKey: `${idempotencyPrefix}-accept`
+    });
+  }
+
   async function seedExactLineage() {
     const hashA = 'a'.repeat(64);
     const hashB = 'b'.repeat(64);
@@ -221,10 +241,7 @@ suite('PostgreSQL Email Campaign reply handoff owner', () => {
   });
 
   it('persists exact correlated handoff and replays the identical command', async () => {
-    await deliveryStore().createAttempt({
-      value: attempt(),
-      idempotencyKey: 'reply-pg-attempt'
-    });
+    await seedAcceptedDelivery('reply-pg-attempt');
     const value = handoff();
     const first = await handoffStore().recordHandoff({
       value,
@@ -241,10 +258,7 @@ suite('PostgreSQL Email Campaign reply handoff owner', () => {
   });
 
   it('replays the same logical reply under a new idempotency key without duplicating the handoff', async () => {
-    await deliveryStore().createAttempt({
-      value: attempt(),
-      idempotencyKey: 'reply-pg-logical-attempt'
-    });
+    await seedAcceptedDelivery('reply-pg-logical-attempt');
     const value = handoff();
     const first = await handoffStore().recordHandoff({
       value,
@@ -268,10 +282,7 @@ suite('PostgreSQL Email Campaign reply handoff owner', () => {
   });
 
   it('rejects changed correlation for the same logical Managed Communication reply', async () => {
-    await deliveryStore().createAttempt({
-      value: attempt(),
-      idempotencyKey: 'reply-pg-conflict-attempt'
-    });
+    await seedAcceptedDelivery('reply-pg-conflict-attempt');
     const value = handoff();
     await handoffStore().recordHandoff({
       value,
@@ -290,10 +301,7 @@ suite('PostgreSQL Email Campaign reply handoff owner', () => {
   });
 
   it('fails closed if the command receipt is tampered after persistence', async () => {
-    await deliveryStore().createAttempt({
-      value: attempt(),
-      idempotencyKey: 'reply-pg-tamper-attempt'
-    });
+    await seedAcceptedDelivery('reply-pg-tamper-attempt');
     const value = handoff();
     await handoffStore().recordHandoff({
       value,
