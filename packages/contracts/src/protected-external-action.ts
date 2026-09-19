@@ -5,6 +5,14 @@ import type {
   CampaignReviewDecisionIdV1,
   EmailCampaignIdV1
 } from './email-campaign.js';
+import {
+  parseChannelNotificationSendIntentV1,
+  type ChannelNotificationSendIntentV1
+} from './channel-notification.js';
+import {
+  parseChannelNotificationAutomationGovernanceEvidenceV1,
+  type ChannelNotificationAutomationGovernanceEvidenceV1
+} from './channel-notification-automation.js';
 import type { WorkspaceEmailSenderProfileId } from './email-sender-profile.js';
 import type { TradingListingAssetId } from './trading-asset-classification.js';
 import type { TradingListingDraftId } from './trading-listing.js';
@@ -12,7 +20,8 @@ import type { TradingMarketplaceTargetBindingId } from './trading-marketplace-ta
 
 export const protectedExternalActionKindsV1 = [
   'TRADING_LISTING_PUBLISH',
-  'EMAIL_CAMPAIGN_SEND'
+  'EMAIL_CAMPAIGN_SEND',
+  'EMAIL_NOTIFICATION_SEND'
 ] as const;
 export type ProtectedExternalActionKindV1 = (typeof protectedExternalActionKindsV1)[number];
 
@@ -61,6 +70,15 @@ export interface EmailCampaignSendIntentV1 {
   effectFingerprintSha256: string;
 }
 
+export interface EmailNotificationSendIntentV1 {
+  schemaVersion: 1;
+  actionKind: 'EMAIL_NOTIFICATION_SEND';
+  workspaceId: string;
+  notification: Readonly<ChannelNotificationSendIntentV1>;
+  activationEvidence: Readonly<ChannelNotificationAutomationGovernanceEvidenceV1>;
+  effectFingerprintSha256: string;
+}
+
 export const emailCampaignSendCurrentnessStatesV1 = [
   'CURRENT',
   'STALE',
@@ -101,6 +119,45 @@ export interface EmailCampaignSendCurrentnessV1 {
   deliveryPlanFingerprintSha256: string;
   state: EmailCampaignSendCurrentnessStateV1;
   reason: EmailCampaignSendCurrentnessReasonV1;
+}
+
+export const emailNotificationSendCurrentnessStatesV1 = [
+  'CURRENT',
+  'STALE',
+  'REVOKED',
+  'SUPPRESSED',
+  'UNKNOWN',
+  'UNAVAILABLE'
+] as const;
+export type EmailNotificationSendCurrentnessStateV1 =
+  (typeof emailNotificationSendCurrentnessStatesV1)[number];
+
+export const emailNotificationSendCurrentnessReasonsV1 = [
+  'EXACT_NOTIFICATION_SEND_CURRENT',
+  'RULE_STALE',
+  'RULE_REVOKED',
+  'ACTIVATION_EVIDENCE_STALE',
+  'TRIGGER_STALE',
+  'TARGET_STALE',
+  'TARGET_UNAVAILABLE',
+  'OUTBOUND_POLICY_SUPPRESSED',
+  'ENTITLEMENT_REVOKED',
+  'OWNER_DATA_UNKNOWN',
+  'OWNER_UNAVAILABLE',
+  'FINGERPRINT_MISMATCH',
+  'WORKSPACE_MISMATCH'
+] as const;
+export type EmailNotificationSendCurrentnessReasonV1 =
+  (typeof emailNotificationSendCurrentnessReasonsV1)[number];
+
+export interface EmailNotificationSendCurrentnessV1 {
+  schemaVersion: 1;
+  workspaceId: string;
+  actionKind: 'EMAIL_NOTIFICATION_SEND';
+  effectFingerprintSha256: string;
+  deliveryPlanFingerprintSha256: string;
+  state: EmailNotificationSendCurrentnessStateV1;
+  reason: EmailNotificationSendCurrentnessReasonV1;
 }
 
 export const tradingListingPublicationCurrentnessStatesV1 = [
@@ -146,7 +203,7 @@ export interface CoreHumanActionReceiptBindingV1 {
   userId: string;
   membershipId: string;
   principalReference: string;
-  kind: ProtectedExternalActionKindV1;
+  kind: Exclude<ProtectedExternalActionKindV1, 'EMAIL_NOTIFICATION_SEND'>;
   mutationRoute:
     | '/api/execution/protected-external-actions/trading-listing-publish/authorizations'
     | '/api/execution/protected-external-actions/email-campaign-send/authorizations';
@@ -172,32 +229,46 @@ export const protectedExternalActionAuthorizationStatusesV1 = [
 export type ProtectedExternalActionAuthorizationStatusV1 =
   (typeof protectedExternalActionAuthorizationStatusesV1)[number];
 
-export interface ProtectedExternalActionAuthorizationBaseV1 {
+export interface ProtectedExternalActionAuthorizationCommonV1 {
   schemaVersion: 1;
   authorizationId: ProtectedExternalActionAuthorizationId;
   version: 1;
   workspaceId: string;
   effectFingerprintSha256: string;
-  humanReceipt: Readonly<CoreHumanActionReceiptBindingV1>;
   authorizationStatus: ProtectedExternalActionAuthorizationStatusV1;
-  authorizedByUserId: string;
   authorizedAt: string;
   expiresAt: string;
   lastValidatedAt: string;
   idempotencyKey: string;
 }
 
+export interface ProtectedExternalActionHumanAuthorizationBaseV1
+  extends ProtectedExternalActionAuthorizationCommonV1 {
+  humanReceipt: Readonly<CoreHumanActionReceiptBindingV1>;
+  authorizedByUserId: string;
+}
+
+export interface ProtectedExternalActionAutomatedAuthorizationBaseV1
+  extends ProtectedExternalActionAuthorizationCommonV1 {
+  activationEvidence: Readonly<ChannelNotificationAutomationGovernanceEvidenceV1>;
+  authorizedBySystem: 'NOTIFICATION_AUTOMATION';
+}
+
 export type ProtectedExternalActionAuthorizationV1 =
-  | (ProtectedExternalActionAuthorizationBaseV1 & {
+  | (ProtectedExternalActionHumanAuthorizationBaseV1 & {
       actionKind: 'TRADING_LISTING_PUBLISH';
       intent: Readonly<TradingListingPublicationIntentV1>;
     })
-  | (ProtectedExternalActionAuthorizationBaseV1 & {
+  | (ProtectedExternalActionHumanAuthorizationBaseV1 & {
       actionKind: 'EMAIL_CAMPAIGN_SEND';
       intent: Readonly<EmailCampaignSendIntentV1>;
+    })
+  | (ProtectedExternalActionAutomatedAuthorizationBaseV1 & {
+      actionKind: 'EMAIL_NOTIFICATION_SEND';
+      intent: Readonly<EmailNotificationSendIntentV1>;
     });
 
-export interface ProtectedExternalActionReleaseBaseV1 {
+export interface ProtectedExternalActionReleaseCommonV1 {
   schemaVersion: 1;
   releaseId: ProtectedExternalActionReleaseId;
   version: 1;
@@ -207,17 +278,18 @@ export interface ProtectedExternalActionReleaseBaseV1 {
   >;
   effectFingerprintSha256: string;
   status: 'RELEASED_FOR_EXECUTION';
-  releasedByUserId: string;
   releasedAt: string;
   idempotencyKey: string;
 }
 
 export type ProtectedExternalActionReleaseV1 =
-  | (ProtectedExternalActionReleaseBaseV1 & {
-      actionKind: 'TRADING_LISTING_PUBLISH';
+  | (ProtectedExternalActionReleaseCommonV1 & {
+      actionKind: 'TRADING_LISTING_PUBLISH' | 'EMAIL_CAMPAIGN_SEND';
+      releasedByUserId: string;
     })
-  | (ProtectedExternalActionReleaseBaseV1 & {
-      actionKind: 'EMAIL_CAMPAIGN_SEND';
+  | (ProtectedExternalActionReleaseCommonV1 & {
+      actionKind: 'EMAIL_NOTIFICATION_SEND';
+      releasedBySystem: 'EXECUTION_NOTIFICATION_AUTOMATION';
     });
 
 export class ProtectedExternalActionContractError extends TypeError {
@@ -424,4 +496,71 @@ export function assertEmailCampaignSendIntentV1(intent: Readonly<EmailCampaignSe
     throw new ProtectedExternalActionContractError(
       'Email Campaign send fingerprints must be lowercase SHA-256 digests.'
     );
+}
+
+
+export function canonicalEmailNotificationSendIntentPayloadV1(
+  intent: Readonly<EmailNotificationSendIntentV1>
+) {
+  if (
+    intent.schemaVersion !== 1 ||
+    intent.actionKind !== 'EMAIL_NOTIFICATION_SEND' ||
+    !UUID.test(intent.workspaceId)
+  )
+    throw new ProtectedExternalActionContractError(
+      'Email Notification send intent identity or Workspace is invalid.'
+    );
+
+  let notification: ChannelNotificationSendIntentV1;
+  let activationEvidence: ChannelNotificationAutomationGovernanceEvidenceV1;
+  try {
+    notification = parseChannelNotificationSendIntentV1(intent.notification);
+    activationEvidence = parseChannelNotificationAutomationGovernanceEvidenceV1(
+      intent.activationEvidence
+    );
+  } catch (cause) {
+    throw new ProtectedExternalActionContractError(
+      `Email Notification owner binding is invalid: ${
+        cause instanceof Error ? cause.message : 'unknown error'
+      }`
+    );
+  }
+
+  if (
+    notification.workspaceId !== intent.workspaceId.toLowerCase() ||
+    activationEvidence.workspaceId !== intent.workspaceId.toLowerCase() ||
+    activationEvidence.action !== 'ACTIVATE' ||
+    activationEvidence.notificationRuleId !== notification.rule.notificationRuleId ||
+    activationEvidence.authorizedRuleVersion !== notification.rule.version ||
+    activationEvidence.authorizedRuleFingerprintSha256 !==
+      notification.rule.fingerprintSha256 ||
+    !/^core-governed-human-action-receipt:[0-9a-f-]{36}$/iu.test(
+      activationEvidence.evidenceRef
+    )
+  )
+    throw new ProtectedExternalActionContractError(
+      'Email Notification send must bind the exact current Core-governed rule activation.'
+    );
+
+  if (
+    !SHA256.test(intent.effectFingerprintSha256) ||
+    intent.effectFingerprintSha256 !== notification.effectFingerprintSha256
+  )
+    throw new ProtectedExternalActionContractError(
+      'Email Notification send effect fingerprint must exactly match Notification intent.'
+    );
+
+  return {
+    schemaVersion: 1 as const,
+    actionKind: 'EMAIL_NOTIFICATION_SEND' as const,
+    workspaceId: intent.workspaceId.toLowerCase(),
+    notification,
+    activationEvidence
+  };
+}
+
+export function assertEmailNotificationSendIntentV1(
+  intent: Readonly<EmailNotificationSendIntentV1>
+): void {
+  canonicalEmailNotificationSendIntentPayloadV1(intent);
 }
