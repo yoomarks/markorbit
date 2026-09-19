@@ -383,7 +383,6 @@ describe('Amazon SES event normalization', () => {
   });
 });
 
-
 describe('Amazon SES authenticated event ingestion', () => {
   const envelope = {
     eventType: 'Complaint',
