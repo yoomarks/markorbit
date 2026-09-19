@@ -4,10 +4,6 @@ import {
   type EmailDeliveryAttemptV1,
   type EmailDeliveryObservationV1
 } from '@markorbit/contracts/email-delivery';
-import type {
-  AmazonSesMaterializedEmail,
-  AmazonSesSubmissionResult
-} from './email-delivery-ses.js';
 import type { SetOutboundContactSuppressionCommand } from './outbound-contact-policy.js';
 import type { PostgresEmailDeliveryStore } from './email-delivery.js';
 
