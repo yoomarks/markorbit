@@ -38,7 +38,10 @@ export interface AmazonSesV2SendEmailInput {
 }
 
 export interface AmazonSesV2Client {
-  sendEmail(input: Readonly<AmazonSesV2SendEmailInput>): Promise<Readonly<{ MessageId?: string }>>;
+  sendEmail(
+    region: string,
+    input: Readonly<AmazonSesV2SendEmailInput>
+  ): Promise<Readonly<{ MessageId?: string }>>;
 }
 
 export interface AmazonSesRoutingResolver {
@@ -142,7 +145,7 @@ export class AmazonSesV2DeliveryAdapter {
     };
 
     try {
-      const response = await this.client.sendEmail({
+      const response = await this.client.sendEmail(bounded(routing.region, 'region', 80), {
         FromEmailAddress: fromAddress,
         Destination: { ToAddresses: recipients },
         ...(materialized.replyToAddress
