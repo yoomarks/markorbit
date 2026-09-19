@@ -4,10 +4,7 @@ import {
   parseEmailCampaignReplyHandoffV1,
   type EmailCampaignReplyHandoffV1
 } from '@markorbit/contracts/email-campaign-reply-handoff';
-import {
-  parseManagedCommunicationMessageV1,
-  type ManagedCommunicationMessageV1
-} from '@markorbit/contracts/managed-communication';
+import type { ManagedCommunicationReplyReferenceEvidenceV1 } from '@markorbit/contracts/managed-communication-reply-reference';
 import type { EmailCampaignV1 } from '@markorbit/contracts/email-campaign';
 import type { EmailDeliveryAttemptV1 } from '@markorbit/contracts/email-delivery';
 import type { WorkspaceEmailSenderProfileV1 } from '@markorbit/contracts/email-sender-profile';
@@ -54,22 +51,6 @@ export class EmailCampaignReplyCorrelationError extends Error {
   }
 }
 
-export interface EmailCampaignReplyManagedAccountV1 {
-  workspaceId: string;
-  accountRef: string;
-  channel: 'EMAIL';
-  provider: string;
-}
-
-export interface EmailCampaignReplyInboundEvidenceV1 {
-  evidenceRef: string;
-  sha256: string;
-  provider: string;
-  providerMessageId: string;
-  observedAt: string;
-  headers: readonly Readonly<{ name: string; value: string }>[];
-}
-
 export type EmailCampaignReplyReferenceEvidenceMethodV1 =
   | 'RFC_IN_REPLY_TO'
   | 'RFC_REFERENCES';
@@ -81,25 +62,17 @@ export interface EmailCampaignReplyReferenceCandidateV1 {
 
 export interface EmailCampaignReplyReferenceCorrelatorV1 {
   candidates(
-    headers: readonly Readonly<{ name: string; value: string }>[]
+    inReplyToMessageIds: readonly string[],
+    referenceMessageIds: readonly string[]
   ): readonly Readonly<EmailCampaignReplyReferenceCandidateV1>[];
 }
 
 export interface EmailCampaignReplyManagedCommunicationReaderV1 {
-  resolveAccount(
-    workspaceId: string,
-    accountRef: string
-  ): Promise<Readonly<EmailCampaignReplyManagedAccountV1>>;
-  resolveMessage(
-    workspaceId: string,
-    accountRef: string,
-    messageId: string
-  ): Promise<Readonly<ManagedCommunicationMessageV1>>;
-  resolveExactEvidence(input: {
+  resolveReplyReferenceEvidence(input: {
     workspaceId: string;
     accountRef: string;
     messageId: string;
-  }): Promise<Readonly<EmailCampaignReplyInboundEvidenceV1> | undefined>;
+  }): Promise<Readonly<ManagedCommunicationReplyReferenceEvidenceV1>>;
 }
 
 export interface EmailCampaignReplyDeliveryReaderV1 {
@@ -137,7 +110,6 @@ export interface EmailCampaignReplyHandoffWriterV1 {
 }
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu;
-const SHA256 = /^[a-f0-9]{64}$/u;
 
 function clean(value: string, field: string, max = 1000): string {
   const result = value.trim();
@@ -378,40 +350,6 @@ export class PostgresEmailCampaignReplyHandoffStore implements EmailCampaignRepl
   }
 }
 
-function canonicalInboundEvidence(
-  input: Readonly<EmailCampaignReplyInboundEvidenceV1>
-): EmailCampaignReplyInboundEvidenceV1 {
-  const sha256 = clean(input.sha256, 'exactEvidence.sha256', 64);
-  if (!SHA256.test(sha256))
-    throw new EmailCampaignReplyCorrelationError(
-      'INVALID_INBOUND_EVIDENCE',
-      'exactEvidence.sha256 must be lowercase SHA-256 hex.'
-    );
-  const observedAt = clean(input.observedAt, 'exactEvidence.observedAt', 80);
-  const parsed = new Date(observedAt);
-  if (Number.isNaN(parsed.getTime()) || parsed.toISOString() !== observedAt)
-    throw new EmailCampaignReplyCorrelationError(
-      'INVALID_INBOUND_EVIDENCE',
-      'exactEvidence.observedAt must be a canonical ISO timestamp.'
-    );
-  if (!Array.isArray(input.headers))
-    throw new EmailCampaignReplyCorrelationError(
-      'INVALID_INBOUND_EVIDENCE',
-      'exactEvidence.headers must be an array.'
-    );
-  return {
-    evidenceRef: clean(input.evidenceRef, 'exactEvidence.evidenceRef', 500),
-    sha256,
-    provider: clean(input.provider, 'exactEvidence.provider', 120),
-    providerMessageId: clean(input.providerMessageId, 'exactEvidence.providerMessageId', 500),
-    observedAt,
-    headers: input.headers.map((header, index) => ({
-      name: clean(header.name, `exactEvidence.headers[${index}].name`, 200),
-      value: clean(header.value, `exactEvidence.headers[${index}].value`, 20_000)
-    }))
-  };
-}
-
 function uniqueMatches(
   matches: readonly Readonly<{
     attempt: EmailDeliveryAttemptV1;
@@ -455,55 +393,25 @@ export class EmailCampaignReplyHandoffServiceV1 {
     const accountRef = clean(input.accountRef, 'accountRef', 500);
     const messageId = clean(input.messageId, 'messageId', 500);
 
-    const [account, rawMessage, rawEvidence] = await Promise.all([
-      this.managedCommunication.resolveAccount(workspaceId, accountRef),
-      this.managedCommunication.resolveMessage(workspaceId, accountRef, messageId),
-      this.managedCommunication.resolveExactEvidence({
-        workspaceId,
-        accountRef,
-        messageId
-      })
-    ]);
+    const replyReference = await this.managedCommunication.resolveReplyReferenceEvidence({
+      workspaceId,
+      accountRef,
+      messageId
+    });
     if (
-      account.workspaceId !== workspaceId ||
-      account.accountRef !== accountRef ||
-      account.channel !== 'EMAIL'
-    )
-      throw new EmailCampaignReplyCorrelationError(
-        'REPLY_ACCOUNT_MISMATCH',
-        'Managed Communication account is not owned by the requested Workspace.'
-      );
-    if (!rawEvidence)
-      throw new EmailCampaignReplyCorrelationError(
-        'INVALID_INBOUND_EVIDENCE',
-        'Managed Communication exact inbound evidence does not exist.'
-      );
-
-    const message = parseManagedCommunicationMessageV1(rawMessage);
-    if (
-      message.direction !== 'INBOUND' ||
-      message.accountRef !== accountRef ||
-      message.messageId !== messageId ||
-      message.channel !== 'EMAIL' ||
-      message.providerObservation.provider !== account.provider
+      replyReference.workspaceId !== workspaceId ||
+      replyReference.accountRef !== accountRef ||
+      replyReference.messageId !== messageId
     )
       throw new EmailCampaignReplyCorrelationError(
         'LINEAGE_MISMATCH',
-        'Managed Communication message does not match the exact account lineage.'
+        'Managed Communication reply-reference reader returned different exact lineage.'
       );
 
-    const exactEvidence = canonicalInboundEvidence(rawEvidence);
-    if (
-      exactEvidence.provider !== message.providerObservation.provider ||
-      exactEvidence.providerMessageId !== message.providerObservation.providerMessageId ||
-      exactEvidence.observedAt !== message.providerObservation.observedAt
-    )
-      throw new EmailCampaignReplyCorrelationError(
-        'LINEAGE_MISMATCH',
-        'Exact inbound evidence does not match the Managed Communication provider observation.'
-      );
-
-    const candidates = this.correlator.candidates(exactEvidence.headers);
+    const candidates = this.correlator.candidates(
+      replyReference.inReplyToMessageIds,
+      replyReference.referenceMessageIds
+    );
     if (candidates.length === 0)
       throw new EmailCampaignReplyCorrelationError(
         'CORRELATION_NOT_FOUND',
@@ -569,7 +477,7 @@ export class EmailCampaignReplyHandoffServiceV1 {
       );
     if (
       senderProfile.replyTo.mode !== 'MANAGED_COMMUNICATION' ||
-      senderProfile.replyTo.accountRef !== accountRef
+      senderProfile.replyTo.accountRef !== replyReference.accountRef
     )
       throw new EmailCampaignReplyCorrelationError(
         'REPLY_ACCOUNT_MISMATCH',
@@ -584,7 +492,7 @@ export class EmailCampaignReplyHandoffServiceV1 {
         'Reply handoff runtime clock is invalid.'
       );
     const createdAt = createdAtDate.toISOString();
-    if (Date.parse(createdAt) < Date.parse(exactEvidence.observedAt))
+    if (Date.parse(createdAt) < Date.parse(replyReference.observedAt))
       throw new EmailCampaignReplyCorrelationError(
         'INVALID_CLOCK',
         'Reply handoff runtime clock precedes inbound evidence.'
@@ -593,23 +501,23 @@ export class EmailCampaignReplyHandoffServiceV1 {
     const correlationEvidenceFingerprintSha256 = hash({
       workspaceId,
       managedCommunication: {
-        accountRef: message.accountRef,
-        messageId: message.messageId,
-        threadRef: message.threadRef,
-        provider: message.providerObservation.provider,
-        providerMessageId: message.providerObservation.providerMessageId,
-        observedAt: message.providerObservation.observedAt
+        accountRef: replyReference.accountRef,
+        messageId: replyReference.messageId,
+        threadRef: replyReference.threadRef,
+        provider: replyReference.provider,
+        providerMessageId: replyReference.providerMessageId,
+        observedAt: replyReference.observedAt
       },
       inboundEvidence: {
-        evidenceRef: exactEvidence.evidenceRef,
-        sha256: exactEvidence.sha256
+        evidenceRef: replyReference.exactEvidence.evidenceRef,
+        sha256: replyReference.exactEvidence.sha256
       },
       outboundProviderSubmissionRef: candidate.providerSubmissionRef,
       evidenceMethod: candidate.evidenceMethod
     });
     const replyHandoffId = `email-campaign-reply-handoff_${createHash('sha256')
       .update(
-        `${workspaceId}\n${message.accountRef}\n${message.messageId}\n${attempt.deliveryAttemptId}`
+        `${workspaceId}\n${replyReference.accountRef}\n${replyReference.messageId}\n${attempt.deliveryAttemptId}`
       )
       .digest('hex')
       .slice(0, 40)}`;
@@ -631,16 +539,16 @@ export class EmailCampaignReplyHandoffServiceV1 {
         version: senderProfile.version
       },
       managedCommunication: {
-        accountRef: message.accountRef,
-        messageId: message.messageId,
-        threadRef: message.threadRef,
-        provider: message.providerObservation.provider,
-        providerMessageId: message.providerObservation.providerMessageId,
-        observedAt: message.providerObservation.observedAt
+        accountRef: replyReference.accountRef,
+        messageId: replyReference.messageId,
+        threadRef: replyReference.threadRef,
+        provider: replyReference.provider,
+        providerMessageId: replyReference.providerMessageId,
+        observedAt: replyReference.observedAt
       },
       inboundEvidence: {
-        evidenceRef: exactEvidence.evidenceRef,
-        sha256: exactEvidence.sha256
+        evidenceRef: replyReference.exactEvidence.evidenceRef,
+        sha256: replyReference.exactEvidence.sha256
       },
       outboundProviderSubmissionRef: candidate.providerSubmissionRef,
       correlationMethod: 'PROVIDER_MESSAGE_REFERENCE',
