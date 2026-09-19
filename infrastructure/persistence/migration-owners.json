@@ -80,7 +80,8 @@
     "site_runtime": "@markorbit/site-service",
     "lite_email_campaigns": "@markorbit/lite-service",
     "lite_email_sender_profiles": "@markorbit/lite-service",
-    "lite_email_delivery_evidence": "@markorbit/lite-service"
+    "lite_email_delivery_evidence": "@markorbit/lite-service",
+    "0138_lite_notification_automation_rules": "@markorbit/lite-service"
   },
   "protectedTableFamilies": {
     "capability_communication_": "@markorbit/capability-engine",
