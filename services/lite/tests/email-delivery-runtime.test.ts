@@ -201,12 +201,12 @@ describe('Email provider observation suppression handoff', () => {
     ['COMPLAINED', 'COMPLAINT'],
     ['UNSUBSCRIBED', 'RECIPIENT_OPT_OUT']
   ] as const)('routes %s through Outbound Contact Policy owner', async (event, reasonCode) => {
-    const recordObservation = vi.fn(
-      ({ value }: Readonly<RecordEmailDeliveryObservationCommand>) => Promise.resolve(value)
+    const recordObservation = vi.fn(({ value }: Readonly<RecordEmailDeliveryObservationCommand>) =>
+      Promise.resolve(value)
     );
     const suppression: EmailDeliverySuppressionOwner = {
-      setSuppression: vi.fn(
-        (_command: Readonly<SetOutboundContactSuppressionCommand>) => Promise.resolve({})
+      setSuppression: vi.fn((_command: Readonly<SetOutboundContactSuppressionCommand>) =>
+        Promise.resolve({})
       )
     };
     const service = new EmailDeliveryProviderEventService(
@@ -248,15 +248,14 @@ describe('Email provider observation suppression handoff', () => {
 
   it('does not create suppression from ordinary delivery evidence', async () => {
     const suppression: EmailDeliverySuppressionOwner = {
-      setSuppression: vi.fn(
-        (_command: Readonly<SetOutboundContactSuppressionCommand>) => Promise.resolve({})
+      setSuppression: vi.fn((_command: Readonly<SetOutboundContactSuppressionCommand>) =>
+        Promise.resolve({})
       )
     };
     const service = new EmailDeliveryProviderEventService(
       {
-        recordObservation: vi.fn(
-          ({ value }: Readonly<RecordEmailDeliveryObservationCommand>) =>
-            Promise.resolve(value)
+        recordObservation: vi.fn(({ value }: Readonly<RecordEmailDeliveryObservationCommand>) =>
+          Promise.resolve(value)
         )
       } as Pick<PostgresEmailDeliveryStore, 'recordObservation'>,
       suppression
