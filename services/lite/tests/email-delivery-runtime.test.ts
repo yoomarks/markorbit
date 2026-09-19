@@ -162,6 +162,42 @@ describe('Email delivery runtime', () => {
     expect(adapter.submit).toHaveBeenCalledTimes(1);
   });
 
+  it('fails before currentness and transport when materialization drifts from durable attempt', async () => {
+    const memory = memoryStore();
+    const currentness: EmailDeliveryPreSubmitCurrentnessGate = {
+      assertCurrent: vi.fn(() => Promise.resolve())
+    };
+    const adapter: EmailDeliveryProviderAdapter = {
+      submit: vi.fn(() =>
+        Promise.resolve({ status: 'FAILED' as const, reasonCode: 'UNEXPECTED_CALL' })
+      )
+    };
+    const service = new EmailDeliveryRuntimeService(
+      memory.store as Pick<
+        PostgresEmailDeliveryStore,
+        'createAttempt' | 'getAttempt' | 'updateAttempt' | 'recordObservation'
+      >,
+      currentness,
+      adapter
+    );
+    await expect(
+      service.submitShard({
+        attempt: planned(),
+        materialized: {
+          workspaceId: '15151515-1515-4515-8515-151515151515',
+          routingPartitionRef: 'routing:workspace',
+          fromAddress: 'hello@example.com',
+          recipients: ['person@example.com'],
+          subject: 'Reviewed subject',
+          textContent: 'Reviewed body'
+        }
+      })
+    ).rejects.toMatchObject({ code: 'MATERIALIZED_ATTEMPT_MISMATCH' });
+    expect(currentness.assertCurrent).not.toHaveBeenCalled();
+    expect(adapter.submit).not.toHaveBeenCalled();
+    expect(memory.current()?.status).toBe('PLANNED');
+  });
+
   it('fails before transport when JIT currentness fails', async () => {
     const memory = memoryStore();
     const adapter: EmailDeliveryProviderAdapter = {
