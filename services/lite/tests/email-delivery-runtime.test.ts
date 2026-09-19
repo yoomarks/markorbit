@@ -165,7 +165,9 @@ describe('Email delivery runtime', () => {
   it('fails before transport when JIT currentness fails', async () => {
     const memory = memoryStore();
     const adapter: EmailDeliveryProviderAdapter = {
-      submit: vi.fn(() => Promise.resolve({ status: 'FAILED', reasonCode: 'UNEXPECTED_CALL' }))
+      submit: vi.fn(() =>
+        Promise.resolve({ status: 'FAILED' as const, reasonCode: 'UNEXPECTED_CALL' })
+      )
     };
     const service = new EmailDeliveryRuntimeService(
       memory.store as Pick<
