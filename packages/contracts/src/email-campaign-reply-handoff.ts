@@ -4,12 +4,7 @@ import type { WorkspaceEmailSenderProfileId } from './email-sender-profile.js';
 
 export type EmailCampaignReplyHandoffId = `email-campaign-reply-handoff_${string}`;
 
-export const emailCampaignReplyCorrelationMethodsV1 = [
-  'RFC_IN_REPLY_TO',
-  'RFC_REFERENCES'
-] as const;
-export type EmailCampaignReplyCorrelationMethodV1 =
-  (typeof emailCampaignReplyCorrelationMethodsV1)[number];
+export type EmailCampaignReplyCorrelationMethodV1 = 'PROVIDER_MESSAGE_REFERENCE';
 
 export const noEmailCampaignReplyHandoffAuthorityConsequencesV1 = Object.freeze({
   businessSuccessCreated: false,
@@ -54,7 +49,7 @@ export interface EmailCampaignReplyHandoffV1 {
   }>;
   outboundProviderSubmissionRef: string;
   correlationMethod: EmailCampaignReplyCorrelationMethodV1;
-  evidenceFingerprintSha256: string;
+  correlationEvidenceFingerprintSha256: string;
   status: 'CORRELATED';
   createdAt: string;
   authority: Readonly<EmailCampaignReplyHandoffAuthorityConsequencesV1>;
@@ -197,7 +192,7 @@ export function parseEmailCampaignReplyHandoffV1(value: unknown): EmailCampaignR
       'inboundEvidence',
       'outboundProviderSubmissionRef',
       'correlationMethod',
-      'evidenceFingerprintSha256',
+      'correlationEvidenceFingerprintSha256',
       'status',
       'createdAt',
       'authority'
@@ -234,13 +229,10 @@ export function parseEmailCampaignReplyHandoffV1(value: unknown): EmailCampaignR
   const inboundEvidence = object(item.inboundEvidence, 'inboundEvidence');
   exactKeys(inboundEvidence, ['evidenceRef', 'sha256'], 'inboundEvidence');
 
-  if (
-    typeof item.correlationMethod !== 'string' ||
-    !emailCampaignReplyCorrelationMethodsV1.includes(
-      item.correlationMethod as EmailCampaignReplyCorrelationMethodV1
-    )
-  )
-    throw new EmailCampaignReplyHandoffContractError('correlationMethod is invalid.');
+  if (item.correlationMethod !== 'PROVIDER_MESSAGE_REFERENCE')
+    throw new EmailCampaignReplyHandoffContractError(
+      'correlationMethod must be PROVIDER_MESSAGE_REFERENCE.'
+    );
 
   return {
     schemaVersion: 1,
@@ -295,8 +287,8 @@ export function parseEmailCampaignReplyHandoffV1(value: unknown): EmailCampaignR
       'outboundProviderSubmissionRef',
       500
     ),
-    correlationMethod: item.correlationMethod as EmailCampaignReplyCorrelationMethodV1,
-    evidenceFingerprintSha256: sha(item.evidenceFingerprintSha256, 'evidenceFingerprintSha256'),
+    correlationMethod: 'PROVIDER_MESSAGE_REFERENCE',
+    correlationEvidenceFingerprintSha256: sha(item.correlationEvidenceFingerprintSha256, 'correlationEvidenceFingerprintSha256'),
     status: 'CORRELATED',
     createdAt: timestamp(item.createdAt, 'createdAt'),
     authority: authority(item.authority)
