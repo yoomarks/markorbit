@@ -16,6 +16,28 @@ export interface ProtectedExternalActionTransactionHost {
   transact<T>(work: (client: QueryClient) => Promise<T>): Promise<T>;
 }
 
+function authorizationReceiptReference(
+  authorization: Readonly<ProtectedExternalActionAuthorizationV1>
+): Readonly<{ receiptId: string; receiptVersion: 1 }> {
+  if (authorization.actionKind !== 'EMAIL_NOTIFICATION_SEND')
+    return {
+      receiptId: authorization.humanReceipt.receiptId,
+      receiptVersion: authorization.humanReceipt.receiptVersion
+    };
+
+  const prefix = 'core-governed-human-action-receipt:';
+  const receiptId = authorization.activationEvidence.evidenceRef.startsWith(prefix)
+    ? authorization.activationEvidence.evidenceRef.slice(prefix.length)
+    : '';
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/iu.test(receiptId))
+    throw new ProtectedExternalActionError(
+      'INVALID_REQUEST',
+      'Notification authorization requires an exact Core activation receipt reference.',
+      400
+    );
+  return { receiptId, receiptVersion: 1 };
+}
+
 export class PostgresProtectedExternalActionRepository implements ProtectedExternalActionRepository {
   constructor(
     private readonly database: ProtectedExternalActionTransactionHost,
@@ -46,6 +68,7 @@ export class PostgresProtectedExternalActionRepository implements ProtectedExter
           if (replay.requestFingerprint !== requestFingerprint) this.conflict();
           return replay.result;
         }
+        const receipt = authorizationReceiptReference(authorization);
         await client.query(
           `INSERT INTO execution_protected_action_authorizations(
              workspace_id,authorization_id,version,action_kind,effect_fingerprint_sha256,
@@ -57,8 +80,8 @@ export class PostgresProtectedExternalActionRepository implements ProtectedExter
             authorization.version,
             authorization.actionKind,
             authorization.effectFingerprintSha256,
-            authorization.humanReceipt.receiptId,
-            authorization.humanReceipt.receiptVersion,
+            receipt.receiptId,
+            receipt.receiptVersion,
             authorization.authorizationStatus,
             JSON.stringify(authorization),
             authorization.authorizedAt,
