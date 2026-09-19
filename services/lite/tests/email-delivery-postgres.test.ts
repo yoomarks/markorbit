@@ -252,21 +252,21 @@ suite('PostgreSQL email delivery evidence owner', () => {
       idempotencyKey: 'delivery-campaign-read-observation'
     });
 
-    expect(
-      await service.listCampaignAttempts(workspaceId, primary.campaign.campaignId, 1)
-    ).toEqual([primary]);
+    expect(await service.listCampaignAttempts(workspaceId, primary.campaign.campaignId, 1)).toEqual(
+      [primary]
+    );
     expect(
       await service.listCampaignObservations(workspaceId, primary.campaign.campaignId, 1)
     ).toEqual([delivered]);
-    expect(
-      await service.listCampaignAttempts(workspaceId, other.campaign.campaignId, 1)
-    ).toEqual([other]);
+    expect(await service.listCampaignAttempts(workspaceId, other.campaign.campaignId, 1)).toEqual([
+      other
+    ]);
     expect(
       await service.listCampaignObservations(workspaceId, other.campaign.campaignId, 1)
     ).toEqual([]);
-    expect(
-      await service.listCampaignAttempts(workspaceId, primary.campaign.campaignId, 2)
-    ).toEqual([]);
+    expect(await service.listCampaignAttempts(workspaceId, primary.campaign.campaignId, 2)).toEqual(
+      []
+    );
   });
 
   it('fails row/document integrity drift closed', async () => {
