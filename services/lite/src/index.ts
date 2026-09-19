@@ -99,3 +99,4 @@ export * from './email-campaign-reply-ses.js';
 export * from './email-transport.js';
 
 export * from './notification-automation-rule.js';
+export * from './notification-automation-rule-currentness.js';
