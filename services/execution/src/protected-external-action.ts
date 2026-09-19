@@ -1,10 +1,13 @@
 import { createHash, randomUUID } from 'node:crypto';
 import {
   assertEmailCampaignSendIntentV1,
+  assertEmailNotificationSendIntentV1,
   assertTradingListingPublicationIntentV1,
   type CoreHumanActionReceiptBindingV1,
   type EmailCampaignSendCurrentnessV1,
   type EmailCampaignSendIntentV1,
+  type EmailNotificationSendCurrentnessV1,
+  type EmailNotificationSendIntentV1,
   type ProtectedExternalActionAuthorizationId,
   type ProtectedExternalActionAuthorizationStatusV1,
   type ProtectedExternalActionAuthorizationV1,
@@ -27,6 +30,11 @@ export type ProtectedExternalActionErrorCode =
   | 'EMAIL_CAMPAIGN_INTENT_SUPPRESSED'
   | 'EMAIL_CAMPAIGN_INTENT_UNKNOWN'
   | 'EMAIL_CAMPAIGN_INTENT_UNAVAILABLE'
+  | 'EMAIL_NOTIFICATION_INTENT_STALE'
+  | 'EMAIL_NOTIFICATION_INTENT_REVOKED'
+  | 'EMAIL_NOTIFICATION_INTENT_SUPPRESSED'
+  | 'EMAIL_NOTIFICATION_INTENT_UNKNOWN'
+  | 'EMAIL_NOTIFICATION_INTENT_UNAVAILABLE'
   | 'AUTHORIZATION_NOT_FOUND'
   | 'AUTHORIZATION_STALE'
   | 'AUTHORIZATION_REVOKED'
@@ -98,6 +106,12 @@ export interface EmailCampaignSendCurrentnessClient {
   ): Promise<EmailCampaignSendCurrentnessV1>;
 }
 
+export interface EmailNotificationSendCurrentnessClient {
+  validateCurrent(
+    intent: Readonly<EmailNotificationSendIntentV1>
+  ): Promise<EmailNotificationSendCurrentnessV1>;
+}
+
 export interface AuthorizeTradingListingPublishCommand {
   workspaceId: string;
   actorUserId: string;
@@ -123,6 +137,19 @@ export interface AuthorizeEmailCampaignSendCommand {
 }
 
 export type ReleaseEmailCampaignSendCommand = ReleaseTradingListingPublishCommand;
+
+export interface AuthorizeEmailNotificationSendCommand {
+  workspaceId: string;
+  intent: Readonly<EmailNotificationSendIntentV1>;
+  idempotencyKey: string;
+}
+
+export interface ReleaseEmailNotificationSendCommand {
+  workspaceId: string;
+  authorizationId: ProtectedExternalActionAuthorizationId;
+  authorizationVersion: number;
+  idempotencyKey: string;
+}
 
 const digest = (value: unknown) => createHash('sha256').update(JSON.stringify(value)).digest('hex');
 const bounded = (value: string, maximum = 300) =>
@@ -180,6 +207,38 @@ function mapEmailCampaignCurrentness(value: Readonly<EmailCampaignSendCurrentnes
   throw new ProtectedExternalActionError(
     'EMAIL_CAMPAIGN_INTENT_STALE',
     'Email Campaign send intent is stale.'
+  );
+}
+
+function mapEmailNotificationCurrentness(
+  value: Readonly<EmailNotificationSendCurrentnessV1>
+): void {
+  if (value.state === 'CURRENT') return;
+  if (value.state === 'REVOKED')
+    throw new ProtectedExternalActionError(
+      'EMAIL_NOTIFICATION_INTENT_REVOKED',
+      'Email Notification send intent contains revoked owner state.'
+    );
+  if (value.state === 'SUPPRESSED')
+    throw new ProtectedExternalActionError(
+      'EMAIL_NOTIFICATION_INTENT_SUPPRESSED',
+      'Email Notification send intent is currently suppressed.'
+    );
+  if (value.state === 'UNKNOWN')
+    throw new ProtectedExternalActionError(
+      'EMAIL_NOTIFICATION_INTENT_UNKNOWN',
+      'Email Notification send currentness is unknown.'
+    );
+  if (value.state === 'UNAVAILABLE')
+    throw new ProtectedExternalActionError(
+      'EMAIL_NOTIFICATION_INTENT_UNAVAILABLE',
+      'Email Notification send currentness source is unavailable.',
+      503,
+      true
+    );
+  throw new ProtectedExternalActionError(
+    'EMAIL_NOTIFICATION_INTENT_STALE',
+    'Email Notification send intent is stale.'
   );
 }
 
@@ -278,7 +337,15 @@ export class InMemoryProtectedExternalActionRepository implements ProtectedExter
         value.authorization.id === record.authorization.id &&
         value.authorization.version === record.authorization.version
     );
-    if (existing)
+    const duplicateNotificationEffect =
+      record.actionKind === 'EMAIL_NOTIFICATION_SEND' &&
+      [...this.releases.values()].some(
+        (value) =>
+          value.workspaceId === record.workspaceId &&
+          value.actionKind === 'EMAIL_NOTIFICATION_SEND' &&
+          value.effectFingerprintSha256 === record.effectFingerprintSha256
+      );
+    if (existing || duplicateNotificationEffect)
       throw new ProtectedExternalActionError(
         'RELEASE_ALREADY_EXISTS',
         'This exact authorization already has an immutable release.'
@@ -299,7 +366,8 @@ export class ProtectedExternalActionService {
     private readonly trading: TradingPublicationCurrentnessClient,
     private readonly clock: () => Date = () => new Date(),
     private readonly authorizationTtlMs = 15 * 60_000,
-    private readonly emailCampaign?: EmailCampaignSendCurrentnessClient
+    private readonly emailCampaign?: EmailCampaignSendCurrentnessClient,
+    private readonly emailNotification?: EmailNotificationSendCurrentnessClient
   ) {}
 
   async authorize(
@@ -653,4 +721,198 @@ export class ProtectedExternalActionService {
     };
     return this.repository.createRelease(release, requestFingerprint);
   }
+
+  async authorizeEmailNotificationSend(
+    command: Readonly<AuthorizeEmailNotificationSendCommand>
+  ): Promise<ProtectedExternalActionAuthorizationV1> {
+    if (!bounded(command.idempotencyKey, 256))
+      throw new ProtectedExternalActionError(
+        'INVALID_REQUEST',
+        'Idempotency key is required.',
+        400
+      );
+    try {
+      assertEmailNotificationSendIntentV1(command.intent);
+    } catch (cause) {
+      throw new ProtectedExternalActionError(
+        'INVALID_REQUEST',
+        'Email Notification send intent is invalid.',
+        400,
+        false,
+        { cause: cause instanceof Error ? cause : undefined }
+      );
+    }
+    if (command.intent.workspaceId !== command.workspaceId)
+      throw new ProtectedExternalActionError(
+        'WORKSPACE_MISMATCH',
+        'Email Notification send intent Workspace does not match the trusted Workspace.',
+        403
+      );
+
+    const requestFingerprint = digest({
+      workspaceId: command.workspaceId,
+      intent: command.intent
+    });
+    const replay = await this.repository.findAuthorizationByIdempotencyKey(
+      command.workspaceId,
+      command.idempotencyKey
+    );
+    if (replay) {
+      if (replay.requestFingerprint !== requestFingerprint)
+        throw new ProtectedExternalActionError(
+          'IDEMPOTENCY_CONFLICT',
+          'Idempotency key was used with a different protected action intent.'
+        );
+      if (replay.result.actionKind !== 'EMAIL_NOTIFICATION_SEND')
+        throw new ProtectedExternalActionError(
+          'IDEMPOTENCY_CONFLICT',
+          'Idempotency key was already used by another protected action kind.'
+        );
+      return replay.result;
+    }
+    if (!this.emailNotification)
+      throw new ProtectedExternalActionError(
+        'EMAIL_NOTIFICATION_INTENT_UNAVAILABLE',
+        'Email Notification send currentness client is unavailable.',
+        503,
+        true
+      );
+
+    const currentness = await this.emailNotification.validateCurrent(command.intent);
+    if (
+      currentness.workspaceId !== command.workspaceId ||
+      currentness.actionKind !== 'EMAIL_NOTIFICATION_SEND' ||
+      currentness.effectFingerprintSha256 !== command.intent.effectFingerprintSha256 ||
+      currentness.deliveryPlanFingerprintSha256 !==
+        command.intent.notification.deliveryPlanFingerprintSha256
+    )
+      throw new ProtectedExternalActionError(
+        'EMAIL_NOTIFICATION_INTENT_STALE',
+        'Email Notification currentness response does not bind the exact send intent.'
+      );
+    mapEmailNotificationCurrentness(currentness);
+
+    const authorizedAt = this.clock().toISOString();
+    const authorization: ProtectedExternalActionAuthorizationV1 = {
+      schemaVersion: 1,
+      authorizationId: `protected-action-authorization_${randomUUID()}`,
+      version: 1,
+      workspaceId: command.workspaceId,
+      actionKind: 'EMAIL_NOTIFICATION_SEND',
+      intent: structuredClone(command.intent),
+      effectFingerprintSha256: command.intent.effectFingerprintSha256,
+      activationEvidence: structuredClone(command.intent.activationEvidence),
+      authorizationStatus: 'AUTHORIZED',
+      authorizedBySystem: 'NOTIFICATION_AUTOMATION',
+      authorizedAt,
+      expiresAt: new Date(Date.parse(authorizedAt) + this.authorizationTtlMs).toISOString(),
+      lastValidatedAt: authorizedAt,
+      idempotencyKey: command.idempotencyKey
+    };
+    return this.repository.createAuthorization(authorization, requestFingerprint);
+  }
+
+  async releaseEmailNotificationSend(
+    command: Readonly<ReleaseEmailNotificationSendCommand>
+  ): Promise<ProtectedExternalActionReleaseV1> {
+    if (!bounded(command.idempotencyKey, 256) || command.authorizationVersion !== 1)
+      throw new ProtectedExternalActionError(
+        'INVALID_REQUEST',
+        'Exact release binding is required.',
+        400
+      );
+
+    const requestFingerprint = digest(command);
+    const replay = await this.repository.findReleaseByIdempotencyKey(
+      command.workspaceId,
+      command.idempotencyKey
+    );
+    if (replay) {
+      if (replay.requestFingerprint !== requestFingerprint)
+        throw new ProtectedExternalActionError(
+          'IDEMPOTENCY_CONFLICT',
+          'Idempotency key was used with a different release intent.'
+        );
+      if (replay.result.actionKind !== 'EMAIL_NOTIFICATION_SEND')
+        throw new ProtectedExternalActionError(
+          'IDEMPOTENCY_CONFLICT',
+          'Idempotency key was already used by another protected action kind.'
+        );
+      return replay.result;
+    }
+
+    const authorization = await this.repository.findAuthorization(
+      command.workspaceId,
+      command.authorizationId
+    );
+    if (!authorization)
+      throw new ProtectedExternalActionError(
+        'AUTHORIZATION_NOT_FOUND',
+        'Protected action authorization was not found.',
+        404
+      );
+    if (authorization.actionKind !== 'EMAIL_NOTIFICATION_SEND')
+      throw new ProtectedExternalActionError(
+        'AUTHORIZATION_STALE',
+        'Authorization action kind does not match Email Notification send.'
+      );
+    if (authorization.version !== command.authorizationVersion)
+      throw new ProtectedExternalActionError(
+        'AUTHORIZATION_STALE',
+        'Authorization version is not exact and current.'
+      );
+    if (authorization.authorizationStatus === 'REVOKED')
+      throw new ProtectedExternalActionError('AUTHORIZATION_REVOKED', 'Authorization is revoked.');
+    if (
+      authorization.authorizationStatus === 'EXPIRED' ||
+      Date.parse(authorization.expiresAt) <= this.clock().getTime()
+    ) {
+      await this.repository.updateAuthorizationStatus(
+        command.workspaceId,
+        command.authorizationId,
+        'EXPIRED'
+      );
+      throw new ProtectedExternalActionError('AUTHORIZATION_EXPIRED', 'Authorization is expired.');
+    }
+    if (!this.emailNotification)
+      throw new ProtectedExternalActionError(
+        'EMAIL_NOTIFICATION_INTENT_UNAVAILABLE',
+        'Email Notification send currentness client is unavailable.',
+        503,
+        true
+      );
+
+    const currentness = await this.emailNotification.validateCurrent(authorization.intent);
+    if (
+      currentness.workspaceId !== authorization.workspaceId ||
+      currentness.actionKind !== 'EMAIL_NOTIFICATION_SEND' ||
+      currentness.effectFingerprintSha256 !== authorization.effectFingerprintSha256 ||
+      currentness.deliveryPlanFingerprintSha256 !==
+        authorization.intent.notification.deliveryPlanFingerprintSha256
+    )
+      throw new ProtectedExternalActionError(
+        'EMAIL_NOTIFICATION_INTENT_STALE',
+        'Email Notification currentness response does not bind the exact authorization.'
+      );
+    mapEmailNotificationCurrentness(currentness);
+
+    const release: ProtectedExternalActionReleaseV1 = {
+      schemaVersion: 1,
+      releaseId: `protected-action-release_${randomUUID()}`,
+      version: 1,
+      workspaceId: command.workspaceId,
+      actionKind: 'EMAIL_NOTIFICATION_SEND',
+      authorization: {
+        id: authorization.authorizationId,
+        version: authorization.version
+      },
+      effectFingerprintSha256: authorization.effectFingerprintSha256,
+      status: 'RELEASED_FOR_EXECUTION',
+      releasedBySystem: 'EXECUTION_NOTIFICATION_AUTOMATION',
+      releasedAt: this.clock().toISOString(),
+      idempotencyKey: command.idempotencyKey
+    };
+    return this.repository.createRelease(release, requestFingerprint);
+  }
+
 }
