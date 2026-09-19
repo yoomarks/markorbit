@@ -8,7 +8,7 @@ import type { ChannelNotificationRuleId } from '@markorbit/contracts/channel-not
 import type { PublishPackage } from '@markorbit/contracts/product-loop';
 import type { ChannelEntitlementAccessV1 } from '@markorbit/contracts/channel-platform';
 import type { WorkspaceEmailSenderProfileV1 } from '@markorbit/contracts/email-sender-profile';
-import type { ContentPreparationStore } from './content-preparation.js';
+import type { PostgresLiteContentPreparationStore } from './content-preparation.js';
 import type { PostgresEmailSenderProfileStore } from './email-sender-profile.js';
 import type { PostgresNotificationAutomationRuleStore } from './notification-automation-rule.js';
 
@@ -40,7 +40,7 @@ function fingerprint(value: unknown): string {
 export class NotificationAutomationRuleCurrentnessResolver {
   constructor(
     private readonly rules: Pick<PostgresNotificationAutomationRuleStore, 'getExact' | 'getLatest'>,
-    private readonly content: Pick<ContentPreparationStore, 'findPublishPackage'>,
+    private readonly content: Pick<PostgresLiteContentPreparationStore, 'findPublishPackage'>,
     private readonly senders: Pick<
       PostgresEmailSenderProfileStore,
       'getExactSenderProfile' | 'evaluateSenderProfileCurrentness'
