@@ -123,11 +123,10 @@ describe('Email delivery runtime', () => {
 
   it('refuses blind replay after an ambiguous provider outcome', async () => {
     const memory = memoryStore();
-    const adapter: EmailDeliveryProviderAdapter = {
-      submit: vi.fn(() =>
-        Promise.resolve({ status: 'UNKNOWN' as const, reasonCode: 'SES_TRANSPORT_AMBIGUOUS' })
-      )
-    };
+    const submit = vi.fn(() =>
+      Promise.resolve({ status: 'UNKNOWN' as const, reasonCode: 'SES_TRANSPORT_AMBIGUOUS' })
+    );
+    const adapter: EmailDeliveryProviderAdapter = { submit };
     const service = new EmailDeliveryRuntimeService(
       memory.store,
       { assertCurrent: vi.fn(() => Promise.resolve()) },
@@ -194,11 +193,10 @@ describe('Email delivery runtime', () => {
 
   it('fails before transport when JIT currentness fails', async () => {
     const memory = memoryStore();
-    const adapter: EmailDeliveryProviderAdapter = {
-      submit: vi.fn(() =>
-        Promise.resolve({ status: 'FAILED' as const, reasonCode: 'UNEXPECTED_CALL' })
-      )
-    };
+    const submit = vi.fn(() =>
+      Promise.resolve({ status: 'FAILED' as const, reasonCode: 'UNEXPECTED_CALL' })
+    );
+    const adapter: EmailDeliveryProviderAdapter = { submit };
     const service = new EmailDeliveryRuntimeService(
       memory.store,
       {
