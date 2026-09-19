@@ -400,3 +400,5 @@ export function createRuntime(options: CapabilityEngineOptions = {}) {
     }
   );
 }
+
+export * from './managed-communication-reply-reference.js';
