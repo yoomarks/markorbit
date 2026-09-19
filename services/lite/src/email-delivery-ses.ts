@@ -209,16 +209,54 @@ function object(value: unknown): SesEventRecord {
   return value as SesEventRecord;
 }
 
-function providerEventKind(value: unknown): EmailDeliveryObservationV1['event'] {
-  const normalized = String(value ?? '').toUpperCase();
+function providerEventKind(event: Readonly<SesEventRecord>): EmailDeliveryObservationV1['event'] {
+  const normalized = String(event.eventType ?? event.event_type ?? event.type ?? '').toUpperCase();
+  if (normalized === 'BOUNCE') {
+    const bounce = event.bounce && typeof event.bounce === 'object' && !Array.isArray(event.bounce)
+      ? (event.bounce as SesEventRecord)
+      : {};
+    const bounceType = String(bounce.bounceType ?? bounce.bounce_type ?? '').toUpperCase();
+    if (bounceType === 'PERMANENT') return 'HARD_BOUNCED';
+    if (bounceType === 'TRANSIENT') return 'SOFT_BOUNCED';
+    return 'UNKNOWN';
+  }
+  if (normalized === 'SUBSCRIPTION') {
+    const subscription =
+      event.subscription &&
+      typeof event.subscription === 'object' &&
+      !Array.isArray(event.subscription)
+        ? (event.subscription as SesEventRecord)
+        : {};
+    const preferences =
+      subscription.newTopicPreferences &&
+      typeof subscription.newTopicPreferences === 'object' &&
+      !Array.isArray(subscription.newTopicPreferences)
+        ? (subscription.newTopicPreferences as SesEventRecord)
+        : {};
+    if (preferences.unsubscribeAll === true) return 'UNSUBSCRIBED';
+    const statuses = Array.isArray(preferences.topicSubscriptionStatus)
+      ? preferences.topicSubscriptionStatus
+      : [];
+    if (
+      statuses.some((entry) => {
+        if (!entry || typeof entry !== 'object' || Array.isArray(entry)) return false;
+        const status = String(
+          (entry as SesEventRecord).subscriptionStatus ??
+            (entry as SesEventRecord).subscription_status ??
+            ''
+        ).toUpperCase();
+        return status === 'OPTOUT' || status === 'OPT_OUT';
+      })
+    )
+      return 'UNSUBSCRIBED';
+    return 'UNKNOWN';
+  }
   const map: Record<string, EmailDeliveryObservationV1['event']> = {
     SEND: 'SUBMITTED',
     ACCEPT: 'ACCEPTED',
     DELIVERY: 'DELIVERED',
     DELIVERYDELAY: 'DEFERRED',
-    BOUNCE: 'HARD_BOUNCED',
     COMPLAINT: 'COMPLAINED',
-    SUBSCRIPTION: 'UNSUBSCRIBED',
     REJECT: 'FAILED',
     RENDERINGFAILURE: 'FAILED'
   };
@@ -248,7 +286,7 @@ export function normalizeAmazonSesEvent(
     destination.length === 1
       ? createHash('sha256').update(destination[0]!, 'utf8').digest('hex')
       : undefined;
-  const normalizedEvent = providerEventKind(eventType);
+  const normalizedEvent = providerEventKind(event);
   const identity = `${messageId}:${String(eventType ?? 'unknown')}:${eventAt.toISOString()}`;
 
   return {
