@@ -50,10 +50,7 @@ const campaign: EmailCampaignV1 = {
   authority: noEmailCampaignAuthorityConsequencesV1
 };
 
-function attempt(
-  suffix: string,
-  providerSubmissionRef: string
-): EmailDeliveryAttemptV1 {
+function attempt(suffix: string, providerSubmissionRef: string): EmailDeliveryAttemptV1 {
   return {
     schemaVersion: 1,
     deliveryAttemptId: `email-delivery-attempt_${suffix}`,
