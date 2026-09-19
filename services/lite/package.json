@@ -5,7 +5,7 @@
   "type": "module",
   "description": "Lite Product-owned durable state and governed Product-loop preparation.",
   "scripts": {
-    "build": "tsup src/index.ts src/main.ts src/content-preparation.ts src/candidate-qualification.ts src/prepared-action.ts src/feedback.ts src/conversion-analytics.ts src/preference-feedback.ts src/trademark-asset.ts src/discovered-trademark-admission.ts src/discovered-trademark-admission-http.ts src/data-engine-applicant-owner-reader.ts src/agency-lineage.ts src/agency-lineage-http.ts src/trademark-asset-view.ts src/trademark-asset-portfolio.ts src/trademark-asset-migration.ts src/lite-work-item.ts src/communication-link-resolver.ts src/trademark-asset-attention.ts src/trademark-asset-management-signal.ts src/trademark-asset-management-recommendation.ts src/trademark-asset-management-handoff.ts src/trademark-asset-commerce.ts src/trademark-asset-marketplace-reference.ts src/trademark-asset-ai-guide.ts src/trademark-asset-refresh.ts src/trading-studio-run.ts src/trading-ai-profile.ts src/trading-ai-profile-generation.ts src/trading-ai-profile-checkpoint.ts src/trademark-service-work-package.ts src/trademark-service-requirement-composition.ts src/trademark-service-readiness.ts src/trademark-service-candidate-matching.ts src/trademark-service-commercial-preparation.ts src/trademark-service-execution-readiness.ts src/email-campaign.ts src/email-campaign-delivery-analytics.ts src/email-campaign-reply-handoff.ts src/email-campaign-reply-ses.ts src/email-campaign-delivery-currentness.ts src/email-campaign-delivery-currentness-http.ts src/email-transport.ts src/email-delivery.ts src/email-delivery-ses.ts src/email-delivery-runtime.ts src/email-sender-profile.ts src/outbound-contact-policy.ts src/outbound-contact-policy-http.ts src/trademark-asset-http.ts src/http.ts --format esm --dts --clean",
+    "build": "tsup src/index.ts src/main.ts src/content-preparation.ts src/candidate-qualification.ts src/prepared-action.ts src/feedback.ts src/conversion-analytics.ts src/preference-feedback.ts src/trademark-asset.ts src/discovered-trademark-admission.ts src/discovered-trademark-admission-http.ts src/data-engine-applicant-owner-reader.ts src/agency-lineage.ts src/agency-lineage-http.ts src/trademark-asset-view.ts src/trademark-asset-portfolio.ts src/trademark-asset-migration.ts src/lite-work-item.ts src/communication-link-resolver.ts src/trademark-asset-attention.ts src/trademark-asset-management-signal.ts src/trademark-asset-management-recommendation.ts src/trademark-asset-management-handoff.ts src/trademark-asset-commerce.ts src/trademark-asset-marketplace-reference.ts src/trademark-asset-ai-guide.ts src/trademark-asset-refresh.ts src/trading-studio-run.ts src/trading-ai-profile.ts src/trading-ai-profile-generation.ts src/trading-ai-profile-checkpoint.ts src/trademark-service-work-package.ts src/trademark-service-requirement-composition.ts src/trademark-service-readiness.ts src/trademark-service-candidate-matching.ts src/trademark-service-commercial-preparation.ts src/trademark-service-execution-readiness.ts src/email-campaign.ts src/notification-automation-rule.ts src/notification-automation-rule-currentness.ts src/email-campaign-delivery-analytics.ts src/email-campaign-reply-handoff.ts src/email-campaign-reply-ses.ts src/email-campaign-delivery-currentness.ts src/email-campaign-delivery-currentness-http.ts src/email-transport.ts src/email-delivery.ts src/email-delivery-ses.ts src/email-delivery-runtime.ts src/email-sender-profile.ts src/outbound-contact-policy.ts src/outbound-contact-policy-http.ts src/trademark-asset-http.ts src/http.ts --format esm --dts --clean",
     "test": "vitest run",
     "test:conversion-analytics:postgres": "vitest run tests/conversion-analytics-postgres.test.ts",
     "test:preference-feedback:postgres": "vitest run tests/preference-feedback-postgres.test.ts",
@@ -18,7 +18,8 @@
     "test:email-campaign:postgres": "vitest run tests/email-campaign-postgres.test.ts",
     "test:email-sender-profile:postgres": "vitest run tests/email-sender-profile-postgres.test.ts",
     "test:email-delivery:postgres": "vitest run tests/email-delivery-postgres.test.ts",
-    "test:email-reply-handoff:postgres": "vitest run tests/email-campaign-reply-handoff-postgres.test.ts"
+    "test:email-reply-handoff:postgres": "vitest run tests/email-campaign-reply-handoff-postgres.test.ts",
+    "test:notification-automation:postgres": "vitest run tests/notification-automation-rule-postgres.test.ts"
   },
   "dependencies": {
     "@markorbit/contracts": "workspace:*",
@@ -211,6 +212,14 @@
     "./email-transport": {
       "types": "./dist/email-transport.d.ts",
       "import": "./dist/email-transport.js"
+    },
+    "./notification-automation-rule": {
+      "types": "./dist/notification-automation-rule.d.ts",
+      "import": "./dist/notification-automation-rule.js"
+    },
+    "./notification-automation-rule-currentness": {
+      "types": "./dist/notification-automation-rule-currentness.d.ts",
+      "import": "./dist/notification-automation-rule-currentness.js"
     }
   }
 }

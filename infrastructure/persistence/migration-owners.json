@@ -80,7 +80,8 @@
     "site_runtime": "@markorbit/site-service",
     "lite_email_campaigns": "@markorbit/lite-service",
     "lite_email_sender_profiles": "@markorbit/lite-service",
-    "lite_email_delivery_evidence": "@markorbit/lite-service"
+    "lite_email_delivery_evidence": "@markorbit/lite-service",
+    "lite_notification_automation_rules": "@markorbit/lite-service"
   },
   "protectedTableFamilies": {
     "capability_communication_": "@markorbit/capability-engine",
@@ -95,7 +96,8 @@
     "lite_campaign_": "@markorbit/lite-service",
     "lite_email_campaign_": "@markorbit/lite-service",
     "lite_email_sender_profile_": "@markorbit/lite-service",
-    "lite_email_delivery_": "@markorbit/lite-service"
+    "lite_email_delivery_": "@markorbit/lite-service",
+    "lite_notification_automation_rule_": "@markorbit/lite-service"
   },
   "migrations": {
     "0018_identity_workspace_membership": "@markorbit/core-service",
@@ -217,6 +219,7 @@
     "0134_core_governed_human_action_receipts_email_campaign_send": "@markorbit/core-service",
     "0135_execution_protected_external_actions_email_campaign_send": "@markorbit/execution-service",
     "0136_lite_email_delivery_evidence": "@markorbit/lite-service",
-    "0137_lite_email_campaign_reply_handoffs": "@markorbit/lite-service"
+    "0137_lite_email_campaign_reply_handoffs": "@markorbit/lite-service",
+    "0138_lite_notification_automation_rules": "@markorbit/lite-service"
   }
 }
