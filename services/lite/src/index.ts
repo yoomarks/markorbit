@@ -84,6 +84,7 @@ export * from './education-community-http.js';
 export * from './protection-monitoring.js';
 export * from './protection-monitoring-http.js';
 export * from './email-campaign.js';
+export * from './email-campaign-delivery-analytics.js';
 export * from './email-sender-profile.js';
 export * from './email-campaign-delivery-currentness.js';
 export * from './email-campaign-delivery-currentness-http.js';
