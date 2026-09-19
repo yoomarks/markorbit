@@ -82,16 +82,17 @@ function observation(eventIdentity = 'ses-message-1:Delivery'): EmailDeliveryObs
 }
 
 suite('PostgreSQL email delivery evidence owner', () => {
-  let database = new ManagedDatabase({
+  const databaseConfig = () => ({
     connection: { url: url! },
     applicationName: 'lite-email-delivery-test',
     poolMaximum: 10,
     connectionTimeoutMs: 2000,
     idleTimeoutMs: 2000,
     statementTimeoutMs: 5000,
-    sslMode: 'disable',
+    sslMode: 'disable' as const,
     migrationNamespace: 'lite_email_delivery_test'
   });
+  let database = new ManagedDatabase(databaseConfig());
   const migrationsDirectory = path.resolve('../../infrastructure/persistence/migrations');
   const migrationOwners = path.resolve('../../infrastructure/persistence/migration-owners.json');
 
@@ -148,7 +149,7 @@ suite('PostgreSQL email delivery evidence owner', () => {
     );
   });
 
-  it('survives store reconstruction and replays identical create command', async () => {
+  it('survives database restart and replays identical create command', async () => {
     const first = attempt();
     const created = await store().createAttempt({
       value: first,
@@ -160,7 +161,18 @@ suite('PostgreSQL email delivery evidence owner', () => {
         idempotencyKey: 'delivery-create-pg'
       })
     ).toEqual(created);
+
+    await database.close();
+    database = new ManagedDatabase(databaseConfig());
+    await database.start();
+
     expect(await store().getAttempt(workspaceId, first.deliveryAttemptId)).toEqual(first);
+    expect(
+      await store().createAttempt({
+        value: first,
+        idempotencyKey: 'delivery-create-pg'
+      })
+    ).toEqual(created);
   });
 
   it('rejects changed request under the same idempotency key', async () => {
@@ -234,6 +246,27 @@ suite('PostgreSQL email delivery evidence owner', () => {
     await expect(service.getAttempt(workspaceId, value.deliveryAttemptId)).rejects.toMatchObject({
       code: 'INTEGRITY_FAILURE'
     });
+  });
+
+
+  it('fails corrupted command receipt replay closed', async () => {
+    const value = attempt();
+    await store().createAttempt({
+      value,
+      idempotencyKey: 'delivery-corrupt-command'
+    });
+    await database.getPool().query(
+      `UPDATE lite_email_delivery_commands
+          SET result_json=jsonb_set(result_json,'{recipientCount}','2'::jsonb)
+        WHERE workspace_id=$1 AND idempotency_key=$2`,
+      [workspaceId, 'delivery-corrupt-command']
+    );
+    await expect(
+      store().createAttempt({
+        value,
+        idempotencyKey: 'delivery-corrupt-command'
+      })
+    ).rejects.toMatchObject({ code: 'INTEGRITY_FAILURE' });
   });
 
   it('contains no durable raw recipient or provider credential columns', async () => {
