@@ -4,8 +4,12 @@ import {
   type EmailDeliveryAttemptV1
 } from '@markorbit/contracts/email-delivery';
 import {
+  AmazonSesAuthenticatedEventIngestion,
   AmazonSesV2DeliveryAdapter,
   normalizeAmazonSesEvent,
+  type AmazonSesEventAuthenticator,
+  type AmazonSesEventCorrelationVerifier,
+  type AmazonSesObservationSink,
   type AmazonSesRoutingResolver,
   type AmazonSesV2Client
 } from '../src/email-delivery-ses.js';
@@ -13,7 +17,8 @@ import {
 const workspaceId = '14141414-1414-4414-8414-141414141414';
 
 const attempt = (
-  status: EmailDeliveryAttemptV1['status'] = 'SUBMITTING'
+  status: EmailDeliveryAttemptV1['status'] = 'SUBMITTING',
+  recipientCount = 1
 ): EmailDeliveryAttemptV1 => ({
   schemaVersion: 1,
   deliveryAttemptId: 'email-delivery-attempt_primary',
@@ -35,7 +40,7 @@ const attempt = (
     version: 1
   },
   shardIndex: 0,
-  recipientCount: 2,
+  recipientCount,
   recipientManifestFingerprintSha256: '3'.repeat(64),
   deliveryPlanFingerprintSha256: '4'.repeat(64),
   correlationId: 'delivery:primary:0',
@@ -71,7 +76,7 @@ describe('Amazon SES V2 tenant delivery adapter', () => {
         attempt: attempt(),
         routingPartitionRef: 'routing:workspace-primary',
         fromAddress: 'hello@mail.example.com',
-        recipients: ['a@example.com', 'b@example.com'],
+        recipients: ['a@example.com'],
         subject: 'Reviewed subject',
         textContent: 'Reviewed body'
       })
@@ -110,7 +115,7 @@ describe('Amazon SES V2 tenant delivery adapter', () => {
       attempt: attempt(),
       routingPartitionRef: 'routing:workspace-primary',
       fromAddress: 'hello@mail.example.com',
-      recipients: ['a@example.com', 'b@example.com'],
+      recipients: ['a@example.com'],
       subject: 'Reviewed subject',
       textContent: 'Reviewed body'
     });
@@ -128,14 +133,14 @@ describe('Amazon SES V2 tenant delivery adapter', () => {
         attempt: attempt(),
         routingPartitionRef: 'routing:workspace-primary',
         fromAddress: 'hello@mail.example.com',
-        recipients: ['a@example.com', 'b@example.com'],
+        recipients: ['a@example.com'],
         subject: 'Reviewed subject',
         textContent: 'Reviewed body'
       })
     ).resolves.toEqual({ status: 'UNKNOWN', reasonCode: 'SES_TRANSPORT_AMBIGUOUS' });
   });
 
-  it('requires SUBMITTING state and bounded shard size', async () => {
+  it('requires SUBMITTING state', async () => {
     const client: AmazonSesV2Client = {
       sendEmail: vi.fn(() => Promise.resolve({ MessageId: 'never' }))
     };
@@ -146,11 +151,30 @@ describe('Amazon SES V2 tenant delivery adapter', () => {
         attempt: attempt('PLANNED'),
         routingPartitionRef: 'routing:workspace-primary',
         fromAddress: 'hello@mail.example.com',
-        recipients: ['a@example.com', 'b@example.com'],
+        recipients: ['a@example.com'],
         subject: 'Reviewed subject',
         textContent: 'Reviewed body'
       })
     ).rejects.toThrow(/SUBMITTING/);
+  });
+
+  it('rejects multi-recipient SES V1 attempts before provider transport', async () => {
+    const client: AmazonSesV2Client = {
+      sendEmail: vi.fn(() => Promise.resolve({ MessageId: 'never' }))
+    };
+    const adapter = new AmazonSesV2DeliveryAdapter(client, routing);
+    await expect(
+      adapter.submit({
+        workspaceId,
+        attempt: attempt('SUBMITTING', 2),
+        routingPartitionRef: 'routing:workspace-primary',
+        fromAddress: 'hello@mail.example.com',
+        recipients: ['a@example.com', 'b@example.com'],
+        subject: 'Reviewed subject',
+        textContent: 'Reviewed body'
+      })
+    ).rejects.toThrow(/exactly one recipient/);
+    expect(client.sendEmail).not.toHaveBeenCalled();
   });
 });
 
@@ -174,6 +198,28 @@ describe('Amazon SES event normalization', () => {
         }
       )
     ).toThrow(/Unauthenticated/);
+  });
+
+  it('rejects ambiguous multi-recipient provider events', () => {
+    expect(() =>
+      normalizeAmazonSesEvent(
+        {
+          eventType: 'Bounce',
+          mail: {
+            messageId: 'ses-message-multi',
+            timestamp: '2026-09-19T00:01:00.000Z',
+            destination: ['a@example.com', 'b@example.com']
+          },
+          bounce: { bounceType: 'Permanent' }
+        },
+        {
+          authenticated: true,
+          workspaceId,
+          deliveryAttemptId: 'email-delivery-attempt_primary',
+          observedAt: '2026-09-19T00:01:01.000Z'
+        }
+      )
+    ).toThrow(/exactly one recipient destination/);
   });
 
   it('normalizes delivered evidence without retaining raw recipient email', () => {
@@ -308,5 +354,96 @@ describe('Amazon SES event normalization', () => {
         }
       ).event
     ).toBe('UNKNOWN');
+  });
+});
+
+
+describe('Amazon SES authenticated event ingestion', () => {
+  const envelope = {
+    eventType: 'Complaint',
+    mail: {
+      messageId: 'ses-message-ingest',
+      timestamp: '2026-09-19T00:05:00.000Z',
+      destination: ['person@example.com']
+    }
+  };
+
+  it('fails closed when infrastructure authentication rejects the envelope', async () => {
+    const authenticator: AmazonSesEventAuthenticator = {
+      verifyAndExtract: vi.fn(() => Promise.reject(new Error('invalid AWS evidence')))
+    };
+    const correlation: AmazonSesEventCorrelationVerifier = {
+      assertCorrelated: vi.fn(() => Promise.resolve())
+    };
+    const sink: AmazonSesObservationSink = {
+      admit: vi.fn((value) => Promise.resolve(value))
+    };
+    await expect(
+      new AmazonSesAuthenticatedEventIngestion(authenticator, correlation, sink).ingest(envelope)
+    ).rejects.toThrow(/invalid AWS evidence/);
+    expect(correlation.assertCorrelated).not.toHaveBeenCalled();
+    expect(sink.admit).not.toHaveBeenCalled();
+  });
+
+  it('rejects tenant or Workspace correlation mismatch before evidence admission', async () => {
+    const authenticator: AmazonSesEventAuthenticator = {
+      verifyAndExtract: vi.fn(() =>
+        Promise.resolve({
+          event: envelope,
+          workspaceId,
+          deliveryAttemptId: 'email-delivery-attempt_primary',
+          routingPartitionRef: 'routing:workspace-primary',
+          tenantName: 'mo-workspace-primary',
+          observedAt: '2026-09-19T00:05:01.000Z'
+        })
+      )
+    };
+    const correlation: AmazonSesEventCorrelationVerifier = {
+      assertCorrelated: vi.fn(() => Promise.reject(new Error('tenant mismatch')))
+    };
+    const sink: AmazonSesObservationSink = {
+      admit: vi.fn((value) => Promise.resolve(value))
+    };
+    await expect(
+      new AmazonSesAuthenticatedEventIngestion(authenticator, correlation, sink).ingest(envelope)
+    ).rejects.toThrow(/tenant mismatch/);
+    expect(sink.admit).not.toHaveBeenCalled();
+  });
+
+  it('admits only verified, correlated evidence without durable raw email', async () => {
+    const authenticator: AmazonSesEventAuthenticator = {
+      verifyAndExtract: vi.fn(() =>
+        Promise.resolve({
+          event: envelope,
+          workspaceId,
+          deliveryAttemptId: 'email-delivery-attempt_primary',
+          routingPartitionRef: 'routing:workspace-primary',
+          tenantName: 'mo-workspace-primary',
+          observedAt: '2026-09-19T00:05:01.000Z'
+        })
+      )
+    };
+    const correlation: AmazonSesEventCorrelationVerifier = {
+      assertCorrelated: vi.fn(() => Promise.resolve())
+    };
+    const sink: AmazonSesObservationSink = {
+      admit: vi.fn((value) => Promise.resolve(value))
+    };
+    const result = await new AmazonSesAuthenticatedEventIngestion(
+      authenticator,
+      correlation,
+      sink
+    ).ingest(envelope);
+    expect(result.event).toBe('COMPLAINED');
+    expect(result.authenticatedEvidence).toBe(true);
+    expect(correlation.assertCorrelated).toHaveBeenCalledWith(
+      expect.objectContaining({
+        workspaceId,
+        tenantName: 'mo-workspace-primary',
+        providerMessageRef: 'ses-message-ingest'
+      })
+    );
+    expect(JSON.stringify(result)).not.toContain('person@example.com');
+    expect(sink.admit).toHaveBeenCalledTimes(1);
   });
 });
