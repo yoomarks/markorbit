@@ -390,3 +390,51 @@ describe('Email Campaign Send HUMAN_USER receipt domain', () => {
     });
   });
 });
+
+describe('Notification Automation activation HUMAN_USER receipt domain', () => {
+  const activationCommand = (): MaterializeGovernedHumanActionReceiptRequest => ({
+    ...command(),
+    kind: 'NOTIFICATION_AUTOMATION_ACTIVATE',
+    mutationRoute:
+      '/api/lite/notification-automation-rules/channel-notification-rule_primary/activate',
+    idempotencyKey: 'notification-automation-activate-1',
+    reviewedActionDigest: '9'.repeat(64)
+  });
+
+  it('materializes only the exact reviewed rule activation without send authority', async () => {
+    const f = service();
+    const receipt = await f.service.materializeOrResolve(activationCommand());
+    expect(receipt).toMatchObject({
+      kind: 'NOTIFICATION_AUTOMATION_ACTIVATE',
+      mutationRoute:
+        '/api/lite/notification-automation-rules/channel-notification-rule_primary/activate',
+      reviewedActionDigest: '9'.repeat(64),
+      source: 'CORE',
+      actorKind: 'HUMAN_USER'
+    });
+    for (const field of [
+      'notificationSendIntentId',
+      'executionAuthorizationId',
+      'executionReleaseId',
+      'recipientEmail',
+      'messageBody',
+      'providerCredential'
+    ])
+      expect(receipt).not.toHaveProperty(field);
+  });
+
+  it.each([
+    '/api/lite/notification-automation-rules/channel-notification-rule_primary/revoke',
+    '/api/lite/notification-automation-rules/not-a-rule/activate',
+    '/api/execution/protected-external-actions/email-notification-send/authorizations'
+  ])('rejects notification activation outside the bounded activation route: %s', async (mutationRoute) => {
+    const f = service();
+    await expect(
+      f.service.materializeOrResolve({ ...activationCommand(), mutationRoute })
+    ).rejects.toMatchObject({
+      code: 'INVALID_GOVERNED_HUMAN_ACTION_REQUEST',
+      status: 400
+    });
+  });
+});
+
