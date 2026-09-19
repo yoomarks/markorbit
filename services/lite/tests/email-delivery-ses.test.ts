@@ -6,6 +6,7 @@ import {
 import {
   AmazonSesAuthenticatedEventIngestion,
   AmazonSesV2DeliveryAdapter,
+  AmazonSesV2EmailTransport,
   normalizeAmazonSesEvent,
   type AmazonSesEventAuthenticator,
   type AmazonSesEventCorrelationVerifier,
@@ -64,6 +65,65 @@ const routing: AmazonSesRoutingResolver = {
     })
   )
 };
+
+describe('Amazon SES V2 provider-neutral email transport', () => {
+  it('submits a non-Campaign materialized email through the same tenant routing', async () => {
+    const sendEmail = vi.fn(() => Promise.resolve({ MessageId: 'ses-notification-123' }));
+    const transport = new AmazonSesV2EmailTransport({ sendEmail }, routing);
+
+    await expect(
+      transport.submit({
+        workspaceId,
+        routingPartitionRef: 'routing:workspace-primary',
+        fromAddress: 'hello@mail.example.com',
+        recipients: ['person@example.com'],
+        subject: 'Status update',
+        textContent: 'A bounded notification body',
+        metadataTags: [
+          { name: 'mo_workspace', value: workspaceId },
+          { name: 'mo_source', value: 'channel-notification-send-intent_primary' }
+        ]
+      })
+    ).resolves.toEqual({
+      status: 'ACCEPTED',
+      providerSubmissionRef: 'ses-notification-123'
+    });
+
+    expect(sendEmail).toHaveBeenCalledWith(
+      'us-east-1',
+      expect.objectContaining({
+        TenantName: 'mo-workspace-primary',
+        ConfigurationSetName: 'mo-workspace-primary',
+        FromEmailAddress: 'hello@mail.example.com',
+        EmailTags: [
+          { Name: 'mo_workspace', Value: expect.stringMatching(/^[0-9a-f]{32}$/) },
+          { Name: 'mo_source', Value: expect.stringMatching(/^[0-9a-f]{32}$/) }
+        ]
+      })
+    );
+  });
+
+  it('fails closed on duplicate metadata tag names', async () => {
+    const sendEmail = vi.fn(() => Promise.resolve({ MessageId: 'never' }));
+    const transport = new AmazonSesV2EmailTransport({ sendEmail }, routing);
+
+    await expect(
+      transport.submit({
+        workspaceId,
+        routingPartitionRef: 'routing:workspace-primary',
+        fromAddress: 'hello@mail.example.com',
+        recipients: ['person@example.com'],
+        subject: 'Status update',
+        textContent: 'A bounded notification body',
+        metadataTags: [
+          { name: 'mo_source', value: 'first' },
+          { name: 'mo_source', value: 'second' }
+        ]
+      })
+    ).rejects.toThrow(/metadataTags names must be unique/);
+    expect(sendEmail).not.toHaveBeenCalled();
+  });
+});
 
 describe('Amazon SES V2 tenant delivery adapter', () => {
   it('maps one governed shard and treats MessageId as ACCEPTED only', async () => {
