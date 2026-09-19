@@ -12,7 +12,9 @@ import {
 
 const workspaceId = '14141414-1414-4414-8414-141414141414';
 
-const attempt = (status: EmailDeliveryAttemptV1['status'] = 'SUBMITTING'): EmailDeliveryAttemptV1 => ({
+const attempt = (
+  status: EmailDeliveryAttemptV1['status'] = 'SUBMITTING'
+): EmailDeliveryAttemptV1 => ({
   schemaVersion: 1,
   deliveryAttemptId: 'email-delivery-attempt_primary',
   version: 1,
@@ -275,9 +277,7 @@ describe('Amazon SES event normalization', () => {
           subscription: {
             newTopicPreferences: {
               unsubscribeAll: false,
-              topicSubscriptionStatus: [
-                { topicName: 'marketing', subscriptionStatus: 'OptOut' }
-              ]
+              topicSubscriptionStatus: [{ topicName: 'marketing', subscriptionStatus: 'OptOut' }]
             }
           }
         },
@@ -296,9 +296,7 @@ describe('Amazon SES event normalization', () => {
           subscription: {
             newTopicPreferences: {
               unsubscribeAll: false,
-              topicSubscriptionStatus: [
-                { topicName: 'marketing', subscriptionStatus: 'OptIn' }
-              ]
+              topicSubscriptionStatus: [{ topicName: 'marketing', subscriptionStatus: 'OptIn' }]
             }
           }
         },
@@ -311,5 +309,4 @@ describe('Amazon SES event normalization', () => {
       ).event
     ).toBe('UNKNOWN');
   });
-
 });
