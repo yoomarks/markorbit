@@ -196,4 +196,120 @@ describe('Amazon SES event normalization', () => {
     expect(value.endpointFingerprintSha256).toMatch(/^[0-9a-f]{64}$/);
     expect(JSON.stringify(value)).not.toContain('person@example.com');
   });
+
+  it('distinguishes permanent and transient SES bounces', () => {
+    const base = {
+      mail: {
+        messageId: 'ses-message-bounce',
+        timestamp: '2026-09-19T00:03:00.000Z',
+        destination: ['person@example.com']
+      }
+    };
+    expect(
+      normalizeAmazonSesEvent(
+        { ...base, eventType: 'Bounce', bounce: { bounceType: 'Permanent' } },
+        {
+          authenticated: true,
+          workspaceId,
+          deliveryAttemptId: 'email-delivery-attempt_primary',
+          observedAt: '2026-09-19T00:03:01.000Z'
+        }
+      ).event
+    ).toBe('HARD_BOUNCED');
+    expect(
+      normalizeAmazonSesEvent(
+        { ...base, eventType: 'Bounce', bounce: { bounceType: 'Transient' } },
+        {
+          authenticated: true,
+          workspaceId,
+          deliveryAttemptId: 'email-delivery-attempt_primary',
+          observedAt: '2026-09-19T00:03:01.000Z'
+        }
+      ).event
+    ).toBe('SOFT_BOUNCED');
+    expect(
+      normalizeAmazonSesEvent(
+        { ...base, eventType: 'Bounce', bounce: { bounceType: 'Undetermined' } },
+        {
+          authenticated: true,
+          workspaceId,
+          deliveryAttemptId: 'email-delivery-attempt_primary',
+          observedAt: '2026-09-19T00:03:01.000Z'
+        }
+      ).event
+    ).toBe('UNKNOWN');
+  });
+
+  it('treats SES Subscription as unsubscribe only for OptOut evidence', () => {
+    const base = {
+      eventType: 'Subscription',
+      mail: {
+        messageId: 'ses-message-subscription',
+        timestamp: '2026-09-19T00:04:00.000Z',
+        destination: ['person@example.com']
+      }
+    };
+    expect(
+      normalizeAmazonSesEvent(
+        {
+          ...base,
+          subscription: {
+            newTopicPreferences: {
+              unsubscribeAll: true,
+              topicSubscriptionStatus: []
+            }
+          }
+        },
+        {
+          authenticated: true,
+          workspaceId,
+          deliveryAttemptId: 'email-delivery-attempt_primary',
+          observedAt: '2026-09-19T00:04:01.000Z'
+        }
+      ).event
+    ).toBe('UNSUBSCRIBED');
+    expect(
+      normalizeAmazonSesEvent(
+        {
+          ...base,
+          subscription: {
+            newTopicPreferences: {
+              unsubscribeAll: false,
+              topicSubscriptionStatus: [
+                { topicName: 'marketing', subscriptionStatus: 'OptOut' }
+              ]
+            }
+          }
+        },
+        {
+          authenticated: true,
+          workspaceId,
+          deliveryAttemptId: 'email-delivery-attempt_primary',
+          observedAt: '2026-09-19T00:04:01.000Z'
+        }
+      ).event
+    ).toBe('UNSUBSCRIBED');
+    expect(
+      normalizeAmazonSesEvent(
+        {
+          ...base,
+          subscription: {
+            newTopicPreferences: {
+              unsubscribeAll: false,
+              topicSubscriptionStatus: [
+                { topicName: 'marketing', subscriptionStatus: 'OptIn' }
+              ]
+            }
+          }
+        },
+        {
+          authenticated: true,
+          workspaceId,
+          deliveryAttemptId: 'email-delivery-attempt_primary',
+          observedAt: '2026-09-19T00:04:01.000Z'
+        }
+      ).event
+    ).toBe('UNKNOWN');
+  });
+
 });
