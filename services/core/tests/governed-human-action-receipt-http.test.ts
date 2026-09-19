@@ -227,3 +227,44 @@ describe('Email Campaign Send receipt internal HTTP admission', () => {
     expect(f.materializeOrResolve).not.toHaveBeenCalled();
   });
 });
+
+describe('Notification Automation activation receipt internal HTTP admission', () => {
+  it('admits only the exact NOTIFICATION_AUTOMATION_ACTIVATE route', async () => {
+    const activation: MaterializeGovernedHumanActionReceiptRequest = {
+      ...command,
+      kind: 'NOTIFICATION_AUTOMATION_ACTIVATE',
+      mutationRoute:
+        '/api/lite/notification-automation-rules/channel-notification-rule_primary/activate',
+      reviewedActionDigest: '9'.repeat(64),
+      idempotencyKey: 'notification-automation-activate-1'
+    };
+    const materialize = vi.fn((input: Readonly<MaterializeGovernedHumanActionReceiptRequest>) =>
+      Promise.resolve({ ...receipt, ...input })
+    );
+    const f = routes({ materialize });
+    const response = await f.result[0]!.handle(
+      request('/internal/auth/governed-human-actions/receipts', activation)
+    );
+    expect(response.status).toBe(200);
+    expect(materialize).toHaveBeenCalledWith(activation);
+  });
+
+  it('rejects generic notification-send authority as a human action kind', async () => {
+    const f = routes();
+    for (const kind of ['EMAIL_NOTIFICATION_SEND', 'NOTIFICATION_SEND', 'AUTOMATED_SEND']) {
+      await expect(
+        f.result[0]!.handle(
+          request('/internal/auth/governed-human-actions/receipts', {
+            ...command,
+            kind
+          })
+        )
+      ).rejects.toMatchObject({
+        status: 400,
+        code: 'INVALID_GOVERNED_HUMAN_ACTION_REQUEST'
+      });
+    }
+    expect(f.materializeOrResolve).not.toHaveBeenCalled();
+  });
+});
+
