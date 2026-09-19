@@ -38,13 +38,13 @@ export class AmazonSesV2ReplyReferenceCorrelatorV1 implements EmailCampaignReply
 
     const admit = (
       value: string,
-      correlationMethod: EmailCampaignReplyReferenceCandidateV1['correlationMethod']
+      evidenceMethod: EmailCampaignReplyReferenceCandidateV1['evidenceMethod']
     ) => {
       for (const rfcMessageId of rfcMessageIds(value)) {
         const providerSubmissionRef = sesSubmissionRef(rfcMessageId);
         if (!providerSubmissionRef || seen.has(providerSubmissionRef)) continue;
         seen.add(providerSubmissionRef);
-        candidates.push({ providerSubmissionRef, correlationMethod });
+        candidates.push({ providerSubmissionRef, evidenceMethod });
       }
     };
 
