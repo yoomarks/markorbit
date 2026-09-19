@@ -10,7 +10,6 @@ import type {
   UpdateEmailDeliveryAttemptCommand,
   PostgresEmailDeliveryStore
 } from '../src/email-delivery.js';
-import type { SetOutboundContactSuppressionCommand } from '../src/outbound-contact-policy.js';
 import {
   EmailDeliveryProviderEventService,
   EmailDeliveryRuntimeService,
@@ -56,8 +55,7 @@ const planned = (): EmailDeliveryAttemptV1 => ({
 function memoryStore() {
   let current: EmailDeliveryAttemptV1 | undefined;
   const observations: EmailDeliveryObservationV1[] = [];
-  return {
-    store: {
+  const store = {
       createAttempt: vi.fn(({ value }: Readonly<CreateEmailDeliveryAttemptCommand>) => {
         current ??= structuredClone(value);
         return Promise.resolve(structuredClone(current));
@@ -74,7 +72,12 @@ function memoryStore() {
         observations.push(structuredClone(value));
         return Promise.resolve(structuredClone(value));
       })
-    },
+  } satisfies Pick<
+    PostgresEmailDeliveryStore,
+    'createAttempt' | 'getAttempt' | 'updateAttempt' | 'recordObservation'
+  >;
+  return {
+    store,
     current: () => current,
     observations
   };
@@ -86,17 +89,16 @@ describe('Email delivery runtime', () => {
     const currentness: EmailDeliveryPreSubmitCurrentnessGate = {
       assertCurrent: vi.fn(() => Promise.resolve())
     };
-    const adapter: EmailDeliveryProviderAdapter = {
-      submit: vi.fn(async () => {
-        expect(memory.current()?.status).toBe('SUBMITTING');
-        return { status: 'ACCEPTED' as const, providerSubmissionRef: 'ses-message-1' };
-      })
-    };
+    const submit = vi.fn(() => {
+      expect(memory.current()?.status).toBe('SUBMITTING');
+      return Promise.resolve({
+        status: 'ACCEPTED' as const,
+        providerSubmissionRef: 'ses-message-1'
+      });
+    });
+    const adapter: EmailDeliveryProviderAdapter = { submit };
     const service = new EmailDeliveryRuntimeService(
-      memory.store as Pick<
-        PostgresEmailDeliveryStore,
-        'createAttempt' | 'getAttempt' | 'updateAttempt' | 'recordObservation'
-      >,
+      memory.store,
       currentness,
       adapter,
       () => '2026-09-19T00:01:00.000Z'
@@ -127,10 +129,7 @@ describe('Email delivery runtime', () => {
       )
     };
     const service = new EmailDeliveryRuntimeService(
-      memory.store as Pick<
-        PostgresEmailDeliveryStore,
-        'createAttempt' | 'getAttempt' | 'updateAttempt' | 'recordObservation'
-      >,
+      memory.store,
       { assertCurrent: vi.fn(() => Promise.resolve()) },
       adapter,
       () => '2026-09-19T00:01:00.000Z'
@@ -159,24 +158,19 @@ describe('Email delivery runtime', () => {
         }
       })
     ).rejects.toMatchObject({ code: 'ATTEMPT_ALREADY_AMBIGUOUS' });
-    expect(adapter.submit).toHaveBeenCalledTimes(1);
+    expect(submit).toHaveBeenCalledTimes(1);
   });
 
   it('fails before currentness and transport when materialization drifts from durable attempt', async () => {
     const memory = memoryStore();
-    const currentness: EmailDeliveryPreSubmitCurrentnessGate = {
-      assertCurrent: vi.fn(() => Promise.resolve())
-    };
-    const adapter: EmailDeliveryProviderAdapter = {
-      submit: vi.fn(() =>
-        Promise.resolve({ status: 'FAILED' as const, reasonCode: 'UNEXPECTED_CALL' })
-      )
-    };
+    const assertCurrent = vi.fn(() => Promise.resolve());
+    const currentness: EmailDeliveryPreSubmitCurrentnessGate = { assertCurrent };
+    const submit = vi.fn(() =>
+      Promise.resolve({ status: 'FAILED' as const, reasonCode: 'UNEXPECTED_CALL' })
+    );
+    const adapter: EmailDeliveryProviderAdapter = { submit };
     const service = new EmailDeliveryRuntimeService(
-      memory.store as Pick<
-        PostgresEmailDeliveryStore,
-        'createAttempt' | 'getAttempt' | 'updateAttempt' | 'recordObservation'
-      >,
+      memory.store,
       currentness,
       adapter
     );
@@ -193,8 +187,8 @@ describe('Email delivery runtime', () => {
         }
       })
     ).rejects.toMatchObject({ code: 'MATERIALIZED_ATTEMPT_MISMATCH' });
-    expect(currentness.assertCurrent).not.toHaveBeenCalled();
-    expect(adapter.submit).not.toHaveBeenCalled();
+    expect(assertCurrent).not.toHaveBeenCalled();
+    expect(submit).not.toHaveBeenCalled();
     expect(memory.current()?.status).toBe('PLANNED');
   });
 
@@ -206,10 +200,7 @@ describe('Email delivery runtime', () => {
       )
     };
     const service = new EmailDeliveryRuntimeService(
-      memory.store as Pick<
-        PostgresEmailDeliveryStore,
-        'createAttempt' | 'getAttempt' | 'updateAttempt' | 'recordObservation'
-      >,
+      memory.store,
       {
         assertCurrent: vi.fn(() => Promise.reject(new Error('stale')))
       },
@@ -228,7 +219,7 @@ describe('Email delivery runtime', () => {
         }
       })
     ).rejects.toThrow('stale');
-    expect(adapter.submit).not.toHaveBeenCalled();
+    expect(submit).not.toHaveBeenCalled();
     expect(memory.current()?.status).toBe('PLANNED');
   });
 });
@@ -242,13 +233,10 @@ describe('Email provider observation suppression handoff', () => {
     const recordObservation = vi.fn(({ value }: Readonly<RecordEmailDeliveryObservationCommand>) =>
       Promise.resolve(value)
     );
-    const suppression: EmailDeliverySuppressionOwner = {
-      setSuppression: vi.fn((_command: Readonly<SetOutboundContactSuppressionCommand>) =>
-        Promise.resolve({})
-      )
-    };
+    const setSuppression = vi.fn(() => Promise.resolve({}));
+    const suppression: EmailDeliverySuppressionOwner = { setSuppression };
     const service = new EmailDeliveryProviderEventService(
-      { recordObservation } as Pick<PostgresEmailDeliveryStore, 'recordObservation'>,
+      { recordObservation },
       suppression
     );
     const observation: EmailDeliveryObservationV1 = {
@@ -273,7 +261,7 @@ describe('Email provider observation suppression handoff', () => {
       authority: noEmailDeliveryAuthorityConsequencesV1
     };
     await service.admit(observation);
-    expect(suppression.setSuppression).toHaveBeenCalledWith(
+    expect(setSuppression).toHaveBeenCalledWith(
       expect.objectContaining({
         workspaceId,
         endpointFingerprintSha256: '5'.repeat(64),
@@ -285,17 +273,14 @@ describe('Email provider observation suppression handoff', () => {
   });
 
   it('does not create suppression from ordinary delivery evidence', async () => {
-    const suppression: EmailDeliverySuppressionOwner = {
-      setSuppression: vi.fn((_command: Readonly<SetOutboundContactSuppressionCommand>) =>
-        Promise.resolve({})
-      )
-    };
+    const setSuppression = vi.fn(() => Promise.resolve({}));
+    const suppression: EmailDeliverySuppressionOwner = { setSuppression };
     const service = new EmailDeliveryProviderEventService(
       {
         recordObservation: vi.fn(({ value }: Readonly<RecordEmailDeliveryObservationCommand>) =>
           Promise.resolve(value)
         )
-      } as Pick<PostgresEmailDeliveryStore, 'recordObservation'>,
+      },
       suppression
     );
     await service.admit({
@@ -316,6 +301,6 @@ describe('Email provider observation suppression handoff', () => {
       observedAt: '2026-09-19T00:02:01.000Z',
       authority: noEmailDeliveryAuthorityConsequencesV1
     });
-    expect(suppression.setSuppression).not.toHaveBeenCalled();
+    expect(setSuppression).not.toHaveBeenCalled();
   });
 });
