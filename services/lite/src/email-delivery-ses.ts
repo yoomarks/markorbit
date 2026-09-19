@@ -92,12 +92,11 @@ export class AmazonSesV2DeliveryAdapter {
     if (attempt.status !== 'SUBMITTING')
       throw new AmazonSesDeliveryAdapterError('SES submission requires SUBMITTING attempt state.');
     if (
-      materialized.recipients.length < 1 ||
-      materialized.recipients.length !== attempt.recipientCount ||
-      materialized.recipients.length > 50
+      materialized.recipients.length !== 1 ||
+      materialized.recipients.length !== attempt.recipientCount
     )
       throw new AmazonSesDeliveryAdapterError(
-        'SES recipient shard must contain 1 to 50 recipients.'
+        'SES V1 submission requires exactly one recipient per attempt.'
       );
     if (!materialized.textContent && !materialized.htmlContent)
       throw new AmazonSesDeliveryAdapterError('Email body materialization is required.');
