@@ -14,10 +14,7 @@ const value = {
   providerMessageId: 'AQMk-reply',
   observedAt: '2026-09-19T06:00:01.000Z',
   inReplyToMessageIds: ['010001reply-000000@email.amazonses.com'],
-  referenceMessageIds: [
-    'older@example.net',
-    '010001reply-000000@email.amazonses.com'
-  ],
+  referenceMessageIds: ['older@example.net', '010001reply-000000@email.amazonses.com'],
   exactEvidence: {
     evidenceRef: 'commevidence_reply',
     sha256: '1'.repeat(64)
