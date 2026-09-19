@@ -96,7 +96,9 @@ export class AmazonSesV2DeliveryAdapter {
   ): Promise<AmazonSesSubmissionResult> {
     const attempt = parseEmailDeliveryAttemptV1(materialized.attempt);
     if (attempt.workspaceId !== materialized.workspaceId)
-      throw new AmazonSesDeliveryAdapterError('Attempt Workspace does not match materialized email.');
+      throw new AmazonSesDeliveryAdapterError(
+        'Attempt Workspace does not match materialized email.'
+      );
     if (attempt.status !== 'SUBMITTING')
       throw new AmazonSesDeliveryAdapterError('SES submission requires SUBMITTING attempt state.');
     if (
@@ -104,7 +106,9 @@ export class AmazonSesV2DeliveryAdapter {
       materialized.recipients.length !== attempt.recipientCount ||
       materialized.recipients.length > 50
     )
-      throw new AmazonSesDeliveryAdapterError('SES recipient shard must contain 1 to 50 recipients.');
+      throw new AmazonSesDeliveryAdapterError(
+        'SES recipient shard must contain 1 to 50 recipients.'
+      );
     if (!materialized.textContent && !materialized.htmlContent)
       throw new AmazonSesDeliveryAdapterError('Email body materialization is required.');
 
@@ -112,8 +116,7 @@ export class AmazonSesV2DeliveryAdapter {
       materialized.workspaceId,
       materialized.routingPartitionRef
     );
-    if (!routing)
-      return { status: 'FAILED', reasonCode: 'SES_ROUTING_NOT_FOUND' };
+    if (!routing) return { status: 'FAILED', reasonCode: 'SES_ROUTING_NOT_FOUND' };
     if (
       routing.workspaceId !== materialized.workspaceId ||
       routing.routingPartitionRef !== materialized.routingPartitionRef
@@ -165,11 +168,7 @@ export class AmazonSesV2DeliveryAdapter {
             Body: body
           }
         },
-        ConfigurationSetName: bounded(
-          routing.configurationSetName,
-          'configurationSetName',
-          64
-        ),
+        ConfigurationSetName: bounded(routing.configurationSetName, 'configurationSetName', 64),
         TenantName: bounded(routing.tenantName, 'tenantName', 128),
         EmailTags: [
           { Name: 'mo_attempt', Value: tagSafe(attempt.deliveryAttemptId) },
@@ -178,8 +177,7 @@ export class AmazonSesV2DeliveryAdapter {
         ]
       });
       const messageId = response.MessageId?.trim();
-      if (!messageId)
-        return { status: 'UNKNOWN', reasonCode: 'SES_ACCEPTED_WITHOUT_MESSAGE_ID' };
+      if (!messageId) return { status: 'UNKNOWN', reasonCode: 'SES_ACCEPTED_WITHOUT_MESSAGE_ID' };
       return { status: 'ACCEPTED', providerSubmissionRef: messageId };
     } catch (error) {
       const retryable =
@@ -187,8 +185,7 @@ export class AmazonSesV2DeliveryAdapter {
         error !== null &&
         'retryable' in error &&
         (error as { retryable?: unknown }).retryable === true;
-      if (retryable)
-        return { status: 'UNKNOWN', reasonCode: 'SES_TRANSPORT_AMBIGUOUS' };
+      if (retryable) return { status: 'UNKNOWN', reasonCode: 'SES_TRANSPORT_AMBIGUOUS' };
       return { status: 'FAILED', reasonCode: 'SES_PROVIDER_REJECTED' };
     }
   }
@@ -212,9 +209,10 @@ function object(value: unknown): SesEventRecord {
 function providerEventKind(event: Readonly<SesEventRecord>): EmailDeliveryObservationV1['event'] {
   const normalized = String(event.eventType ?? event.event_type ?? event.type ?? '').toUpperCase();
   if (normalized === 'BOUNCE') {
-    const bounce = event.bounce && typeof event.bounce === 'object' && !Array.isArray(event.bounce)
-      ? (event.bounce as SesEventRecord)
-      : {};
+    const bounce =
+      event.bounce && typeof event.bounce === 'object' && !Array.isArray(event.bounce)
+        ? (event.bounce as SesEventRecord)
+        : {};
     const bounceType = String(bounce.bounceType ?? bounce.bounce_type ?? '').toUpperCase();
     if (bounceType === 'PERMANENT') return 'HARD_BOUNCED';
     if (bounceType === 'TRANSIENT') return 'SOFT_BOUNCED';
