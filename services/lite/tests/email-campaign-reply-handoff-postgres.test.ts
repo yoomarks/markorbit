@@ -103,7 +103,7 @@ suite('PostgreSQL Email Campaign reply handoff owner', () => {
     sslMode: 'disable' as const,
     migrationNamespace: 'lite_email_delivery_test'
   });
-  let database = new ManagedDatabase(databaseConfig());
+  const database = new ManagedDatabase(databaseConfig());
   const migrationsDirectory = path.resolve('../../infrastructure/persistence/migrations');
   const migrationOwners = path.resolve('../../infrastructure/persistence/migration-owners.json');
 
@@ -118,12 +118,12 @@ suite('PostgreSQL Email Campaign reply handoff owner', () => {
 
   async function seedAcceptedDelivery(idempotencyPrefix: string) {
     const accepted = attempt();
-    const { providerSubmissionRef: _providerSubmissionRef, ...plannedBase } = accepted;
     const planned: EmailDeliveryAttemptV1 = {
-      ...plannedBase,
+      ...accepted,
       status: 'PLANNED',
       updatedAt: accepted.createdAt
     };
+    delete planned.providerSubmissionRef;
     const service = deliveryStore();
     await service.createAttempt({
       value: planned,
