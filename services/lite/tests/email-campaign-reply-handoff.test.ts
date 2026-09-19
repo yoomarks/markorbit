@@ -212,9 +212,7 @@ describe('Email Campaign reply handoff runtime', () => {
       status: 'CORRELATED'
     });
     expect(Object.values(result.authority).every((value) => value === false)).toBe(true);
-    expect(managedCommunication.resolveReplyReferenceEvidence).toHaveBeenCalledWith(
-      correlateInput
-    );
+    expect(managedCommunication.resolveReplyReferenceEvidence).toHaveBeenCalledWith(correlateInput);
     expect(writer.recordHandoff).toHaveBeenCalledTimes(1);
   });
 
