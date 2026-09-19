@@ -51,8 +51,7 @@ function attempt(
     status,
     ...(providerSubmissionRef ? { providerSubmissionRef } : {}),
     createdAt: '2026-09-19T00:00:00.000Z',
-    updatedAt:
-      status === 'PLANNED' ? '2026-09-19T00:00:00.000Z' : '2026-09-19T00:01:00.000Z',
+    updatedAt: status === 'PLANNED' ? '2026-09-19T00:00:00.000Z' : '2026-09-19T00:01:00.000Z',
     authority: noEmailDeliveryAuthorityConsequencesV1
   };
 }
@@ -97,11 +96,7 @@ suite('PostgreSQL email delivery evidence owner', () => {
   const migrationOwners = path.resolve('../../infrastructure/persistence/migration-owners.json');
 
   const store = () =>
-    new PostgresEmailDeliveryStore(
-      database,
-      database.getPool(),
-      () => '2026-09-19T00:03:00.000Z'
-    );
+    new PostgresEmailDeliveryStore(database, database.getPool(), () => '2026-09-19T00:03:00.000Z');
 
   beforeAll(async () => {
     await database.start();
@@ -228,9 +223,9 @@ suite('PostgreSQL email delivery evidence owner', () => {
         idempotencyKey: 'delivery-event-1'
       })
     ).toEqual(first);
-    expect(await service.listObservations(workspaceId, value.deliveryAttempt.deliveryAttemptId)).toEqual([
-      value
-    ]);
+    expect(
+      await service.listObservations(workspaceId, value.deliveryAttempt.deliveryAttemptId)
+    ).toEqual([value]);
   });
 
   it('fails row/document integrity drift closed', async () => {
@@ -247,7 +242,6 @@ suite('PostgreSQL email delivery evidence owner', () => {
       code: 'INTEGRITY_FAILURE'
     });
   });
-
 
   it('fails corrupted command receipt replay closed', async () => {
     const value = attempt();
