@@ -187,6 +187,37 @@ export interface AmazonSesEventContext {
   observedAt: string;
 }
 
+export interface AmazonSesVerifiedEventEnvelope {
+  event: unknown;
+  workspaceId: string;
+  deliveryAttemptId: EmailDeliveryAttemptV1['deliveryAttemptId'];
+  routingPartitionRef: string;
+  tenantName: string;
+  observedAt: string;
+}
+
+export interface AmazonSesEventAuthenticator {
+  verifyAndExtract(envelope: unknown): Promise<Readonly<AmazonSesVerifiedEventEnvelope>>;
+}
+
+export interface AmazonSesEventCorrelationVerifier {
+  assertCorrelated(
+    context: Readonly<{
+      workspaceId: string;
+      deliveryAttemptId: EmailDeliveryAttemptV1['deliveryAttemptId'];
+      routingPartitionRef: string;
+      tenantName: string;
+      providerMessageRef: string;
+    }>
+  ): Promise<void>;
+}
+
+export interface AmazonSesObservationSink {
+  admit(
+    observation: Readonly<EmailDeliveryObservationV1>
+  ): Promise<EmailDeliveryObservationV1>;
+}
+
 type SesEventRecord = Record<string, unknown>;
 
 function object(value: unknown): SesEventRecord {
@@ -269,12 +300,15 @@ export function normalizeAmazonSesEvent(
   const destination = Array.isArray(mail.destination)
     ? mail.destination.map((value) => String(value).trim().toLowerCase()).filter(Boolean)
     : [];
-  const endpointFingerprintSha256 =
-    destination.length === 1
-      ? createHash('sha256').update(destination[0]!, 'utf8').digest('hex')
-      : undefined;
+  if (destination.length !== 1)
+    throw new AmazonSesDeliveryAdapterError(
+      'SES V1 provider event requires exactly one recipient destination.'
+    );
+  const endpointFingerprintSha256 = createHash('sha256')
+    .update(destination[0]!, 'utf8')
+    .digest('hex');
   const normalizedEvent = providerEventKind(event);
-  const identity = `${messageId}:${String(eventType ?? 'unknown')}:${eventAt.toISOString()}`;
+  const identity = `${messageId}:${String(eventType ?? 'unknown')}:${eventAt.toISOString()}:${endpointFingerprintSha256}`;
 
   return {
     schemaVersion: 1,
@@ -289,7 +323,7 @@ export function normalizeAmazonSesEvent(
     event: normalizedEvent,
     evidenceKind: 'PROVIDER_EVENT',
     providerMessageRef: messageId,
-    ...(endpointFingerprintSha256 ? { endpointFingerprintSha256 } : {}),
+    endpointFingerprintSha256,
     authenticatedEvidence: true,
     reasonCode: `SES_${normalizedEvent}`,
     evidenceRefs: [`ses-message:${messageId}`],
@@ -297,4 +331,37 @@ export function normalizeAmazonSesEvent(
     observedAt: new Date(context.observedAt).toISOString(),
     authority: noEmailDeliveryAuthorityConsequencesV1
   };
+}
+
+
+export class AmazonSesAuthenticatedEventIngestion {
+  constructor(
+    private readonly authenticator: AmazonSesEventAuthenticator,
+    private readonly correlation: AmazonSesEventCorrelationVerifier,
+    private readonly sink: AmazonSesObservationSink
+  ) {}
+
+  async ingest(envelope: unknown): Promise<EmailDeliveryObservationV1> {
+    const verified = await this.authenticator.verifyAndExtract(envelope);
+    const observation = normalizeAmazonSesEvent(verified.event, {
+      authenticated: true,
+      workspaceId: verified.workspaceId,
+      deliveryAttemptId: verified.deliveryAttemptId,
+      observedAt: verified.observedAt
+    });
+    if (!observation.providerMessageRef)
+      throw new AmazonSesDeliveryAdapterError('SES provider message reference is required.');
+    await this.correlation.assertCorrelated({
+      workspaceId: verified.workspaceId,
+      deliveryAttemptId: verified.deliveryAttemptId,
+      routingPartitionRef: bounded(
+        verified.routingPartitionRef,
+        'routingPartitionRef',
+        300
+      ),
+      tenantName: bounded(verified.tenantName, 'tenantName', 128),
+      providerMessageRef: observation.providerMessageRef
+    });
+    return this.sink.admit(observation);
+  }
 }
