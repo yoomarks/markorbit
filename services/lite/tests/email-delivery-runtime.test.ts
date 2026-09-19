@@ -4,9 +4,19 @@ import {
   type EmailDeliveryAttemptV1,
   type EmailDeliveryObservationV1
 } from '@markorbit/contracts/email-delivery';
+import type {
+  CreateEmailDeliveryAttemptCommand,
+  RecordEmailDeliveryObservationCommand,
+  UpdateEmailDeliveryAttemptCommand,
+  PostgresEmailDeliveryStore
+} from '../src/email-delivery.js';
+import type { SetOutboundContactSuppressionCommand } from '../src/outbound-contact-policy.js';
 import {
   EmailDeliveryProviderEventService,
-  EmailDeliveryRuntimeService
+  EmailDeliveryRuntimeService,
+  type EmailDeliveryPreSubmitCurrentnessGate,
+  type EmailDeliveryProviderAdapter,
+  type EmailDeliverySuppressionOwner
 } from '../src/email-delivery-runtime.js';
 
 const workspaceId = '14141414-1414-4414-8414-141414141414';
@@ -48,7 +58,7 @@ function memoryStore() {
   const observations: EmailDeliveryObservationV1[] = [];
   return {
     store: {
-      createAttempt: vi.fn(({ value }: { value: EmailDeliveryAttemptV1 }) => {
+      createAttempt: vi.fn(({ value }: Readonly<CreateEmailDeliveryAttemptCommand>) => {
         current ??= structuredClone(value);
         return Promise.resolve(structuredClone(current));
       }),
@@ -56,11 +66,11 @@ function memoryStore() {
         if (!current) throw new Error('missing');
         return Promise.resolve(structuredClone(current));
       }),
-      updateAttempt: vi.fn(({ value }: { value: EmailDeliveryAttemptV1 }) => {
+      updateAttempt: vi.fn(({ value }: Readonly<UpdateEmailDeliveryAttemptCommand>) => {
         current = structuredClone(value);
         return Promise.resolve(structuredClone(current));
       }),
-      recordObservation: vi.fn(({ value }: { value: EmailDeliveryObservationV1 }) => {
+      recordObservation: vi.fn(({ value }: Readonly<RecordEmailDeliveryObservationCommand>) => {
         observations.push(structuredClone(value));
         return Promise.resolve(structuredClone(value));
       })
@@ -73,15 +83,20 @@ function memoryStore() {
 describe('Email delivery runtime', () => {
   it('persists SUBMITTING before provider call and maps MessageId to ACCEPTED only', async () => {
     const memory = memoryStore();
-    const currentness = { assertCurrent: vi.fn(() => Promise.resolve()) };
-    const adapter = {
+    const currentness: EmailDeliveryPreSubmitCurrentnessGate = {
+      assertCurrent: vi.fn(() => Promise.resolve())
+    };
+    const adapter: EmailDeliveryProviderAdapter = {
       submit: vi.fn(async () => {
         expect(memory.current()?.status).toBe('SUBMITTING');
         return { status: 'ACCEPTED' as const, providerSubmissionRef: 'ses-message-1' };
       })
     };
     const service = new EmailDeliveryRuntimeService(
-      memory.store as never,
+      memory.store as Pick<
+        PostgresEmailDeliveryStore,
+        'createAttempt' | 'getAttempt' | 'updateAttempt' | 'recordObservation'
+      >,
       currentness,
       adapter,
       () => '2026-09-19T00:01:00.000Z'
@@ -106,13 +121,16 @@ describe('Email delivery runtime', () => {
 
   it('refuses blind replay after an ambiguous provider outcome', async () => {
     const memory = memoryStore();
-    const adapter = {
+    const adapter: EmailDeliveryProviderAdapter = {
       submit: vi.fn(() =>
         Promise.resolve({ status: 'UNKNOWN' as const, reasonCode: 'SES_TRANSPORT_AMBIGUOUS' })
       )
     };
     const service = new EmailDeliveryRuntimeService(
-      memory.store as never,
+      memory.store as Pick<
+        PostgresEmailDeliveryStore,
+        'createAttempt' | 'getAttempt' | 'updateAttempt' | 'recordObservation'
+      >,
       { assertCurrent: vi.fn(() => Promise.resolve()) },
       adapter,
       () => '2026-09-19T00:01:00.000Z'
@@ -146,13 +164,18 @@ describe('Email delivery runtime', () => {
 
   it('fails before transport when JIT currentness fails', async () => {
     const memory = memoryStore();
-    const adapter = { submit: vi.fn() };
+    const adapter: EmailDeliveryProviderAdapter = {
+      submit: vi.fn(() => Promise.resolve({ status: 'FAILED', reasonCode: 'UNEXPECTED_CALL' }))
+    };
     const service = new EmailDeliveryRuntimeService(
-      memory.store as never,
+      memory.store as Pick<
+        PostgresEmailDeliveryStore,
+        'createAttempt' | 'getAttempt' | 'updateAttempt' | 'recordObservation'
+      >,
       {
         assertCurrent: vi.fn(() => Promise.reject(new Error('stale')))
       },
-      adapter as never
+      adapter
     );
     await expect(
       service.submitShard({
@@ -178,11 +201,18 @@ describe('Email provider observation suppression handoff', () => {
     ['COMPLAINED', 'COMPLAINT'],
     ['UNSUBSCRIBED', 'RECIPIENT_OPT_OUT']
   ] as const)('routes %s through Outbound Contact Policy owner', async (event, reasonCode) => {
-    const recordObservation = vi.fn(({ value }) => Promise.resolve(value));
-    const setSuppression = vi.fn(() => Promise.resolve({}));
-    const service = new EmailDeliveryProviderEventService({ recordObservation } as never, {
-      setSuppression
-    });
+    const recordObservation = vi.fn(
+      ({ value }: Readonly<RecordEmailDeliveryObservationCommand>) => Promise.resolve(value)
+    );
+    const suppression: EmailDeliverySuppressionOwner = {
+      setSuppression: vi.fn(
+        (_command: Readonly<SetOutboundContactSuppressionCommand>) => Promise.resolve({})
+      )
+    };
+    const service = new EmailDeliveryProviderEventService(
+      { recordObservation } as Pick<PostgresEmailDeliveryStore, 'recordObservation'>,
+      suppression
+    );
     const observation: EmailDeliveryObservationV1 = {
       schemaVersion: 1,
       observationId: `email-delivery-observation_${event.toLowerCase()}`,
@@ -205,7 +235,7 @@ describe('Email provider observation suppression handoff', () => {
       authority: noEmailDeliveryAuthorityConsequencesV1
     };
     await service.admit(observation);
-    expect(setSuppression).toHaveBeenCalledWith(
+    expect(suppression.setSuppression).toHaveBeenCalledWith(
       expect.objectContaining({
         workspaceId,
         endpointFingerprintSha256: '5'.repeat(64),
@@ -217,12 +247,19 @@ describe('Email provider observation suppression handoff', () => {
   });
 
   it('does not create suppression from ordinary delivery evidence', async () => {
-    const setSuppression = vi.fn();
+    const suppression: EmailDeliverySuppressionOwner = {
+      setSuppression: vi.fn(
+        (_command: Readonly<SetOutboundContactSuppressionCommand>) => Promise.resolve({})
+      )
+    };
     const service = new EmailDeliveryProviderEventService(
       {
-        recordObservation: vi.fn(({ value }) => Promise.resolve(value))
-      } as never,
-      { setSuppression }
+        recordObservation: vi.fn(
+          ({ value }: Readonly<RecordEmailDeliveryObservationCommand>) =>
+            Promise.resolve(value)
+        )
+      } as Pick<PostgresEmailDeliveryStore, 'recordObservation'>,
+      suppression
     );
     await service.admit({
       schemaVersion: 1,
@@ -242,6 +279,6 @@ describe('Email provider observation suppression handoff', () => {
       observedAt: '2026-09-19T00:02:01.000Z',
       authority: noEmailDeliveryAuthorityConsequencesV1
     });
-    expect(setSuppression).not.toHaveBeenCalled();
+    expect(suppression.setSuppression).not.toHaveBeenCalled();
   });
 });
