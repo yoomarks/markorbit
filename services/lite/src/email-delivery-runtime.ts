@@ -29,9 +29,7 @@ export type EmailDeliverySubmissionResult =
   | Readonly<{ status: 'UNKNOWN'; reasonCode: string }>;
 
 export interface EmailDeliveryProviderAdapter {
-  submit(
-    materialized: Readonly<MaterializedEmailDelivery>
-  ): Promise<EmailDeliverySubmissionResult>;
+  submit(materialized: Readonly<MaterializedEmailDelivery>): Promise<EmailDeliverySubmissionResult>;
 }
 
 export interface EmailDeliveryPreSubmitCurrentnessGate {
