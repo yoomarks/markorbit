@@ -229,11 +229,21 @@ function object(value: unknown): SesEventRecord {
   return value as SesEventRecord;
 }
 
+function scalar(value: unknown): string {
+  if (
+    typeof value === 'string' ||
+    typeof value === 'number' ||
+    typeof value === 'boolean'
+  )
+    return String(value).trim();
+  return '';
+}
+
 function providerEventTimestamp(
   event: Readonly<SesEventRecord>,
   mail: Readonly<SesEventRecord>
 ): string {
-  const normalized = String(event.eventType ?? event.event_type ?? event.type ?? '').toUpperCase();
+  const normalized = scalar(event.eventType ?? event.event_type ?? event.type).toUpperCase();
   const detailField: Record<string, string> = {
     BOUNCE: 'bounce',
     COMPLAINT: 'complaint',
@@ -243,22 +253,23 @@ function providerEventTimestamp(
     RENDERINGFAILURE: 'renderingFailure',
     SUBSCRIPTION: 'subscription'
   };
-  const detail = detailField[normalized] ? event[detailField[normalized]!] : undefined;
+  const detailKey = detailField[normalized];
+  const detail = detailKey ? event[detailKey] : undefined;
   if (detail && typeof detail === 'object' && !Array.isArray(detail)) {
-    const timestamp = String((detail as SesEventRecord).timestamp ?? '').trim();
+    const timestamp = scalar((detail as SesEventRecord).timestamp);
     if (timestamp) return timestamp;
   }
-  return String(event.timestamp ?? mail.timestamp ?? '').trim();
+  return scalar(event.timestamp ?? mail.timestamp);
 }
 
 function providerEventKind(event: Readonly<SesEventRecord>): EmailDeliveryObservationV1['event'] {
-  const normalized = String(event.eventType ?? event.event_type ?? event.type ?? '').toUpperCase();
+  const normalized = scalar(event.eventType ?? event.event_type ?? event.type).toUpperCase();
   if (normalized === 'BOUNCE') {
     const bounce =
       event.bounce && typeof event.bounce === 'object' && !Array.isArray(event.bounce)
         ? (event.bounce as SesEventRecord)
         : {};
-    const bounceType = String(bounce.bounceType ?? bounce.bounce_type ?? '').toUpperCase();
+    const bounceType = scalar(bounce.bounceType ?? bounce.bounce_type).toUpperCase();
     if (bounceType === 'PERMANENT') return 'HARD_BOUNCED';
     if (bounceType === 'TRANSIENT') return 'SOFT_BOUNCED';
     return 'UNKNOWN';
@@ -283,10 +294,9 @@ function providerEventKind(event: Readonly<SesEventRecord>): EmailDeliveryObserv
     if (
       statuses.some((entry) => {
         if (!entry || typeof entry !== 'object' || Array.isArray(entry)) return false;
-        const status = String(
+        const status = scalar(
           (entry as SesEventRecord).subscriptionStatus ??
-            (entry as SesEventRecord).subscription_status ??
-            ''
+            (entry as SesEventRecord).subscription_status
         ).toUpperCase();
         return status === 'OPTOUT' || status === 'OPT_OUT';
       })
@@ -315,7 +325,7 @@ export function normalizeAmazonSesEvent(
   const event = object(raw);
   const mail = object(event.mail);
   const eventType = event.eventType ?? event.event_type ?? event.type;
-  const messageId = String(mail.messageId ?? mail.message_id ?? '').trim();
+  const messageId = scalar(mail.messageId ?? mail.message_id);
   if (!messageId) throw new AmazonSesDeliveryAdapterError('SES event messageId is required.');
   const timestamp = providerEventTimestamp(event, mail);
   const eventAt = new Date(timestamp);
@@ -336,7 +346,7 @@ export function normalizeAmazonSesEvent(
   const providerEventId = context.providerEventId?.trim();
   const identity = providerEventId
     ? `ses-event:${providerEventId}`
-    : `${messageId}:${String(eventType ?? 'unknown')}:${eventAt.toISOString()}:${endpointFingerprintSha256}`;
+    : `${messageId}:${scalar(eventType) || 'unknown'}:${eventAt.toISOString()}:${endpointFingerprintSha256}`;
 
   return {
     schemaVersion: 1,
