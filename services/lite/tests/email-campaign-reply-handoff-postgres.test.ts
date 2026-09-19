@@ -101,7 +101,7 @@ suite('PostgreSQL Email Campaign reply handoff owner', () => {
     idleTimeoutMs: 2000,
     statementTimeoutMs: 5000,
     sslMode: 'disable' as const,
-    migrationNamespace: 'lite_email_reply_handoff_test'
+    migrationNamespace: 'lite_email_delivery_test'
   });
   let database = new ManagedDatabase(databaseConfig());
   const migrationsDirectory = path.resolve('../../infrastructure/persistence/migrations');
@@ -178,7 +178,7 @@ suite('PostgreSQL Email Campaign reply handoff owner', () => {
       migrationOwners,
       '@markorbit/lite-service'
     );
-    await migrate(database.getPool(), 'lite_email_reply_handoff_test', migrations);
+    await migrate(database.getPool(), 'lite_email_delivery_test', migrations);
     await database.getPool().query(
       `INSERT INTO workspaces (workspace_id,name,slug)
        VALUES($1,'Email Reply Handoff','email-reply-handoff')
