@@ -118,10 +118,10 @@ suite('PostgreSQL Email Campaign reply handoff owner', () => {
 
   async function seedAcceptedDelivery(idempotencyPrefix: string) {
     const accepted = attempt();
+    const { providerSubmissionRef: _providerSubmissionRef, ...plannedBase } = accepted;
     const planned: EmailDeliveryAttemptV1 = {
-      ...accepted,
+      ...plannedBase,
       status: 'PLANNED',
-      providerSubmissionRef: undefined,
       updatedAt: accepted.createdAt
     };
     const service = deliveryStore();
