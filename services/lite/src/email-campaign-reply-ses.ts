@@ -29,16 +29,17 @@ function sesSubmissionRef(messageId: string): string | undefined {
   return local || undefined;
 }
 
-export class AmazonSesV2ReplyReferenceCorrelatorV1
-  implements EmailCampaignReplyReferenceCorrelatorV1
-{
+export class AmazonSesV2ReplyReferenceCorrelatorV1 implements EmailCampaignReplyReferenceCorrelatorV1 {
   candidates(
     headers: readonly Readonly<{ name: string; value: string }>[]
   ): readonly Readonly<EmailCampaignReplyReferenceCandidateV1>[] {
     const candidates: EmailCampaignReplyReferenceCandidateV1[] = [];
     const seen = new Set<string>();
 
-    const admit = (value: string, correlationMethod: EmailCampaignReplyReferenceCandidateV1['correlationMethod']) => {
+    const admit = (
+      value: string,
+      correlationMethod: EmailCampaignReplyReferenceCandidateV1['correlationMethod']
+    ) => {
       for (const rfcMessageId of rfcMessageIds(value)) {
         const providerSubmissionRef = sesSubmissionRef(rfcMessageId);
         if (!providerSubmissionRef || seen.has(providerSubmissionRef)) continue;
@@ -47,10 +48,8 @@ export class AmazonSesV2ReplyReferenceCorrelatorV1
       }
     };
 
-    for (const value of headerValues(headers, 'in-reply-to'))
-      admit(value, 'RFC_IN_REPLY_TO');
-    for (const value of headerValues(headers, 'references'))
-      admit(value, 'RFC_REFERENCES');
+    for (const value of headerValues(headers, 'in-reply-to')) admit(value, 'RFC_IN_REPLY_TO');
+    for (const value of headerValues(headers, 'references')) admit(value, 'RFC_REFERENCES');
 
     return candidates;
   }
