@@ -18,6 +18,7 @@ export type EmailTransportSubmissionResultV1 =
   | Readonly<{ status: 'FAILED'; reasonCode: string }>
   | Readonly<{ status: 'UNKNOWN'; reasonCode: string }>;
 
+/** Transport-only boundary. Possessing this adapter never creates external-send authority. */
 export interface EmailTransportProviderV1 {
   submit(
     materialized: Readonly<MaterializedEmailTransportV1>
