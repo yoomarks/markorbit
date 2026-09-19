@@ -1,13 +1,7 @@
 import type { ImplementationProfileId } from './capability-runtime.js';
-import type {
-  EmailCampaignIdV1
-} from './email-campaign.js';
-import type {
-  WorkspaceEmailSenderProfileId
-} from './email-sender-profile.js';
-import type {
-  ProtectedExternalActionReleaseId
-} from './protected-external-action.js';
+import type { EmailCampaignIdV1 } from './email-campaign.js';
+import type { WorkspaceEmailSenderProfileId } from './email-sender-profile.js';
+import type { ProtectedExternalActionReleaseId } from './protected-external-action.js';
 
 export type EmailDeliveryAttemptId = `email-delivery-attempt_${string}`;
 export type EmailDeliveryObservationId = `email-delivery-observation_${string}`;
@@ -21,8 +15,7 @@ export const emailDeliveryAttemptStatusesV1 = [
   'RECONCILING',
   'RECONCILED'
 ] as const;
-export type EmailDeliveryAttemptStatusV1 =
-  (typeof emailDeliveryAttemptStatusesV1)[number];
+export type EmailDeliveryAttemptStatusV1 = (typeof emailDeliveryAttemptStatusesV1)[number];
 
 export const emailDeliveryObservationKindsV1 = [
   'SUBMITTED',
@@ -36,16 +29,14 @@ export const emailDeliveryObservationKindsV1 = [
   'FAILED',
   'UNKNOWN'
 ] as const;
-export type EmailDeliveryObservationKindV1 =
-  (typeof emailDeliveryObservationKindsV1)[number];
+export type EmailDeliveryObservationKindV1 = (typeof emailDeliveryObservationKindsV1)[number];
 
 export const emailDeliveryEvidenceKindsV1 = [
   'ADAPTER_TRANSPORT',
   'PROVIDER_EVENT',
   'PROVIDER_RECONCILIATION'
 ] as const;
-export type EmailDeliveryEvidenceKindV1 =
-  (typeof emailDeliveryEvidenceKindsV1)[number];
+export type EmailDeliveryEvidenceKindV1 = (typeof emailDeliveryEvidenceKindsV1)[number];
 
 export const noEmailDeliveryAuthorityConsequencesV1 = Object.freeze({
   externalSendAuthorized: false,
@@ -56,8 +47,7 @@ export const noEmailDeliveryAuthorityConsequencesV1 = Object.freeze({
   matterTruthCreated: false,
   legalConsentVerifiedByMarkOrbit: false
 });
-export type EmailDeliveryAuthorityConsequencesV1 =
-  typeof noEmailDeliveryAuthorityConsequencesV1;
+export type EmailDeliveryAuthorityConsequencesV1 = typeof noEmailDeliveryAuthorityConsequencesV1;
 
 export interface EmailDeliveryAttemptV1 {
   schemaVersion: 1;
@@ -180,8 +170,7 @@ function exactKeys(value: JsonRecord, allowed: readonly string[], field: string)
 }
 
 function text(value: unknown, field: string, max = 500): string {
-  if (typeof value !== 'string')
-    throw new EmailDeliveryContractError(`${field} must be a string.`);
+  if (typeof value !== 'string') throw new EmailDeliveryContractError(`${field} must be a string.`);
   const result = value.trim();
   if (!result || result.length > max)
     throw new EmailDeliveryContractError(`${field} must contain 1 to ${max} characters.`);
@@ -211,8 +200,7 @@ function timestamp(value: unknown, field: string): string {
 
 function prefixed<T extends string>(value: unknown, field: string, prefix: string): T {
   const result = text(value, field, 300);
-  if (!result.startsWith(prefix))
-    throw new EmailDeliveryContractError(`${field} is invalid.`);
+  if (!result.startsWith(prefix)) throw new EmailDeliveryContractError(`${field} is invalid.`);
   return result as T;
 }
 
@@ -266,11 +254,7 @@ export function parseEmailDeliveryAttemptV1(value: unknown): EmailDeliveryAttemp
   const sender = object(item.senderProfile, 'senderProfile');
   exactKeys(sender, ['senderProfileId', 'version', 'fingerprintSha256'], 'senderProfile');
   const implementation = object(item.implementation, 'implementation');
-  exactKeys(
-    implementation,
-    ['implementationProfileId', 'version'],
-    'implementation'
-  );
+  exactKeys(implementation, ['implementationProfileId', 'version'], 'implementation');
   if (!emailDeliveryAttemptStatusesV1.includes(item.status as EmailDeliveryAttemptStatusV1))
     throw new EmailDeliveryContractError('status is invalid.');
   const createdAt = timestamp(item.createdAt, 'createdAt');
@@ -352,9 +336,7 @@ export function parseEmailDeliveryAttemptV1(value: unknown): EmailDeliveryAttemp
   };
 }
 
-export function parseEmailDeliveryObservationV1(
-  value: unknown
-): EmailDeliveryObservationV1 {
+export function parseEmailDeliveryObservationV1(value: unknown): EmailDeliveryObservationV1 {
   rejectForbidden(value);
   const item = object(value, 'emailDeliveryObservation');
   exactKeys(
@@ -407,8 +389,7 @@ export function parseEmailDeliveryObservationV1(
       ? undefined
       : sha(item.endpointFingerprintSha256, 'endpointFingerprintSha256');
   const workspaceId = text(item.workspaceId, 'workspaceId', 80).toLowerCase();
-  if (!UUID.test(workspaceId))
-    throw new EmailDeliveryContractError('workspaceId must be a UUID.');
+  if (!UUID.test(workspaceId)) throw new EmailDeliveryContractError('workspaceId must be a UUID.');
   return {
     schemaVersion: 1,
     observationId: prefixed<EmailDeliveryObservationId>(
