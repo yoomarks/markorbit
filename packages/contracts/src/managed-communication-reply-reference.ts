@@ -41,6 +41,7 @@ const SHA256 = /^[a-f0-9]{64}$/u;
 const forbiddenKeys = new Set([
   'address',
   'email',
+  'emailaddress',
   'participant',
   'participants',
   'subject',
