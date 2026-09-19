@@ -23,7 +23,11 @@ CREATE TABLE lite_email_campaign_reply_handoffs (
   UNIQUE (workspace_id, managed_account_ref, managed_message_id, delivery_attempt_id),
   FOREIGN KEY (workspace_id, delivery_attempt_id)
     REFERENCES lite_email_delivery_attempts(workspace_id, delivery_attempt_id)
-    ON DELETE CASCADE
+    ON DELETE CASCADE,
+  FOREIGN KEY (workspace_id, campaign_id, campaign_version)
+    REFERENCES lite_email_campaign_versions(workspace_id, campaign_id, version),
+  FOREIGN KEY (workspace_id, sender_profile_id, sender_profile_version)
+    REFERENCES lite_email_sender_profile_versions(workspace_id, sender_profile_id, version)
 );
 
 CREATE INDEX lite_email_campaign_reply_handoff_campaign_read
