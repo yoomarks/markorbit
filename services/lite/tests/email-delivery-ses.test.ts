@@ -69,8 +69,12 @@ const routing: AmazonSesRoutingResolver = {
 
 describe('Amazon SES V2 provider-neutral email transport', () => {
   it('submits a non-Campaign materialized email through the same tenant routing', async () => {
-    const sendEmail = vi.fn((_region: string, _input: Readonly<AmazonSesV2SendEmailInput>) =>
-      Promise.resolve({ MessageId: 'ses-notification-123' })
+    const sendEmail = vi.fn(
+      (region: string, input: Readonly<AmazonSesV2SendEmailInput>) => {
+        void region;
+        void input;
+        return Promise.resolve({ MessageId: 'ses-notification-123' });
+      }
     );
     const transport = new AmazonSesV2EmailTransport({ sendEmail }, routing);
 
