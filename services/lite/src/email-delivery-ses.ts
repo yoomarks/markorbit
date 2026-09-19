@@ -185,6 +185,7 @@ export interface AmazonSesEventContext {
   workspaceId: string;
   deliveryAttemptId: EmailDeliveryAttemptV1['deliveryAttemptId'];
   observedAt: string;
+  providerEventId?: string;
 }
 
 export interface AmazonSesVerifiedEventEnvelope {
@@ -194,6 +195,7 @@ export interface AmazonSesVerifiedEventEnvelope {
   routingPartitionRef: string;
   tenantName: string;
   observedAt: string;
+  providerEventId?: string;
 }
 
 export interface AmazonSesEventAuthenticator {
@@ -224,6 +226,25 @@ function object(value: unknown): SesEventRecord {
   if (!value || typeof value !== 'object' || Array.isArray(value))
     throw new AmazonSesDeliveryAdapterError('SES event must be an object.');
   return value as SesEventRecord;
+}
+
+function providerEventTimestamp(event: Readonly<SesEventRecord>, mail: Readonly<SesEventRecord>): string {
+  const normalized = String(event.eventType ?? event.event_type ?? event.type ?? '').toUpperCase();
+  const detailField: Record<string, string> = {
+    BOUNCE: 'bounce',
+    COMPLAINT: 'complaint',
+    DELIVERY: 'delivery',
+    DELIVERYDELAY: 'deliveryDelay',
+    REJECT: 'reject',
+    RENDERINGFAILURE: 'renderingFailure',
+    SUBSCRIPTION: 'subscription'
+  };
+  const detail = detailField[normalized] ? event[detailField[normalized]!] : undefined;
+  if (detail && typeof detail === 'object' && !Array.isArray(detail)) {
+    const timestamp = String((detail as SesEventRecord).timestamp ?? '').trim();
+    if (timestamp) return timestamp;
+  }
+  return String(event.timestamp ?? mail.timestamp ?? '').trim();
 }
 
 function providerEventKind(event: Readonly<SesEventRecord>): EmailDeliveryObservationV1['event'] {
@@ -292,7 +313,7 @@ export function normalizeAmazonSesEvent(
   const eventType = event.eventType ?? event.event_type ?? event.type;
   const messageId = String(mail.messageId ?? mail.message_id ?? '').trim();
   if (!messageId) throw new AmazonSesDeliveryAdapterError('SES event messageId is required.');
-  const timestamp = String(mail.timestamp ?? event.timestamp ?? '').trim();
+  const timestamp = providerEventTimestamp(event, mail);
   const eventAt = new Date(timestamp);
   if (Number.isNaN(eventAt.getTime()))
     throw new AmazonSesDeliveryAdapterError('SES event timestamp is invalid.');
@@ -308,7 +329,10 @@ export function normalizeAmazonSesEvent(
     .update(destination[0]!, 'utf8')
     .digest('hex');
   const normalizedEvent = providerEventKind(event);
-  const identity = `${messageId}:${String(eventType ?? 'unknown')}:${eventAt.toISOString()}:${endpointFingerprintSha256}`;
+  const providerEventId = context.providerEventId?.trim();
+  const identity = providerEventId
+    ? `ses-event:${providerEventId}`
+    : `${messageId}:${String(eventType ?? 'unknown')}:${eventAt.toISOString()}:${endpointFingerprintSha256}`;
 
   return {
     schemaVersion: 1,
@@ -347,7 +371,8 @@ export class AmazonSesAuthenticatedEventIngestion {
       authenticated: true,
       workspaceId: verified.workspaceId,
       deliveryAttemptId: verified.deliveryAttemptId,
-      observedAt: verified.observedAt
+      observedAt: verified.observedAt,
+      ...(verified.providerEventId ? { providerEventId: verified.providerEventId } : {})
     });
     if (!observation.providerMessageRef)
       throw new AmazonSesDeliveryAdapterError('SES provider message reference is required.');
