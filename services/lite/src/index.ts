@@ -91,3 +91,7 @@ export * from './email-campaign-delivery-currentness-http.js';
 export * from './email-delivery.js';
 export * from './email-delivery-ses.js';
 export * from './email-delivery-runtime.js';
+
+export * from './email-campaign-reply-handoff.js';
+
+export * from './email-campaign-reply-ses.js';
