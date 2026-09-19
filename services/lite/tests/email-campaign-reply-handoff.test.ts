@@ -11,12 +11,13 @@ import {
   noWorkspaceEmailSenderProfileAuthorityConsequencesV1,
   type WorkspaceEmailSenderProfileV1
 } from '@markorbit/contracts/email-sender-profile';
-import type { ManagedCommunicationMessageV1 } from '@markorbit/contracts/managed-communication';
+import {
+  noManagedCommunicationReplyReferenceAuthorityConsequencesV1,
+  type ManagedCommunicationReplyReferenceEvidenceV1
+} from '@markorbit/contracts/managed-communication-reply-reference';
 import {
   EmailCampaignReplyCorrelationError,
   EmailCampaignReplyHandoffServiceV1,
-  type EmailCampaignReplyInboundEvidenceV1,
-  type EmailCampaignReplyManagedAccountV1,
   type EmailCampaignReplyReferenceCorrelatorV1
 } from '../src/email-campaign-reply-handoff.js';
 
@@ -113,51 +114,29 @@ const senderProfile: WorkspaceEmailSenderProfileV1 = {
   authority: noWorkspaceEmailSenderProfileAuthorityConsequencesV1
 };
 
-const account: EmailCampaignReplyManagedAccountV1 = {
+const replyReference: ManagedCommunicationReplyReferenceEvidenceV1 = {
+  schemaVersion: 1,
   workspaceId,
   accountRef: 'managed-account_reply',
-  channel: 'EMAIL',
-  provider: 'MICROSOFT_GRAPH'
-};
-
-const message: ManagedCommunicationMessageV1 = {
-  schemaVersion: 1,
   messageId: 'managed-message_reply',
-  accountRef: account.accountRef,
   threadRef: 'managed-thread_reply',
-  channel: 'EMAIL',
-  direction: 'INBOUND',
-  participants: [{ role: 'SENDER', address: 'person@example.net' }],
-  attachments: [],
-  occurredAt: '2026-09-19T06:00:00.000Z',
-  providerObservation: {
-    provider: account.provider,
-    providerMessageId: 'AQMk-reply',
-    observedAt: '2026-09-19T06:00:01.000Z'
-  }
-};
-
-const exactEvidence: EmailCampaignReplyInboundEvidenceV1 = {
-  evidenceRef: 'commevidence_reply',
-  sha256: '9'.repeat(64),
-  provider: account.provider,
-  providerMessageId: message.providerObservation.providerMessageId,
-  observedAt: message.providerObservation.observedAt,
-  headers: [
-    {
-      name: 'in-reply-to',
-      value: '<010001reply-000000@email.amazonses.com>'
-    }
-  ]
+  provider: 'MICROSOFT_GRAPH',
+  providerMessageId: 'AQMk-reply',
+  observedAt: '2026-09-19T06:00:01.000Z',
+  inReplyToMessageIds: ['010001reply-000000@email.amazonses.com'],
+  referenceMessageIds: [],
+  exactEvidence: {
+    evidenceRef: 'commevidence_reply',
+    sha256: '9'.repeat(64)
+  },
+  authority: noManagedCommunicationReplyReferenceAuthorityConsequencesV1
 };
 
 function service(options?: {
   correlator?: EmailCampaignReplyReferenceCorrelatorV1;
   attempts?: Record<string, EmailDeliveryAttemptV1 | undefined>;
   profile?: WorkspaceEmailSenderProfileV1;
-  account?: EmailCampaignReplyManagedAccountV1;
-  message?: ManagedCommunicationMessageV1;
-  exactEvidence?: EmailCampaignReplyInboundEvidenceV1 | undefined;
+  replyReference?: ManagedCommunicationReplyReferenceEvidenceV1;
 }) {
   const primary = attempt('reply', '010001reply-000000');
   const attempts = options?.attempts ?? {
@@ -167,14 +146,8 @@ function service(options?: {
     recordHandoff: vi.fn((command) => Promise.resolve(command.value))
   };
   const managedCommunication = {
-    resolveAccount: vi.fn(() => Promise.resolve(options?.account ?? account)),
-    resolveMessage: vi.fn(() => Promise.resolve(options?.message ?? message)),
-    resolveExactEvidence: vi.fn(() =>
-      Promise.resolve(
-        options && Object.prototype.hasOwnProperty.call(options, 'exactEvidence')
-          ? options.exactEvidence
-          : exactEvidence
-      )
+    resolveReplyReferenceEvidence: vi.fn(() =>
+      Promise.resolve(options?.replyReference ?? replyReference)
     )
   };
   const runtime = new EmailCampaignReplyHandoffServiceV1(
@@ -206,12 +179,12 @@ function service(options?: {
 
 const correlateInput = {
   workspaceId,
-  accountRef: account.accountRef,
-  messageId: message.messageId
+  accountRef: replyReference.accountRef,
+  messageId: replyReference.messageId
 };
 
 describe('Email Campaign reply handoff runtime', () => {
-  it('correlates an already-admitted inbound reply against historical exact lineage', async () => {
+  it('correlates bounded already-admitted reply references against historical exact lineage', async () => {
     const { runtime, writer, managedCommunication } = service();
     const result = await runtime.correlate({
       ...correlateInput,
@@ -230,21 +203,18 @@ describe('Email Campaign reply handoff runtime', () => {
         version: senderProfile.version
       },
       managedCommunication: {
-        accountRef: message.accountRef,
-        messageId: message.messageId,
-        providerMessageId: message.providerObservation.providerMessageId
+        accountRef: replyReference.accountRef,
+        messageId: replyReference.messageId,
+        providerMessageId: replyReference.providerMessageId
       },
       outboundProviderSubmissionRef: '010001reply-000000',
       correlationMethod: 'PROVIDER_MESSAGE_REFERENCE',
       status: 'CORRELATED'
     });
     expect(Object.values(result.authority).every((value) => value === false)).toBe(true);
-    expect(managedCommunication.resolveMessage).toHaveBeenCalledWith(
-      workspaceId,
-      account.accountRef,
-      message.messageId
+    expect(managedCommunication.resolveReplyReferenceEvidence).toHaveBeenCalledWith(
+      correlateInput
     );
-    expect(managedCommunication.resolveExactEvidence).toHaveBeenCalledTimes(1);
     expect(writer.recordHandoff).toHaveBeenCalledTimes(1);
   });
 
@@ -260,19 +230,19 @@ describe('Email Campaign reply handoff runtime', () => {
     });
   });
 
-  it('fails closed when the Managed Communication account is not owned by the Workspace', async () => {
+  it('fails closed when the bounded Managed Communication evidence escapes exact Workspace lineage', async () => {
     const { runtime } = service({
-      account: {
-        ...account,
+      replyReference: {
+        ...replyReference,
         workspaceId: '24242424-2424-4424-8424-242424242424'
       }
     });
     await expect(
       runtime.correlate({
         ...correlateInput,
-        idempotencyKey: 'reply-handoff-account-owner-mismatch'
+        idempotencyKey: 'reply-handoff-lineage-mismatch'
       })
-    ).rejects.toMatchObject({ code: 'REPLY_ACCOUNT_MISMATCH' });
+    ).rejects.toMatchObject({ code: 'LINEAGE_MISMATCH' });
   });
 
   it('fails closed when the historical SenderProfile reply account differs', async () => {
@@ -291,16 +261,6 @@ describe('Email Campaign reply handoff runtime', () => {
         idempotencyKey: 'reply-handoff-profile-account-mismatch'
       })
     ).rejects.toMatchObject({ code: 'REPLY_ACCOUNT_MISMATCH' });
-  });
-
-  it('requires already-admitted exact Managed Communication evidence', async () => {
-    const { runtime } = service({ exactEvidence: undefined });
-    await expect(
-      runtime.correlate({
-        ...correlateInput,
-        idempotencyKey: 'reply-handoff-missing-evidence'
-      })
-    ).rejects.toMatchObject({ code: 'INVALID_INBOUND_EVIDENCE' });
   });
 
   it('fails closed when multiple distinct delivery attempts are referenced', async () => {
@@ -331,17 +291,17 @@ describe('Email Campaign reply handoff runtime', () => {
     ).rejects.toMatchObject({ code: 'CORRELATION_AMBIGUOUS' });
   });
 
-  it('rejects exact evidence that does not match the normalized message provenance', async () => {
+  it('rejects runtime clocks that precede admitted reply evidence', async () => {
     const { runtime } = service({
-      exactEvidence: {
-        ...exactEvidence,
-        providerMessageId: 'AQMk-other'
+      replyReference: {
+        ...replyReference,
+        observedAt: '2026-09-19T06:02:00.000Z'
       }
     });
     await expect(
       runtime.correlate({
         ...correlateInput,
-        idempotencyKey: 'reply-handoff-evidence-mismatch'
+        idempotencyKey: 'reply-handoff-clock'
       })
     ).rejects.toBeInstanceOf(EmailCampaignReplyCorrelationError);
   });
