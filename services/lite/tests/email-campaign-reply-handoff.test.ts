@@ -18,7 +18,8 @@ import {
 import {
   EmailCampaignReplyCorrelationError,
   EmailCampaignReplyHandoffServiceV1,
-  type EmailCampaignReplyReferenceCorrelatorV1
+  type EmailCampaignReplyReferenceCorrelatorV1,
+  type RecordEmailCampaignReplyHandoffCommandV1
 } from '../src/email-campaign-reply-handoff.js';
 
 const workspaceId = '14141414-1414-4414-8414-141414141414';
@@ -143,7 +144,9 @@ function service(options?: {
     '010001reply-000000': primary
   };
   const writer = {
-    recordHandoff: vi.fn((command) => Promise.resolve(command.value))
+    recordHandoff: vi.fn((command: Readonly<RecordEmailCampaignReplyHandoffCommandV1>) =>
+      Promise.resolve(command.value)
+    )
   };
   const managedCommunication = {
     resolveReplyReferenceEvidence: vi.fn(() =>
@@ -153,8 +156,9 @@ function service(options?: {
   const runtime = new EmailCampaignReplyHandoffServiceV1(
     managedCommunication,
     {
-      findAttemptByProviderSubmissionRef: vi.fn((_workspaceId, providerSubmissionRef) =>
-        Promise.resolve(attempts[providerSubmissionRef])
+      findAttemptByProviderSubmissionRef: vi.fn(
+        (_workspaceId: string, providerSubmissionRef: string) =>
+          Promise.resolve(attempts[providerSubmissionRef])
       )
     },
     {
