@@ -11,9 +11,7 @@ function sesSubmissionRef(messageId: string): string | undefined {
   return local || undefined;
 }
 
-export class AmazonSesV2ReplyReferenceCorrelatorV1
-  implements EmailCampaignReplyReferenceCorrelatorV1
-{
+export class AmazonSesV2ReplyReferenceCorrelatorV1 implements EmailCampaignReplyReferenceCorrelatorV1 {
   candidates(
     inReplyToMessageIds: readonly string[],
     referenceMessageIds: readonly string[]
