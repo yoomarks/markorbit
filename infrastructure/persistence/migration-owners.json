@@ -216,6 +216,7 @@
     "0133_lite_email_sender_profiles": "@markorbit/lite-service",
     "0134_core_governed_human_action_receipts_email_campaign_send": "@markorbit/core-service",
     "0135_execution_protected_external_actions_email_campaign_send": "@markorbit/execution-service",
-    "0136_lite_email_delivery_evidence": "@markorbit/lite-service"
+    "0136_lite_email_delivery_evidence": "@markorbit/lite-service",
+    "0137_lite_email_campaign_reply_handoffs": "@markorbit/lite-service"
   }
 }
