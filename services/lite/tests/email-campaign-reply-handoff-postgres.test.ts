@@ -33,10 +33,10 @@ function attempt(): EmailDeliveryAttemptV1 {
       version: 1,
       effectFingerprintSha256: '1'.repeat(64)
     },
-    campaign: { campaignId: 'email-campaign_reply_pg', version: 2 },
+    campaign: { campaignId: 'email-campaign_reply_pg', version: 1 },
     senderProfile: {
       senderProfileId: 'email-sender-profile_reply_pg',
-      version: 3,
+      version: 1,
       fingerprintSha256: '2'.repeat(64)
     },
     implementation: {
@@ -62,14 +62,14 @@ function handoff(): EmailCampaignReplyHandoffV1 {
     schemaVersion: 1,
     replyHandoffId: 'email-campaign-reply-handoff_pg',
     workspaceId,
-    campaign: { campaignId: 'email-campaign_reply_pg', version: 2 },
+    campaign: { campaignId: 'email-campaign_reply_pg', version: 1 },
     deliveryAttempt: {
       deliveryAttemptId: 'email-delivery-attempt_reply_pg',
       version: 1
     },
     senderProfile: {
       senderProfileId: 'email-sender-profile_reply_pg',
-      version: 3
+      version: 1
     },
     managedCommunication: {
       accountRef: 'managed-account_reply_pg',
@@ -116,6 +116,56 @@ suite('PostgreSQL Email Campaign reply handoff owner', () => {
       () => '2026-09-19T06:02:00.000Z'
     );
 
+  async function seedExactLineage() {
+    const hashA = 'a'.repeat(64);
+    const hashB = 'b'.repeat(64);
+    const hashC = 'c'.repeat(64);
+    const now = '2026-09-19T04:00:00.000Z';
+    await database.getPool().query(
+      `INSERT INTO lite_campaign_audience_snapshot_versions(
+         workspace_id,audience_snapshot_id,version,reviewed_send_fingerprint_sha256,
+         audience_fingerprint_sha256,recipient_count,captured_at,document_json,recorded_at
+       ) VALUES($1,'campaign-audience_reply_pg',1,$2,$3,1,$4,'{}'::jsonb,$4)`,
+      [workspaceId, hashA, hashB, now]
+    );
+    await database.getPool().query(
+      `INSERT INTO lite_campaign_content_projection_versions(
+         workspace_id,content_projection_id,version,publish_package_id,publish_package_version,
+         publish_package_fingerprint_sha256,reviewed_send_fingerprint_sha256,
+         projection_fingerprint_sha256,created_at,document_json,recorded_at
+       ) VALUES($1,'campaign-content_reply_pg',1,'publish-package_reply_pg',1,$2,$3,$4,$5,'{}'::jsonb,$5)`,
+      [workspaceId, hashA, hashB, hashC, now]
+    );
+    await database.getPool().query(
+      `INSERT INTO lite_campaign_brand_projection_versions(
+         workspace_id,brand_projection_id,version,source_kind,source_ref,
+         brand_projection_fingerprint_sha256,captured_at,document_json,recorded_at
+       ) VALUES($1,'campaign-brand_reply_pg',1,'CAMPAIGN_LOCAL_PRESENTATION',
+                'campaign-brand:reply-pg',$2,$3,'{}'::jsonb,$3)`,
+      [workspaceId, hashA, now]
+    );
+    await database.getPool().query(
+      `INSERT INTO lite_email_campaign_versions(
+         workspace_id,campaign_id,version,purpose,status,audience_snapshot_id,
+         audience_snapshot_version,content_projection_id,content_projection_version,
+         brand_projection_id,brand_projection_version,campaign_fingerprint_sha256,
+         document_json,created_at,updated_at,recorded_at
+       ) VALUES($1,'email-campaign_reply_pg',1,'PROSPECT_OUTREACH','READY_FOR_HUMAN_REVIEW',
+                'campaign-audience_reply_pg',1,'campaign-content_reply_pg',1,
+                'campaign-brand_reply_pg',1,$2,'{}'::jsonb,$3,$3,$3)`,
+      [workspaceId, hashA, now]
+    );
+    await database.getPool().query(
+      `INSERT INTO lite_email_sender_profile_versions(
+         workspace_id,sender_profile_id,version,status,from_domain,from_address,
+         verification_status,verification_observed_at,reputation_isolation_key,
+         document_json,updated_at,recorded_at
+       ) VALUES($1,'email-sender-profile_reply_pg',1,'REVOKED','mail.example.com',
+                'reply@mail.example.com','VERIFIED',$2,'reply-reputation-pg','{}'::jsonb,$2,$2)`,
+      [workspaceId, now]
+    );
+  }
+
   beforeAll(async () => {
     await database.start();
     await database
@@ -144,9 +194,15 @@ suite('PostgreSQL Email Campaign reply handoff owner', () => {
          lite_email_campaign_reply_handoffs,
          lite_email_delivery_commands,
          lite_email_delivery_observations,
-         lite_email_delivery_attempts
+         lite_email_delivery_attempts,
+         lite_email_campaign_versions,
+         lite_email_sender_profile_versions,
+         lite_campaign_audience_snapshot_versions,
+         lite_campaign_content_projection_versions,
+         lite_campaign_brand_projection_versions
        CASCADE`
     );
+    await seedExactLineage();
   });
 
   afterAll(async () => {
