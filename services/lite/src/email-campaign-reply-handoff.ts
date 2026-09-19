@@ -51,9 +51,7 @@ export class EmailCampaignReplyCorrelationError extends Error {
   }
 }
 
-export type EmailCampaignReplyReferenceEvidenceMethodV1 =
-  | 'RFC_IN_REPLY_TO'
-  | 'RFC_REFERENCES';
+export type EmailCampaignReplyReferenceEvidenceMethodV1 = 'RFC_IN_REPLY_TO' | 'RFC_REFERENCES';
 
 export interface EmailCampaignReplyReferenceCandidateV1 {
   providerSubmissionRef: string;
