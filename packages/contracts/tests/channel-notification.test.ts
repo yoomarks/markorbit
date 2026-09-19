@@ -108,7 +108,7 @@ describe('Channel Notification contracts', () => {
     expect(() =>
       parseChannelNotificationRuleSpecV1({
         ...rule,
-        subject: 'Status update'
+        textBody: 'Status update body'
       })
     ).toThrow(/forbidden durable notification material/);
 
