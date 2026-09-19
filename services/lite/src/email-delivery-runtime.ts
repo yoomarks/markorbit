@@ -4,7 +4,10 @@ import {
   type EmailDeliveryAttemptV1,
   type EmailDeliveryObservationV1
 } from '@markorbit/contracts/email-delivery';
-import type { AmazonSesMaterializedEmail, AmazonSesSubmissionResult } from './email-delivery-ses.js';
+import type {
+  AmazonSesMaterializedEmail,
+  AmazonSesSubmissionResult
+} from './email-delivery-ses.js';
 import type { SetOutboundContactSuppressionCommand } from './outbound-contact-policy.js';
 import type { PostgresEmailDeliveryStore } from './email-delivery.js';
 
@@ -66,7 +69,10 @@ export class EmailDeliveryRuntimeService {
         'Delivery attempt is already beyond PLANNED state.'
       );
     if (current.status !== 'PLANNED')
-      throw new EmailDeliveryRuntimeError('ATTEMPT_NOT_PLANNED', 'Delivery attempt is not PLANNED.');
+      throw new EmailDeliveryRuntimeError(
+        'ATTEMPT_NOT_PLANNED',
+        'Delivery attempt is not PLANNED.'
+      );
 
     await this.currentness.assertCurrent(current);
 
@@ -166,8 +172,14 @@ export class EmailDeliveryRuntimeService {
     attempt: Readonly<EmailDeliveryAttemptV1>,
     result: Readonly<AmazonSesSubmissionResult>
   ): EmailDeliveryObservationV1 {
-    const event = result.status === 'ACCEPTED' ? 'ACCEPTED' : result.status === 'UNKNOWN' ? 'UNKNOWN' : 'FAILED';
-    const providerMessageRef = result.status === 'ACCEPTED' ? result.providerSubmissionRef : undefined;
+    const event =
+      result.status === 'ACCEPTED'
+        ? 'ACCEPTED'
+        : result.status === 'UNKNOWN'
+          ? 'UNKNOWN'
+          : 'FAILED';
+    const providerMessageRef =
+      result.status === 'ACCEPTED' ? result.providerSubmissionRef : undefined;
     const reasonCode = result.status === 'ACCEPTED' ? 'SES_ACCEPTED' : result.reasonCode;
     const now = this.timestamp();
     return {
@@ -199,11 +211,8 @@ export class EmailDeliveryRuntimeService {
   }
 }
 
-
 export interface EmailDeliverySuppressionOwner {
-  setSuppression(
-    command: Readonly<SetOutboundContactSuppressionCommand>
-  ): Promise<unknown>;
+  setSuppression(command: Readonly<SetOutboundContactSuppressionCommand>): Promise<unknown>;
 }
 
 export class EmailDeliveryProviderEventService {
