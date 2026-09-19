@@ -169,7 +169,13 @@ function service(options?: {
   const managedCommunication = {
     resolveAccount: vi.fn(() => Promise.resolve(options?.account ?? account)),
     resolveMessage: vi.fn(() => Promise.resolve(options?.message ?? message)),
-    resolveExactEvidence: vi.fn(() => Promise.resolve(options?.exactEvidence ?? exactEvidence))
+    resolveExactEvidence: vi.fn(() =>
+      Promise.resolve(
+        options && Object.prototype.hasOwnProperty.call(options, 'exactEvidence')
+          ? options.exactEvidence
+          : exactEvidence
+      )
+    )
   };
   const runtime = new EmailCampaignReplyHandoffServiceV1(
     managedCommunication,
