@@ -288,7 +288,10 @@ export function parseEmailCampaignReplyHandoffV1(value: unknown): EmailCampaignR
       500
     ),
     correlationMethod: 'PROVIDER_MESSAGE_REFERENCE',
-    correlationEvidenceFingerprintSha256: sha(item.correlationEvidenceFingerprintSha256, 'correlationEvidenceFingerprintSha256'),
+    correlationEvidenceFingerprintSha256: sha(
+      item.correlationEvidenceFingerprintSha256,
+      'correlationEvidenceFingerprintSha256'
+    ),
     status: 'CORRELATED',
     createdAt: timestamp(item.createdAt, 'createdAt'),
     authority: authority(item.authority)
