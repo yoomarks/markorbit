@@ -21,8 +21,7 @@ import type { LiteTransactionHost } from './content-preparation.js';
 type Row = Record<string, unknown>;
 type CommandType = 'CREATE_DRAFT' | 'ACTIVATE' | 'SUSPEND' | 'REVOKE';
 
-const UUID =
-  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu;
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu;
 const RULE_ID = /^channel-notification-rule_[A-Za-z0-9_-]+$/u;
 const SHA256 = /^[0-9a-f]{64}$/u;
 
@@ -131,7 +130,9 @@ function canonical(value: unknown): unknown {
 }
 
 function fingerprint(value: unknown): string {
-  return createHash('sha256').update(JSON.stringify(canonical(value))).digest('hex');
+  return createHash('sha256')
+    .update(JSON.stringify(canonical(value)))
+    .digest('hex');
 }
 
 function cleanWorkspaceId(value: string): string {
@@ -336,8 +337,7 @@ export function materializeNotificationAutomationDraftV1(
       version: 1,
       status: 'DRAFT',
       spec,
-      ruleIntentFingerprintSha256:
-        notificationAutomationRuleIntentFingerprintSha256V1(definition),
+      ruleIntentFingerprintSha256: notificationAutomationRuleIntentFingerprintSha256V1(definition),
       activationEvidence: null,
       revocationEvidence: null,
       createdByPrincipalId: actor,
@@ -415,8 +415,7 @@ function latestItemFromRow(row: Row): ChannelNotificationAutomationRuleV1 {
     item.spec.triggerSelector.subjectKind !== String(row.head_trigger_subject_kind) ||
     item.spec.content.publishPackageId !== String(row.head_publish_package_id) ||
     item.spec.content.version !== Number(row.head_publish_package_version) ||
-    item.spec.content.fingerprintSha256 !==
-      String(row.head_publish_package_fingerprint_sha256) ||
+    item.spec.content.fingerprintSha256 !== String(row.head_publish_package_fingerprint_sha256) ||
     item.spec.senderProfile.senderProfileId !== String(row.head_sender_profile_id) ||
     item.spec.senderProfile.version !== Number(row.head_sender_profile_version) ||
     item.spec.senderProfile.fingerprintSha256 !==
@@ -649,12 +648,7 @@ export class PostgresNotificationAutomationRuleStore {
       governanceEvidenceRef
     });
 
-    const replay = await this.readReplay(
-      workspaceId,
-      idempotencyKey,
-      action,
-      requestFingerprint
-    );
+    const replay = await this.readReplay(workspaceId, idempotencyKey, action, requestFingerprint);
     if (replay) return replay;
 
     const current = await this.getLatest(workspaceId, notificationRuleId);
@@ -677,58 +671,52 @@ export class PostgresNotificationAutomationRuleStore {
       governanceEvidenceRef
     });
 
-    return this.command(
-      workspaceId,
-      idempotencyKey,
-      action,
-      requestFingerprint,
-      async (client) => {
-        await this.lock(client, `${workspaceId}:notification-rule:${notificationRuleId}`);
-        const latest = await this.requireLatest(client, workspaceId, notificationRuleId);
-        this.assertExpectedVersion(latest, expectedVersion);
-        this.assertTransition(latest.status, targetStatus);
-        const spec = nextSpec(latest);
-        this.assertEvidenceBindsCandidate(evidence, action, latest, spec, governanceEvidenceRef);
+    return this.command(workspaceId, idempotencyKey, action, requestFingerprint, async (client) => {
+      await this.lock(client, `${workspaceId}:notification-rule:${notificationRuleId}`);
+      const latest = await this.requireLatest(client, workspaceId, notificationRuleId);
+      this.assertExpectedVersion(latest, expectedVersion);
+      this.assertTransition(latest.status, targetStatus);
+      const spec = nextSpec(latest);
+      this.assertEvidenceBindsCandidate(evidence, action, latest, spec, governanceEvidenceRef);
 
-        if (action === 'ACTIVATE') {
-          await this.lock(
-            client,
-            `${workspaceId}:notification-active-intent:${latest.ruleIntentFingerprintSha256}`
-          );
-          const existing = await this.findActiveByIntent(
-            client,
-            workspaceId,
-            latest.ruleIntentFingerprintSha256
-          );
-          if (existing && existing.notificationRuleId !== notificationRuleId)
-            throw new NotificationAutomationRuleRuntimeError(
-              'ACTIVE_INTENT_CONFLICT',
-              'An ACTIVE notification rule already owns this exact Workspace intent.'
-            );
-        }
-
-        const verifiedAt = evidence.verifiedAt;
-        const updatedAt = this.transitionTimestamp(latest.updatedAt, verifiedAt);
-        const next = parseRuntimeRule(
-          {
-            ...clone(latest),
-            version: spec.version,
-            status: targetStatus,
-            spec,
-            activationEvidence: action === 'ACTIVATE' ? evidence : latest.activationEvidence,
-            revocationEvidence: action === 'REVOKE' ? evidence : null,
-            updatedByPrincipalId: actor,
-            updatedAt,
-            suspendedAt: null,
-            revokedAt: action === 'REVOKE' ? updatedAt : null
-          },
-          workspaceId
+      if (action === 'ACTIVATE') {
+        await this.lock(
+          client,
+          `${workspaceId}:notification-active-intent:${latest.ruleIntentFingerprintSha256}`
         );
-        await this.insertVersion(client, next);
-        await this.updateHead(client, next, expectedVersion);
-        return next;
+        const existing = await this.findActiveByIntent(
+          client,
+          workspaceId,
+          latest.ruleIntentFingerprintSha256
+        );
+        if (existing && existing.notificationRuleId !== notificationRuleId)
+          throw new NotificationAutomationRuleRuntimeError(
+            'ACTIVE_INTENT_CONFLICT',
+            'An ACTIVE notification rule already owns this exact Workspace intent.'
+          );
       }
-    );
+
+      const verifiedAt = evidence.verifiedAt;
+      const updatedAt = this.transitionTimestamp(latest.updatedAt, verifiedAt);
+      const next = parseRuntimeRule(
+        {
+          ...clone(latest),
+          version: spec.version,
+          status: targetStatus,
+          spec,
+          activationEvidence: action === 'ACTIVATE' ? evidence : latest.activationEvidence,
+          revocationEvidence: action === 'REVOKE' ? evidence : null,
+          updatedByPrincipalId: actor,
+          updatedAt,
+          suspendedAt: null,
+          revokedAt: action === 'REVOKE' ? updatedAt : null
+        },
+        workspaceId
+      );
+      await this.insertVersion(client, next);
+      await this.updateHead(client, next, expectedVersion);
+      return next;
+    });
   }
 
   private async verifyGovernance(
@@ -779,8 +767,7 @@ export class PostgresNotificationAutomationRuleStore {
       evidence.workspaceId !== request.workspaceId ||
       evidence.notificationRuleId !== request.notificationRuleId ||
       evidence.authorizedRuleVersion !== request.candidateRuleVersion ||
-      evidence.authorizedRuleFingerprintSha256 !==
-        request.candidateRuleFingerprintSha256 ||
+      evidence.authorizedRuleFingerprintSha256 !== request.candidateRuleFingerprintSha256 ||
       evidence.evidenceRef !== request.governanceEvidenceRef
     )
       throw new NotificationAutomationRuleRuntimeError(
@@ -880,13 +867,7 @@ export class PostgresNotificationAutomationRuleStore {
         );
         const prior = replay.rows[0];
         if (prior)
-          return this.validateReplay(
-            client,
-            workspaceId,
-            prior,
-            commandType,
-            requestFingerprint
-          );
+          return this.validateReplay(client, workspaceId, prior, commandType, requestFingerprint);
 
         const result = await write(client);
         await client.query(
@@ -1076,9 +1057,7 @@ export class PostgresNotificationAutomationRuleStore {
       );
   }
 
-  private headValues(
-    item: Readonly<ChannelNotificationAutomationRuleV1>
-  ): readonly unknown[] {
+  private headValues(item: Readonly<ChannelNotificationAutomationRuleV1>): readonly unknown[] {
     return [
       item.workspaceId,
       item.notificationRuleId,
