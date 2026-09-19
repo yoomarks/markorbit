@@ -11,9 +11,9 @@ import { trademarkIntelligenceMethodFamiliesV1 } from './trademark-intelligence-
 
 export const US_TRADEMARK_CITATION_EXTRACTION_METHOD_ID =
   'us-trademark-citation-extraction' as const;
-export const US_TRADEMARK_CITATION_EXTRACTION_METHOD_VERSION = '1.0.0' as const;
+export const US_TRADEMARK_CITATION_EXTRACTION_METHOD_VERSION = '1.1.0' as const;
 export const US_TRADEMARK_CITATION_VALIDATOR_ID = 'citation-candidate-validator' as const;
-export const US_TRADEMARK_CITATION_VALIDATOR_VERSION = '1.0.0' as const;
+export const US_TRADEMARK_CITATION_VALIDATOR_VERSION = '1.1.0' as const;
 
 export type UsTrademarkCitationValidationReasonV1 =
   'EVIDENCE_TEXT_HASH_MISMATCH' | 'CITED_MARK_NOT_EXPLICIT';
@@ -93,11 +93,25 @@ function normalizedRegistration(value: string): string {
 
 function explicitUsRegistrationNumbers(value: string): readonly string[] {
   const matches = new Set<string>();
-  const pattern =
+  const singularPattern =
     /\b(?:U\.?\s*S\.?\s*)?(?:Registration|Reg\.?)(?:\s+Number|\s+No\.?)?\s*[:#]?\s*([0-9][0-9,\s]{3,14}[0-9])/giu;
-  for (const match of value.matchAll(pattern)) {
+  for (const match of value.matchAll(singularPattern)) {
     const candidate = normalizedRegistration(match[1] ?? '');
     if (US_REGISTRATION.test(candidate)) matches.add(candidate);
+  }
+
+  const pluralPrefix =
+    /\b(?:U\.?\s*S\.?\s*)?(?:Registration|Reg\.?)\s+(?:Numbers|Nos\.?)\s*[:#]?\s*/giu;
+  const registrationToken = /(?<!\d)(?:\d{1,3}(?:,\d{3}){1,2}|\d{5,8})(?!\d)/gu;
+  for (const match of value.matchAll(pluralPrefix)) {
+    const start = (match.index ?? 0) + match[0].length;
+    const remainder = value.slice(start, start + 256);
+    const boundary = remainder.search(/[.;\r\n]/u);
+    const listText = boundary >= 0 ? remainder.slice(0, boundary) : remainder;
+    for (const token of listText.matchAll(registrationToken)) {
+      const candidate = normalizedRegistration(token[0]);
+      if (US_REGISTRATION.test(candidate)) matches.add(candidate);
+    }
   }
   return [...matches].sort();
 }
