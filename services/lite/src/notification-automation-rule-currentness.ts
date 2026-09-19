@@ -91,6 +91,12 @@ export class NotificationAutomationRuleCurrentnessResolver {
 
       const entitlement = await this.entitlement.resolve(workspaceId);
       if ('unavailable' in entitlement) return result('UNAVAILABLE', 'OWNER_UNAVAILABLE');
+      if (
+        entitlement.workspaceId !== workspaceId ||
+        entitlement.featureKey !== 'EMAIL_NOTIFICATION' ||
+        entitlement.entitlementKey !== 'lite.channel.email.notification'
+      )
+        return result('UNKNOWN', 'OWNER_DATA_UNKNOWN');
       if (!entitlement.allowed) return result('REVOKED', 'ENTITLEMENT_REVOKED');
 
       const publishPackage = await this.content.findPublishPackage(
