@@ -1,3 +1,5 @@
+[Reading 1000 lines from start (total: 1098 lines, 98 remaining)]
+
 import { createHash, randomUUID } from 'node:crypto';
 import {
   channelNotificationAutomationRuleStatusesV1,
@@ -998,101 +1000,5 @@ export class PostgresNotificationAutomationRuleStore {
         parsed.spec.content.version,
         parsed.spec.content.fingerprintSha256,
         parsed.spec.senderProfile.senderProfileId,
-        parsed.spec.senderProfile.version,
-        parsed.spec.senderProfile.fingerprintSha256,
-        parsed.spec.ratePolicyRef,
-        parsed.ruleIntentFingerprintSha256,
-        parsed.spec.ruleFingerprintSha256,
-        JSON.stringify(parsed),
-        parsed.createdAt,
-        parsed.updatedAt,
-        parsed.suspendedAt,
-        parsed.revokedAt
-      ]
-    );
-  }
 
-  private async insertHead(
-    client: QueryClient,
-    item: Readonly<ChannelNotificationAutomationRuleV1>
-  ): Promise<void> {
-    await client.query(
-      `INSERT INTO lite_notification_automation_rule_heads(
-         workspace_id,notification_rule_id,latest_version,status,feature_key,
-         trigger_owner,trigger_event_type,trigger_subject_kind,
-         publish_package_id,publish_package_version,publish_package_fingerprint_sha256,
-         sender_profile_id,sender_profile_version,sender_profile_fingerprint_sha256,
-         rate_policy_ref,rule_intent_fingerprint_sha256,rule_fingerprint_sha256,updated_at
-       ) VALUES(
-         $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18
-       )`,
-      this.headValues(item)
-    );
-  }
-
-  private async updateHead(
-    client: QueryClient,
-    item: Readonly<ChannelNotificationAutomationRuleV1>,
-    expectedVersion: number
-  ): Promise<void> {
-    const values = this.headValues(item);
-    const updated = await client.query(
-      `UPDATE lite_notification_automation_rule_heads
-          SET latest_version=$3,status=$4,feature_key=$5,
-              trigger_owner=$6,trigger_event_type=$7,trigger_subject_kind=$8,
-              publish_package_id=$9,publish_package_version=$10,
-              publish_package_fingerprint_sha256=$11,
-              sender_profile_id=$12,sender_profile_version=$13,
-              sender_profile_fingerprint_sha256=$14,rate_policy_ref=$15,
-              rule_intent_fingerprint_sha256=$16,rule_fingerprint_sha256=$17,updated_at=$18
-        WHERE workspace_id=$1 AND notification_rule_id=$2 AND latest_version=$19`,
-      [...values, expectedVersion]
-    );
-    if (updated.rowCount !== 1)
-      throw new NotificationAutomationRuleRuntimeError(
-        'VERSION_CONFLICT',
-        'Notification Automation Rule changed before the transition could be persisted.'
-      );
-  }
-
-  private headValues(item: Readonly<ChannelNotificationAutomationRuleV1>): readonly unknown[] {
-    return [
-      item.workspaceId,
-      item.notificationRuleId,
-      item.version,
-      item.status,
-      item.spec.featureKey,
-      item.spec.triggerSelector.owner,
-      item.spec.triggerSelector.eventType,
-      item.spec.triggerSelector.subjectKind,
-      item.spec.content.publishPackageId,
-      item.spec.content.version,
-      item.spec.content.fingerprintSha256,
-      item.spec.senderProfile.senderProfileId,
-      item.spec.senderProfile.version,
-      item.spec.senderProfile.fingerprintSha256,
-      item.spec.ratePolicyRef,
-      item.ruleIntentFingerprintSha256,
-      item.spec.ruleFingerprintSha256,
-      item.updatedAt
-    ];
-  }
-
-  private async lock(client: QueryClient, value: string): Promise<void> {
-    await client.query('SELECT pg_advisory_xact_lock(hashtextextended($1,0))', [value]);
-  }
-
-  private timestamp(): string {
-    return timestamp(this.now());
-  }
-
-  private persistenceError(cause: unknown): NotificationAutomationRuleRuntimeError {
-    return new NotificationAutomationRuleRuntimeError(
-      'PERSISTENCE_UNAVAILABLE',
-      'Notification Automation Rule persistence is unavailable.',
-      503,
-      true,
-      { cause: cause instanceof Error ? cause : undefined }
-    );
-  }
-}
+[executed on device: MarkOrbit (710fa508-4ac4-4899-bf0a-594e530d3e21)]
