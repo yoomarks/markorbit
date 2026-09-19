@@ -356,7 +356,7 @@ export function parseChannelNotificationTriggerEvidenceV1(
       'owner',
       'eventType',
       'eventId',
-          'occurredAt',
+      'occurredAt',
       'evidenceRefs',
       'triggerFingerprintSha256',
       'authority'
