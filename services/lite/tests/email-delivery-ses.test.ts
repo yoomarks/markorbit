@@ -86,6 +86,7 @@ describe('Amazon SES V2 tenant delivery adapter', () => {
     });
     expect(client.sendEmail).toHaveBeenCalledTimes(1);
     expect(client.sendEmail).toHaveBeenCalledWith(
+      'us-east-1',
       expect.objectContaining({
         TenantName: 'mo-workspace-primary',
         ConfigurationSetName: 'mo-workspace-primary',
