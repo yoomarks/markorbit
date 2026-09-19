@@ -218,9 +218,7 @@ export interface AmazonSesEventCorrelationVerifier {
 }
 
 export interface AmazonSesObservationSink {
-  admit(
-    observation: Readonly<EmailDeliveryObservationV1>
-  ): Promise<EmailDeliveryObservationV1>;
+  admit(observation: Readonly<EmailDeliveryObservationV1>): Promise<EmailDeliveryObservationV1>;
 }
 
 type SesEventRecord = Record<string, unknown>;
@@ -231,7 +229,10 @@ function object(value: unknown): SesEventRecord {
   return value as SesEventRecord;
 }
 
-function providerEventTimestamp(event: Readonly<SesEventRecord>, mail: Readonly<SesEventRecord>): string {
+function providerEventTimestamp(
+  event: Readonly<SesEventRecord>,
+  mail: Readonly<SesEventRecord>
+): string {
   const normalized = String(event.eventType ?? event.event_type ?? event.type ?? '').toUpperCase();
   const detailField: Record<string, string> = {
     BOUNCE: 'bounce',
@@ -360,7 +361,6 @@ export function normalizeAmazonSesEvent(
   };
 }
 
-
 export class AmazonSesAuthenticatedEventIngestion {
   constructor(
     private readonly authenticator: AmazonSesEventAuthenticator,
@@ -382,11 +382,7 @@ export class AmazonSesAuthenticatedEventIngestion {
     await this.correlation.assertCorrelated({
       workspaceId: verified.workspaceId,
       deliveryAttemptId: verified.deliveryAttemptId,
-      routingPartitionRef: bounded(
-        verified.routingPartitionRef,
-        'routingPartitionRef',
-        300
-      ),
+      routingPartitionRef: bounded(verified.routingPartitionRef, 'routingPartitionRef', 300),
       tenantName: bounded(verified.tenantName, 'tenantName', 128),
       providerMessageRef: observation.providerMessageRef
     });
