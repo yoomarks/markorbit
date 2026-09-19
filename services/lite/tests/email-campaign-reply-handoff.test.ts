@@ -46,7 +46,7 @@ const campaign: EmailCampaignV1 = {
     fingerprintSha256: '3'.repeat(64)
   },
   campaignFingerprintSha256: '4'.repeat(64),
-  status: 'DELIVERY_PREPARED',
+  status: 'REVIEWED_READY_FOR_DELIVERY_PREPARATION',
   humanReviewRequired: true,
   createdAt: '2026-09-19T05:00:00.000Z',
   updatedAt: '2026-09-19T05:01:00.000Z',
