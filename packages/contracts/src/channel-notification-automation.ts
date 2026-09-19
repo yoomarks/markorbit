@@ -51,8 +51,6 @@ export interface ChannelNotificationAutomationRuleV1 {
   authority: Readonly<ChannelNotificationAuthorityConsequencesV1>;
 }
 
-
-
 export const channelNotificationAutomationRuleCurrentnessStatesV1 = [
   'CURRENT',
   'STALE',
@@ -149,9 +147,7 @@ function positiveInteger(value: unknown, field: string): number {
 
 function sha(value: unknown, field: string): string {
   if (typeof value !== 'string' || !SHA256.test(value))
-    throw new ChannelNotificationAutomationContractError(
-      `${field} must be lowercase SHA-256 hex.`
-    );
+    throw new ChannelNotificationAutomationContractError(`${field} must be lowercase SHA-256 hex.`);
   return value;
 }
 
@@ -173,15 +169,11 @@ function ruleId(value: unknown, field = 'notificationRuleId'): ChannelNotificati
   return result as ChannelNotificationRuleId;
 }
 
-function action(
-  value: unknown,
-  field = 'action'
-): ChannelNotificationAutomationGovernanceActionV1 {
+function action(value: unknown, field = 'action'): ChannelNotificationAutomationGovernanceActionV1 {
   const matched = channelNotificationAutomationGovernanceActionsV1.find(
     (candidate) => candidate === value
   );
-  if (!matched)
-    throw new ChannelNotificationAutomationContractError(`${field} is invalid.`);
+  if (!matched) throw new ChannelNotificationAutomationContractError(`${field} is invalid.`);
   return matched;
 }
 
@@ -199,9 +191,7 @@ function authority(value: unknown): ChannelNotificationAuthorityConsequencesV1 {
   exactKeys(item, keys, 'authority');
   for (const key of keys as Array<keyof ChannelNotificationAuthorityConsequencesV1>) {
     if (item[key] !== false)
-      throw new ChannelNotificationAutomationContractError(
-        `authority.${key} must remain false.`
-      );
+      throw new ChannelNotificationAutomationContractError(`authority.${key} must remain false.`);
   }
   return noChannelNotificationAuthorityConsequencesV1;
 }
@@ -235,10 +225,7 @@ export function parseChannelNotificationAutomationGovernanceEvidenceV1(
     kind: 'GOVERNED_HUMAN_ACTION_RECEIPT',
     action: action(item.action, 'governanceEvidence.action'),
     workspaceId: workspace(item.workspaceId, 'governanceEvidence.workspaceId'),
-    notificationRuleId: ruleId(
-      item.notificationRuleId,
-      'governanceEvidence.notificationRuleId'
-    ),
+    notificationRuleId: ruleId(item.notificationRuleId, 'governanceEvidence.notificationRuleId'),
     authorizedRuleVersion: positiveInteger(
       item.authorizedRuleVersion,
       'governanceEvidence.authorizedRuleVersion'
@@ -369,8 +356,7 @@ export function parseChannelNotificationAutomationRuleV1(
   const updatedAt = timestamp(item.updatedAt, 'updatedAt');
   if (Date.parse(updatedAt) < Date.parse(createdAt))
     throw new ChannelNotificationAutomationContractError('updatedAt cannot precede createdAt.');
-  const suspendedAt =
-    item.suspendedAt === null ? null : timestamp(item.suspendedAt, 'suspendedAt');
+  const suspendedAt = item.suspendedAt === null ? null : timestamp(item.suspendedAt, 'suspendedAt');
   const revokedAt = item.revokedAt === null ? null : timestamp(item.revokedAt, 'revokedAt');
 
   if (ruleStatus === 'DRAFT') {
@@ -383,19 +369,34 @@ export function parseChannelNotificationAutomationRuleV1(
       throw new ChannelNotificationAutomationContractError(
         'ACTIVE rule requires only current ACTIVATE governance evidence.'
       );
-    validateEvidenceBinding(activationEvidence, { workspaceId, notificationRuleId, version, spec }, 'ACTIVATE', true);
+    validateEvidenceBinding(
+      activationEvidence,
+      { workspaceId, notificationRuleId, version, spec },
+      'ACTIVATE',
+      true
+    );
   } else if (ruleStatus === 'SUSPENDED') {
     if (!activationEvidence || revocationEvidence || !suspendedAt || revokedAt)
       throw new ChannelNotificationAutomationContractError(
         'SUSPENDED rule requires prior activation evidence and suspendedAt only.'
       );
-    validateEvidenceBinding(activationEvidence, { workspaceId, notificationRuleId, version, spec }, 'ACTIVATE', false);
+    validateEvidenceBinding(
+      activationEvidence,
+      { workspaceId, notificationRuleId, version, spec },
+      'ACTIVATE',
+      false
+    );
   } else {
     if (!revocationEvidence || !revokedAt || suspendedAt)
       throw new ChannelNotificationAutomationContractError(
         'REVOKED rule requires current REVOKE governance evidence and revokedAt.'
       );
-    validateEvidenceBinding(revocationEvidence, { workspaceId, notificationRuleId, version, spec }, 'REVOKE', true);
+    validateEvidenceBinding(
+      revocationEvidence,
+      { workspaceId, notificationRuleId, version, spec },
+      'REVOKE',
+      true
+    );
   }
 
   for (const evidence of [activationEvidence, revocationEvidence]) {
