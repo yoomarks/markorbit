@@ -2,6 +2,7 @@ import { createHash, randomUUID } from 'node:crypto';
 import {
   noEmailDeliveryAuthorityConsequencesV1,
   parseEmailDeliveryAttemptV1,
+  type EmailDeliveryAttemptV1,
   type EmailDeliveryObservationV1
 } from '@markorbit/contracts/email-delivery';
 import type {
