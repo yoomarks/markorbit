@@ -310,7 +310,10 @@ export class PostgresEmailCampaignReplyHandoffStore implements EmailCampaignRepl
     }
   }
 
-  async getHandoff(workspaceId: string, replyHandoffId: string): Promise<EmailCampaignReplyHandoffV1> {
+  async getHandoff(
+    workspaceId: string,
+    replyHandoffId: string
+  ): Promise<EmailCampaignReplyHandoffV1> {
     return this.getHandoffWith(this.query, workspace(workspaceId), replyHandoffId.trim());
   }
 
@@ -555,7 +558,9 @@ export class EmailCampaignReplyHandoffServiceV1 {
       correlationMethod: candidate.correlationMethod
     });
     const replyHandoffId = `email-campaign-reply-handoff_${createHash('sha256')
-      .update(`${workspaceId}\n${message.accountRef}\n${message.messageId}\n${attempt.deliveryAttemptId}`)
+      .update(
+        `${workspaceId}\n${message.accountRef}\n${message.messageId}\n${attempt.deliveryAttemptId}`
+      )
       .digest('hex')
       .slice(0, 40)}`;
 
