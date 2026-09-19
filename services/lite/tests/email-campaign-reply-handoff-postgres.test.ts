@@ -196,9 +196,13 @@ suite('PostgreSQL Email Campaign reply handoff owner', () => {
     });
     await database.getPool().query(
       `UPDATE lite_email_campaign_reply_handoff_commands
-          SET result_json=jsonb_set(result_json,'{correlationMethod}','"PROVIDER_MESSAGE_REFERENCE"'::jsonb)
+          SET result_json=jsonb_set(
+            result_json,
+            '{correlationEvidenceFingerprintSha256}',
+            to_jsonb($3::text)
+          )
         WHERE workspace_id=$1 AND idempotency_key=$2`,
-      [workspaceId, 'reply-pg-tamper']
+      [workspaceId, 'reply-pg-tamper', '7'.repeat(64)]
     );
     await expect(
       handoffStore().recordHandoff({
