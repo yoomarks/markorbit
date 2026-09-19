@@ -95,3 +95,5 @@ export * from './email-delivery-runtime.js';
 export * from './email-campaign-reply-handoff.js';
 
 export * from './email-campaign-reply-ses.js';
+
+export * from './email-transport.js';
