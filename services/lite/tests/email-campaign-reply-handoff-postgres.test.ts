@@ -184,6 +184,55 @@ suite('PostgreSQL Email Campaign reply handoff owner', () => {
     expect(await handoffStore().getHandoff(workspaceId, value.replyHandoffId)).toEqual(value);
   });
 
+  it('replays the same logical reply under a new idempotency key without duplicating the handoff', async () => {
+    await deliveryStore().createAttempt({
+      value: attempt(),
+      idempotencyKey: 'reply-pg-logical-attempt'
+    });
+    const value = handoff();
+    const first = await handoffStore().recordHandoff({
+      value,
+      idempotencyKey: 'reply-pg-logical-first'
+    });
+    const replay = await handoffStore().recordHandoff({
+      value: {
+        ...value,
+        createdAt: '2026-09-19T06:02:00.000Z'
+      },
+      idempotencyKey: 'reply-pg-logical-second'
+    });
+    expect(replay).toEqual(first);
+    const count = await database.getPool().query<{ count: string }>(
+      `SELECT count(*)::text AS count
+         FROM lite_email_campaign_reply_handoffs
+        WHERE workspace_id=$1 AND managed_account_ref=$2 AND managed_message_id=$3`,
+      [workspaceId, value.managedCommunication.accountRef, value.managedCommunication.messageId]
+    );
+    expect(count.rows[0]?.count).toBe('1');
+  });
+
+  it('rejects changed correlation for the same logical Managed Communication reply', async () => {
+    await deliveryStore().createAttempt({
+      value: attempt(),
+      idempotencyKey: 'reply-pg-conflict-attempt'
+    });
+    const value = handoff();
+    await handoffStore().recordHandoff({
+      value,
+      idempotencyKey: 'reply-pg-conflict-first'
+    });
+    await expect(
+      handoffStore().recordHandoff({
+        value: {
+          ...value,
+          correlationEvidenceFingerprintSha256: '7'.repeat(64),
+          createdAt: '2026-09-19T06:02:00.000Z'
+        },
+        idempotencyKey: 'reply-pg-conflict-second'
+      })
+    ).rejects.toMatchObject({ code: 'IDEMPOTENCY_CONFLICT' });
+  });
+
   it('fails closed if the command receipt is tampered after persistence', async () => {
     await deliveryStore().createAttempt({
       value: attempt(),
@@ -218,7 +267,7 @@ suite('PostgreSQL Email Campaign reply handoff owner', () => {
         value: handoff(),
         idempotencyKey: 'reply-pg-missing-attempt'
       })
-    ).rejects.toMatchObject({ code: 'PERSISTENCE_UNAVAILABLE' });
+    ).rejects.toMatchObject({ code: 'NOT_FOUND' });
   });
 
   it('contains no durable raw reply content, address, attachment, or credential columns', async () => {
