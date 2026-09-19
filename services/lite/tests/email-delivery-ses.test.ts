@@ -66,9 +66,8 @@ const routing: AmazonSesRoutingResolver = {
 
 describe('Amazon SES V2 tenant delivery adapter', () => {
   it('maps one governed shard and treats MessageId as ACCEPTED only', async () => {
-    const client: AmazonSesV2Client = {
-      sendEmail: vi.fn(() => Promise.resolve({ MessageId: 'ses-message-123' }))
-    };
+    const sendEmail = vi.fn(() => Promise.resolve({ MessageId: 'ses-message-123' }));
+    const client: AmazonSesV2Client = { sendEmail };
     const adapter = new AmazonSesV2DeliveryAdapter(client, routing);
     await expect(
       adapter.submit({
@@ -84,8 +83,8 @@ describe('Amazon SES V2 tenant delivery adapter', () => {
       status: 'ACCEPTED',
       providerSubmissionRef: 'ses-message-123'
     });
-    expect(client.sendEmail).toHaveBeenCalledTimes(1);
-    expect(client.sendEmail).toHaveBeenCalledWith(
+    expect(sendEmail).toHaveBeenCalledTimes(1);
+    expect(sendEmail).toHaveBeenCalledWith(
       'us-east-1',
       expect.objectContaining({
         TenantName: 'mo-workspace-primary',
@@ -96,9 +95,8 @@ describe('Amazon SES V2 tenant delivery adapter', () => {
   });
 
   it('fails closed for routing Workspace/sender mismatch before SES', async () => {
-    const client: AmazonSesV2Client = {
-      sendEmail: vi.fn(() => Promise.resolve({ MessageId: 'never' }))
-    };
+    const sendEmail = vi.fn(() => Promise.resolve({ MessageId: 'never' }));
+    const client: AmazonSesV2Client = { sendEmail };
     const wrongRouting: AmazonSesRoutingResolver = {
       resolve: vi.fn(() =>
         Promise.resolve({
@@ -121,12 +119,13 @@ describe('Amazon SES V2 tenant delivery adapter', () => {
       textContent: 'Reviewed body'
     });
     expect(result).toEqual({ status: 'FAILED', reasonCode: 'SES_ROUTING_WORKSPACE_MISMATCH' });
-    expect(client.sendEmail).not.toHaveBeenCalled();
+    expect(sendEmail).not.toHaveBeenCalled();
   });
 
   it('maps ambiguous transport failure to UNKNOWN and never claims delivery', async () => {
+    const transportError = Object.assign(new Error('transport ambiguous'), { retryable: true });
     const client: AmazonSesV2Client = {
-      sendEmail: vi.fn(() => Promise.reject({ retryable: true }))
+      sendEmail: vi.fn(() => Promise.reject(transportError))
     };
     await expect(
       new AmazonSesV2DeliveryAdapter(client, routing).submit({
@@ -160,9 +159,8 @@ describe('Amazon SES V2 tenant delivery adapter', () => {
   });
 
   it('rejects multi-recipient SES V1 attempts before provider transport', async () => {
-    const client: AmazonSesV2Client = {
-      sendEmail: vi.fn(() => Promise.resolve({ MessageId: 'never' }))
-    };
+    const sendEmail = vi.fn(() => Promise.resolve({ MessageId: 'never' }));
+    const client: AmazonSesV2Client = { sendEmail };
     const adapter = new AmazonSesV2DeliveryAdapter(client, routing);
     await expect(
       adapter.submit({
@@ -175,7 +173,7 @@ describe('Amazon SES V2 tenant delivery adapter', () => {
         textContent: 'Reviewed body'
       })
     ).rejects.toThrow(/exactly one recipient/);
-    expect(client.sendEmail).not.toHaveBeenCalled();
+    expect(sendEmail).not.toHaveBeenCalled();
   });
 });
 
@@ -397,17 +395,15 @@ describe('Amazon SES authenticated event ingestion', () => {
     const authenticator: AmazonSesEventAuthenticator = {
       verifyAndExtract: vi.fn(() => Promise.reject(new Error('invalid AWS evidence')))
     };
-    const correlation: AmazonSesEventCorrelationVerifier = {
-      assertCorrelated: vi.fn(() => Promise.resolve())
-    };
-    const sink: AmazonSesObservationSink = {
-      admit: vi.fn((value) => Promise.resolve(value))
-    };
+    const assertCorrelated = vi.fn(() => Promise.resolve());
+    const admit = vi.fn((value) => Promise.resolve(value));
+    const correlation: AmazonSesEventCorrelationVerifier = { assertCorrelated };
+    const sink: AmazonSesObservationSink = { admit };
     await expect(
       new AmazonSesAuthenticatedEventIngestion(authenticator, correlation, sink).ingest(envelope)
     ).rejects.toThrow(/invalid AWS evidence/);
-    expect(correlation.assertCorrelated).not.toHaveBeenCalled();
-    expect(sink.admit).not.toHaveBeenCalled();
+    expect(assertCorrelated).not.toHaveBeenCalled();
+    expect(admit).not.toHaveBeenCalled();
   });
 
   it('rejects tenant or Workspace correlation mismatch before evidence admission', async () => {
@@ -423,16 +419,14 @@ describe('Amazon SES authenticated event ingestion', () => {
         })
       )
     };
-    const correlation: AmazonSesEventCorrelationVerifier = {
-      assertCorrelated: vi.fn(() => Promise.reject(new Error('tenant mismatch')))
-    };
-    const sink: AmazonSesObservationSink = {
-      admit: vi.fn((value) => Promise.resolve(value))
-    };
+    const assertCorrelated = vi.fn(() => Promise.reject(new Error('tenant mismatch')));
+    const admit = vi.fn((value) => Promise.resolve(value));
+    const correlation: AmazonSesEventCorrelationVerifier = { assertCorrelated };
+    const sink: AmazonSesObservationSink = { admit };
     await expect(
       new AmazonSesAuthenticatedEventIngestion(authenticator, correlation, sink).ingest(envelope)
     ).rejects.toThrow(/tenant mismatch/);
-    expect(sink.admit).not.toHaveBeenCalled();
+    expect(admit).not.toHaveBeenCalled();
   });
 
   it('admits only verified, correlated evidence without durable raw email', async () => {
@@ -448,12 +442,10 @@ describe('Amazon SES authenticated event ingestion', () => {
         })
       )
     };
-    const correlation: AmazonSesEventCorrelationVerifier = {
-      assertCorrelated: vi.fn(() => Promise.resolve())
-    };
-    const sink: AmazonSesObservationSink = {
-      admit: vi.fn((value) => Promise.resolve(value))
-    };
+    const assertCorrelated = vi.fn(() => Promise.resolve());
+    const admit = vi.fn((value) => Promise.resolve(value));
+    const correlation: AmazonSesEventCorrelationVerifier = { assertCorrelated };
+    const sink: AmazonSesObservationSink = { admit };
     const result = await new AmazonSesAuthenticatedEventIngestion(
       authenticator,
       correlation,
@@ -461,7 +453,7 @@ describe('Amazon SES authenticated event ingestion', () => {
     ).ingest(envelope);
     expect(result.event).toBe('COMPLAINED');
     expect(result.authenticatedEvidence).toBe(true);
-    expect(correlation.assertCorrelated).toHaveBeenCalledWith(
+    expect(assertCorrelated).toHaveBeenCalledWith(
       expect.objectContaining({
         workspaceId,
         tenantName: 'mo-workspace-primary',
@@ -469,6 +461,6 @@ describe('Amazon SES authenticated event ingestion', () => {
       })
     );
     expect(JSON.stringify(result)).not.toContain('person@example.com');
-    expect(sink.admit).toHaveBeenCalledTimes(1);
+    expect(admit).toHaveBeenCalledTimes(1);
   });
 });
