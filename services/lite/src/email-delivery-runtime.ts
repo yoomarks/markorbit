@@ -86,6 +86,14 @@ export class EmailDeliveryRuntimeService {
         'ATTEMPT_NOT_PLANNED',
         'Delivery attempt is not PLANNED.'
       );
+    if (
+      command.materialized.workspaceId !== current.workspaceId ||
+      command.materialized.recipients.length !== current.recipientCount
+    )
+      throw new EmailDeliveryRuntimeError(
+        'MATERIALIZED_ATTEMPT_MISMATCH',
+        'Materialized delivery does not match the durable delivery attempt.'
+      );
 
     await this.currentness.assertCurrent(current);
 
