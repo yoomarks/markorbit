@@ -114,24 +114,20 @@ function timestamp(value: unknown, field: string): string {
   return result;
 }
 
-function messageIds(
-  value: unknown,
-  field: string,
-  maximumItems: number
-): readonly string[] {
+function messageIds(value: unknown, field: string, maximumItems: number): readonly string[] {
   if (!Array.isArray(value) || value.length > maximumItems)
     throw new ManagedCommunicationReplyReferenceContractError(
       `${field} must contain at most ${maximumItems} message identifiers.`
     );
   const result = value.map((entry, index) => text(entry, `${field}[${index}]`, 1000));
   if (new Set(result).size !== result.length)
-    throw new ManagedCommunicationReplyReferenceContractError(`${field} must not contain duplicates.`);
+    throw new ManagedCommunicationReplyReferenceContractError(
+      `${field} must not contain duplicates.`
+    );
   return result;
 }
 
-function authority(
-  value: unknown
-): ManagedCommunicationReplyReferenceAuthorityConsequencesV1 {
+function authority(value: unknown): ManagedCommunicationReplyReferenceAuthorityConsequencesV1 {
   const item = object(value, 'authority');
   const expected = noManagedCommunicationReplyReferenceAuthorityConsequencesV1;
   exactKeys(item, Object.keys(expected), 'authority');
