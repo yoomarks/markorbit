@@ -11,8 +11,27 @@ import type {
 import type { SetOutboundContactSuppressionCommand } from './outbound-contact-policy.js';
 import type { PostgresEmailDeliveryStore } from './email-delivery.js';
 
+export interface MaterializedEmailDelivery {
+  workspaceId: string;
+  attempt: Readonly<EmailDeliveryAttemptV1>;
+  routingPartitionRef: string;
+  fromAddress: string;
+  replyToAddress?: string;
+  recipients: readonly string[];
+  subject: string;
+  textContent?: string;
+  htmlContent?: string;
+}
+
+export type EmailDeliverySubmissionResult =
+  | Readonly<{ status: 'ACCEPTED'; providerSubmissionRef: string }>
+  | Readonly<{ status: 'FAILED'; reasonCode: string }>
+  | Readonly<{ status: 'UNKNOWN'; reasonCode: string }>;
+
 export interface EmailDeliveryProviderAdapter {
-  submit(materialized: Readonly<AmazonSesMaterializedEmail>): Promise<AmazonSesSubmissionResult>;
+  submit(
+    materialized: Readonly<MaterializedEmailDelivery>
+  ): Promise<EmailDeliverySubmissionResult>;
 }
 
 export interface EmailDeliveryPreSubmitCurrentnessGate {
@@ -21,7 +40,7 @@ export interface EmailDeliveryPreSubmitCurrentnessGate {
 
 export interface SubmitEmailDeliveryShardCommand {
   attempt: Readonly<EmailDeliveryAttemptV1>;
-  materialized: Omit<Readonly<AmazonSesMaterializedEmail>, 'attempt'>;
+  materialized: Omit<Readonly<MaterializedEmailDelivery>, 'attempt'>;
 }
 
 export class EmailDeliveryRuntimeError extends Error {
@@ -152,7 +171,7 @@ export class EmailDeliveryRuntimeService {
 
   private finalAttempt(
     current: Readonly<EmailDeliveryAttemptV1>,
-    result: Readonly<AmazonSesSubmissionResult>
+    result: Readonly<EmailDeliverySubmissionResult>
   ): EmailDeliveryAttemptV1 {
     if (result.status === 'ACCEPTED')
       return {
@@ -170,7 +189,7 @@ export class EmailDeliveryRuntimeService {
 
   private transportObservation(
     attempt: Readonly<EmailDeliveryAttemptV1>,
-    result: Readonly<AmazonSesSubmissionResult>
+    result: Readonly<EmailDeliverySubmissionResult>
   ): EmailDeliveryObservationV1 {
     const event =
       result.status === 'ACCEPTED'
