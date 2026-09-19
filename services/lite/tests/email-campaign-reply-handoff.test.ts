@@ -15,6 +15,8 @@ import type { ManagedCommunicationMessageV1 } from '@markorbit/contracts/managed
 import {
   EmailCampaignReplyCorrelationError,
   EmailCampaignReplyHandoffServiceV1,
+  type EmailCampaignReplyInboundEvidenceV1,
+  type EmailCampaignReplyManagedAccountV1,
   type EmailCampaignReplyReferenceCorrelatorV1
 } from '../src/email-campaign-reply-handoff.js';
 
@@ -111,10 +113,17 @@ const senderProfile: WorkspaceEmailSenderProfileV1 = {
   authority: noWorkspaceEmailSenderProfileAuthorityConsequencesV1
 };
 
+const account: EmailCampaignReplyManagedAccountV1 = {
+  workspaceId,
+  accountRef: 'managed-account_reply',
+  channel: 'EMAIL',
+  provider: 'MICROSOFT_GRAPH'
+};
+
 const message: ManagedCommunicationMessageV1 = {
   schemaVersion: 1,
   messageId: 'managed-message_reply',
-  accountRef: 'managed-account_reply',
+  accountRef: account.accountRef,
   threadRef: 'managed-thread_reply',
   channel: 'EMAIL',
   direction: 'INBOUND',
@@ -122,18 +131,18 @@ const message: ManagedCommunicationMessageV1 = {
   attachments: [],
   occurredAt: '2026-09-19T06:00:00.000Z',
   providerObservation: {
-    provider: 'MICROSOFT_GRAPH',
+    provider: account.provider,
     providerMessageId: 'AQMk-reply',
     observedAt: '2026-09-19T06:00:01.000Z'
   }
 };
 
-const exactEvidence = {
+const exactEvidence: EmailCampaignReplyInboundEvidenceV1 = {
   evidenceRef: 'commevidence_reply',
   sha256: '9'.repeat(64),
-  provider: 'MICROSOFT_GRAPH',
-  providerMessageId: 'AQMk-reply',
-  observedAt: '2026-09-19T06:00:01.000Z',
+  provider: account.provider,
+  providerMessageId: message.providerObservation.providerMessageId,
+  observedAt: message.providerObservation.observedAt,
   headers: [
     {
       name: 'in-reply-to',
@@ -146,6 +155,9 @@ function service(options?: {
   correlator?: EmailCampaignReplyReferenceCorrelatorV1;
   attempts?: Record<string, EmailDeliveryAttemptV1 | undefined>;
   profile?: WorkspaceEmailSenderProfileV1;
+  account?: EmailCampaignReplyManagedAccountV1;
+  message?: ManagedCommunicationMessageV1;
+  exactEvidence?: EmailCampaignReplyInboundEvidenceV1 | undefined;
 }) {
   const primary = attempt('reply', '010001reply-000000');
   const attempts = options?.attempts ?? {
@@ -154,7 +166,13 @@ function service(options?: {
   const writer = {
     recordHandoff: vi.fn((command) => Promise.resolve(command.value))
   };
+  const managedCommunication = {
+    resolveAccount: vi.fn(() => Promise.resolve(options?.account ?? account)),
+    resolveMessage: vi.fn(() => Promise.resolve(options?.message ?? message)),
+    resolveExactEvidence: vi.fn(() => Promise.resolve(options?.exactEvidence ?? exactEvidence))
+  };
   const runtime = new EmailCampaignReplyHandoffServiceV1(
+    managedCommunication,
     {
       findAttemptByProviderSubmissionRef: vi.fn((_workspaceId, providerSubmissionRef) =>
         Promise.resolve(attempts[providerSubmissionRef])
@@ -170,24 +188,28 @@ function service(options?: {
       candidates: vi.fn(() => [
         {
           providerSubmissionRef: '010001reply-000000',
-          correlationMethod: 'RFC_IN_REPLY_TO' as const
+          evidenceMethod: 'RFC_IN_REPLY_TO' as const
         }
       ])
     },
     writer,
     () => '2026-09-19T06:01:00.000Z'
   );
-  return { runtime, writer };
+  return { runtime, writer, managedCommunication };
 }
 
+const correlateInput = {
+  workspaceId,
+  accountRef: account.accountRef,
+  messageId: message.messageId
+};
+
 describe('Email Campaign reply handoff runtime', () => {
-  it('correlates a real inbound reply against historical exact lineage', async () => {
-    const { runtime, writer } = service();
+  it('correlates an already-admitted inbound reply against historical exact lineage', async () => {
+    const { runtime, writer, managedCommunication } = service();
     const result = await runtime.correlate({
-      workspaceId,
-      idempotencyKey: 'reply-handoff-primary',
-      message,
-      exactEvidence
+      ...correlateInput,
+      idempotencyKey: 'reply-handoff-primary'
     });
 
     expect(result).toMatchObject({
@@ -207,10 +229,16 @@ describe('Email Campaign reply handoff runtime', () => {
         providerMessageId: message.providerObservation.providerMessageId
       },
       outboundProviderSubmissionRef: '010001reply-000000',
-      correlationMethod: 'RFC_IN_REPLY_TO',
+      correlationMethod: 'PROVIDER_MESSAGE_REFERENCE',
       status: 'CORRELATED'
     });
     expect(Object.values(result.authority).every((value) => value === false)).toBe(true);
+    expect(managedCommunication.resolveMessage).toHaveBeenCalledWith(
+      workspaceId,
+      account.accountRef,
+      message.messageId
+    );
+    expect(managedCommunication.resolveExactEvidence).toHaveBeenCalledTimes(1);
     expect(writer.recordHandoff).toHaveBeenCalledTimes(1);
   });
 
@@ -218,17 +246,30 @@ describe('Email Campaign reply handoff runtime', () => {
     const { runtime } = service({ profile: senderProfile });
     await expect(
       runtime.correlate({
-        workspaceId,
-        idempotencyKey: 'reply-handoff-revoked',
-        message,
-        exactEvidence
+        ...correlateInput,
+        idempotencyKey: 'reply-handoff-revoked'
       })
     ).resolves.toMatchObject({
       senderProfile: { senderProfileId: senderProfile.senderProfileId, version: 3 }
     });
   });
 
-  it('fails closed when the Managed Communication account differs from the historical reply target', async () => {
+  it('fails closed when the Managed Communication account is not owned by the Workspace', async () => {
+    const { runtime } = service({
+      account: {
+        ...account,
+        workspaceId: '24242424-2424-4424-8424-242424242424'
+      }
+    });
+    await expect(
+      runtime.correlate({
+        ...correlateInput,
+        idempotencyKey: 'reply-handoff-account-owner-mismatch'
+      })
+    ).rejects.toMatchObject({ code: 'REPLY_ACCOUNT_MISMATCH' });
+  });
+
+  it('fails closed when the historical SenderProfile reply account differs', async () => {
     const { runtime } = service({
       profile: {
         ...senderProfile,
@@ -240,12 +281,20 @@ describe('Email Campaign reply handoff runtime', () => {
     });
     await expect(
       runtime.correlate({
-        workspaceId,
-        idempotencyKey: 'reply-handoff-account-mismatch',
-        message,
-        exactEvidence
+        ...correlateInput,
+        idempotencyKey: 'reply-handoff-profile-account-mismatch'
       })
     ).rejects.toMatchObject({ code: 'REPLY_ACCOUNT_MISMATCH' });
+  });
+
+  it('requires already-admitted exact Managed Communication evidence', async () => {
+    const { runtime } = service({ exactEvidence: undefined });
+    await expect(
+      runtime.correlate({
+        ...correlateInput,
+        idempotencyKey: 'reply-handoff-missing-evidence'
+      })
+    ).rejects.toMatchObject({ code: 'INVALID_INBOUND_EVIDENCE' });
   });
 
   it('fails closed when multiple distinct delivery attempts are referenced', async () => {
@@ -255,11 +304,11 @@ describe('Email Campaign reply handoff runtime', () => {
         candidates: () => [
           {
             providerSubmissionRef: '010001reply-000000',
-            correlationMethod: 'RFC_IN_REPLY_TO'
+            evidenceMethod: 'RFC_IN_REPLY_TO'
           },
           {
             providerSubmissionRef: '010001second-000000',
-            correlationMethod: 'RFC_REFERENCES'
+            evidenceMethod: 'RFC_REFERENCES'
           }
         ]
       },
@@ -270,25 +319,23 @@ describe('Email Campaign reply handoff runtime', () => {
     });
     await expect(
       runtime.correlate({
-        workspaceId,
-        idempotencyKey: 'reply-handoff-ambiguous',
-        message,
-        exactEvidence
+        ...correlateInput,
+        idempotencyKey: 'reply-handoff-ambiguous'
       })
     ).rejects.toMatchObject({ code: 'CORRELATION_AMBIGUOUS' });
   });
 
-  it('rejects inbound exact evidence that does not match the normalized message provenance', async () => {
-    const { runtime } = service();
+  it('rejects exact evidence that does not match the normalized message provenance', async () => {
+    const { runtime } = service({
+      exactEvidence: {
+        ...exactEvidence,
+        providerMessageId: 'AQMk-other'
+      }
+    });
     await expect(
       runtime.correlate({
-        workspaceId,
-        idempotencyKey: 'reply-handoff-evidence-mismatch',
-        message,
-        exactEvidence: {
-          ...exactEvidence,
-          providerMessageId: 'AQMk-other'
-        }
+        ...correlateInput,
+        idempotencyKey: 'reply-handoff-evidence-mismatch'
       })
     ).rejects.toBeInstanceOf(EmailCampaignReplyCorrelationError);
   });
