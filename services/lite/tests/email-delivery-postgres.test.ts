@@ -234,6 +234,11 @@ suite('PostgreSQL email delivery evidence owner', () => {
     const other: EmailDeliveryAttemptV1 = {
       ...attempt(),
       deliveryAttemptId: 'email-delivery-attempt_pg_other',
+      executionRelease: {
+        releaseId: 'protected-action-release_pg_other',
+        version: 1,
+        effectFingerprintSha256: '1'.repeat(64)
+      },
       campaign: { campaignId: 'email-campaign_pg_other', version: 1 },
       correlationId: 'delivery:pg:other'
     };
