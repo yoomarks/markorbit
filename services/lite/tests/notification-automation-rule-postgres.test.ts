@@ -22,11 +22,11 @@ const workspaceB = '15151515-1515-4515-8515-151515151515';
 class ExactGovernanceVerifier implements NotificationAutomationGovernanceVerifierV1 {
   calls = 0;
 
-  async verify(
+  verify(
     request: Readonly<NotificationAutomationGovernanceVerificationRequestV1>
   ): Promise<Readonly<ChannelNotificationAutomationGovernanceEvidenceV1>> {
     this.calls += 1;
-    return {
+    return Promise.resolve({
       owner: 'CORE',
       kind: 'GOVERNED_HUMAN_ACTION_RECEIPT',
       action: request.action,
@@ -37,7 +37,7 @@ class ExactGovernanceVerifier implements NotificationAutomationGovernanceVerifie
       evidenceRef: request.governanceEvidenceRef,
       evidenceFingerprintSha256: request.action === 'ACTIVATE' ? 'a'.repeat(64) : 'b'.repeat(64),
       verifiedAt: '2026-09-19T09:59:00.000Z'
-    };
+    });
   }
 }
 
