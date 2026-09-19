@@ -147,6 +147,11 @@ function hash(value: unknown): string {
   return createHash('sha256').update(JSON.stringify(value)).digest('hex');
 }
 
+function semanticHandoffFingerprint(value: Readonly<EmailCampaignReplyHandoffV1>): string {
+  const { createdAt: _createdAt, ...semantic } = value;
+  return hash(semantic);
+}
+
 function persisted(value: unknown): EmailCampaignReplyHandoffV1 {
   try {
     return parseEmailCampaignReplyHandoffV1(value);
@@ -225,7 +230,7 @@ export class PostgresEmailCampaignReplyHandoffStore implements EmailCampaignRepl
     const key = idempotencyKey(command.idempotencyKey);
     const requestFingerprint = hash({
       commandType: 'RECORD_CORRELATED_REPLY',
-      value
+      semanticHandoffFingerprint: semanticHandoffFingerprint(value)
     });
     try {
       return await this.database.transact(async (client) => {
@@ -257,6 +262,67 @@ export class PostgresEmailCampaignReplyHandoffStore implements EmailCampaignRepl
               500
             );
           return structuredClone(replayed);
+        }
+
+        await client.query('SELECT pg_advisory_xact_lock(hashtextextended($1,0))', [
+          `${w}:email-campaign-reply:${value.managedCommunication.accountRef}:${value.managedCommunication.messageId}:${value.deliveryAttempt.deliveryAttemptId}`
+        ]);
+
+        const attempt = await client.query<Row>(
+          `SELECT campaign_id,campaign_version,sender_profile_id,sender_profile_version,
+                  provider_submission_ref
+             FROM lite_email_delivery_attempts
+            WHERE workspace_id=$1 AND delivery_attempt_id=$2`,
+          [w, value.deliveryAttempt.deliveryAttemptId]
+        );
+        const delivery = attempt.rows[0];
+        if (!delivery)
+          throw new EmailCampaignReplyHandoffPersistenceError(
+            'NOT_FOUND',
+            'Reply handoff requires an existing durable delivery attempt.',
+            404
+          );
+        if (
+          String(delivery.campaign_id) !== value.campaign.campaignId ||
+          Number(delivery.campaign_version) !== value.campaign.version ||
+          String(delivery.sender_profile_id) !== value.senderProfile.senderProfileId ||
+          Number(delivery.sender_profile_version) !== value.senderProfile.version ||
+          String(delivery.provider_submission_ref) !== value.outboundProviderSubmissionRef
+        )
+          throw new EmailCampaignReplyHandoffPersistenceError(
+            'INTEGRITY_FAILURE',
+            'Reply handoff lineage does not match the durable delivery attempt.',
+            500
+          );
+
+        const logical = await client.query<Row>(
+          `SELECT *
+             FROM lite_email_campaign_reply_handoffs
+            WHERE workspace_id=$1
+              AND managed_account_ref=$2
+              AND managed_message_id=$3
+              AND delivery_attempt_id=$4`,
+          [
+            w,
+            value.managedCommunication.accountRef,
+            value.managedCommunication.messageId,
+            value.deliveryAttempt.deliveryAttemptId
+          ]
+        );
+        const existing = logical.rows[0] ? fromRow(logical.rows[0]) : undefined;
+        if (existing) {
+          if (semanticHandoffFingerprint(existing) !== semanticHandoffFingerprint(value))
+            throw new EmailCampaignReplyHandoffPersistenceError(
+              'IDEMPOTENCY_CONFLICT',
+              'Managed Communication reply is already bound to different Campaign correlation.'
+            );
+          await client.query(
+            `INSERT INTO lite_email_campaign_reply_handoff_commands(
+               workspace_id,idempotency_key,command_type,request_fingerprint_sha256,result_json,created_at
+             ) VALUES($1,$2,'RECORD_CORRELATED_REPLY',$3,$4::jsonb,$5)`,
+            [w, key, requestFingerprint, JSON.stringify(existing), this.timestamp()]
+          );
+          return structuredClone(existing);
         }
 
         await client.query(
