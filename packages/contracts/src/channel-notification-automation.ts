@@ -51,6 +51,49 @@ export interface ChannelNotificationAutomationRuleV1 {
   authority: Readonly<ChannelNotificationAuthorityConsequencesV1>;
 }
 
+
+
+export const channelNotificationAutomationRuleCurrentnessStatesV1 = [
+  'CURRENT',
+  'STALE',
+  'REVOKED',
+  'UNKNOWN',
+  'UNAVAILABLE'
+] as const;
+export type ChannelNotificationAutomationRuleCurrentnessStateV1 =
+  (typeof channelNotificationAutomationRuleCurrentnessStatesV1)[number];
+
+export const channelNotificationAutomationRuleCurrentnessReasonsV1 = [
+  'EXACT_ACTIVE_RULE_CURRENT',
+  'RULE_NOT_ACTIVE',
+  'RULE_SUPERSEDED',
+  'ENTITLEMENT_REVOKED',
+  'CONTENT_NOT_FOUND',
+  'CONTENT_FINGERPRINT_MISMATCH',
+  'SENDER_PROFILE_NOT_FOUND',
+  'SENDER_PROFILE_STALE',
+  'SENDER_PROFILE_REVOKED',
+  'SENDER_PROFILE_UNAVAILABLE',
+  'WORKSPACE_MISMATCH',
+  'OWNER_DATA_UNKNOWN',
+  'OWNER_UNAVAILABLE'
+] as const;
+export type ChannelNotificationAutomationRuleCurrentnessReasonV1 =
+  (typeof channelNotificationAutomationRuleCurrentnessReasonsV1)[number];
+
+export interface ChannelNotificationAutomationRuleCurrentnessV1 {
+  schemaVersion: 1;
+  workspaceId: string;
+  notificationRuleId: ChannelNotificationRuleId;
+  version: number;
+  ruleFingerprintSha256: string;
+  state: ChannelNotificationAutomationRuleCurrentnessStateV1;
+  reason: ChannelNotificationAutomationRuleCurrentnessReasonV1;
+  evaluatedAt: string;
+  protectedActionAuthorized: false;
+  externalSendAuthorized: false;
+}
+
 export class ChannelNotificationAutomationContractError extends TypeError {
   constructor(message: string) {
     super(message);
