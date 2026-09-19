@@ -2,10 +2,8 @@ import type { WorkspaceEmailSenderProfileId } from './email-sender-profile.js';
 import type { PublishPackageId } from './product-loop.js';
 
 export type ChannelNotificationRuleId = `channel-notification-rule_${string}`;
-export type ChannelNotificationTriggerEvidenceId =
-  `channel-notification-trigger_${string}`;
-export type ChannelNotificationSendIntentId =
-  `channel-notification-send-intent_${string}`;
+export type ChannelNotificationTriggerEvidenceId = `channel-notification-trigger_${string}`;
+export type ChannelNotificationSendIntentId = `channel-notification-send-intent_${string}`;
 
 export const noChannelNotificationAuthorityConsequencesV1 = Object.freeze({
   businessTruthCreated: false,
@@ -119,8 +117,7 @@ export class ChannelNotificationContractError extends TypeError {
 }
 
 type JsonRecord = Record<string, unknown>;
-const UUID =
-  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu;
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu;
 const SHA256 = /^[0-9a-f]{64}$/u;
 const RULE = /^channel-notification-rule_[A-Za-z0-9_-]+$/u;
 const TRIGGER = /^channel-notification-trigger_[A-Za-z0-9_-]+$/u;
@@ -200,8 +197,7 @@ function text(value: unknown, field: string, max = 500): string {
 
 function workspace(value: unknown): string {
   const result = text(value, 'workspaceId', 80).toLowerCase();
-  if (!UUID.test(result))
-    throw new ChannelNotificationContractError('workspaceId must be a UUID.');
+  if (!UUID.test(result)) throw new ChannelNotificationContractError('workspaceId must be a UUID.');
   return result;
 }
 
@@ -222,29 +218,22 @@ function timestamp(value: unknown, field: string): string {
     throw new ChannelNotificationContractError(`${field} must be a timestamp string.`);
   const parsed = new Date(value);
   if (Number.isNaN(parsed.getTime()) || parsed.toISOString() !== value)
-    throw new ChannelNotificationContractError(
-      `${field} must be a canonical ISO timestamp.`
-    );
+    throw new ChannelNotificationContractError(`${field} must be a canonical ISO timestamp.`);
   return value;
 }
 
-function prefixed<T extends string>(
-  value: unknown,
-  field: string,
-  pattern: RegExp
-): T {
+function prefixed<T extends string>(value: unknown, field: string, pattern: RegExp): T {
   const result = text(value, field, 300);
-  if (!pattern.test(result))
-    throw new ChannelNotificationContractError(`${field} is invalid.`);
+  if (!pattern.test(result)) throw new ChannelNotificationContractError(`${field} is invalid.`);
   return result as T;
 }
 
 function authority(value: unknown): ChannelNotificationAuthorityConsequencesV1 {
   const item = object(value, 'authority');
   exactKeys(item, Object.keys(noChannelNotificationAuthorityConsequencesV1), 'authority');
-  for (const key of Object.keys(
-    noChannelNotificationAuthorityConsequencesV1
-  ) as Array<keyof ChannelNotificationAuthorityConsequencesV1>) {
+  for (const key of Object.keys(noChannelNotificationAuthorityConsequencesV1) as Array<
+    keyof ChannelNotificationAuthorityConsequencesV1
+  >) {
     if (item[key] !== false)
       throw new ChannelNotificationContractError(`authority.${key} must remain false.`);
   }
@@ -290,9 +279,7 @@ function evidenceRefs(value: unknown): readonly string[] {
   return refs;
 }
 
-export function parseChannelNotificationRuleSpecV1(
-  value: unknown
-): ChannelNotificationRuleSpecV1 {
+export function parseChannelNotificationRuleSpecV1(value: unknown): ChannelNotificationRuleSpecV1 {
   rejectForbidden(value, 'notificationRule');
   const item = object(value, 'notificationRule');
   exactKeys(
@@ -379,7 +366,9 @@ export function parseChannelNotificationTriggerEvidenceV1(
     'notificationTrigger'
   );
   if (item.schemaVersion !== 1 || item.version !== 1)
-    throw new ChannelNotificationContractError('Notification Trigger schemaVersion/version must be 1.');
+    throw new ChannelNotificationContractError(
+      'Notification Trigger schemaVersion/version must be 1.'
+    );
   const subject = object(item.subject, 'subject');
   exactKeys(subject, ['owner', 'kind', 'id', 'version'], 'subject');
   return {
@@ -402,10 +391,7 @@ export function parseChannelNotificationTriggerEvidenceV1(
     },
     occurredAt: timestamp(item.occurredAt, 'occurredAt'),
     evidenceRefs: evidenceRefs(item.evidenceRefs),
-    triggerFingerprintSha256: sha(
-      item.triggerFingerprintSha256,
-      'triggerFingerprintSha256'
-    ),
+    triggerFingerprintSha256: sha(item.triggerFingerprintSha256, 'triggerFingerprintSha256'),
     authority: authority(item.authority)
   };
 }
@@ -434,11 +420,7 @@ export function parseChannelNotificationSendIntentV1(
     ],
     'notificationSendIntent'
   );
-  if (
-    item.schemaVersion !== 1 ||
-    item.version !== 1 ||
-    item.featureKey !== 'EMAIL_NOTIFICATION'
-  )
+  if (item.schemaVersion !== 1 || item.version !== 1 || item.featureKey !== 'EMAIL_NOTIFICATION')
     throw new ChannelNotificationContractError(
       'Notification Send Intent V1 supports EMAIL_NOTIFICATION only.'
     );
@@ -446,19 +428,11 @@ export function parseChannelNotificationSendIntentV1(
   const rule = object(item.rule, 'rule');
   exactKeys(rule, ['notificationRuleId', 'version', 'fingerprintSha256'], 'rule');
   const trigger = object(item.trigger, 'trigger');
-  exactKeys(
-    trigger,
-    ['notificationTriggerEvidenceId', 'version', 'fingerprintSha256'],
-    'trigger'
-  );
+  exactKeys(trigger, ['notificationTriggerEvidenceId', 'version', 'fingerprintSha256'], 'trigger');
   if (trigger.version !== 1)
     throw new ChannelNotificationContractError('trigger.version must be 1.');
   const target = object(item.target, 'target');
-  exactKeys(
-    target,
-    ['owner', 'kind', 'id', 'version', 'endpointFingerprintSha256'],
-    'target'
-  );
+  exactKeys(target, ['owner', 'kind', 'id', 'version', 'endpointFingerprintSha256'], 'target');
 
   return {
     schemaVersion: 1,
