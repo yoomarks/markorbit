@@ -130,7 +130,8 @@ function exactKeys(value: JsonRecord, allowed: readonly string[], field: string)
 }
 
 function text(value: unknown, field: string, maximum = 1000): string {
-  if (typeof value !== 'string') throw new EmailCampaignReplyHandoffContractError(`${field} must be a string.`);
+  if (typeof value !== 'string')
+    throw new EmailCampaignReplyHandoffContractError(`${field} must be a string.`);
   const result = value.trim();
   if (!result || result.length > maximum)
     throw new EmailCampaignReplyHandoffContractError(
@@ -156,17 +157,11 @@ function timestamp(value: unknown, field: string): string {
   const result = text(value, field, 80);
   const parsed = new Date(result);
   if (Number.isNaN(parsed.getTime()) || parsed.toISOString() !== result)
-    throw new EmailCampaignReplyHandoffContractError(
-      `${field} must be a canonical ISO timestamp.`
-    );
+    throw new EmailCampaignReplyHandoffContractError(`${field} must be a canonical ISO timestamp.`);
   return result;
 }
 
-function prefixed<T extends string>(
-  value: unknown,
-  field: string,
-  pattern: RegExp
-): T {
+function prefixed<T extends string>(value: unknown, field: string, pattern: RegExp): T {
   const result = text(value, field, 300);
   if (!pattern.test(result))
     throw new EmailCampaignReplyHandoffContractError(`${field} is invalid.`);
@@ -301,10 +296,7 @@ export function parseEmailCampaignReplyHandoffV1(value: unknown): EmailCampaignR
       500
     ),
     correlationMethod: item.correlationMethod as EmailCampaignReplyCorrelationMethodV1,
-    evidenceFingerprintSha256: sha(
-      item.evidenceFingerprintSha256,
-      'evidenceFingerprintSha256'
-    ),
+    evidenceFingerprintSha256: sha(item.evidenceFingerprintSha256, 'evidenceFingerprintSha256'),
     status: 'CORRELATED',
     createdAt: timestamp(item.createdAt, 'createdAt'),
     authority: authority(item.authority)
