@@ -9,6 +9,11 @@ import type {
   EmailDeliverySubmissionResult,
   MaterializedEmailDelivery
 } from './email-delivery-runtime.js';
+import type {
+  EmailTransportProviderV1,
+  EmailTransportSubmissionResultV1,
+  MaterializedEmailTransportV1
+} from './email-transport.js';
 
 export interface AmazonSesTenantRouting {
   workspaceId: string;
@@ -62,6 +67,7 @@ export class AmazonSesDeliveryAdapterError extends Error {
 }
 
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/u;
+const TAG_NAME = /^[A-Za-z0-9_-]{1,64}$/u;
 const tagSafe = (value: string): string =>
   createHash('sha256').update(value, 'utf8').digest('hex').slice(0, 32);
 
@@ -78,29 +84,37 @@ function bounded(value: string, field: string, max: number): string {
   return result;
 }
 
-export class AmazonSesV2DeliveryAdapter {
+function emailTags(
+  tags: readonly Readonly<{ name: string; value: string }>[]
+): readonly Readonly<{ Name: string; Value: string }>[] {
+  if (tags.length > 20)
+    throw new AmazonSesDeliveryAdapterError('SES metadataTags exceeds the bounded maximum.');
+  const names = new Set<string>();
+  return tags.map((tag, index) => {
+    const name = bounded(tag.name, `metadataTags[${index}].name`, 64);
+    if (!TAG_NAME.test(name))
+      throw new AmazonSesDeliveryAdapterError(`metadataTags[${index}].name is invalid.`);
+    if (names.has(name))
+      throw new AmazonSesDeliveryAdapterError('SES metadataTags names must be unique.');
+    names.add(name);
+    return {
+      Name: name,
+      Value: tagSafe(bounded(tag.value, `metadataTags[${index}].value`, 500))
+    };
+  });
+}
+
+export class AmazonSesV2EmailTransport implements EmailTransportProviderV1 {
   constructor(
     private readonly client: AmazonSesV2Client,
     private readonly routing: AmazonSesRoutingResolver
   ) {}
 
   async submit(
-    materialized: Readonly<AmazonSesMaterializedEmail>
-  ): Promise<AmazonSesSubmissionResult> {
-    const attempt = parseEmailDeliveryAttemptV1(materialized.attempt);
-    if (attempt.workspaceId !== materialized.workspaceId)
-      throw new AmazonSesDeliveryAdapterError(
-        'Attempt Workspace does not match materialized email.'
-      );
-    if (attempt.status !== 'SUBMITTING')
-      throw new AmazonSesDeliveryAdapterError('SES submission requires SUBMITTING attempt state.');
-    if (
-      materialized.recipients.length !== 1 ||
-      materialized.recipients.length !== attempt.recipientCount
-    )
-      throw new AmazonSesDeliveryAdapterError(
-        'SES V1 submission requires exactly one recipient per attempt.'
-      );
+    materialized: Readonly<MaterializedEmailTransportV1>
+  ): Promise<EmailTransportSubmissionResultV1> {
+    if (materialized.recipients.length !== 1)
+      throw new AmazonSesDeliveryAdapterError('SES V1 transport requires exactly one recipient.');
     if (!materialized.textContent && !materialized.htmlContent)
       throw new AmazonSesDeliveryAdapterError('Email body materialization is required.');
 
@@ -144,6 +158,8 @@ export class AmazonSesV2DeliveryAdapter {
         : {})
     };
 
+    const tags = emailTags(materialized.metadataTags);
+
     try {
       const response = await this.client.sendEmail(bounded(routing.region, 'region', 80), {
         FromEmailAddress: fromAddress,
@@ -162,11 +178,7 @@ export class AmazonSesV2DeliveryAdapter {
         },
         ConfigurationSetName: bounded(routing.configurationSetName, 'configurationSetName', 64),
         TenantName: bounded(routing.tenantName, 'tenantName', 128),
-        EmailTags: [
-          { Name: 'mo_attempt', Value: tagSafe(attempt.deliveryAttemptId) },
-          { Name: 'mo_workspace', Value: tagSafe(materialized.workspaceId) },
-          { Name: 'mo_campaign', Value: tagSafe(attempt.campaign.campaignId) }
-        ]
+        EmailTags: tags
       });
       const messageId = response.MessageId?.trim();
       if (!messageId) return { status: 'UNKNOWN', reasonCode: 'SES_ACCEPTED_WITHOUT_MESSAGE_ID' };
@@ -180,6 +192,49 @@ export class AmazonSesV2DeliveryAdapter {
       if (retryable) return { status: 'UNKNOWN', reasonCode: 'SES_TRANSPORT_AMBIGUOUS' };
       return { status: 'FAILED', reasonCode: 'SES_PROVIDER_REJECTED' };
     }
+  }
+}
+
+export class AmazonSesV2DeliveryAdapter {
+  private readonly transport: AmazonSesV2EmailTransport;
+
+  constructor(client: AmazonSesV2Client, routing: AmazonSesRoutingResolver) {
+    this.transport = new AmazonSesV2EmailTransport(client, routing);
+  }
+
+  async submit(
+    materialized: Readonly<AmazonSesMaterializedEmail>
+  ): Promise<AmazonSesSubmissionResult> {
+    const attempt = parseEmailDeliveryAttemptV1(materialized.attempt);
+    if (attempt.workspaceId !== materialized.workspaceId)
+      throw new AmazonSesDeliveryAdapterError(
+        'Attempt Workspace does not match materialized email.'
+      );
+    if (attempt.status !== 'SUBMITTING')
+      throw new AmazonSesDeliveryAdapterError('SES submission requires SUBMITTING attempt state.');
+    if (
+      materialized.recipients.length !== 1 ||
+      materialized.recipients.length !== attempt.recipientCount
+    )
+      throw new AmazonSesDeliveryAdapterError(
+        'SES V1 submission requires exactly one recipient per attempt.'
+      );
+
+    return this.transport.submit({
+      workspaceId: materialized.workspaceId,
+      routingPartitionRef: materialized.routingPartitionRef,
+      fromAddress: materialized.fromAddress,
+      ...(materialized.replyToAddress ? { replyToAddress: materialized.replyToAddress } : {}),
+      recipients: materialized.recipients,
+      subject: materialized.subject,
+      ...(materialized.textContent ? { textContent: materialized.textContent } : {}),
+      ...(materialized.htmlContent ? { htmlContent: materialized.htmlContent } : {}),
+      metadataTags: [
+        { name: 'mo_attempt', value: attempt.deliveryAttemptId },
+        { name: 'mo_workspace', value: materialized.workspaceId },
+        { name: 'mo_campaign', value: attempt.campaign.campaignId }
+      ]
+    });
   }
 }
 

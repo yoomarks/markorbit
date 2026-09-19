@@ -4,25 +4,21 @@ import {
   type EmailDeliveryAttemptV1,
   type EmailDeliveryObservationV1
 } from '@markorbit/contracts/email-delivery';
+import type {
+  EmailTransportSubmissionResultV1,
+  MaterializedEmailTransportV1
+} from './email-transport.js';
 import type { SetOutboundContactSuppressionCommand } from './outbound-contact-policy.js';
 import type { PostgresEmailDeliveryStore } from './email-delivery.js';
 
-export interface MaterializedEmailDelivery {
-  workspaceId: string;
+export interface MaterializedEmailDelivery extends Omit<
+  MaterializedEmailTransportV1,
+  'metadataTags'
+> {
   attempt: Readonly<EmailDeliveryAttemptV1>;
-  routingPartitionRef: string;
-  fromAddress: string;
-  replyToAddress?: string;
-  recipients: readonly string[];
-  subject: string;
-  textContent?: string;
-  htmlContent?: string;
 }
 
-export type EmailDeliverySubmissionResult =
-  | Readonly<{ status: 'ACCEPTED'; providerSubmissionRef: string }>
-  | Readonly<{ status: 'FAILED'; reasonCode: string }>
-  | Readonly<{ status: 'UNKNOWN'; reasonCode: string }>;
+export type EmailDeliverySubmissionResult = EmailTransportSubmissionResultV1;
 
 export interface EmailDeliveryProviderAdapter {
   submit(materialized: Readonly<MaterializedEmailDelivery>): Promise<EmailDeliverySubmissionResult>;
