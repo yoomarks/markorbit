@@ -2,9 +2,12 @@ import { createHash, randomUUID } from 'node:crypto';
 import {
   noEmailDeliveryAuthorityConsequencesV1,
   parseEmailDeliveryAttemptV1,
-  type EmailDeliveryAttemptV1,
   type EmailDeliveryObservationV1
 } from '@markorbit/contracts/email-delivery';
+import type {
+  EmailDeliverySubmissionResult,
+  MaterializedEmailDelivery
+} from './email-delivery-runtime.js';
 
 export interface AmazonSesTenantRouting {
   workspaceId: string;
@@ -44,22 +47,8 @@ export interface AmazonSesRoutingResolver {
   ): Promise<Readonly<AmazonSesTenantRouting> | null>;
 }
 
-export interface AmazonSesMaterializedEmail {
-  workspaceId: string;
-  attempt: Readonly<EmailDeliveryAttemptV1>;
-  routingPartitionRef: string;
-  fromAddress: string;
-  replyToAddress?: string;
-  recipients: readonly string[];
-  subject: string;
-  textContent?: string;
-  htmlContent?: string;
-}
-
-export type AmazonSesSubmissionResult =
-  | Readonly<{ status: 'ACCEPTED'; providerSubmissionRef: string }>
-  | Readonly<{ status: 'FAILED'; reasonCode: string }>
-  | Readonly<{ status: 'UNKNOWN'; reasonCode: string }>;
+export type AmazonSesMaterializedEmail = MaterializedEmailDelivery;
+export type AmazonSesSubmissionResult = EmailDeliverySubmissionResult;
 
 export class AmazonSesDeliveryAdapterError extends Error {
   constructor(message: string) {
