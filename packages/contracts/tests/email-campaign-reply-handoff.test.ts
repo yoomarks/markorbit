@@ -27,8 +27,8 @@ const value = {
     sha256: '1'.repeat(64)
   },
   outboundProviderSubmissionRef: '01000199abcdef-000000',
-  correlationMethod: 'RFC_IN_REPLY_TO' as const,
-  evidenceFingerprintSha256: '2'.repeat(64),
+  correlationMethod: 'PROVIDER_MESSAGE_REFERENCE' as const,
+  correlationEvidenceFingerprintSha256: '2'.repeat(64),
   status: 'CORRELATED' as const,
   createdAt: '2026-09-19T06:01:00.000Z',
   authority: noEmailCampaignReplyHandoffAuthorityConsequencesV1
@@ -59,7 +59,7 @@ describe('Email Campaign reply handoff contract', () => {
 
   it('rejects unsupported correlation methods', () => {
     expect(() =>
-      parseEmailCampaignReplyHandoffV1({ ...value, correlationMethod: 'SUBJECT_MATCH' })
+      parseEmailCampaignReplyHandoffV1({ ...value, correlationMethod: 'RFC_IN_REPLY_TO' })
     ).toThrow(/correlationMethod/);
   });
 });
