@@ -103,10 +103,7 @@ const campaign: EmailCampaignV1 = {
   authority: noEmailCampaignAuthorityConsequencesV1
 };
 
-function attempt(
-  suffix: string,
-  status: EmailDeliveryAttemptV1['status']
-): EmailDeliveryAttemptV1 {
+function attempt(suffix: string, status: EmailDeliveryAttemptV1['status']): EmailDeliveryAttemptV1 {
   return {
     schemaVersion: 1,
     deliveryAttemptId: `email-delivery-attempt_${suffix}`,
