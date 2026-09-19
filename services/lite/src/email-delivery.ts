@@ -146,8 +146,7 @@ function observationFromRow(row: Row): EmailDeliveryObservationV1 {
     value.event !== String(row.event) ||
     value.evidenceKind !== String(row.evidence_kind) ||
     (value.providerMessageRef ?? null) !== (row.provider_message_ref ?? null) ||
-    (value.endpointFingerprintSha256 ?? null) !==
-      (row.endpoint_fingerprint_sha256 ?? null) ||
+    (value.endpointFingerprintSha256 ?? null) !== (row.endpoint_fingerprint_sha256 ?? null) ||
     value.authenticatedEvidence !== Boolean(row.authenticated_evidence) ||
     value.reasonCode !== String(row.reason_code) ||
     !sameTimestamp(row.event_at, value.eventAt) ||
@@ -215,41 +214,41 @@ export class PostgresEmailDeliveryStore {
       value,
       persistedAttempt,
       async (client) => {
-      await this.lock(client, `${value.workspaceId}:email-delivery:${value.deliveryAttemptId}`);
-      const existing = await client.query<Row>(
-        `SELECT * FROM lite_email_delivery_attempts
+        await this.lock(client, `${value.workspaceId}:email-delivery:${value.deliveryAttemptId}`);
+        const existing = await client.query<Row>(
+          `SELECT * FROM lite_email_delivery_attempts
           WHERE workspace_id=$1 AND delivery_attempt_id=$2`,
-        [value.workspaceId, value.deliveryAttemptId]
-      );
-      if (existing.rows[0]) return attemptFromRow(existing.rows[0]);
-      await client.query(
-        `INSERT INTO lite_email_delivery_attempts(
+          [value.workspaceId, value.deliveryAttemptId]
+        );
+        if (existing.rows[0]) return attemptFromRow(existing.rows[0]);
+        await client.query(
+          `INSERT INTO lite_email_delivery_attempts(
            workspace_id,delivery_attempt_id,execution_release_id,campaign_id,campaign_version,
            sender_profile_id,sender_profile_version,shard_index,attempt_number,status,
            recipient_count,recipient_manifest_fingerprint_sha256,delivery_plan_fingerprint_sha256,
            correlation_id,provider_submission_ref,document_json,created_at,updated_at
          ) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16::jsonb,$17,$18)`,
-        [
-          value.workspaceId,
-          value.deliveryAttemptId,
-          value.executionRelease.releaseId,
-          value.campaign.campaignId,
-          value.campaign.version,
-          value.senderProfile.senderProfileId,
-          value.senderProfile.version,
-          value.shardIndex,
-          value.attemptNumber,
-          value.status,
-          value.recipientCount,
-          value.recipientManifestFingerprintSha256,
-          value.deliveryPlanFingerprintSha256,
-          value.correlationId,
-          value.providerSubmissionRef ?? null,
-          JSON.stringify(value),
-          value.createdAt,
-          value.updatedAt
-        ]
-      );
+          [
+            value.workspaceId,
+            value.deliveryAttemptId,
+            value.executionRelease.releaseId,
+            value.campaign.campaignId,
+            value.campaign.version,
+            value.senderProfile.senderProfileId,
+            value.senderProfile.version,
+            value.shardIndex,
+            value.attemptNumber,
+            value.status,
+            value.recipientCount,
+            value.recipientManifestFingerprintSha256,
+            value.deliveryPlanFingerprintSha256,
+            value.correlationId,
+            value.providerSubmissionRef ?? null,
+            JSON.stringify(value),
+            value.createdAt,
+            value.updatedAt
+          ]
+        );
         return structuredClone(value);
       }
     );
@@ -280,43 +279,47 @@ export class PostgresEmailDeliveryStore {
       },
       persistedAttempt,
       async (client) => {
-      await this.lock(client, `${value.workspaceId}:email-delivery:${value.deliveryAttemptId}`);
-      const currentResult = await client.query<Row>(
-        `SELECT * FROM lite_email_delivery_attempts
+        await this.lock(client, `${value.workspaceId}:email-delivery:${value.deliveryAttemptId}`);
+        const currentResult = await client.query<Row>(
+          `SELECT * FROM lite_email_delivery_attempts
           WHERE workspace_id=$1 AND delivery_attempt_id=$2`,
-        [value.workspaceId, value.deliveryAttemptId]
-      );
-      if (!currentResult.rows[0])
-        throw new EmailDeliveryPersistenceError('NOT_FOUND', 'Email delivery attempt not found.', 404);
-      const current = attemptFromRow(currentResult.rows[0]);
-      if (current.status !== command.expectedStatus)
-        throw new EmailDeliveryPersistenceError(
-          'STATE_CONFLICT',
-          `Expected attempt status ${command.expectedStatus}, found ${current.status}.`
+          [value.workspaceId, value.deliveryAttemptId]
         );
-      if (hash(immutableAttemptIdentity(current)) !== hash(immutableAttemptIdentity(value)))
-        throw new EmailDeliveryPersistenceError(
-          'STATE_CONFLICT',
-          'Email delivery attempt immutable identity cannot change.'
-        );
-      if (Date.parse(value.updatedAt) < Date.parse(current.updatedAt))
-        throw new EmailDeliveryPersistenceError(
-          'STATE_CONFLICT',
-          'Email delivery attempt updatedAt cannot move backwards.'
-        );
-      await client.query(
-        `UPDATE lite_email_delivery_attempts
+        if (!currentResult.rows[0])
+          throw new EmailDeliveryPersistenceError(
+            'NOT_FOUND',
+            'Email delivery attempt not found.',
+            404
+          );
+        const current = attemptFromRow(currentResult.rows[0]);
+        if (current.status !== command.expectedStatus)
+          throw new EmailDeliveryPersistenceError(
+            'STATE_CONFLICT',
+            `Expected attempt status ${command.expectedStatus}, found ${current.status}.`
+          );
+        if (hash(immutableAttemptIdentity(current)) !== hash(immutableAttemptIdentity(value)))
+          throw new EmailDeliveryPersistenceError(
+            'STATE_CONFLICT',
+            'Email delivery attempt immutable identity cannot change.'
+          );
+        if (Date.parse(value.updatedAt) < Date.parse(current.updatedAt))
+          throw new EmailDeliveryPersistenceError(
+            'STATE_CONFLICT',
+            'Email delivery attempt updatedAt cannot move backwards.'
+          );
+        await client.query(
+          `UPDATE lite_email_delivery_attempts
             SET status=$3,provider_submission_ref=$4,document_json=$5::jsonb,updated_at=$6
           WHERE workspace_id=$1 AND delivery_attempt_id=$2`,
-        [
-          value.workspaceId,
-          value.deliveryAttemptId,
-          value.status,
-          value.providerSubmissionRef ?? null,
-          JSON.stringify(value),
-          value.updatedAt
-        ]
-      );
+          [
+            value.workspaceId,
+            value.deliveryAttemptId,
+            value.status,
+            value.providerSubmissionRef ?? null,
+            JSON.stringify(value),
+            value.updatedAt
+          ]
+        );
         return structuredClone(value);
       }
     );
@@ -399,7 +402,11 @@ export class PostgresEmailDeliveryStore {
         [workspace(workspaceId), deliveryAttemptId]
       );
       if (!result.rows[0])
-        throw new EmailDeliveryPersistenceError('NOT_FOUND', 'Email delivery attempt not found.', 404);
+        throw new EmailDeliveryPersistenceError(
+          'NOT_FOUND',
+          'Email delivery attempt not found.',
+          404
+        );
       return attemptFromRow(result.rows[0]);
     } catch (error) {
       if (error instanceof EmailDeliveryPersistenceError) throw error;
