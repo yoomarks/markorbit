@@ -4,12 +4,17 @@ import {
   type EmailDeliveryAttemptV1,
   type EmailDeliveryObservationV1
 } from '@markorbit/contracts/email-delivery';
-import type { EmailTransportSubmissionResultV1, MaterializedEmailTransportV1 } from './email-transport.js';
+import type {
+  EmailTransportSubmissionResultV1,
+  MaterializedEmailTransportV1
+} from './email-transport.js';
 import type { SetOutboundContactSuppressionCommand } from './outbound-contact-policy.js';
 import type { PostgresEmailDeliveryStore } from './email-delivery.js';
 
-export interface MaterializedEmailDelivery
-  extends Omit<MaterializedEmailTransportV1, 'metadataTags'> {
+export interface MaterializedEmailDelivery extends Omit<
+  MaterializedEmailTransportV1,
+  'metadataTags'
+> {
   attempt: Readonly<EmailDeliveryAttemptV1>;
 }
 
