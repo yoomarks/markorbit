@@ -2,16 +2,15 @@ import { createHash } from 'node:crypto';
 import {
   noEmailCampaignReplyHandoffAuthorityConsequencesV1,
   parseEmailCampaignReplyHandoffV1,
-  type EmailCampaignReplyCorrelationMethodV1,
   type EmailCampaignReplyHandoffV1
 } from '@markorbit/contracts/email-campaign-reply-handoff';
 import {
   parseManagedCommunicationMessageV1,
   type ManagedCommunicationMessageV1
 } from '@markorbit/contracts/managed-communication';
+import type { EmailCampaignV1 } from '@markorbit/contracts/email-campaign';
 import type { EmailDeliveryAttemptV1 } from '@markorbit/contracts/email-delivery';
 import type { WorkspaceEmailSenderProfileV1 } from '@markorbit/contracts/email-sender-profile';
-import type { EmailCampaignV1 } from '@markorbit/contracts/email-campaign';
 import type { QueryClient } from '@markorbit/persistence';
 import type { LiteTransactionHost } from './content-preparation.js';
 
@@ -55,6 +54,13 @@ export class EmailCampaignReplyCorrelationError extends Error {
   }
 }
 
+export interface EmailCampaignReplyManagedAccountV1 {
+  workspaceId: string;
+  accountRef: string;
+  channel: 'EMAIL';
+  provider: string;
+}
+
 export interface EmailCampaignReplyInboundEvidenceV1 {
   evidenceRef: string;
   sha256: string;
@@ -64,15 +70,36 @@ export interface EmailCampaignReplyInboundEvidenceV1 {
   headers: readonly Readonly<{ name: string; value: string }>[];
 }
 
+export type EmailCampaignReplyReferenceEvidenceMethodV1 =
+  | 'RFC_IN_REPLY_TO'
+  | 'RFC_REFERENCES';
+
 export interface EmailCampaignReplyReferenceCandidateV1 {
   providerSubmissionRef: string;
-  correlationMethod: EmailCampaignReplyCorrelationMethodV1;
+  evidenceMethod: EmailCampaignReplyReferenceEvidenceMethodV1;
 }
 
 export interface EmailCampaignReplyReferenceCorrelatorV1 {
   candidates(
     headers: readonly Readonly<{ name: string; value: string }>[]
   ): readonly Readonly<EmailCampaignReplyReferenceCandidateV1>[];
+}
+
+export interface EmailCampaignReplyManagedCommunicationReaderV1 {
+  resolveAccount(
+    workspaceId: string,
+    accountRef: string
+  ): Promise<Readonly<EmailCampaignReplyManagedAccountV1>>;
+  resolveMessage(
+    workspaceId: string,
+    accountRef: string,
+    messageId: string
+  ): Promise<Readonly<ManagedCommunicationMessageV1>>;
+  resolveExactEvidence(input: {
+    workspaceId: string;
+    accountRef: string;
+    messageId: string;
+  }): Promise<Readonly<EmailCampaignReplyInboundEvidenceV1> | undefined>;
 }
 
 export interface EmailCampaignReplyDeliveryReaderV1 {
@@ -187,7 +214,8 @@ function fromRow(row: Row): EmailCampaignReplyHandoffV1 {
     value.inboundEvidence.sha256 !== String(row.inbound_evidence_sha256) ||
     value.outboundProviderSubmissionRef !== String(row.outbound_provider_submission_ref) ||
     value.correlationMethod !== String(row.correlation_method) ||
-    value.evidenceFingerprintSha256 !== String(row.evidence_fingerprint_sha256) ||
+    value.correlationEvidenceFingerprintSha256 !==
+      String(row.correlation_evidence_fingerprint_sha256) ||
     value.status !== String(row.status) ||
     !sameTimestamp(row.created_at, value.createdAt)
   )
@@ -265,7 +293,7 @@ export class PostgresEmailCampaignReplyHandoffStore implements EmailCampaignRepl
              sender_profile_id,sender_profile_version,managed_account_ref,managed_message_id,
              managed_thread_ref,managed_provider,managed_provider_message_id,inbound_evidence_ref,
              inbound_evidence_sha256,outbound_provider_submission_ref,correlation_method,
-             evidence_fingerprint_sha256,status,document_json,created_at
+             correlation_evidence_fingerprint_sha256,status,document_json,created_at
            ) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19::jsonb,$20)`,
           [
             w,
@@ -284,7 +312,7 @@ export class PostgresEmailCampaignReplyHandoffStore implements EmailCampaignRepl
             value.inboundEvidence.sha256,
             value.outboundProviderSubmissionRef,
             value.correlationMethod,
-            value.evidenceFingerprintSha256,
+            value.correlationEvidenceFingerprintSha256,
             value.status,
             JSON.stringify(value),
             value.createdAt
@@ -403,6 +431,7 @@ function uniqueMatches(
 
 export class EmailCampaignReplyHandoffServiceV1 {
   constructor(
+    private readonly managedCommunication: Readonly<EmailCampaignReplyManagedCommunicationReaderV1>,
     private readonly delivery: Readonly<EmailCampaignReplyDeliveryReaderV1>,
     private readonly campaigns: Readonly<EmailCampaignReplyCampaignReaderV1>,
     private readonly senderProfiles: Readonly<EmailCampaignReplySenderProfileReaderV1>,
@@ -413,9 +442,9 @@ export class EmailCampaignReplyHandoffServiceV1 {
 
   async correlate(input: {
     workspaceId: string;
+    accountRef: string;
+    messageId: string;
     idempotencyKey: string;
-    message: Readonly<ManagedCommunicationMessageV1>;
-    exactEvidence: Readonly<EmailCampaignReplyInboundEvidenceV1>;
   }): Promise<EmailCampaignReplyHandoffV1> {
     const workspaceId = input.workspaceId.trim().toLowerCase();
     if (!UUID.test(workspaceId))
@@ -423,13 +452,47 @@ export class EmailCampaignReplyHandoffServiceV1 {
         'INVALID_INBOUND_EVIDENCE',
         'workspaceId must be a UUID.'
       );
-    const message = parseManagedCommunicationMessageV1(input.message);
-    if (message.direction !== 'INBOUND')
+    const accountRef = clean(input.accountRef, 'accountRef', 500);
+    const messageId = clean(input.messageId, 'messageId', 500);
+
+    const [account, rawMessage, rawEvidence] = await Promise.all([
+      this.managedCommunication.resolveAccount(workspaceId, accountRef),
+      this.managedCommunication.resolveMessage(workspaceId, accountRef, messageId),
+      this.managedCommunication.resolveExactEvidence({
+        workspaceId,
+        accountRef,
+        messageId
+      })
+    ]);
+    if (
+      account.workspaceId !== workspaceId ||
+      account.accountRef !== accountRef ||
+      account.channel !== 'EMAIL'
+    )
+      throw new EmailCampaignReplyCorrelationError(
+        'REPLY_ACCOUNT_MISMATCH',
+        'Managed Communication account is not owned by the requested Workspace.'
+      );
+    if (!rawEvidence)
       throw new EmailCampaignReplyCorrelationError(
         'INVALID_INBOUND_EVIDENCE',
-        'Reply handoff only accepts Managed Communication INBOUND messages.'
+        'Managed Communication exact inbound evidence does not exist.'
       );
-    const exactEvidence = canonicalInboundEvidence(input.exactEvidence);
+
+    const message = parseManagedCommunicationMessageV1(rawMessage);
+    if (
+      message.direction !== 'INBOUND' ||
+      message.accountRef !== accountRef ||
+      message.messageId !== messageId ||
+      message.channel !== 'EMAIL' ||
+      message.providerObservation.provider !== account.provider
+    )
+      throw new EmailCampaignReplyCorrelationError(
+        'LINEAGE_MISMATCH',
+        'Managed Communication message does not match the exact account lineage.'
+      );
+
+    const exactEvidence = canonicalInboundEvidence(rawEvidence);
     if (
       exactEvidence.provider !== message.providerObservation.provider ||
       exactEvidence.providerMessageId !== message.providerObservation.providerMessageId ||
@@ -456,11 +519,7 @@ export class EmailCampaignReplyHandoffServiceV1 {
         workspaceId,
         candidate.providerSubmissionRef
       );
-      if (attempt)
-        matches.push({
-          attempt,
-          candidate
-        });
+      if (attempt) matches.push({ attempt, candidate });
     }
     const unique = uniqueMatches(matches);
     if (unique.length === 0)
@@ -510,7 +569,7 @@ export class EmailCampaignReplyHandoffServiceV1 {
       );
     if (
       senderProfile.replyTo.mode !== 'MANAGED_COMMUNICATION' ||
-      senderProfile.replyTo.accountRef !== message.accountRef
+      senderProfile.replyTo.accountRef !== accountRef
     )
       throw new EmailCampaignReplyCorrelationError(
         'REPLY_ACCOUNT_MISMATCH',
@@ -531,17 +590,8 @@ export class EmailCampaignReplyHandoffServiceV1 {
         'Reply handoff runtime clock precedes inbound evidence.'
       );
 
-    const evidenceFingerprintSha256 = hash({
+    const correlationEvidenceFingerprintSha256 = hash({
       workspaceId,
-      campaign: attempt.campaign,
-      deliveryAttempt: {
-        deliveryAttemptId: attempt.deliveryAttemptId,
-        version: attempt.version
-      },
-      senderProfile: {
-        senderProfileId: senderProfile.senderProfileId,
-        version: senderProfile.version
-      },
       managedCommunication: {
         accountRef: message.accountRef,
         messageId: message.messageId,
@@ -555,7 +605,7 @@ export class EmailCampaignReplyHandoffServiceV1 {
         sha256: exactEvidence.sha256
       },
       outboundProviderSubmissionRef: candidate.providerSubmissionRef,
-      correlationMethod: candidate.correlationMethod
+      evidenceMethod: candidate.evidenceMethod
     });
     const replyHandoffId = `email-campaign-reply-handoff_${createHash('sha256')
       .update(
@@ -593,8 +643,8 @@ export class EmailCampaignReplyHandoffServiceV1 {
         sha256: exactEvidence.sha256
       },
       outboundProviderSubmissionRef: candidate.providerSubmissionRef,
-      correlationMethod: candidate.correlationMethod,
-      evidenceFingerprintSha256,
+      correlationMethod: 'PROVIDER_MESSAGE_REFERENCE',
+      correlationEvidenceFingerprintSha256,
       status: 'CORRELATED',
       createdAt,
       authority: noEmailCampaignReplyHandoffAuthorityConsequencesV1
