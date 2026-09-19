@@ -1,5 +1,3 @@
-[Reading 270 lines from start (total: 270 lines, 0 remaining)]
-
 import { createHash } from 'node:crypto';
 import { describe, expect, it, vi } from 'vitest';
 import {
@@ -142,6 +140,9 @@ function harness(
     exact?: ChannelNotificationAutomationRuleV1;
     entitlementAllowed?: boolean;
     entitlementUnavailable?: boolean;
+    entitlementWorkspaceId?: string;
+    entitlementFeatureKey?: 'EMAIL_NOTIFICATION' | 'EMAIL_CAMPAIGN';
+    entitlementKey?: string;
     packageValue?: PublishPackage | null;
     senderValue?: WorkspaceEmailSenderProfileV1;
     senderState?:
@@ -189,9 +190,9 @@ function harness(
       if (options.entitlementUnavailable) return Promise.resolve({ unavailable: true as const });
       return Promise.resolve({
         schemaVersion: 1 as const,
-        workspaceId,
-        featureKey: 'EMAIL_NOTIFICATION' as const,
-        entitlementKey: 'lite.channel.email.notification',
+        workspaceId: options.entitlementWorkspaceId ?? workspaceId,
+        featureKey: options.entitlementFeatureKey ?? ('EMAIL_NOTIFICATION' as const),
+        entitlementKey: options.entitlementKey ?? 'lite.channel.email.notification',
         status: options.entitlementAllowed === false ? ('DISABLED' as const) : ('ENABLED' as const),
         allowed: options.entitlementAllowed !== false,
         authority: noChannelPlatformAuthorityConsequencesV1
@@ -237,6 +238,22 @@ describe('Notification Automation Rule currentness', () => {
     ).resolves.toMatchObject({ state: 'UNKNOWN', reason: 'CONTENT_NOT_FOUND' });
   });
 
+  it('fails closed when entitlement identity does not match the exact notification feature', async () => {
+    await expect(
+      harness({ entitlementWorkspaceId: '15151515-1515-4515-8515-151515151515' }).resolve(
+        workspaceId,
+        ruleId,
+        2
+      )
+    ).resolves.toMatchObject({ state: 'UNKNOWN', reason: 'OWNER_DATA_UNKNOWN' });
+    await expect(
+      harness({ entitlementFeatureKey: 'EMAIL_CAMPAIGN' }).resolve(workspaceId, ruleId, 2)
+    ).resolves.toMatchObject({ state: 'UNKNOWN', reason: 'OWNER_DATA_UNKNOWN' });
+    await expect(
+      harness({ entitlementKey: 'lite.channel.email.campaign' }).resolve(workspaceId, ruleId, 2)
+    ).resolves.toMatchObject({ state: 'UNKNOWN', reason: 'OWNER_DATA_UNKNOWN' });
+  });
+
   it('fails closed for content fingerprint drift and sender currentness drift', async () => {
     await expect(
       harness({
@@ -270,5 +287,3 @@ describe('Notification Automation Rule currentness', () => {
     ).resolves.toMatchObject({ state: 'UNAVAILABLE', reason: 'OWNER_UNAVAILABLE' });
   });
 });
-
-[executed on device: MarkOrbit (710fa508-4ac4-4899-bf0a-594e530d3e21)]
