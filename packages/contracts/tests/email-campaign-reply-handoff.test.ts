@@ -40,9 +40,9 @@ describe('Email Campaign reply handoff contract', () => {
   });
 
   it('rejects raw communication content and addresses', () => {
-    expect(() =>
-      parseEmailCampaignReplyHandoffV1({ ...value, subject: 'Reply subject' })
-    ).toThrow(/forbidden material/);
+    expect(() => parseEmailCampaignReplyHandoffV1({ ...value, subject: 'Reply subject' })).toThrow(
+      /forbidden material/
+    );
     expect(() =>
       parseEmailCampaignReplyHandoffV1({ ...value, recipientEmail: 'person@example.com' })
     ).toThrow(/forbidden material/);
