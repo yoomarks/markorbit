@@ -87,3 +87,6 @@ export * from './email-campaign.js';
 export * from './email-sender-profile.js';
 export * from './email-campaign-delivery-currentness.js';
 export * from './email-campaign-delivery-currentness-http.js';
+export * from './email-delivery.js';
+export * from './email-delivery-ses.js';
+export * from './email-delivery-runtime.js';

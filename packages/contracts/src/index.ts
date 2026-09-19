@@ -1246,6 +1246,7 @@ export * from './oauth-credential.js';
 export * from './workspace-commercial.js';
 export * from './channel-platform.js';
 export * from './email-campaign.js';
+export * from './email-delivery.js';
 export * from './email-sender-profile.js';
 export * from './site.js';
 export * from './trademark-intelligence-method-family-v1.js';
