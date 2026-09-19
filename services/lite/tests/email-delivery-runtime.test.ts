@@ -180,10 +180,9 @@ describe('Email provider observation suppression handoff', () => {
   ] as const)('routes %s through Outbound Contact Policy owner', async (event, reasonCode) => {
     const recordObservation = vi.fn(({ value }) => Promise.resolve(value));
     const setSuppression = vi.fn(() => Promise.resolve({}));
-    const service = new EmailDeliveryProviderEventService(
-      { recordObservation } as never,
-      { setSuppression }
-    );
+    const service = new EmailDeliveryProviderEventService({ recordObservation } as never, {
+      setSuppression
+    });
     const observation: EmailDeliveryObservationV1 = {
       schemaVersion: 1,
       observationId: `email-delivery-observation_${event.toLowerCase()}`,
