@@ -1245,6 +1245,7 @@ export * from './workspace-watch.js';
 export * from './oauth-credential.js';
 export * from './workspace-commercial.js';
 export * from './channel-platform.js';
+export * from './channel-identity-binding.js';
 export * from './email-campaign.js';
 export * from './email-campaign-delivery-analytics.js';
 export * from './email-delivery.js';
