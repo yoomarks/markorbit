@@ -229,4 +229,92 @@ suite('PostgreSQL outbound contact policy owner', () => {
       })
     ).toMatchObject({ outcome: 'UNKNOWN', reason: 'ASSERTION_NOT_ACTIVE' });
   });
+  it('persists SMS policy independently from EMAIL and keeps global suppression channel-scoped', async () => {
+    const s = store();
+    const smsBasis = await s.assertBasis({
+      ...assertion('sms-basis'),
+      channel: 'SMS',
+      purpose: 'WORKSPACE_NOTIFICATION'
+    });
+    expect(smsBasis).toMatchObject({
+      channel: 'SMS',
+      purpose: 'WORKSPACE_NOTIFICATION',
+      basisState: 'ASSERTED_ALLOWED'
+    });
+    expect(
+      await store().evaluate({
+        workspaceId,
+        actorPrincipalId: 'reader',
+        targetRef: target,
+        endpointFingerprintSha256: endpoint,
+        channel: 'SMS',
+        purpose: 'WORKSPACE_NOTIFICATION',
+        policyRef,
+        reviewedSendFingerprintSha256: send
+      })
+    ).toMatchObject({
+      channel: 'SMS',
+      outcome: 'READY_FOR_HUMAN_SEND',
+      authorityConsequences: {
+        legalConsentVerifiedByMarkOrbit: false,
+        externalMessageSent: false,
+        protectedActionAuthorized: false
+      }
+    });
+
+    await s.setSuppression({
+      workspaceId,
+      actorPrincipalId: 'user_admin',
+      idempotencyKey: 'email-global',
+      endpointFingerprintSha256: endpoint,
+      channel: 'EMAIL',
+      scope: 'ALL_OUTBOUND',
+      reasonCode: 'WORKSPACE_DO_NOT_CONTACT',
+      sourceClass: 'WORKSPACE_USER',
+      evidenceRefs: ['review:email-global']
+    });
+    expect(await s.currentGlobalSuppressions(workspaceId, endpoint, 'SMS')).toHaveLength(0);
+
+    await s.setSuppression({
+      workspaceId,
+      actorPrincipalId: 'user_admin',
+      idempotencyKey: 'sms-global',
+      endpointFingerprintSha256: endpoint,
+      channel: 'SMS',
+      scope: 'ALL_OUTBOUND',
+      reasonCode: 'RECIPIENT_OPT_OUT',
+      sourceClass: 'WORKSPACE_USER',
+      evidenceRefs: ['review:sms-global']
+    });
+    expect(await store().currentGlobalSuppressions(workspaceId, endpoint, 'SMS')).toHaveLength(1);
+    expect(
+      await store().evaluate({
+        workspaceId,
+        actorPrincipalId: 'reader',
+        targetRef: target,
+        endpointFingerprintSha256: endpoint,
+        channel: 'SMS',
+        purpose: 'WORKSPACE_NOTIFICATION',
+        policyRef,
+        reviewedSendFingerprintSha256: send
+      })
+    ).toMatchObject({ outcome: 'BLOCKED', reason: 'ACTIVE_SUPPRESSION' });
+
+    const rows = await database.getPool().query(
+      `SELECT channel, document_json->>'channel' AS document_channel
+         FROM lite_outbound_contact_basis_versions
+        WHERE workspace_id=$1`,
+      [workspaceId]
+    );
+    expect(rows.rows).toContainEqual({ channel: 'SMS', document_channel: 'SMS' });
+  });
+
+  it('normalizes omitted legacy channel to EMAIL for idempotent replay', async () => {
+    const s = store();
+    const legacy = assertion('legacy-default');
+    const created = await s.assertBasis(legacy);
+    expect(await store().assertBasis({ ...legacy, channel: 'EMAIL' })).toEqual(created);
+    expect(created.channel).toBe('EMAIL');
+  });
+
 });

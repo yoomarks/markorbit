@@ -73,4 +73,61 @@ describe('Outbound Contact Policy V1', () => {
       parseOutboundContactSuppressionV1({ ...suppression, reasonCode: 'SCRAPED_PUBLIC_EMAIL' })
     ).toThrow(/reasonCode/);
   });
+  it('admits only the frozen SMS notification channel combinations', () => {
+    expect(
+      parseOutboundContactBasisAssertionV1({
+        ...basis,
+        channel: 'SMS',
+        purpose: 'WORKSPACE_NOTIFICATION'
+      })
+    ).toMatchObject({
+      channel: 'SMS',
+      purpose: 'WORKSPACE_NOTIFICATION',
+      authorityConsequences: {
+        legalConsentVerifiedByMarkOrbit: false,
+        externalSendAuthorized: false
+      }
+    });
+    expect(() =>
+      parseOutboundContactBasisAssertionV1({
+        ...basis,
+        channel: 'SMS',
+        purpose: 'PROSPECT_OUTREACH'
+      })
+    ).toThrow(/channel and purpose/u);
+    expect(() =>
+      parseOutboundContactBasisAssertionV1({
+        ...basis,
+        channel: 'EMAIL',
+        purpose: 'WORKSPACE_NOTIFICATION'
+      })
+    ).toThrow(/channel and purpose/u);
+  });
+
+  it('keeps suppression scope bounded by channel', () => {
+    const suppression = {
+      schemaVersion: 1,
+      suppressionId: 'outbound-contact-suppression_sms',
+      workspaceId: basis.workspaceId,
+      version: 1,
+      channel: 'SMS',
+      endpointFingerprintSha256: 'b'.repeat(64),
+      scope: 'WORKSPACE_NOTIFICATION',
+      status: 'ACTIVE',
+      reasonCode: 'RECIPIENT_OPT_OUT',
+      sourceClass: 'WORKSPACE_USER',
+      evidenceRefs: ['review:sms-opt-out'],
+      effectiveAt: basis.assertedAt,
+      recordedAt: basis.assertedAt,
+      recordedByPrincipalId: 'user_1',
+      supersedesVersion: null,
+      legalConsentVerifiedByMarkOrbit: false,
+      externalSendAuthorized: false
+    };
+    expect(parseOutboundContactSuppressionV1(suppression)).toEqual(suppression);
+    expect(() =>
+      parseOutboundContactSuppressionV1({ ...suppression, scope: 'PARTNER_OUTREACH' })
+    ).toThrow(/channel and suppression scope/u);
+  });
+
 });

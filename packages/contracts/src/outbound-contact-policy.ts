@@ -1,9 +1,10 @@
-export const outboundContactChannels = ['EMAIL'] as const;
+export const outboundContactChannels = ['EMAIL', 'SMS'] as const;
 export type OutboundContactChannelV1 = (typeof outboundContactChannels)[number];
 export const outboundContactPurposes = [
   'PROSPECT_OUTREACH',
   'PARTNER_OUTREACH',
-  'EDUCATION_INVITATION'
+  'EDUCATION_INVITATION',
+  'WORKSPACE_NOTIFICATION'
 ] as const;
 export type OutboundContactPurposeV1 = (typeof outboundContactPurposes)[number];
 export const outboundContactBasisStates = ['ASSERTED_ALLOWED', 'ASSERTED_BLOCKED'] as const;
@@ -14,7 +15,8 @@ export const outboundContactSuppressionScopes = [
   'ALL_OUTBOUND',
   'PROSPECT_OUTREACH',
   'PARTNER_OUTREACH',
-  'EDUCATION_INVITATION'
+  'EDUCATION_INVITATION',
+  'WORKSPACE_NOTIFICATION'
 ] as const;
 export type OutboundContactSuppressionScopeV1 = (typeof outboundContactSuppressionScopes)[number];
 export const outboundContactSuppressionStatuses = ['ACTIVE', 'CLEARED'] as const;
@@ -81,7 +83,7 @@ export interface OutboundContactBasisAssertionV1 {
   workspaceId: string;
   version: number;
   targetRef: Readonly<OutboundContactTargetReferenceV1>;
-  channel: 'EMAIL';
+  channel: OutboundContactChannelV1;
   endpointFingerprintSha256: string;
   purpose: OutboundContactPurposeV1;
   marketOrJurisdiction?: string;
@@ -99,7 +101,7 @@ export interface OutboundContactSuppressionV1 {
   suppressionId: OutboundContactSuppressionIdV1;
   workspaceId: string;
   version: number;
-  channel: 'EMAIL';
+  channel: OutboundContactChannelV1;
   endpointFingerprintSha256: string;
   scope: OutboundContactSuppressionScopeV1;
   status: OutboundContactSuppressionStatusV1;
@@ -118,7 +120,7 @@ export interface OutboundContactReadinessV1 {
   workspaceId: string;
   evaluatedByPrincipalId: string;
   targetRef: Readonly<OutboundContactTargetReferenceV1>;
-  channel: 'EMAIL';
+  channel: OutboundContactChannelV1;
   endpointFingerprintSha256: string;
   purpose: OutboundContactPurposeV1;
   policyRef: Readonly<OutboundContactPolicyReferenceV1>;
@@ -184,6 +186,33 @@ function one<T extends string>(v: unknown, a: readonly T[], f: string): T {
   const x = typeof v === 'string' ? a.find((i) => i === v) : undefined;
   if (!x) throw new OutboundContactPolicyValidationError(`${f} is invalid.`);
   return x;
+}
+function assertChannelPurpose(
+  channel: OutboundContactChannelV1,
+  purpose: OutboundContactPurposeV1
+): void {
+  const allowed =
+    channel === 'EMAIL'
+      ? purpose !== 'WORKSPACE_NOTIFICATION'
+      : purpose === 'WORKSPACE_NOTIFICATION';
+  if (!allowed)
+    throw new OutboundContactPolicyValidationError(
+      'channel and purpose are not a supported V1 combination.'
+    );
+}
+function assertChannelScope(
+  channel: OutboundContactChannelV1,
+  scope: OutboundContactSuppressionScopeV1
+): void {
+  const allowed =
+    scope === 'ALL_OUTBOUND' ||
+    (channel === 'EMAIL'
+      ? scope !== 'WORKSPACE_NOTIFICATION'
+      : scope === 'WORKSPACE_NOTIFICATION');
+  if (!allowed)
+    throw new OutboundContactPolicyValidationError(
+      'channel and suppression scope are not a supported V1 combination.'
+    );
 }
 function reference(v: unknown, f: string, max = 500): string {
   const s = txt(v, f, max);
@@ -269,15 +298,18 @@ export function parseOutboundContactBasisAssertionV1(
     x.marketOrJurisdiction === undefined
       ? undefined
       : txt(x.marketOrJurisdiction, 'marketOrJurisdiction', 80);
+  const channel = one(x.channel, outboundContactChannels, 'channel');
+  const purpose = one(x.purpose, outboundContactPurposes, 'purpose');
+  assertChannelPurpose(channel, purpose);
   return {
     schemaVersion: 1,
     assertionId: id as OutboundContactBasisAssertionIdV1,
     workspaceId: txt(x.workspaceId, 'workspaceId', 80),
     version: pos(x.version, 'version'),
     targetRef: target(x.targetRef),
-    channel: one(x.channel, outboundContactChannels, 'channel'),
+    channel,
     endpointFingerprintSha256: sha(x.endpointFingerprintSha256, 'endpointFingerprintSha256'),
-    purpose: one(x.purpose, outboundContactPurposes, 'purpose'),
+    purpose,
     ...(market ? { marketOrJurisdiction: market } : {}),
     policyRef: policy(x.policyRef),
     basisState: one(x.basisState, outboundContactBasisStates, 'basisState'),
@@ -323,14 +355,17 @@ export function parseOutboundContactSuppressionV1(value: unknown): OutboundConta
     throw new OutboundContactPolicyValidationError(
       'suppression authority locks must remain false.'
     );
+  const channel = one(x.channel, outboundContactChannels, 'channel');
+  const scope = one(x.scope, outboundContactSuppressionScopes, 'scope');
+  assertChannelScope(channel, scope);
   return {
     schemaVersion: 1,
     suppressionId: id as OutboundContactSuppressionIdV1,
     workspaceId: txt(x.workspaceId, 'workspaceId', 80),
     version: pos(x.version, 'version'),
-    channel: one(x.channel, outboundContactChannels, 'channel'),
+    channel,
     endpointFingerprintSha256: sha(x.endpointFingerprintSha256, 'endpointFingerprintSha256'),
-    scope: one(x.scope, outboundContactSuppressionScopes, 'scope'),
+    scope,
     status: one(x.status, outboundContactSuppressionStatuses, 'status'),
     reasonCode: one(x.reasonCode, outboundContactSuppressionReasons, 'reasonCode'),
     sourceClass: one(x.sourceClass, outboundContactSuppressionSourceClasses, 'sourceClass'),
@@ -353,4 +388,7 @@ export function assertOutboundContactReadinessV1(
   sha(x.reviewedSendFingerprintSha256, 'reviewedSendFingerprintSha256');
   one(x.outcome, outboundContactReadinessOutcomes, 'outcome');
   one(x.reason, outboundContactReadinessReasons, 'reason');
+  const channel = one(x.channel, outboundContactChannels, 'channel');
+  const purpose = one(x.purpose, outboundContactPurposes, 'purpose');
+  assertChannelPurpose(channel, purpose);
 }
