@@ -13,6 +13,10 @@ import {
   type ExternalCredentialStoredV1
 } from './external-credential.js';
 import type { EncryptedExternalCredentialSecretV1 } from './external-credential-crypto.js';
+import {
+  ExternalCredentialResolutionError,
+  type ExternalCredentialResolutionAuditEventV1
+} from './external-credential-resolution.js';
 
 type CredentialRow = {
   credential_binding_id: string;
@@ -107,7 +111,11 @@ function storedFromRow(row: CredentialRow): Readonly<ExternalCredentialStoredV1>
 }
 
 function failure(cause: unknown): never {
-  if (cause instanceof ExternalCredentialError) throw cause;
+  if (
+    cause instanceof ExternalCredentialError ||
+    cause instanceof ExternalCredentialResolutionError
+  )
+    throw cause;
   throw new ExternalCredentialError(
     'EXTERNAL_CREDENTIAL_SOURCE_UNAVAILABLE',
     'External credential persistence is unavailable.',
@@ -213,6 +221,40 @@ export class PostgresExternalCredentialRepositoryV1 implements ExternalCredentia
         .getPool()
         .query<CredentialRow>(`${selectCredential} WHERE b.credential_binding_id=$1`, [id]);
       return result.rows[0] ? storedFromRow(result.rows[0]) : undefined;
+    } catch (cause) {
+      return failure(cause);
+    }
+  }
+
+  async recordResolutionAudit(
+    event: Readonly<ExternalCredentialResolutionAuditEventV1>
+  ): Promise<void> {
+    try {
+      await this.database.getPool().query(
+        `INSERT INTO core_external_credential_resolution_audit_events(
+          event_id,credential_binding_id,workspace_id,provider,external_account_ref,secret_kind,
+          caller_service,capability_id,capability_version,implementation_profile_id,
+          implementation_profile_version,approved_usage,correlation_id,outcome,reason,occurred_at)
+         VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16)`,
+        [
+          event.eventId,
+          event.credentialBindingId,
+          event.workspaceId,
+          event.provider,
+          event.externalAccountRef,
+          event.secretKind,
+          event.callerService,
+          event.capabilityId,
+          event.capabilityVersion,
+          event.implementationProfileId,
+          event.implementationProfileVersion,
+          event.approvedUsage,
+          event.correlationId,
+          event.outcome,
+          event.reason,
+          event.occurredAt
+        ]
+      );
     } catch (cause) {
       return failure(cause);
     }

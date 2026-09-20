@@ -39,6 +39,8 @@ import { createOAuthCredentialCurrentnessRoutesV1 } from './oauth-credential-cur
 import type { OAuthCredentialCurrentnessServiceV1 } from './oauth-credential-currentness.js';
 import { createExternalCredentialCurrentnessRoutesV1 } from './external-credential-currentness-http.js';
 import type { ExternalCredentialCurrentnessServiceV1 } from './external-credential-currentness.js';
+import { createExternalCredentialResolutionRoutesV1 } from './external-credential-resolution-http.js';
+import type { ExternalCredentialResolutionServiceV1 } from './external-credential-resolution.js';
 import {
   fingerprintReadyPackageContentExport,
   validateReadyPackageContentExport,
@@ -115,6 +117,7 @@ export interface CoreRuntimeOptions {
   workspaceTrademarkIssueIntelligence?: WorkspaceTrademarkIssueIntelligenceHttpOptionsV1['intelligence'];
   oauthCredentialCurrentness?: Pick<OAuthCredentialCurrentnessServiceV1, 'assess'>;
   externalCredentialCurrentness?: Pick<ExternalCredentialCurrentnessServiceV1, 'assess'>;
+  externalCredentialResolution?: Pick<ExternalCredentialResolutionServiceV1, 'resolve'>;
   internalServiceSecret?: string;
 }
 function body(request: JsonRequest): Record<string, unknown> {
@@ -175,6 +178,8 @@ export function createRuntime(options: CoreRuntimeOptions = {}) {
     throw new Error('internalServiceSecret is required for OAuth credential currentness.');
   if (options.externalCredentialCurrentness && !secret)
     throw new Error('internalServiceSecret is required for external credential currentness.');
+  if (options.externalCredentialResolution && !secret)
+    throw new Error('internalServiceSecret is required for external credential resolution.');
   if (options.currentWorkspaceAuthority && !secret)
     throw new Error(
       'internalServiceSecret is required for current Workspace authority validation.'
@@ -293,6 +298,13 @@ export function createRuntime(options: CoreRuntimeOptions = {}) {
     options.externalCredentialCurrentness && secret
       ? createExternalCredentialCurrentnessRoutesV1({
           currentness: options.externalCredentialCurrentness,
+          internalServiceSecret: secret
+        })
+      : [];
+  const externalCredentialResolutionRoutes =
+    options.externalCredentialResolution && secret
+      ? createExternalCredentialResolutionRoutesV1({
+          resolver: options.externalCredentialResolution,
           internalServiceSecret: secret
         })
       : [];
@@ -806,6 +818,7 @@ export function createRuntime(options: CoreRuntimeOptions = {}) {
     ...workspaceCommercialRoutes,
     ...oauthCredentialCurrentnessRoutes,
     ...externalCredentialCurrentnessRoutes,
+    ...externalCredentialResolutionRoutes,
     ...internalOperatorPrincipalRoutes,
     ...coreAdminRoutes,
     ...systemAdminRoutes,
@@ -865,6 +878,9 @@ export * from './external-credential-crypto.js';
 export * from './external-credential-postgres.js';
 export * from './external-credential-currentness.js';
 export * from './external-credential-currentness-http.js';
+export * from './external-credential-resolution.js';
+export * from './external-credential-resolution-http.js';
+export * from './capability-provenance-http-reader.js';
 export * from './workspace-commercial.js';
 export * from './workspace-commercial-postgres.js';
 export * from './workspace-commercial-http.js';

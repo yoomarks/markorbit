@@ -62,10 +62,25 @@ import { OAuthCredentialCurrentnessServiceV1 } from './oauth-credential-currentn
 import { PostgresOAuthCredentialRepositoryV1 } from './oauth-credential-postgres.js';
 import { ExternalCredentialCurrentnessServiceV1 } from './external-credential-currentness.js';
 import { PostgresExternalCredentialRepositoryV1 } from './external-credential-postgres.js';
+import { createExternalCredentialKeyringFromEnvironmentV1 } from './external-credential-crypto.js';
+import {
+  ExternalCredentialResolutionError,
+  ExternalCredentialResolutionServiceV1
+} from './external-credential-resolution.js';
+import { HttpCapabilityProvenanceAuthorityV1 } from './capability-provenance-http-reader.js';
 
 const secret = process.env.MO_INTERNAL_SERVICE_SECRET;
 if (!secret) throw new Error('MO_INTERNAL_SERVICE_SECRET is required.');
 validateInternalServiceSecret(secret, secret);
+const externalCredentialKeyringConfigured = Boolean(
+  process.env.MO_CORE_EXTERNAL_CREDENTIAL_ACTIVE_KEY_ID &&
+  process.env.MO_CORE_EXTERNAL_CREDENTIAL_KEYS_JSON
+);
+if (
+  Boolean(process.env.MO_CORE_EXTERNAL_CREDENTIAL_ACTIVE_KEY_ID) !==
+  Boolean(process.env.MO_CORE_EXTERNAL_CREDENTIAL_KEYS_JSON)
+)
+  throw new Error('External credential encryption keyring configuration is incomplete.');
 const database = new ManagedDatabase(parseDatabaseConfig(process.env));
 await database.start();
 const query = database.getPool();
@@ -83,6 +98,28 @@ const currentWorkspaceAuthorityService = new CurrentWorkspaceAuthorityService({
   workspaces,
   memberships
 });
+const externalCredentialRepository = new PostgresExternalCredentialRepositoryV1(database);
+const externalCredentialResolution = externalCredentialKeyringConfigured
+  ? new ExternalCredentialResolutionServiceV1({
+      repository: externalCredentialRepository,
+      currentWorkspaceAuthority: currentWorkspaceAuthorityService,
+      provenance: new HttpCapabilityProvenanceAuthorityV1(
+        process.env.CAPABILITY_ENGINE_URL ?? 'http://127.0.0.1:4103',
+        secret
+      ),
+      keyring: createExternalCredentialKeyringFromEnvironmentV1()
+    })
+  : {
+      resolve: () =>
+        Promise.reject(
+          new ExternalCredentialResolutionError(
+            'EXTERNAL_CREDENTIAL_SOURCE_UNAVAILABLE',
+            'External credential encryption keyring is unavailable.',
+            503,
+            true
+          )
+        )
+    };
 const workspaceCommercial = new WorkspaceCommercialServiceV1(
   new PostgresWorkspaceCommercialRepositoryV1(database),
   async (membershipId) => {
@@ -184,9 +221,10 @@ const runtime = createRuntime({
     currentWorkspaceAuthorityService
   ),
   externalCredentialCurrentness: new ExternalCredentialCurrentnessServiceV1(
-    new PostgresExternalCredentialRepositoryV1(database),
+    externalCredentialRepository,
     currentWorkspaceAuthorityService
   ),
+  externalCredentialResolution,
   internalServiceSecret: secret
 });
 
