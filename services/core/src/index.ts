@@ -836,3 +836,4 @@ export * from './workspace-commercial-postgres.js';
 export * from './workspace-commercial-http.js';
 export * from './cnipa-citation-fact-candidate.js';
 export * from './cnipa-citation-fact-admission.js';
+export * from './us-citation-fact-admission.js';

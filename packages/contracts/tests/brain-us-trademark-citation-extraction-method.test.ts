@@ -98,6 +98,16 @@ describe('US trademark citation extraction research method', () => {
     ).toBe(false);
   });
 
+  it('recognizes the plural registration list wording used by live USPTO Final Actions', () => {
+    const officialText =
+      'Registration of the applied-for mark is refused because of a likelihood of confusion with the marks in U.S. Registration Nos. 7265161, 7265172, and 7265187.';
+
+    expect(containsExplicitUsTrademarkRegistrationCitationV1(officialText, '7265161')).toBe(true);
+    expect(containsExplicitUsTrademarkRegistrationCitationV1(officialText, '7265172')).toBe(true);
+    expect(containsExplicitUsTrademarkRegistrationCitationV1(officialText, '7265187')).toBe(true);
+    expect(containsExplicitUsTrademarkRegistrationCitationV1(officialText, '7265199')).toBe(false);
+  });
+
   it('validates a proposed candidate only when the exact selected evidence still reproduces', () => {
     const proposed = proposeUsTrademarkCitationFactCandidateV1(input());
     const result = validateUsTrademarkCitationFactCandidateV1(proposed, {
@@ -112,7 +122,7 @@ describe('US trademark citation extraction research method', () => {
       validation: {
         outcome: 'ACCEPTED',
         validatorId: 'citation-candidate-validator',
-        validatorVersion: '1.0.0',
+        validatorVersion: '1.1.0',
         decidedAt: '2026-09-19T01:01:00.000Z',
         reasonCode: null
       },
