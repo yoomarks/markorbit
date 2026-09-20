@@ -141,11 +141,7 @@ export class NotificationSendCurrentnessResolverV1 {
       if (
         rule.spec.triggerSelector.owner !== triggerEvidence.owner ||
         rule.spec.triggerSelector.eventType !== triggerEvidence.eventType ||
-        rule.spec.triggerSelector.subjectKind !== triggerEvidence.subject.kind ||
-        intent.target.owner !== triggerEvidence.subject.owner ||
-        intent.target.kind !== triggerEvidence.subject.kind ||
-        intent.target.id !== triggerEvidence.subject.id ||
-        intent.target.version !== triggerEvidence.subject.version
+        rule.spec.triggerSelector.subjectKind !== triggerEvidence.subject.kind
       )
         return result('STALE', 'TRIGGER_STALE');
       const triggerState = await this.triggers.validateCurrent(triggerEvidence);

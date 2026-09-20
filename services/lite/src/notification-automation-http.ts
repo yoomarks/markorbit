@@ -12,6 +12,11 @@ import {
   type PostgresNotificationAutomationRuleStore
 } from './notification-automation-rule.js';
 import type { NotificationSendCurrentnessResolverV1 } from './notification-send-currentness.js';
+import {
+  NotificationDeliveryRuntimeError,
+  type EmailNotificationDeliveryRuntimeV1
+} from './notification-delivery-runtime.js';
+import type { NotificationAmazonSesAuthenticatedEventIngestionV1 } from './notification-delivery-ses.js';
 
 function internal(request: JsonRequest, secret: string): void {
   if (!secret || request.headers['x-markorbit-internal-authorization'] !== secret)
@@ -90,6 +95,17 @@ function parsedSendCurrentnessBody(body: Record<string, unknown>) {
 }
 
 function mapRuleError(error: unknown): never {
+  if (error instanceof NotificationDeliveryRuntimeError)
+    throw new HttpError(
+      ['TRIGGER_NOT_FOUND'].includes(error.code)
+        ? 404
+        : error.code === 'INVALID_REQUEST'
+          ? 400
+          : 409,
+      error.code,
+      error.message,
+      error.code === 'EXECUTION_UNAVAILABLE'
+    );
   if (error instanceof NotificationAutomationRuleRuntimeError)
     throw new HttpError(error.status, error.code, error.message, error.retryable);
   throw error;
@@ -99,8 +115,67 @@ export function createNotificationAutomationRoutesV1(options: {
   internalServiceSecret: string;
   store: Pick<PostgresNotificationAutomationRuleStore, 'activate'>;
   sendCurrentness: Pick<NotificationSendCurrentnessResolverV1, 'resolve'>;
+  deliveryRuntime?: Pick<EmailNotificationDeliveryRuntimeV1, 'deliver'>;
+  providerEvents?: Pick<NotificationAmazonSesAuthenticatedEventIngestionV1, 'ingest'>;
 }): readonly JsonRoute[] {
   return [
+    ...(options.providerEvents
+      ? ([
+          {
+            method: 'POST' as const,
+            path: '/webhooks/notification-automation/email-notification/amazon-ses',
+            handle: async (request: JsonRequest) => {
+              try {
+                return json(200, await options.providerEvents!.ingest(request.body));
+              } catch {
+                throw new HttpError(
+                  401,
+                  'UNAUTHENTICATED_PROVIDER_EVENT',
+                  'Authenticated, exactly correlated SES evidence is required.'
+                );
+              }
+            }
+          }
+        ] as const)
+      : []),
+    ...(options.deliveryRuntime
+      ? ([
+          {
+            method: 'POST' as const,
+            path: '/internal/notification-automation/email-notification/deliver',
+            handle: async (request: JsonRequest) => {
+              const workspaceId = workspaceOf(request, options.internalServiceSecret);
+              const body = bodyOf(request);
+              if (
+                Object.keys(body).some(
+                  (field) => !['notificationRuleId', 'lifecycleEventId'].includes(field)
+                )
+              )
+                throw new HttpError(
+                  400,
+                  'INVALID_REQUEST',
+                  'Only exact rule and lifecycle event references are accepted.'
+                );
+              try {
+                return json(
+                  200,
+                  await options.deliveryRuntime!.deliver({
+                    workspaceId,
+                    notificationRuleId: text(
+                      body.notificationRuleId,
+                      'notificationRuleId'
+                    ) as ChannelNotificationRuleId,
+                    lifecycleEventId: text(body.lifecycleEventId, 'lifecycleEventId'),
+                    idempotencyKey: idempotencyKey(request)
+                  })
+                );
+              } catch (error) {
+                return mapRuleError(error);
+              }
+            }
+          }
+        ] as const)
+      : []),
     {
       method: 'POST',
       path: '/internal/notification-automation-rules/:notificationRuleId/activate',
