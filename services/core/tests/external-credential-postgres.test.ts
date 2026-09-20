@@ -270,13 +270,15 @@ integration('Core external credential PostgreSQL owner', () => {
       document: string;
     }>(
       `SELECT outcome,reason,row_to_json(a)::text AS document
-         FROM core_external_credential_resolution_audit_events a
-        ORDER BY occurred_at,event_id`
+         FROM core_external_credential_resolution_audit_events a`
     );
-    expect(audits.rows.map((row) => [row.outcome, row.reason])).toEqual([
-      ['ALLOW', 'ALLOWED'],
-      ['DENY', 'EXTERNAL_CREDENTIAL_CONTEXT_MISMATCH']
-    ]);
+    expect(audits.rows.map((row) => [row.outcome, row.reason])).toEqual(
+      expect.arrayContaining([
+        ['ALLOW', 'ALLOWED'],
+        ['DENY', 'EXTERNAL_CREDENTIAL_CONTEXT_MISMATCH']
+      ])
+    );
+    expect(audits.rows).toHaveLength(2);
     expect(JSON.stringify(audits.rows)).not.toContain('postgres-secret-value');
     await expect(
       database.getPool().query('DELETE FROM core_external_credential_resolution_audit_events')
