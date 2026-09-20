@@ -74,6 +74,7 @@
     "markreg_production_fee_facts": "@markorbit/markreg-service",
     "lite_work_items": "@markorbit/lite-service",
     "core_oauth_credentials": "@markorbit/core-service",
+    "core_external_credentials": "@markorbit/core-service",
     "lite_workspace_watch_targets": "@markorbit/lite-service",
     "lite_communication_links": "@markorbit/lite-service",
     "lite_workspace_directory": "@markorbit/lite-service",
@@ -101,7 +102,8 @@
     "lite_email_delivery_": "@markorbit/lite-service",
     "lite_notification_automation_rule_": "@markorbit/lite-service",
     "lite_notification_delivery_": "@markorbit/lite-service",
-    "lite_workspace_channel_identity_binding_": "@markorbit/lite-service"
+    "lite_workspace_channel_identity_binding_": "@markorbit/lite-service",
+    "core_external_credential_": "@markorbit/core-service"
   },
   "migrations": {
     "0018_identity_workspace_membership": "@markorbit/core-service",
@@ -228,6 +230,7 @@
     "0139_core_governed_human_action_receipts_notification_automation_activate": "@markorbit/core-service",
     "0140_execution_protected_external_actions_notification_send": "@markorbit/execution-service",
     "0141_lite_notification_delivery_evidence": "@markorbit/lite-service",
-    "0142_lite_workspace_channel_identity_bindings": "@markorbit/lite-service"
+    "0142_lite_workspace_channel_identity_bindings": "@markorbit/lite-service",
+    "0143_core_external_credentials": "@markorbit/core-service"
   }
 }

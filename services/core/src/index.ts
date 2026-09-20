@@ -37,6 +37,8 @@ import { createWorkspaceCommercialRoutesV1 } from './workspace-commercial-http.j
 import type { WorkspaceCommercialServiceV1 } from './workspace-commercial.js';
 import { createOAuthCredentialCurrentnessRoutesV1 } from './oauth-credential-currentness-http.js';
 import type { OAuthCredentialCurrentnessServiceV1 } from './oauth-credential-currentness.js';
+import { createExternalCredentialCurrentnessRoutesV1 } from './external-credential-currentness-http.js';
+import type { ExternalCredentialCurrentnessServiceV1 } from './external-credential-currentness.js';
 import {
   fingerprintReadyPackageContentExport,
   validateReadyPackageContentExport,
@@ -112,6 +114,7 @@ export interface CoreRuntimeOptions {
   usTrademarkMarkRepresentationMethods?: Readonly<UsTrademarkMarkRepresentationMethodResolutionAuthorityV1>;
   workspaceTrademarkIssueIntelligence?: WorkspaceTrademarkIssueIntelligenceHttpOptionsV1['intelligence'];
   oauthCredentialCurrentness?: Pick<OAuthCredentialCurrentnessServiceV1, 'assess'>;
+  externalCredentialCurrentness?: Pick<ExternalCredentialCurrentnessServiceV1, 'assess'>;
   internalServiceSecret?: string;
 }
 function body(request: JsonRequest): Record<string, unknown> {
@@ -170,6 +173,8 @@ export function createRuntime(options: CoreRuntimeOptions = {}) {
     throw new Error('internalServiceSecret is required for Workspace Brain intelligence reads.');
   if (options.oauthCredentialCurrentness && !secret)
     throw new Error('internalServiceSecret is required for OAuth credential currentness.');
+  if (options.externalCredentialCurrentness && !secret)
+    throw new Error('internalServiceSecret is required for external credential currentness.');
   if (options.currentWorkspaceAuthority && !secret)
     throw new Error(
       'internalServiceSecret is required for current Workspace authority validation.'
@@ -281,6 +286,13 @@ export function createRuntime(options: CoreRuntimeOptions = {}) {
     options.oauthCredentialCurrentness && secret
       ? createOAuthCredentialCurrentnessRoutesV1({
           currentness: options.oauthCredentialCurrentness,
+          internalServiceSecret: secret
+        })
+      : [];
+  const externalCredentialCurrentnessRoutes =
+    options.externalCredentialCurrentness && secret
+      ? createExternalCredentialCurrentnessRoutesV1({
+          currentness: options.externalCredentialCurrentness,
           internalServiceSecret: secret
         })
       : [];
@@ -793,6 +805,7 @@ export function createRuntime(options: CoreRuntimeOptions = {}) {
     ...currentWorkspaceAuthorityRoutes,
     ...workspaceCommercialRoutes,
     ...oauthCredentialCurrentnessRoutes,
+    ...externalCredentialCurrentnessRoutes,
     ...internalOperatorPrincipalRoutes,
     ...coreAdminRoutes,
     ...systemAdminRoutes,
@@ -846,6 +859,12 @@ export * from './oauth-credential-crypto.js';
 export * from './oauth-credential-postgres.js';
 export * from './oauth-credential-currentness.js';
 export * from './oauth-credential-currentness-http.js';
+export * from './credential-crypto.js';
+export * from './external-credential.js';
+export * from './external-credential-crypto.js';
+export * from './external-credential-postgres.js';
+export * from './external-credential-currentness.js';
+export * from './external-credential-currentness-http.js';
 export * from './workspace-commercial.js';
 export * from './workspace-commercial-postgres.js';
 export * from './workspace-commercial-http.js';
