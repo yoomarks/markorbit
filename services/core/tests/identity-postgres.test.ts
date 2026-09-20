@@ -70,7 +70,7 @@ integration('PostgreSQL 16 identity verification', () => {
     await database
       .getPool()
       .query(
-        'DROP TABLE IF EXISTS core_external_oauth_credential_secrets,core_external_oauth_credential_bindings,core_external_oauth_grant_attempts,core_workspace_admin_actions,core_governed_human_action_receipts,knowledge_v2_deliveries,knowledge_intake_contents,knowledge_intakes,password_credentials,account_profiles,sessions,workspace_memberships,workspaces,users CASCADE; DROP FUNCTION IF EXISTS reject_core_workspace_admin_action_mutation() CASCADE; DROP SCHEMA IF EXISTS markorbit_persistence CASCADE'
+        'DROP TABLE IF EXISTS core_external_credential_audit_events,core_external_credential_secrets,core_external_credential_bindings,core_external_oauth_credential_secrets,core_external_oauth_credential_bindings,core_external_oauth_grant_attempts,core_workspace_admin_actions,core_governed_human_action_receipts,knowledge_v2_deliveries,knowledge_intake_contents,knowledge_intakes,password_credentials,account_profiles,sessions,workspace_memberships,workspaces,users CASCADE; DROP FUNCTION IF EXISTS reject_core_external_credential_audit_event_mutation() CASCADE; DROP FUNCTION IF EXISTS reject_core_workspace_admin_action_mutation() CASCADE; DROP SCHEMA IF EXISTS markorbit_persistence CASCADE'
       );
     await migrate(database.getPool(), 'core_identity', await coreMigrations());
   });
