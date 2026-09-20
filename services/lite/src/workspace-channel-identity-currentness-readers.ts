@@ -3,9 +3,11 @@ import {
   type ChannelFeatureKeyV1
 } from '@markorbit/contracts/channel-platform';
 import type { ResolvedEntitlementV1 } from '@markorbit/contracts/workspace-commercial';
+import { parseExternalCredentialCurrentnessV1 } from '@markorbit/contracts/external-credential';
 import type {
   ChannelIdentityEntitlementReaderV1,
   ChannelIdentityProvenanceCurrentnessReaderV1,
+  ExternalCredentialCurrentnessReaderV1,
   OAuthCredentialCurrentnessReaderV1
 } from './workspace-channel-identity-currentness.js';
 
@@ -80,6 +82,27 @@ export class HttpCoreOAuthCredentialCurrentnessReaderV1
     )
       return { state: 'UNAVAILABLE' as const };
     return { state: value.state as (typeof states)[number] };
+  }
+}
+
+export class HttpCoreExternalCredentialCurrentnessReaderV1
+  extends InternalCurrentnessReaderV1
+  implements ExternalCredentialCurrentnessReaderV1
+{
+  async assess(input: Parameters<ExternalCredentialCurrentnessReaderV1['assess']>[0]) {
+    try {
+      const value = parseExternalCredentialCurrentnessV1(
+        await this.post('/internal/v1/external-credentials/currentness', input)
+      );
+      if (
+        value.credential.credentialBindingId !== input.credential.credentialBindingId ||
+        value.credential.version !== input.credential.version
+      )
+        return { state: 'UNAVAILABLE' as const };
+      return { state: value.state };
+    } catch {
+      return { state: 'UNAVAILABLE' as const };
+    }
   }
 }
 

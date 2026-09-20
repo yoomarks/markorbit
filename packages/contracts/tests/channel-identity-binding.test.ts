@@ -122,6 +122,8 @@ describe('Workspace identity-bound Channel binding', () => {
     ['password', 'secret-password'],
     ['cookie', 'session-cookie'],
     ['clientSecret', 'secret-client'],
+    ['header', 'x-provider-key: secret'],
+    ['headers', { 'x-provider-key': 'secret' }],
     ['credentials', { token: 'secret' }]
   ] as const)('rejects credential/session escape hatch %s', (key, value) => {
     const binding = activeBinding();
@@ -147,6 +149,56 @@ describe('Workspace identity-bound Channel binding', () => {
         }
       })
     ).toThrow('credential.owner must be CORE_IDENTITY');
+  });
+
+  it('accepts one exact safe external credential ref and fingerprints its version', () => {
+    const oauthBinding = activeBinding();
+    const connection = { ...oauthBinding.connection };
+    delete connection.oauthCredentialRef;
+    const external = activeBinding({
+      connection: {
+        ...connection,
+        externalCredentialRef: {
+          owner: 'CORE_IDENTITY',
+          credentialBindingId: 'external-credential-binding_sms-01',
+          version: 7
+        }
+      }
+    });
+    expect(external.connection.externalCredentialRef).toEqual({
+      owner: 'CORE_IDENTITY',
+      credentialBindingId: 'external-credential-binding_sms-01',
+      version: 7
+    });
+    expect(external.bindingFingerprintSha256).not.toBe(oauthBinding.bindingFingerprintSha256);
+    const next = activeBinding({
+      connection: {
+        ...connection,
+        externalCredentialRef: {
+          owner: 'CORE_IDENTITY',
+          credentialBindingId: 'external-credential-binding_sms-01',
+          version: 8
+        }
+      }
+    });
+    expect(next.bindingFingerprintSha256).not.toBe(external.bindingFingerprintSha256);
+  });
+
+  it('rejects both credential ref kinds in one connection', () => {
+    const binding = activeBinding();
+    expect(() =>
+      parseWorkspaceChannelIdentityBindingV1({
+        ...binding,
+        connection: {
+          ...binding.connection,
+          externalCredentialRef: {
+            owner: 'CORE_IDENTITY',
+            credentialBindingId: 'external-credential-binding_sms-01',
+            version: 1
+          }
+        }
+      })
+    ).toThrow('must not contain both');
   });
 
   it('rejects secret material nested inside the safe OAuth reference', () => {

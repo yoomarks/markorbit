@@ -68,6 +68,24 @@ suite('PostgreSQL Workspace Channel Identity Binding owner', () => {
     }
   });
 
+  const admitExternal = (idempotencyKey: string) => {
+    const command = admit(idempotencyKey, workspaceA, 'WHATSAPP_BUSINESS', 'external-account');
+    return {
+      ...command,
+      connection: {
+        capabilityRef: command.connection.capabilityRef,
+        implementationRef: command.connection.implementationRef,
+        evidenceRefs: command.connection.evidenceRefs,
+        sourceKind: 'PROVIDER_API' as const,
+        externalCredentialRef: {
+          owner: 'CORE_IDENTITY' as const,
+          credentialBindingId: 'external-credential-binding_channel-primary' as const,
+          version: 4
+        }
+      }
+    };
+  };
+
   beforeAll(async () => {
     await database.start();
     await database
@@ -123,6 +141,38 @@ suite('PostgreSQL Workspace Channel Identity Binding owner', () => {
 
     const otherWorkspace = await restarted.admitTrusted(admit('admit-primary', workspaceB));
     expect(otherWorkspace.workspaceId).toBe(workspaceB);
+  });
+
+  it('restarts and replays the exact external credential ref without secret material', async () => {
+    const command = admitExternal('admit-external');
+    const created = await store().admitTrusted(command);
+    const restarted = store();
+    expect(await restarted.admitTrusted(command)).toEqual(created);
+    expect(
+      await restarted.getExact(workspaceA, created.workspaceChannelIdentityBindingId, 1)
+    ).toMatchObject({
+      connection: {
+        externalCredentialRef: {
+          owner: 'CORE_IDENTITY',
+          credentialBindingId: 'external-credential-binding_channel-primary',
+          version: 4
+        }
+      }
+    });
+    expect(JSON.stringify(created)).not.toMatch(/apiKey|password|authorization|token/iu);
+
+    await database.getPool().query(
+      `UPDATE lite_workspace_channel_identity_binding_versions
+          SET document_json=jsonb_set(document_json,'{connection,externalCredentialRef,version}','5')
+        WHERE workspace_id=$1 AND workspace_channel_identity_binding_id=$2 AND version=1`,
+      [workspaceA, created.workspaceChannelIdentityBindingId]
+    );
+    await expect(
+      restarted.getExact(workspaceA, created.workspaceChannelIdentityBindingId, 1)
+    ).rejects.toMatchObject({ code: 'INTEGRITY_FAILURE' });
+    await expect(restarted.admitTrusted(command)).rejects.toMatchObject({
+      code: 'INTEGRITY_FAILURE'
+    });
   });
 
   it('fails closed on duplicate ACTIVE identity while keeping feature boundaries distinct', async () => {

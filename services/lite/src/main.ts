@@ -176,6 +176,7 @@ import { createWorkspaceChannelIdentityCurrentnessRoutesV1 } from './workspace-c
 import {
   HttpCapabilityChannelIdentityProvenanceReaderV1,
   HttpCoreChannelIdentityEntitlementReaderV1,
+  HttpCoreExternalCredentialCurrentnessReaderV1,
   HttpCoreOAuthCredentialCurrentnessReaderV1
 } from './workspace-channel-identity-currentness-readers.js';
 
@@ -214,6 +215,7 @@ const workspaceChannelIdentityCurrentness = new WorkspaceChannelIdentityCurrentn
   new HttpCoreChannelIdentityEntitlementReaderV1(coreUrl, internalServiceSecret),
   new UnavailableWorkspaceChannelIdentityVerificationAuthorityV1(),
   new HttpCoreOAuthCredentialCurrentnessReaderV1(coreUrl, internalServiceSecret),
+  new HttpCoreExternalCredentialCurrentnessReaderV1(coreUrl, internalServiceSecret),
   new HttpCapabilityChannelIdentityProvenanceReaderV1(capabilityEngineUrl, internalServiceSecret)
 );
 const feedbackStore = new PostgresProductLoopFeedbackStore(database, pool);

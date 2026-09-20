@@ -8,6 +8,10 @@ import {
   parseExternalOAuthCredentialRefV1,
   type ExternalOAuthCredentialRefV1
 } from './oauth-credential.js';
+import {
+  parseExternalCredentialRefV1,
+  type ExternalCredentialRefV1
+} from './external-credential.js';
 
 export type WorkspaceChannelIdentityBindingId = `workspace-channel-identity-binding_${string}`;
 
@@ -83,6 +87,7 @@ export interface WorkspaceChannelIdentityConnectionV1 {
   capabilityRef: Readonly<WorkspaceChannelCapabilityRefV1>;
   implementationRef: Readonly<WorkspaceChannelImplementationRefV1>;
   oauthCredentialRef?: Readonly<ExternalOAuthCredentialRefV1>;
+  externalCredentialRef?: Readonly<ExternalCredentialRefV1>;
   evidenceRefs: readonly string[];
 }
 export const noWorkspaceChannelIdentityAuthorityConsequencesV1 = Object.freeze({
@@ -192,6 +197,8 @@ const forbiddenCredentialKeys = new Set([
   'credential',
   'credentials',
   'authorization',
+  'header',
+  'headers',
   'bearer',
   'clientsecret',
   'browserstorage',
@@ -343,7 +350,14 @@ function parseConnection(value: unknown): WorkspaceChannelIdentityConnectionV1 {
   const item = object(value, 'connection');
   exactKeys(
     item,
-    ['sourceKind', 'capabilityRef', 'implementationRef', 'oauthCredentialRef', 'evidenceRefs'],
+    [
+      'sourceKind',
+      'capabilityRef',
+      'implementationRef',
+      'oauthCredentialRef',
+      'externalCredentialRef',
+      'evidenceRefs'
+    ],
     'connection'
   );
   if (
@@ -356,11 +370,20 @@ function parseConnection(value: unknown): WorkspaceChannelIdentityConnectionV1 {
     item.oauthCredentialRef === undefined
       ? undefined
       : parseExternalOAuthCredentialRefV1(item.oauthCredentialRef);
+  const externalCredentialRef =
+    item.externalCredentialRef === undefined
+      ? undefined
+      : parseExternalCredentialRefV1(item.externalCredentialRef);
+  if (oauthCredentialRef && externalCredentialRef)
+    throw new WorkspaceChannelIdentityBindingContractError(
+      'connection must not contain both oauthCredentialRef and externalCredentialRef.'
+    );
   return {
     sourceKind: item.sourceKind as WorkspaceChannelIdentityConnectionSourceKindV1,
     capabilityRef: parseCapabilityRef(item.capabilityRef),
     implementationRef: parseImplementationRef(item.implementationRef),
     ...(oauthCredentialRef ? { oauthCredentialRef } : {}),
+    ...(externalCredentialRef ? { externalCredentialRef } : {}),
     evidenceRefs: strings(item.evidenceRefs, 'connection.evidenceRefs')
   };
 }
