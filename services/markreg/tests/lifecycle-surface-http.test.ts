@@ -128,7 +128,13 @@ async function stack(options?: { noAction?: boolean; staleMutation?: boolean }) 
   } as unknown as FormalMatterRepository;
   const lifecycle = {
     getCurrentView: () => Promise.resolve(structuredClone(view)),
-    listEvents: () => Promise.resolve([structuredClone(event)])
+    listEvents: () => Promise.resolve([structuredClone(event)]),
+    getExactEvent: (requestedWorkspace: string, lifecycleEventId: string) =>
+      Promise.resolve(
+        requestedWorkspace === workspaceId && lifecycleEventId === event.lifecycleEventId
+          ? structuredClone(event)
+          : undefined
+      )
   } as unknown as LifecycleProjectionService;
   const recommendations = {
     getCustomerProjection: () =>
@@ -176,6 +182,28 @@ function headers(value: WorkspacePrincipal) {
 }
 
 describe('M5-WP-06 MarkReg lifecycle surfaces', () => {
+  it('exposes only an exact immutable lifecycle event to an authenticated service', async () => {
+    const base = await stack();
+    const response = await fetch(
+      `${base}/internal/v1/lifecycle-events/${encodeURIComponent(event.lifecycleEventId)}`,
+      {
+        headers: {
+          'x-markorbit-internal-authorization': secret,
+          'x-markorbit-workspace-id': workspaceId
+        }
+      }
+    );
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toEqual({ event });
+
+    const missing = await fetch(`${base}/internal/v1/lifecycle-events/lifecycle-event_missing`, {
+      headers: {
+        'x-markorbit-internal-authorization': secret,
+        'x-markorbit-workspace-id': workspaceId
+      }
+    });
+    expect(missing.status).toBe(404);
+  });
   it('returns a customer-safe bounded lifecycle without internal provenance', async () => {
     const base = await stack();
     const response = await fetch(`${base}/v1/formal-matters/${formalMatterId}/lifecycle`, {

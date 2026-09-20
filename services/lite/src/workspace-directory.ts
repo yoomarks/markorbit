@@ -695,6 +695,36 @@ export class PostgresWorkspaceDirectoryStore {
     }
   }
 
+  async findLatestByExternalIdentityReference(
+    workspaceIdValue: string,
+    referenceIdValue: string,
+    referenceVersionValue: string
+  ): Promise<readonly WorkspaceDirectoryEntryV1[]> {
+    const workspaceId = cleanWorkspaceId(workspaceIdValue);
+    const referenceId = cleanText(referenceIdValue, 'referenceId', 1000);
+    const referenceVersion = cleanText(referenceVersionValue, 'referenceVersion', 240);
+    try {
+      const result = await this.query.query<Row>(
+        `${this.latestSelect('')}
+          WHERE h.workspace_id=$1
+            AND h.status='ACTIVE'
+            AND EXISTS (
+              SELECT 1
+                FROM jsonb_array_elements(v.document_json->'externalIdentityReferences') AS ref
+               WHERE ref->>'referenceId'=$2
+                 AND (ref->>'referenceVersion' IS NULL OR ref->>'referenceVersion'=$3)
+            )
+          ORDER BY h.workspace_directory_entry_id ASC
+          LIMIT 2`,
+        [workspaceId, referenceId, referenceVersion]
+      );
+      return result.rows.map(latestItemFromRow);
+    } catch (error) {
+      if (error instanceof WorkspaceDirectoryRuntimeError) throw error;
+      throw this.persistenceError(error);
+    }
+  }
+
   async listLatest(
     workspaceIdValue: string,
     options: Readonly<ListWorkspaceDirectoryEntriesOptions> = {}

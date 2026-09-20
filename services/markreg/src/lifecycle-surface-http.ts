@@ -4,7 +4,10 @@ import {
   type FormalMatterId,
   type WorkspacePrincipal
 } from '@markorbit/contracts';
-import type { RecommendedActionId } from '@markorbit/contracts/evidence-lifecycle';
+import type {
+  LifecycleEventId,
+  RecommendedActionId
+} from '@markorbit/contracts/evidence-lifecycle';
 import { HttpError, json, type JsonRequest, type JsonRoute } from '@markorbit/service-kit';
 import {
   ExaminationStageReadService,
@@ -141,6 +144,37 @@ export function createMarkRegLifecycleSurfaceRoutes(
 
   return [
     ...examinationRoutes,
+    {
+      method: 'GET',
+      path: '/internal/v1/lifecycle-events/:lifecycleEventId',
+      handle: async (request) => {
+        if (
+          !trusted(
+            options.internalServiceSecret,
+            request.headers['x-markorbit-internal-authorization']
+          )
+        )
+          throw new HttpError(
+            401,
+            'UNTRUSTED_INTERNAL_CALLER',
+            'Trusted internal authorization is required.'
+          );
+        const workspaceId = request.headers['x-markorbit-workspace-id']?.trim().toLowerCase();
+        if (!workspaceId)
+          throw new HttpError(400, 'WORKSPACE_REQUIRED', 'Trusted Workspace context is required.');
+        try {
+          const event = await options
+            .lifecycleServiceFor(workspaceId)
+            .getExactEvent(workspaceId, request.params.lifecycleEventId! as LifecycleEventId);
+          if (!event)
+            throw new HttpError(404, 'LIFECYCLE_EVENT_NOT_FOUND', 'Lifecycle event was not found.');
+          return json(200, { event });
+        } catch (error) {
+          if (error instanceof HttpError) throw error;
+          return mapSurfaceError(error);
+        }
+      }
+    },
     {
       method: 'GET',
       path: '/v1/formal-matters/:formalMatterId/lifecycle',

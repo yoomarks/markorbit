@@ -1,4 +1,4 @@
-import { createHash, randomUUID } from 'node:crypto';
+import { createHash, createHmac, createVerify, randomUUID } from 'node:crypto';
 import {
   noEmailDeliveryAuthorityConsequencesV1,
   parseEmailDeliveryAttemptV1,
@@ -54,6 +54,202 @@ export interface AmazonSesRoutingResolver {
     workspaceId: string,
     routingPartitionRef: string
   ): Promise<Readonly<AmazonSesTenantRouting> | null>;
+}
+
+export interface AmazonSesEnvironmentRouteV1 extends AmazonSesTenantRouting {
+  accessKeyId: string;
+  secretAccessKey: string;
+  sessionToken?: string;
+  snsTopicArn?: string;
+}
+
+/** Bounded production resolver; credentials remain process configuration, never delivery truth. */
+export class EnvironmentAmazonSesRoutingResolverV1 implements AmazonSesRoutingResolver {
+  private readonly routes: readonly Readonly<AmazonSesEnvironmentRouteV1>[];
+
+  constructor(serialized: string) {
+    const parsed = JSON.parse(serialized) as unknown;
+    if (!Array.isArray(parsed)) throw new Error('MO_SES_ROUTES_JSON must be an array.');
+    this.routes = parsed as readonly Readonly<AmazonSesEnvironmentRouteV1>[];
+  }
+
+  resolve(workspaceId: string, routingPartitionRef: string) {
+    const route = this.routes.find(
+      (candidate) =>
+        candidate.workspaceId.toLowerCase() === workspaceId.toLowerCase() &&
+        candidate.routingPartitionRef === routingPartitionRef
+    );
+    return Promise.resolve(route ?? null);
+  }
+
+  credentials(workspaceId: string, routingPartitionRef: string) {
+    return this.routes.find(
+      (candidate) =>
+        candidate.workspaceId.toLowerCase() === workspaceId.toLowerCase() &&
+        candidate.routingPartitionRef === routingPartitionRef
+    );
+  }
+
+  credentialsForTenant(tenantName: string, configurationSetName: string) {
+    return this.routes.find(
+      (candidate) =>
+        candidate.tenantName === tenantName &&
+        candidate.configurationSetName === configurationSetName
+    );
+  }
+
+  routeForTopic(topicArn: string) {
+    return this.routes.find((candidate) => candidate.snsTopicArn === topicArn);
+  }
+}
+
+const hmac = (key: string | Buffer, value: string) =>
+  createHmac('sha256', key).update(value, 'utf8').digest();
+
+/** Minimal SES V2 HTTPS client using AWS Signature V4 and process-owned credentials. */
+export class AwsSignedAmazonSesV2ClientV1 implements AmazonSesV2Client {
+  constructor(
+    private readonly routing: EnvironmentAmazonSesRoutingResolverV1,
+    private readonly fetchImpl: typeof fetch = fetch,
+    private readonly clock: () => Date = () => new Date()
+  ) {}
+
+  async sendEmail(region: string, input: Readonly<AmazonSesV2SendEmailInput>) {
+    const route = this.routing.credentialsForTenant(input.TenantName, input.ConfigurationSetName);
+    if (!route || route.region !== region) throw new Error('SES_CREDENTIAL_ROUTE_NOT_FOUND');
+    const host = `email.${region}.amazonaws.com`;
+    const path = '/v2/email/outbound-emails';
+    const body = JSON.stringify(input);
+    const payloadHash = createHash('sha256').update(body).digest('hex');
+    const now = this.clock();
+    const amzDate = now.toISOString().replace(/[:-]|\.\d{3}/gu, '');
+    const date = amzDate.slice(0, 8);
+    const headers: Record<string, string> = {
+      'content-type': 'application/json',
+      host,
+      'x-amz-date': amzDate,
+      ...(route.sessionToken ? { 'x-amz-security-token': route.sessionToken } : {})
+    };
+    const signedNames = Object.keys(headers).sort().join(';');
+    const canonicalHeaders = Object.keys(headers)
+      .sort()
+      .map((name) => `${name}:${headers[name]!.trim()}\n`)
+      .join('');
+    const canonicalRequest = `POST\n${path}\n\n${canonicalHeaders}\n${signedNames}\n${payloadHash}`;
+    const scope = `${date}/${region}/ses/aws4_request`;
+    const stringToSign = `AWS4-HMAC-SHA256\n${amzDate}\n${scope}\n${createHash('sha256').update(canonicalRequest).digest('hex')}`;
+    const dateKey = hmac(`AWS4${route.secretAccessKey}`, date);
+    const regionKey = hmac(dateKey, region);
+    const serviceKey = hmac(regionKey, 'ses');
+    const signingKey = hmac(serviceKey, 'aws4_request');
+    headers.authorization = `AWS4-HMAC-SHA256 Credential=${route.accessKeyId}/${scope}, SignedHeaders=${signedNames}, Signature=${createHmac('sha256', signingKey).update(stringToSign).digest('hex')}`;
+    const response = await this.fetchImpl(`https://${host}${path}`, {
+      method: 'POST',
+      headers,
+      body
+    });
+    const payload = (await response.json().catch(() => ({}))) as { MessageId?: string };
+    if (!response.ok)
+      throw Object.assign(new Error('SES_PROVIDER_REJECTED'), {
+        retryable: response.status >= 500
+      });
+    return payload;
+  }
+}
+
+type SnsEnvelope = Record<string, unknown>;
+
+export class AmazonSnsSesEventAuthenticatorV1 implements AmazonSesEventAuthenticator {
+  private readonly certificates = new Map<string, string>();
+
+  constructor(
+    private readonly routing: EnvironmentAmazonSesRoutingResolverV1,
+    private readonly attemptForProviderMessage: (
+      workspaceId: string,
+      providerMessageRef: string
+    ) => Promise<string | undefined>,
+    private readonly fetchImpl: typeof fetch = fetch,
+    private readonly now: () => string = () => new Date().toISOString()
+  ) {}
+
+  async verifyAndExtract(raw: unknown): Promise<Readonly<AmazonSesVerifiedEventEnvelope>> {
+    const envelope = object(raw);
+    const type = scalar(envelope.Type);
+    if (type !== 'Notification')
+      throw new AmazonSesDeliveryAdapterError(
+        'Only authenticated SNS Notification envelopes are accepted.'
+      );
+    const topicArn = scalar(envelope.TopicArn);
+    const route = this.routing.routeForTopic(topicArn);
+    if (!route)
+      throw new AmazonSesDeliveryAdapterError('SNS topic is not bound to a Workspace SES route.');
+    const certUrl = scalar(envelope.SigningCertURL ?? envelope.SigningCertUrl);
+    const signature = scalar(envelope.Signature);
+    const version = scalar(envelope.SignatureVersion);
+    if (!signature || !this.validCertificateUrl(certUrl) || !['1', '2'].includes(version))
+      throw new AmazonSesDeliveryAdapterError('SNS signature metadata is invalid.');
+    const certificate = await this.certificate(certUrl);
+    const verifier = createVerify(version === '1' ? 'RSA-SHA1' : 'RSA-SHA256');
+    verifier.update(this.signingString(envelope), 'utf8');
+    verifier.end();
+    if (!verifier.verify(certificate, signature, 'base64'))
+      throw new AmazonSesDeliveryAdapterError('SNS signature verification failed.');
+    let event: unknown;
+    try {
+      event = JSON.parse(scalar(envelope.Message));
+    } catch {
+      throw new AmazonSesDeliveryAdapterError('SNS Message is not valid SES event JSON.');
+    }
+    const eventRecord = object(event);
+    const mail = object(eventRecord.mail);
+    const providerMessageRef = scalar(mail.messageId ?? mail.message_id);
+    if (!providerMessageRef)
+      throw new AmazonSesDeliveryAdapterError('SES event messageId is required.');
+    const attemptId = await this.attemptForProviderMessage(route.workspaceId, providerMessageRef);
+    if (!attemptId)
+      throw new AmazonSesDeliveryAdapterError('Unknown SES provider message reference.');
+    return {
+      event,
+      workspaceId: route.workspaceId,
+      deliveryAttemptId: attemptId as never,
+      routingPartitionRef: route.routingPartitionRef,
+      tenantName: route.tenantName,
+      observedAt: this.now(),
+      providerEventId: scalar(envelope.MessageId)
+    };
+  }
+
+  private validCertificateUrl(value: string) {
+    try {
+      const url = new URL(value);
+      return (
+        url.protocol === 'https:' &&
+        /^sns[.-][a-z0-9-]+\.amazonaws\.com$/u.test(url.hostname) &&
+        /^\/SimpleNotificationService-[A-Za-z0-9_-]+\.pem$/u.test(url.pathname)
+      );
+    } catch {
+      return false;
+    }
+  }
+
+  private async certificate(url: string) {
+    const cached = this.certificates.get(url);
+    if (cached) return cached;
+    const response = await this.fetchImpl(url);
+    if (!response.ok)
+      throw new AmazonSesDeliveryAdapterError('SNS signing certificate is unavailable.');
+    const certificate = await response.text();
+    this.certificates.set(url, certificate);
+    return certificate;
+  }
+
+  private signingString(envelope: SnsEnvelope) {
+    const fields = ['Message', 'MessageId', 'Subject', 'Timestamp', 'TopicArn', 'Type'];
+    return fields
+      .filter((field) => envelope[field] !== undefined)
+      .map((field) => `${field}\n${scalar(envelope[field])}\n`)
+      .join('');
+  }
 }
 
 export type AmazonSesMaterializedEmail = MaterializedEmailDelivery;

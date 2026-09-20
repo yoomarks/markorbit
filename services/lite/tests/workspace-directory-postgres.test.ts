@@ -234,6 +234,51 @@ suite('PostgreSQL Workspace Directory durable owner runtime', () => {
     ).rejects.toMatchObject({ code: 'INTEGRITY_FAILURE' });
   });
 
+  it('resolves current entries by exact external identity reference without list truncation semantics', async () => {
+    const s = store();
+    const reference = {
+      kind: 'EXTERNAL_IDENTITY' as const,
+      sourceClass: 'EXTERNAL_REFERENCE' as const,
+      referenceId: 'formal-matter_exact-target',
+      referenceVersion: '7',
+      observedAt: '2026-09-11T08:00:00.000Z',
+      verifiedLegalIdentityByDirectory: false as const,
+      managedTrademarkRelationshipEstablishedByDirectory: false as const
+    };
+    const target = await s.create({
+      ...create('exact-reference-target'),
+      externalIdentityReferences: [reference]
+    });
+    await s.create({
+      ...create('exact-reference-other'),
+      externalIdentityReferences: [{ ...reference, referenceId: 'formal-matter_other' }]
+    });
+    await s.create({
+      ...create('exact-reference-other-workspace', { workspaceId: otherWorkspaceId }),
+      externalIdentityReferences: [reference]
+    });
+
+    expect(
+      await s.findLatestByExternalIdentityReference(
+        workspaceId,
+        reference.referenceId,
+        reference.referenceVersion
+      )
+    ).toEqual([target]);
+
+    await s.create({
+      ...create('exact-reference-duplicate', { displayName: 'Duplicate Exact Target' }),
+      externalIdentityReferences: [reference]
+    });
+    expect(
+      await s.findLatestByExternalIdentityReference(
+        workspaceId,
+        reference.referenceId,
+        reference.referenceVersion
+      )
+    ).toHaveLength(2);
+  });
+
   it('keeps external applicant references as local pointers with no verified/managed authority', async () => {
     const created = await store().create(create('authority-create'));
     expect(created.externalIdentityReferences[0]).toMatchObject({

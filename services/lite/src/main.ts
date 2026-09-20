@@ -49,11 +49,22 @@ import {
   HttpCoreNotificationAutomationEntitlementReader,
   HttpCoreNotificationAutomationGovernanceVerifier
 } from './notification-automation-governance.js';
-import {
-  NotificationSendCurrentnessResolverV1,
-  UnavailableNotificationTriggerEvidenceCurrentnessReaderV1
-} from './notification-send-currentness.js';
+import { NotificationSendCurrentnessResolverV1 } from './notification-send-currentness.js';
+import { MarkRegLifecycleNotificationTriggerCurrentnessReaderV1 } from './notification-trigger-markreg.js';
 import { createNotificationAutomationRoutesV1 } from './notification-automation-http.js';
+import { PostgresNotificationDeliveryStore } from './notification-delivery.js';
+import {
+  EmailNotificationDeliveryRuntimeV1,
+  HttpNotificationExecutionClientV1,
+  MarkRegSubjectWorkspaceDirectoryEmailResolverV1
+} from './notification-delivery-runtime.js';
+import {
+  AmazonSesV2EmailTransport,
+  AmazonSnsSesEventAuthenticatorV1,
+  AwsSignedAmazonSesV2ClientV1,
+  EnvironmentAmazonSesRoutingResolverV1
+} from './email-delivery-ses.js';
+import { NotificationAmazonSesAuthenticatedEventIngestionV1 } from './notification-delivery-ses.js';
 import {
   createEmailCampaignDeliveryCurrentnessResolver,
   WorkspaceDirectoryEmailEndpointResolver
@@ -170,6 +181,7 @@ if (!configuredInternalServiceSecret)
   throw new Error('MO_INTERNAL_SERVICE_SECRET is required for the durable Lite runtime.');
 const internalServiceSecret: string = configuredInternalServiceSecret;
 const markRegUrl = process.env.MARKREG_URL ?? 'http://127.0.0.1:4105';
+const executionUrl = process.env.EXECUTION_URL ?? 'http://127.0.0.1:4104';
 const dataEngineUrl = process.env.DATA_ENGINE_URL;
 const dataEngineApiKey = process.env.DATA_ENGINE_API_KEY;
 const coreUrl = process.env.CORE_URL ?? 'http://127.0.0.1:4101';
@@ -343,14 +355,61 @@ const notificationAutomationRuleCurrentness = new NotificationAutomationRuleCurr
   emailSenderProfileStore,
   new HttpCoreNotificationAutomationEntitlementReader(coreUrl, internalServiceSecret)
 );
+const notificationEndpointResolver = new WorkspaceDirectoryEmailEndpointResolver(
+  workspaceDirectoryStore
+);
+const notificationTriggerReader = new MarkRegLifecycleNotificationTriggerCurrentnessReaderV1(
+  markRegUrl,
+  internalServiceSecret
+);
 const notificationSendCurrentness = new NotificationSendCurrentnessResolverV1(
   notificationAutomationRuleStore,
   notificationAutomationRuleCurrentness,
   notificationAutomationGovernance,
-  new UnavailableNotificationTriggerEvidenceCurrentnessReaderV1(),
-  new WorkspaceDirectoryEmailEndpointResolver(workspaceDirectoryStore),
+  notificationTriggerReader,
+  notificationEndpointResolver,
   outboundContactPolicyStore
 );
+const notificationDeliveryStore = new PostgresNotificationDeliveryStore(database, pool);
+const notificationSesRouting = process.env.MO_SES_ROUTES_JSON
+  ? new EnvironmentAmazonSesRoutingResolverV1(process.env.MO_SES_ROUTES_JSON)
+  : undefined;
+const notificationDeliveryRuntime = (() => {
+  if (!notificationSesRouting) return undefined;
+  return new EmailNotificationDeliveryRuntimeV1(
+    notificationAutomationRuleStore,
+    notificationTriggerReader,
+    new MarkRegSubjectWorkspaceDirectoryEmailResolverV1(
+      workspaceDirectoryStore,
+      notificationEndpointResolver
+    ),
+    contentStore,
+    emailSenderProfileStore,
+    new HttpNotificationExecutionClientV1(executionUrl, internalServiceSecret),
+    notificationDeliveryStore,
+    new AmazonSesV2EmailTransport(
+      new AwsSignedAmazonSesV2ClientV1(notificationSesRouting),
+      notificationSesRouting
+    )
+  );
+})();
+const notificationProviderEvents = notificationSesRouting
+  ? new NotificationAmazonSesAuthenticatedEventIngestionV1(
+      new AmazonSnsSesEventAuthenticatorV1(
+        notificationSesRouting,
+        async (workspaceId, providerMessageRef) =>
+          (
+            await notificationDeliveryStore.findByProviderSubmissionRef(
+              workspaceId,
+              providerMessageRef
+            )
+          )?.notificationDeliveryAttemptId
+      ),
+      notificationDeliveryStore,
+      emailSenderProfileStore,
+      outboundContactPolicyStore
+    )
+  : undefined;
 const candidateStore = new PostgresLiteCandidateQualificationStore(
   database,
   pool,
@@ -576,7 +635,9 @@ const runtime = createServiceRuntime(serviceManifest, {
     ...createNotificationAutomationRoutesV1({
       internalServiceSecret,
       store: notificationAutomationRuleStore,
-      sendCurrentness: notificationSendCurrentness
+      sendCurrentness: notificationSendCurrentness,
+      ...(notificationDeliveryRuntime ? { deliveryRuntime: notificationDeliveryRuntime } : {}),
+      ...(notificationProviderEvents ? { providerEvents: notificationProviderEvents } : {})
     }),
     ...createTradingStudioReadRoutes({
       internalServiceSecret,

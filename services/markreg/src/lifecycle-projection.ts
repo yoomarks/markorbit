@@ -78,6 +78,10 @@ export interface LifecycleProjectionRepository {
     workspaceId: string,
     formalMatterId: FormalMatterId
   ): Promise<readonly LifecycleEventProjection[]>;
+  getExactEvent(
+    workspaceId: string,
+    lifecycleEventId: LifecycleEventId
+  ): Promise<LifecycleEventProjection | undefined>;
 }
 
 const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -434,6 +438,20 @@ export class PostgresLifecycleProjectionRepository implements LifecycleProjectio
     }
   }
 
+  async getExactEvent(workspaceId: string, lifecycleEventId: LifecycleEventId) {
+    try {
+      return await this.findEvent(this.query, workspaceId, lifecycleEventId);
+    } catch (cause) {
+      throw new LifecycleProjectionError(
+        'PERSISTENCE_UNAVAILABLE',
+        'MarkReg lifecycle projection persistence is unavailable.',
+        503,
+        undefined,
+        { cause: cause instanceof Error ? cause : undefined }
+      );
+    }
+  }
+
   async listEvents(workspaceId: string, formalMatterId: FormalMatterId) {
     try {
       const rows = await this.query.query(
@@ -709,6 +727,10 @@ export class LifecycleProjectionService {
 
   listEvents(workspaceId: string, formalMatterId: FormalMatterId) {
     return this.repository.listEvents(cleanWorkspaceId(workspaceId), formalMatterId);
+  }
+
+  getExactEvent(workspaceId: string, lifecycleEventId: LifecycleEventId) {
+    return this.repository.getExactEvent(cleanWorkspaceId(workspaceId), lifecycleEventId);
   }
 }
 
