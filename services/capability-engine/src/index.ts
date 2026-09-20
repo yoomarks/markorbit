@@ -69,6 +69,7 @@ export * from './current-source-admission-evidence-v5.js';
 export * from './current-source-admission-evidence.js';
 export * from './current-source-admission.js';
 export * from './executable-method-runtime.js';
+export * from './external-credential-provider.js';
 export * from './managed-ai-execution-claim.js';
 export * from './managed-ai-exact-output.js';
 export * from './managed-ai-http.js';

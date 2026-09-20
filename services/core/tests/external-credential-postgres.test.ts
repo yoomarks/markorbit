@@ -15,6 +15,10 @@ import {
 import { ExternalCredentialServiceV1 } from '../src/external-credential.js';
 import { ExternalCredentialKeyringV1 } from '../src/external-credential-crypto.js';
 import { PostgresExternalCredentialRepositoryV1 } from '../src/external-credential-postgres.js';
+import {
+  ExternalCredentialResolutionServiceV1,
+  externalCredentialApprovedUsageV1
+} from '../src/external-credential-resolution.js';
 
 const url = process.env.AUTH_TEST_DATABASE_URL;
 const required = process.env.AUTH_POSTGRES_TEST_REQUIRED === '1';
@@ -68,7 +72,7 @@ function service(activeKeyId = 'key-v1') {
 async function seed() {
   const pool = database.getPool();
   await pool.query(
-    'TRUNCATE core_external_credential_audit_events,core_external_credential_secrets,core_external_credential_bindings,workspace_memberships,workspaces,users CASCADE'
+    'TRUNCATE core_external_credential_resolution_audit_events,core_external_credential_audit_events,core_external_credential_secrets,core_external_credential_bindings,workspace_memberships,workspaces,users CASCADE'
   );
   await new PostgresUserRepository(pool).create({
     userId,
@@ -209,5 +213,73 @@ integration('Core external credential PostgreSQL owner', () => {
       created.credentialBindingId
     );
     expect(stored).toMatchObject({ binding: { version: 2 }, secretGeneration: 2 });
+  });
+
+  it('resolves only through exact current provenance and persists metadata-only immutable audit', async () => {
+    const owner = service();
+    const created = await owner.createCredential(principal(), {
+      provider: 'TEST_PROVIDER',
+      externalAccountRef: 'account-1385',
+      secretKind: 'BASIC',
+      allowedCapabilityIds: ['capability.test'],
+      secret: { kind: 'BASIC', username: 'bounded-user', password: 'postgres-secret-value' }
+    });
+    const repository = new PostgresExternalCredentialRepositoryV1(database);
+    const resolver = new ExternalCredentialResolutionServiceV1({
+      repository,
+      currentWorkspaceAuthority: new CurrentWorkspaceAuthorityService({
+        users: new PostgresUserRepository(database.getPool()),
+        workspaces: new PostgresWorkspaceRepository(database.getPool()),
+        memberships: new PostgresMembershipRepository(database.getPool())
+      }),
+      provenance: { assess: () => Promise.resolve({ state: 'CURRENT' }) },
+      keyring: new ExternalCredentialKeyringV1({
+        activeKeyId: 'key-v1',
+        keys: { 'key-v1': Buffer.alloc(32, 1) }
+      }),
+      clock: () => new Date('2026-09-20T11:00:00.000Z')
+    });
+    const request = {
+      callerService: 'CAPABILITY_ENGINE' as const,
+      credential: {
+        owner: 'CORE_IDENTITY' as const,
+        credentialBindingId: created.credentialBindingId,
+        version: created.version
+      },
+      expectedWorkspaceId: workspaceId,
+      expectedProvider: 'TEST_PROVIDER',
+      expectedExternalAccountRef: 'account-1385',
+      expectedSecretKind: 'BASIC' as const,
+      requiredCapabilityId: 'capability.test',
+      requiredCapabilityVersion: '1.0.0',
+      implementationProfileId: 'implementation-profile_test-v1',
+      implementationProfileVersion: 1,
+      correlationId: 'correlation-postgres-1385',
+      approvedUsage: externalCredentialApprovedUsageV1
+    };
+    await expect(resolver.resolve(request)).resolves.toMatchObject({
+      secret: { kind: 'BASIC', username: 'bounded-user', password: 'postgres-secret-value' },
+      createsExecutionAuthority: false
+    });
+    await expect(
+      resolver.resolve({ ...request, expectedExternalAccountRef: 'forged-account' })
+    ).rejects.toMatchObject({ code: 'EXTERNAL_CREDENTIAL_CONTEXT_MISMATCH' });
+    const audits = await database.getPool().query<{
+      outcome: string;
+      reason: string;
+      document: string;
+    }>(
+      `SELECT outcome,reason,row_to_json(a)::text AS document
+         FROM core_external_credential_resolution_audit_events a
+        ORDER BY occurred_at,event_id`
+    );
+    expect(audits.rows.map((row) => [row.outcome, row.reason])).toEqual([
+      ['ALLOW', 'ALLOWED'],
+      ['DENY', 'EXTERNAL_CREDENTIAL_CONTEXT_MISMATCH']
+    ]);
+    expect(JSON.stringify(audits.rows)).not.toContain('postgres-secret-value');
+    await expect(
+      database.getPool().query('DELETE FROM core_external_credential_resolution_audit_events')
+    ).rejects.toThrow(/immutable/u);
   });
 });

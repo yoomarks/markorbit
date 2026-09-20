@@ -1,6 +1,12 @@
 import { createServer, type Server } from 'node:http';
 import type { IncomingMessage, ServerResponse } from 'node:http';
 
+export type {
+  ExternalCredentialResolutionRequestWireV1,
+  ResolvedExternalCredentialSecretWireV1,
+  ResolvedExternalCredentialWireV1
+} from './external-credential-resolution.js';
+
 export interface ServiceManifest {
   name: string;
   port: number;
