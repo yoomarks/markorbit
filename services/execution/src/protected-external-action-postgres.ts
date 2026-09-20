@@ -30,13 +30,13 @@ export class PostgresProtectedExternalActionRepository implements ProtectedExter
     );
   }
 
-  async createAuthorization(
-    authorization: Readonly<ProtectedExternalActionAuthorizationV1>,
+  async createAuthorization<T extends ProtectedExternalActionAuthorizationV1>(
+    authorization: Readonly<T>,
     requestFingerprint: string
   ) {
     try {
       return await this.database.transact(async (client) => {
-        const replay = await this.commandWithClient<ProtectedExternalActionAuthorizationV1>(
+        const replay = await this.commandWithClient<T>(
           client,
           authorization.workspaceId,
           authorization.idempotencyKey,
@@ -46,6 +46,9 @@ export class PostgresProtectedExternalActionRepository implements ProtectedExter
           if (replay.requestFingerprint !== requestFingerprint) this.conflict();
           return replay.result;
         }
+        const record = authorization as Readonly<ProtectedExternalActionAuthorizationV1>;
+        const humanReceipt =
+          record.actionKind === 'NOTIFICATION_SEND' ? undefined : record.humanReceipt;
         await client.query(
           `INSERT INTO execution_protected_action_authorizations(
              workspace_id,authorization_id,version,action_kind,effect_fingerprint_sha256,
@@ -57,8 +60,8 @@ export class PostgresProtectedExternalActionRepository implements ProtectedExter
             authorization.version,
             authorization.actionKind,
             authorization.effectFingerprintSha256,
-            authorization.humanReceipt.receiptId,
-            authorization.humanReceipt.receiptVersion,
+            humanReceipt?.receiptId ?? null,
+            humanReceipt?.receiptVersion ?? null,
             authorization.authorizationStatus,
             JSON.stringify(authorization),
             authorization.authorizedAt,
@@ -126,13 +129,13 @@ export class PostgresProtectedExternalActionRepository implements ProtectedExter
     return this.command<ProtectedExternalActionReleaseV1>(workspaceId, idempotencyKey, 'RELEASE');
   }
 
-  async createRelease(
-    release: Readonly<ProtectedExternalActionReleaseV1>,
+  async createRelease<T extends ProtectedExternalActionReleaseV1>(
+    release: Readonly<T>,
     requestFingerprint: string
   ) {
     try {
       return await this.database.transact(async (client) => {
-        const replay = await this.commandWithClient<ProtectedExternalActionReleaseV1>(
+        const replay = await this.commandWithClient<T>(
           client,
           release.workspaceId,
           release.idempotencyKey,
@@ -175,7 +178,7 @@ export class PostgresProtectedExternalActionRepository implements ProtectedExter
       if ((cause as { code?: string }).code === '23505')
         throw new ProtectedExternalActionError(
           'RELEASE_ALREADY_EXISTS',
-          'This exact authorization already has an immutable release.'
+          'This exact authorization or protected Notification effect already has an immutable release.'
         );
       throw this.map(cause);
     }

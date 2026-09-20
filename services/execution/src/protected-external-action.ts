@@ -1,10 +1,15 @@
 import { createHash, randomUUID } from 'node:crypto';
 import {
   assertEmailCampaignSendIntentV1,
+  assertNotificationSendBindingV1,
   assertTradingListingPublicationIntentV1,
   type CoreHumanActionReceiptBindingV1,
   type EmailCampaignSendCurrentnessV1,
   type EmailCampaignSendIntentV1,
+  type NotificationSendCurrentnessV1,
+  type ChannelNotificationSendIntentV1,
+  type ChannelNotificationTriggerEvidenceV1,
+  type ChannelNotificationAutomationGovernanceEvidenceV1,
   type ProtectedExternalActionAuthorizationId,
   type ProtectedExternalActionAuthorizationStatusV1,
   type ProtectedExternalActionAuthorizationV1,
@@ -27,6 +32,11 @@ export type ProtectedExternalActionErrorCode =
   | 'EMAIL_CAMPAIGN_INTENT_SUPPRESSED'
   | 'EMAIL_CAMPAIGN_INTENT_UNKNOWN'
   | 'EMAIL_CAMPAIGN_INTENT_UNAVAILABLE'
+  | 'NOTIFICATION_INTENT_STALE'
+  | 'NOTIFICATION_INTENT_REVOKED'
+  | 'NOTIFICATION_INTENT_SUPPRESSED'
+  | 'NOTIFICATION_INTENT_UNKNOWN'
+  | 'NOTIFICATION_INTENT_UNAVAILABLE'
   | 'AUTHORIZATION_NOT_FOUND'
   | 'AUTHORIZATION_STALE'
   | 'AUTHORIZATION_REVOKED'
@@ -58,10 +68,10 @@ export interface ProtectedExternalActionRepository {
     workspaceId: string,
     idempotencyKey: string
   ): Promise<ProtectedActionCommandEntry<ProtectedExternalActionAuthorizationV1> | undefined>;
-  createAuthorization(
-    authorization: Readonly<ProtectedExternalActionAuthorizationV1>,
+  createAuthorization<T extends ProtectedExternalActionAuthorizationV1>(
+    authorization: Readonly<T>,
     requestFingerprint: string
-  ): Promise<ProtectedExternalActionAuthorizationV1>;
+  ): Promise<T>;
   findAuthorization(
     workspaceId: string,
     authorizationId: ProtectedExternalActionAuthorizationId
@@ -75,10 +85,10 @@ export interface ProtectedExternalActionRepository {
     workspaceId: string,
     idempotencyKey: string
   ): Promise<ProtectedActionCommandEntry<ProtectedExternalActionReleaseV1> | undefined>;
-  createRelease(
-    release: Readonly<ProtectedExternalActionReleaseV1>,
+  createRelease<T extends ProtectedExternalActionReleaseV1>(
+    release: Readonly<T>,
     requestFingerprint: string
-  ): Promise<ProtectedExternalActionReleaseV1>;
+  ): Promise<T>;
 }
 
 export interface CoreHumanReceiptCurrentnessClient {
@@ -96,6 +106,28 @@ export interface EmailCampaignSendCurrentnessClient {
     intent: Readonly<EmailCampaignSendIntentV1>,
     humanReceipt: Readonly<CoreHumanActionReceiptBindingV1>
   ): Promise<EmailCampaignSendCurrentnessV1>;
+}
+export interface NotificationSendCurrentnessClient {
+  validateCurrent(
+    intent: Readonly<ChannelNotificationSendIntentV1>,
+    triggerEvidence: Readonly<ChannelNotificationTriggerEvidenceV1>,
+    activationEvidence: Readonly<ChannelNotificationAutomationGovernanceEvidenceV1>
+  ): Promise<NotificationSendCurrentnessV1>;
+}
+
+export interface AuthorizeNotificationSendCommand {
+  workspaceId: string;
+  intent: Readonly<ChannelNotificationSendIntentV1>;
+  triggerEvidence: Readonly<ChannelNotificationTriggerEvidenceV1>;
+  activationEvidence: Readonly<ChannelNotificationAutomationGovernanceEvidenceV1>;
+  idempotencyKey: string;
+}
+
+export interface ReleaseNotificationSendCommand {
+  workspaceId: string;
+  authorizationId: ProtectedExternalActionAuthorizationId;
+  authorizationVersion: number;
+  idempotencyKey: string;
 }
 
 export interface AuthorizeTradingListingPublishCommand {
@@ -183,6 +215,36 @@ function mapEmailCampaignCurrentness(value: Readonly<EmailCampaignSendCurrentnes
   );
 }
 
+function mapNotificationCurrentness(value: Readonly<NotificationSendCurrentnessV1>): void {
+  if (value.state === 'CURRENT') return;
+  if (value.state === 'REVOKED')
+    throw new ProtectedExternalActionError(
+      'NOTIFICATION_INTENT_REVOKED',
+      'Notification send intent contains revoked owner state.'
+    );
+  if (value.state === 'SUPPRESSED')
+    throw new ProtectedExternalActionError(
+      'NOTIFICATION_INTENT_SUPPRESSED',
+      'Notification send intent is currently suppressed.'
+    );
+  if (value.state === 'UNKNOWN')
+    throw new ProtectedExternalActionError(
+      'NOTIFICATION_INTENT_UNKNOWN',
+      'Notification send currentness is unknown.'
+    );
+  if (value.state === 'UNAVAILABLE')
+    throw new ProtectedExternalActionError(
+      'NOTIFICATION_INTENT_UNAVAILABLE',
+      'Notification send currentness source is unavailable.',
+      503,
+      true
+    );
+  throw new ProtectedExternalActionError(
+    'NOTIFICATION_INTENT_STALE',
+    'Notification send intent is stale.'
+  );
+}
+
 function assertReceipt(
   receipt: Readonly<CoreHumanActionReceiptBindingV1>,
   command: Readonly<{
@@ -238,11 +300,11 @@ export class InMemoryProtectedExternalActionRepository implements ProtectedExter
       structuredClone(this.authorizationCommands.get(this.key(workspaceId, idempotencyKey)))
     );
   }
-  createAuthorization(
-    authorization: Readonly<ProtectedExternalActionAuthorizationV1>,
+  createAuthorization<T extends ProtectedExternalActionAuthorizationV1>(
+    authorization: Readonly<T>,
     requestFingerprint: string
   ) {
-    const record = structuredClone(authorization);
+    const record = structuredClone(authorization) as T;
     this.authorizations.set(this.key(record.workspaceId, record.authorizationId), record);
     this.authorizationCommands.set(this.key(record.workspaceId, record.idempotencyKey), {
       requestFingerprint,
@@ -270,18 +332,24 @@ export class InMemoryProtectedExternalActionRepository implements ProtectedExter
       structuredClone(this.releaseCommands.get(this.key(workspaceId, idempotencyKey)))
     );
   }
-  createRelease(release: Readonly<ProtectedExternalActionReleaseV1>, requestFingerprint: string) {
-    const record = structuredClone(release);
+  createRelease<T extends ProtectedExternalActionReleaseV1>(
+    release: Readonly<T>,
+    requestFingerprint: string
+  ) {
+    const record = structuredClone(release) as T;
     const existing = [...this.releases.values()].find(
       (value) =>
         value.workspaceId === record.workspaceId &&
-        value.authorization.id === record.authorization.id &&
-        value.authorization.version === record.authorization.version
+        ((value.authorization.id === record.authorization.id &&
+          value.authorization.version === record.authorization.version) ||
+          (record.actionKind === 'NOTIFICATION_SEND' &&
+            value.actionKind === 'NOTIFICATION_SEND' &&
+            value.effectFingerprintSha256 === record.effectFingerprintSha256))
     );
     if (existing)
       throw new ProtectedExternalActionError(
         'RELEASE_ALREADY_EXISTS',
-        'This exact authorization already has an immutable release.'
+        'This exact authorization or Notification effect already has an immutable release.'
       );
     this.releases.set(this.key(record.workspaceId, record.releaseId), record);
     this.releaseCommands.set(this.key(record.workspaceId, record.idempotencyKey), {
@@ -299,12 +367,15 @@ export class ProtectedExternalActionService {
     private readonly trading: TradingPublicationCurrentnessClient,
     private readonly clock: () => Date = () => new Date(),
     private readonly authorizationTtlMs = 15 * 60_000,
-    private readonly emailCampaign?: EmailCampaignSendCurrentnessClient
+    private readonly emailCampaign?: EmailCampaignSendCurrentnessClient,
+    private readonly notification?: NotificationSendCurrentnessClient
   ) {}
 
   async authorize(
     command: Readonly<AuthorizeTradingListingPublishCommand>
-  ): Promise<ProtectedExternalActionAuthorizationV1> {
+  ): Promise<
+    Extract<ProtectedExternalActionAuthorizationV1, { actionKind: 'TRADING_LISTING_PUBLISH' }>
+  > {
     if (!bounded(command.idempotencyKey, 256))
       throw new ProtectedExternalActionError(
         'INVALID_REQUEST',
@@ -346,7 +417,10 @@ export class ProtectedExternalActionService {
       command.idempotencyKey
     );
     if (replay) {
-      if (replay.requestFingerprint !== requestFingerprint)
+      if (
+        replay.requestFingerprint !== requestFingerprint ||
+        replay.result.actionKind !== 'TRADING_LISTING_PUBLISH'
+      )
         throw new ProtectedExternalActionError(
           'IDEMPOTENCY_CONFLICT',
           'Idempotency key was used with a different protected action intent.'
@@ -356,7 +430,10 @@ export class ProtectedExternalActionService {
     await this.core.validateCurrent(command.humanReceipt);
     mapTradingCurrentness(await this.trading.validateCurrent(command.intent));
     const authorizedAt = this.clock().toISOString();
-    const authorization: ProtectedExternalActionAuthorizationV1 = {
+    const authorization: Extract<
+      ProtectedExternalActionAuthorizationV1,
+      { actionKind: 'TRADING_LISTING_PUBLISH' }
+    > = {
       schemaVersion: 1,
       authorizationId: `protected-action-authorization_${randomUUID()}`,
       version: 1,
@@ -377,7 +454,7 @@ export class ProtectedExternalActionService {
 
   async release(
     command: Readonly<ReleaseTradingListingPublishCommand>
-  ): Promise<ProtectedExternalActionReleaseV1> {
+  ): Promise<Extract<ProtectedExternalActionReleaseV1, { actionKind: 'TRADING_LISTING_PUBLISH' }>> {
     if (!bounded(command.idempotencyKey, 256) || command.authorizationVersion !== 1)
       throw new ProtectedExternalActionError(
         'INVALID_REQUEST',
@@ -390,7 +467,10 @@ export class ProtectedExternalActionService {
       command.idempotencyKey
     );
     if (replay) {
-      if (replay.requestFingerprint !== requestFingerprint)
+      if (
+        replay.requestFingerprint !== requestFingerprint ||
+        replay.result.actionKind !== 'TRADING_LISTING_PUBLISH'
+      )
         throw new ProtectedExternalActionError(
           'IDEMPOTENCY_CONFLICT',
           'Idempotency key was used with a different release intent.'
@@ -438,7 +518,10 @@ export class ProtectedExternalActionService {
     }
     await this.core.validateCurrent(authorization.humanReceipt);
     mapTradingCurrentness(await this.trading.validateCurrent(authorization.intent));
-    const release: ProtectedExternalActionReleaseV1 = {
+    const release: Extract<
+      ProtectedExternalActionReleaseV1,
+      { actionKind: 'TRADING_LISTING_PUBLISH' }
+    > = {
       schemaVersion: 1,
       releaseId: `protected-action-release_${randomUUID()}`,
       version: 1,
@@ -456,7 +539,9 @@ export class ProtectedExternalActionService {
 
   async authorizeEmailCampaignSend(
     command: Readonly<AuthorizeEmailCampaignSendCommand>
-  ): Promise<ProtectedExternalActionAuthorizationV1> {
+  ): Promise<
+    Extract<ProtectedExternalActionAuthorizationV1, { actionKind: 'EMAIL_CAMPAIGN_SEND' }>
+  > {
     if (!bounded(command.idempotencyKey, 256))
       throw new ProtectedExternalActionError(
         'INVALID_REQUEST',
@@ -533,7 +618,10 @@ export class ProtectedExternalActionService {
       );
     mapEmailCampaignCurrentness(currentness);
     const authorizedAt = this.clock().toISOString();
-    const authorization: ProtectedExternalActionAuthorizationV1 = {
+    const authorization: Extract<
+      ProtectedExternalActionAuthorizationV1,
+      { actionKind: 'EMAIL_CAMPAIGN_SEND' }
+    > = {
       schemaVersion: 1,
       authorizationId: `protected-action-authorization_${randomUUID()}`,
       version: 1,
@@ -554,7 +642,7 @@ export class ProtectedExternalActionService {
 
   async releaseEmailCampaignSend(
     command: Readonly<ReleaseEmailCampaignSendCommand>
-  ): Promise<ProtectedExternalActionReleaseV1> {
+  ): Promise<Extract<ProtectedExternalActionReleaseV1, { actionKind: 'EMAIL_CAMPAIGN_SEND' }>> {
     if (!bounded(command.idempotencyKey, 256) || command.authorizationVersion !== 1)
       throw new ProtectedExternalActionError(
         'INVALID_REQUEST',
@@ -635,7 +723,10 @@ export class ProtectedExternalActionService {
         'Email Campaign currentness response does not bind the exact authorization.'
       );
     mapEmailCampaignCurrentness(currentness);
-    const release: ProtectedExternalActionReleaseV1 = {
+    const release: Extract<
+      ProtectedExternalActionReleaseV1,
+      { actionKind: 'EMAIL_CAMPAIGN_SEND' }
+    > = {
       schemaVersion: 1,
       releaseId: `protected-action-release_${randomUUID()}`,
       version: 1,
@@ -651,6 +742,200 @@ export class ProtectedExternalActionService {
       releasedAt: this.clock().toISOString(),
       idempotencyKey: command.idempotencyKey
     };
+    return this.repository.createRelease(release, requestFingerprint);
+  }
+
+  async authorizeNotificationSend(
+    command: Readonly<AuthorizeNotificationSendCommand>
+  ): Promise<ProtectedExternalActionAuthorizationV1> {
+    if (!bounded(command.idempotencyKey, 256))
+      throw new ProtectedExternalActionError(
+        'INVALID_REQUEST',
+        'Idempotency key is required.',
+        400
+      );
+    try {
+      assertNotificationSendBindingV1(command);
+    } catch (cause) {
+      throw new ProtectedExternalActionError(
+        'INVALID_REQUEST',
+        'Notification send binding is invalid.',
+        400,
+        false,
+        { cause: cause instanceof Error ? cause : undefined }
+      );
+    }
+    if (
+      command.intent.workspaceId !== command.workspaceId ||
+      command.triggerEvidence.workspaceId !== command.workspaceId ||
+      command.activationEvidence.workspaceId !== command.workspaceId
+    )
+      throw new ProtectedExternalActionError(
+        'WORKSPACE_MISMATCH',
+        'Notification send owner evidence Workspace does not match trusted Workspace.',
+        403
+      );
+    const requestFingerprint = digest({
+      workspaceId: command.workspaceId,
+      intent: command.intent,
+      triggerEvidence: command.triggerEvidence,
+      activationEvidence: command.activationEvidence
+    });
+    const replay = await this.repository.findAuthorizationByIdempotencyKey(
+      command.workspaceId,
+      command.idempotencyKey
+    );
+    if (replay) {
+      if (
+        replay.requestFingerprint !== requestFingerprint ||
+        replay.result.actionKind !== 'NOTIFICATION_SEND'
+      )
+        throw new ProtectedExternalActionError(
+          'IDEMPOTENCY_CONFLICT',
+          'Idempotency key was used with a different protected action intent.'
+        );
+      return replay.result;
+    }
+    if (!this.notification)
+      throw new ProtectedExternalActionError(
+        'NOTIFICATION_INTENT_UNAVAILABLE',
+        'Notification currentness client is unavailable.',
+        503,
+        true
+      );
+    const currentness = await this.notification.validateCurrent(
+      command.intent,
+      command.triggerEvidence,
+      command.activationEvidence
+    );
+    if (
+      currentness.workspaceId !== command.workspaceId ||
+      currentness.actionKind !== 'NOTIFICATION_SEND' ||
+      currentness.effectFingerprintSha256 !== command.intent.effectFingerprintSha256 ||
+      currentness.deliveryPlanFingerprintSha256 !== command.intent.deliveryPlanFingerprintSha256
+    )
+      throw new ProtectedExternalActionError(
+        'NOTIFICATION_INTENT_STALE',
+        'Notification currentness response does not bind the exact delivery intent.'
+      );
+    mapNotificationCurrentness(currentness);
+    const authorizedAt = this.clock().toISOString();
+    const authorization: Extract<
+      ProtectedExternalActionAuthorizationV1,
+      { actionKind: 'NOTIFICATION_SEND' }
+    > = {
+      schemaVersion: 1,
+      authorizationId: `protected-action-authorization_${randomUUID()}`,
+      version: 1,
+      workspaceId: command.workspaceId,
+      actionKind: 'NOTIFICATION_SEND',
+      intent: structuredClone(command.intent),
+      triggerEvidence: structuredClone(command.triggerEvidence),
+      activationEvidence: structuredClone(command.activationEvidence),
+      effectFingerprintSha256: command.intent.effectFingerprintSha256,
+      authorizationStatus: 'AUTHORIZED',
+      authorizedBy: 'EXECUTION_AUTOMATION',
+      authorizedAt,
+      expiresAt: new Date(Date.parse(authorizedAt) + this.authorizationTtlMs).toISOString(),
+      lastValidatedAt: authorizedAt,
+      idempotencyKey: command.idempotencyKey
+    };
+    return this.repository.createAuthorization(authorization, requestFingerprint);
+  }
+
+  async releaseNotificationSend(
+    command: Readonly<ReleaseNotificationSendCommand>
+  ): Promise<ProtectedExternalActionReleaseV1> {
+    if (!bounded(command.idempotencyKey, 256) || command.authorizationVersion !== 1)
+      throw new ProtectedExternalActionError(
+        'INVALID_REQUEST',
+        'Exact release binding is required.',
+        400
+      );
+    const requestFingerprint = digest(command);
+    const replay = await this.repository.findReleaseByIdempotencyKey(
+      command.workspaceId,
+      command.idempotencyKey
+    );
+    if (replay) {
+      if (
+        replay.requestFingerprint !== requestFingerprint ||
+        replay.result.actionKind !== 'NOTIFICATION_SEND'
+      )
+        throw new ProtectedExternalActionError(
+          'IDEMPOTENCY_CONFLICT',
+          'Idempotency key was used with a different release intent.'
+        );
+      return replay.result;
+    }
+    const authorization = await this.repository.findAuthorization(
+      command.workspaceId,
+      command.authorizationId
+    );
+    if (!authorization)
+      throw new ProtectedExternalActionError(
+        'AUTHORIZATION_NOT_FOUND',
+        'Protected action authorization was not found.',
+        404
+      );
+    if (
+      authorization.actionKind !== 'NOTIFICATION_SEND' ||
+      authorization.version !== command.authorizationVersion
+    )
+      throw new ProtectedExternalActionError(
+        'AUTHORIZATION_STALE',
+        'Authorization does not exactly match Notification send.'
+      );
+    if (authorization.authorizationStatus === 'REVOKED')
+      throw new ProtectedExternalActionError('AUTHORIZATION_REVOKED', 'Authorization is revoked.');
+    if (
+      authorization.authorizationStatus === 'EXPIRED' ||
+      Date.parse(authorization.expiresAt) <= this.clock().getTime()
+    ) {
+      await this.repository.updateAuthorizationStatus(
+        command.workspaceId,
+        command.authorizationId,
+        'EXPIRED'
+      );
+      throw new ProtectedExternalActionError('AUTHORIZATION_EXPIRED', 'Authorization is expired.');
+    }
+    if (!this.notification)
+      throw new ProtectedExternalActionError(
+        'NOTIFICATION_INTENT_UNAVAILABLE',
+        'Notification currentness client is unavailable.',
+        503,
+        true
+      );
+    const currentness = await this.notification.validateCurrent(
+      authorization.intent,
+      authorization.triggerEvidence,
+      authorization.activationEvidence
+    );
+    if (
+      currentness.workspaceId !== authorization.workspaceId ||
+      currentness.effectFingerprintSha256 !== authorization.effectFingerprintSha256 ||
+      currentness.deliveryPlanFingerprintSha256 !==
+        authorization.intent.deliveryPlanFingerprintSha256
+    )
+      throw new ProtectedExternalActionError(
+        'NOTIFICATION_INTENT_STALE',
+        'Notification currentness response does not bind the exact authorization.'
+      );
+    mapNotificationCurrentness(currentness);
+    const release: Extract<ProtectedExternalActionReleaseV1, { actionKind: 'NOTIFICATION_SEND' }> =
+      {
+        schemaVersion: 1,
+        releaseId: `protected-action-release_${randomUUID()}`,
+        version: 1,
+        workspaceId: command.workspaceId,
+        actionKind: 'NOTIFICATION_SEND',
+        authorization: { id: authorization.authorizationId, version: authorization.version },
+        effectFingerprintSha256: authorization.effectFingerprintSha256,
+        status: 'RELEASED_FOR_EXECUTION',
+        releasedBy: 'EXECUTION_AUTOMATION',
+        releasedAt: this.clock().toISOString(),
+        idempotencyKey: command.idempotencyKey
+      };
     return this.repository.createRelease(release, requestFingerprint);
   }
 }

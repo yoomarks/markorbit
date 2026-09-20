@@ -215,3 +215,48 @@ describe('Workspace commercial HTTP boundary', () => {
     expect(validate).not.toHaveBeenCalled();
   });
 });
+
+describe('Email Notification fixed entitlement seam', () => {
+  it('resolves only the fixed Workspace EMAIL_NOTIFICATION entitlement without member authority', async () => {
+    const { routes, validate, resolveEntitlement } = fixture();
+    const route = routes.find(
+      (candidate) =>
+        candidate.path ===
+        '/internal/workspaces/:workspaceId/commercial/email-notification-entitlement/resolve'
+    );
+    expect(route).toBeDefined();
+    await route!.handle(
+      request(
+        '/internal/workspaces/:workspaceId/commercial/email-notification-entitlement/resolve',
+        { asOf: '2026-09-20T00:00:00.000Z' }
+      )
+    );
+    expect(resolveEntitlement).toHaveBeenCalledWith(
+      { scope: 'WORKSPACE', workspaceId: ids.workspace },
+      'lite.channel.email.notification',
+      '2026-09-20T00:00:00.000Z'
+    );
+    expect(validate).not.toHaveBeenCalled();
+  });
+
+  it('rejects arbitrary entitlement keys at the fixed internal seam', async () => {
+    const { routes, resolveEntitlement } = fixture();
+    const route = routes.find(
+      (candidate) =>
+        candidate.path ===
+        '/internal/workspaces/:workspaceId/commercial/email-notification-entitlement/resolve'
+    );
+    await expect(
+      route!.handle(
+        request(
+          '/internal/workspaces/:workspaceId/commercial/email-notification-entitlement/resolve',
+          {
+            asOf: '2026-09-20T00:00:00.000Z',
+            entitlementKey: 'attacker.controlled'
+          }
+        )
+      )
+    ).rejects.toMatchObject({ status: 400, code: 'INVALID_REQUEST' });
+    expect(resolveEntitlement).not.toHaveBeenCalled();
+  });
+});

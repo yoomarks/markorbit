@@ -43,7 +43,21 @@ import { PostgresWorkspaceDirectoryStore } from './workspace-directory.js';
 import { PostgresOutboundContactPolicyStore } from './outbound-contact-policy.js';
 import { PostgresEmailCampaignStore } from './email-campaign.js';
 import { PostgresEmailSenderProfileStore } from './email-sender-profile.js';
-import { createEmailCampaignDeliveryCurrentnessResolver } from './email-campaign-delivery-currentness.js';
+import { PostgresNotificationAutomationRuleStore } from './notification-automation-rule.js';
+import { NotificationAutomationRuleCurrentnessResolver } from './notification-automation-rule-currentness.js';
+import {
+  HttpCoreNotificationAutomationEntitlementReader,
+  HttpCoreNotificationAutomationGovernanceVerifier
+} from './notification-automation-governance.js';
+import {
+  NotificationSendCurrentnessResolverV1,
+  UnavailableNotificationTriggerEvidenceCurrentnessReaderV1
+} from './notification-send-currentness.js';
+import { createNotificationAutomationRoutesV1 } from './notification-automation-http.js';
+import {
+  createEmailCampaignDeliveryCurrentnessResolver,
+  WorkspaceDirectoryEmailEndpointResolver
+} from './email-campaign-delivery-currentness.js';
 import { createEmailCampaignDeliveryCurrentnessRoutes } from './email-campaign-delivery-currentness-http.js';
 import { createOutboundContactPolicyRoutes } from './outbound-contact-policy-http.js';
 import { PostgresBusinessAttributionStore } from './business-attribution.js';
@@ -205,6 +219,15 @@ const workspaceDirectoryStore = new PostgresWorkspaceDirectoryStore(database, po
 const outboundContactPolicyStore = new PostgresOutboundContactPolicyStore(database, pool);
 const emailCampaignStore = new PostgresEmailCampaignStore(database, pool);
 const emailSenderProfileStore = new PostgresEmailSenderProfileStore(database, pool);
+const notificationAutomationGovernance = new HttpCoreNotificationAutomationGovernanceVerifier(
+  coreUrl,
+  internalServiceSecret
+);
+const notificationAutomationRuleStore = new PostgresNotificationAutomationRuleStore(
+  database,
+  pool,
+  notificationAutomationGovernance
+);
 const emailCampaignDeliveryCurrentness = createEmailCampaignDeliveryCurrentnessResolver({
   campaigns: emailCampaignStore,
   senders: emailSenderProfileStore,
@@ -313,6 +336,20 @@ const contentStore = new PostgresLiteContentPreparationStore(
   database,
   pool,
   productLoopSourceAuthority
+);
+const notificationAutomationRuleCurrentness = new NotificationAutomationRuleCurrentnessResolver(
+  notificationAutomationRuleStore,
+  contentStore,
+  emailSenderProfileStore,
+  new HttpCoreNotificationAutomationEntitlementReader(coreUrl, internalServiceSecret)
+);
+const notificationSendCurrentness = new NotificationSendCurrentnessResolverV1(
+  notificationAutomationRuleStore,
+  notificationAutomationRuleCurrentness,
+  notificationAutomationGovernance,
+  new UnavailableNotificationTriggerEvidenceCurrentnessReaderV1(),
+  new WorkspaceDirectoryEmailEndpointResolver(workspaceDirectoryStore),
+  outboundContactPolicyStore
 );
 const candidateStore = new PostgresLiteCandidateQualificationStore(
   database,
@@ -535,6 +572,11 @@ const runtime = createServiceRuntime(serviceManifest, {
     ...createEmailCampaignDeliveryCurrentnessRoutes({
       internalServiceSecret,
       resolver: emailCampaignDeliveryCurrentness
+    }),
+    ...createNotificationAutomationRoutesV1({
+      internalServiceSecret,
+      store: notificationAutomationRuleStore,
+      sendCurrentness: notificationSendCurrentness
     }),
     ...createTradingStudioReadRoutes({
       internalServiceSecret,

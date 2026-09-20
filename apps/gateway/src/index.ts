@@ -55,6 +55,7 @@ export * from './markreg-early-funnel-http.js';
 export * from './preparation-lock-http.js';
 export * from './filing-governance-http.js';
 export * from './protected-external-action-http.js';
+export * from './notification-automation-http.js';
 import {
   clearSessionCookie,
   csrfToken,
@@ -95,6 +96,7 @@ import { createGatewayMarkRegEarlyFunnelRoutes } from './markreg-early-funnel-ht
 import { createGatewayPreparationLockHandler } from './preparation-lock-http.js';
 import { createGatewayFilingGovernanceHandler } from './filing-governance-http.js';
 import { createGatewayProtectedExternalActionRoutes } from './protected-external-action-http.js';
+import { createGatewayNotificationAutomationRoutesV1 } from './notification-automation-http.js';
 export const serviceManifest = Object.freeze({
   name: 'gateway',
   port: Number(process.env.PORT ?? '4000'),
@@ -475,6 +477,18 @@ export function createRuntime(options: GatewayOptions = {}) {
         }),
         ...createGatewayProtectedExternalActionRoutes({
           executionUrl,
+          ...(authenticationClient ? { authenticationClient } : {}),
+          ...((options.internalServiceSecret ?? process.env.MO_INTERNAL_SERVICE_SECRET)
+            ? {
+                internalServiceSecret: (options.internalServiceSecret ??
+                  process.env.MO_INTERNAL_SERVICE_SECRET)!
+              }
+            : {}),
+          csrfSecret,
+          allowedOrigins
+        }),
+        ...createGatewayNotificationAutomationRoutesV1({
+          liteUrl,
           ...(authenticationClient ? { authenticationClient } : {}),
           ...((options.internalServiceSecret ?? process.env.MO_INTERNAL_SERVICE_SECRET)
             ? {

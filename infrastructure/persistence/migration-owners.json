@@ -220,6 +220,8 @@
     "0135_execution_protected_external_actions_email_campaign_send": "@markorbit/execution-service",
     "0136_lite_email_delivery_evidence": "@markorbit/lite-service",
     "0137_lite_email_campaign_reply_handoffs": "@markorbit/lite-service",
-    "0138_lite_notification_automation_rules": "@markorbit/lite-service"
+    "0138_lite_notification_automation_rules": "@markorbit/lite-service",
+    "0139_core_governed_human_action_receipts_notification_automation_activate": "@markorbit/core-service",
+    "0140_execution_protected_external_actions_notification_send": "@markorbit/execution-service"
   }
 }

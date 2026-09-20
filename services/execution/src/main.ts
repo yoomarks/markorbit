@@ -29,6 +29,7 @@ import {
   createProtectedExternalActionRoutes,
   HttpCoreHumanReceiptCurrentnessClient,
   HttpEmailCampaignSendCurrentnessClient,
+  HttpNotificationSendCurrentnessClient,
   HttpTradingPublicationCurrentnessClient
 } from './protected-external-action-http.js';
 
@@ -175,7 +176,8 @@ if (fixtureRuntime) {
     new HttpTradingPublicationCurrentnessClient(liteUrl, internalServiceSecret),
     undefined,
     15 * 60_000,
-    new HttpEmailCampaignSendCurrentnessClient(liteUrl, internalServiceSecret)
+    new HttpEmailCampaignSendCurrentnessClient(liteUrl, internalServiceSecret),
+    new HttpNotificationSendCurrentnessClient(liteUrl, internalServiceSecret)
   );
 
   runtime = createRuntime({

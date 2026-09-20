@@ -273,6 +273,29 @@ export function createWorkspaceCommercialRoutesV1(
           return translate(error);
         }
       }
+    },
+    {
+      method: 'POST',
+      path: '/internal/workspaces/:workspaceId/commercial/email-notification-entitlement/resolve',
+      async handle(request) {
+        internal(request, options.internalServiceSecret);
+        const body = object(request);
+        if (Object.keys(body).some((key) => key !== 'asOf'))
+          throw new HttpError(400, 'INVALID_REQUEST', 'Only asOf is accepted.');
+        const workspaceId = text(request.params.workspaceId, 'workspaceId');
+        try {
+          return json(
+            200,
+            await options.service.resolveEntitlement(
+              { scope: 'WORKSPACE', workspaceId },
+              'lite.channel.email.notification',
+              text(body.asOf, 'asOf')
+            )
+          );
+        } catch (error) {
+          return translate(error);
+        }
+      }
     }
   ];
 }

@@ -53,7 +53,11 @@ export interface CommercialAdminAccountInspection {
 }
 
 export type GovernedHumanActionReceiptKind =
-  'PROVIDER_SELECTION' | 'CONTROLLED_HANDOFF' | 'TRADING_LISTING_PUBLISH';
+  | 'PROVIDER_SELECTION'
+  | 'CONTROLLED_HANDOFF'
+  | 'TRADING_LISTING_PUBLISH'
+  | 'EMAIL_CAMPAIGN_SEND'
+  | 'NOTIFICATION_AUTOMATION_ACTIVATE';
 
 export interface GovernedHumanActionReceiptMaterializationV1 {
   workspaceId: string;

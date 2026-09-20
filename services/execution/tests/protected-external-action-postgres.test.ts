@@ -17,7 +17,9 @@ const suite = url ? describe : describe.skip;
 const workspaceA = '11111111-1111-4111-8111-111111111176';
 const workspaceB = '22222222-2222-4222-8222-222222222176';
 
-function authorization(workspaceId = workspaceA): ProtectedExternalActionAuthorizationV1 {
+function authorization(
+  workspaceId = workspaceA
+): Extract<ProtectedExternalActionAuthorizationV1, { actionKind: 'TRADING_LISTING_PUBLISH' }> {
   return {
     schemaVersion: 1,
     authorizationId: 'protected-action-authorization_11111111-1111-4111-8111-111111111176',
@@ -71,7 +73,9 @@ function authorization(workspaceId = workspaceA): ProtectedExternalActionAuthori
   };
 }
 
-function release(auth: ProtectedExternalActionAuthorizationV1): ProtectedExternalActionReleaseV1 {
+function release(
+  auth: Extract<ProtectedExternalActionAuthorizationV1, { actionKind: 'TRADING_LISTING_PUBLISH' }>
+): Extract<ProtectedExternalActionReleaseV1, { actionKind: 'TRADING_LISTING_PUBLISH' }> {
   return {
     schemaVersion: 1,
     releaseId: 'protected-action-release_66666666-6666-4666-8666-666666661176',
@@ -87,7 +91,9 @@ function release(auth: ProtectedExternalActionAuthorizationV1): ProtectedExterna
   };
 }
 
-function emailAuthorization(workspaceId = workspaceA): ProtectedExternalActionAuthorizationV1 {
+function emailAuthorization(
+  workspaceId = workspaceA
+): Extract<ProtectedExternalActionAuthorizationV1, { actionKind: 'EMAIL_CAMPAIGN_SEND' }> {
   return {
     schemaVersion: 1,
     authorizationId: 'protected-action-authorization_77777777-7777-4777-8777-777777771176',
@@ -131,8 +137,8 @@ function emailAuthorization(workspaceId = workspaceA): ProtectedExternalActionAu
 }
 
 function emailRelease(
-  auth: ProtectedExternalActionAuthorizationV1
-): ProtectedExternalActionReleaseV1 {
+  auth: Extract<ProtectedExternalActionAuthorizationV1, { actionKind: 'EMAIL_CAMPAIGN_SEND' }>
+): Extract<ProtectedExternalActionReleaseV1, { actionKind: 'EMAIL_CAMPAIGN_SEND' }> {
   return {
     schemaVersion: 1,
     releaseId: 'protected-action-release_99999999-9999-4999-8999-999999991176',
@@ -201,6 +207,7 @@ suite('PostgreSQL protected external action persistence', () => {
     const names = (await migrations()).map((value) => `${value.version}_${value.name}`);
     expect(names).toContain('0131_execution_protected_external_actions');
     expect(names).toContain('0135_execution_protected_external_actions_email_campaign_send');
+    expect(names).toContain('0140_execution_protected_external_actions_notification_send');
   });
 
   it('survives restart-style repository reconstruction and replays exact commands', async () => {

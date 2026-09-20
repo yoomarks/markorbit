@@ -111,7 +111,11 @@ const currentWorkspaceAuthority = Object.assign(currentWorkspaceAuthorityService
   materializeOrResolve: governedHumanActionReceipts.materializeOrResolve.bind(
     governedHumanActionReceipts
   ),
-  validateCurrent: governedHumanActionReceipts.validateCurrent.bind(governedHumanActionReceipts)
+  validateCurrent: governedHumanActionReceipts.validateCurrent.bind(governedHumanActionReceipts),
+  validateNotificationAutomationActivation:
+    governedHumanActionReceipts.validateNotificationAutomationActivation.bind(
+      governedHumanActionReceipts
+    )
 });
 const accountAccess = new AccountAccessService(
   new PostgresAccountAccessStore(database),

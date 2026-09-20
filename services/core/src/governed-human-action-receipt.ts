@@ -1,3 +1,5 @@
+import { createHash } from 'node:crypto';
+import type { ChannelNotificationAutomationGovernanceEvidenceV1 } from '@markorbit/contracts/channel-notification-automation';
 import type { Permission } from '@markorbit/contracts';
 import {
   CurrentWorkspaceAuthorityError,
@@ -10,12 +12,18 @@ export const GOVERNED_HUMAN_ACTION_KINDS = [
   'PROVIDER_SELECTION',
   'CONTROLLED_HANDOFF',
   'TRADING_LISTING_PUBLISH',
-  'EMAIL_CAMPAIGN_SEND'
+  'EMAIL_CAMPAIGN_SEND',
+  'NOTIFICATION_AUTOMATION_ACTIVATE'
 ] as const;
 export const TRADING_LISTING_PUBLISH_AUTHORIZATION_ROUTE =
   '/api/execution/protected-external-actions/trading-listing-publish/authorizations' as const;
 export const EMAIL_CAMPAIGN_SEND_AUTHORIZATION_ROUTE =
   '/api/execution/protected-external-actions/email-campaign-send/authorizations' as const;
+export const NOTIFICATION_AUTOMATION_ACTIVATE_ROUTE_PREFIX =
+  '/api/lite/notification-automation-rules/' as const;
+export function notificationAutomationActivateRouteV1(notificationRuleId: string): string {
+  return `${NOTIFICATION_AUTOMATION_ACTIVATE_ROUTE_PREFIX}${encodeURIComponent(notificationRuleId)}/activate`;
+}
 export type GovernedHumanActionKind = (typeof GOVERNED_HUMAN_ACTION_KINDS)[number];
 
 export type GovernedHumanActionReceiptErrorCode =
@@ -74,6 +82,49 @@ export interface GovernedHumanActionReceiptStore {
 
 export type MaterializeGovernedHumanActionReceiptRequest = GovernedHumanActionReceiptBinding;
 
+export interface ValidateNotificationAutomationActivationRequest {
+  workspaceId: string;
+  notificationRuleId: `channel-notification-rule_${string}`;
+  candidateRuleVersion: number;
+  candidateRuleFingerprintSha256: string;
+  governanceEvidenceRef: string;
+}
+
+function stableSerialize(value: unknown): string {
+  if (Array.isArray(value)) return `[${value.map((item) => stableSerialize(item)).join(',')}]`;
+  if (value && typeof value === 'object') {
+    const entries = Object.entries(value as Record<string, unknown>)
+      .filter(([, item]) => item !== undefined)
+      .sort(([left], [right]) => left.localeCompare(right));
+    return `{${entries
+      .map(([key, item]) => `${JSON.stringify(key)}:${stableSerialize(item)}`)
+      .join(',')}}`;
+  }
+  return JSON.stringify(value);
+}
+
+function fingerprint(value: unknown): string {
+  return createHash('sha256').update(stableSerialize(value)).digest('hex');
+}
+
+export function notificationAutomationActivationReviewedActionDigestV1(input: {
+  principalReference: string;
+  notificationRuleId: string;
+  candidateRuleVersion: number;
+}): string {
+  return fingerprint({
+    kind: 'NOTIFICATION_AUTOMATION_ACTIVATE',
+    principalReference: input.principalReference,
+    method: 'POST',
+    path: notificationAutomationActivateRouteV1(input.notificationRuleId),
+    body: { expectedVersion: input.candidateRuleVersion - 1 }
+  });
+}
+
+function notificationActivationReceiptId(evidenceRef: string): string | undefined {
+  return /^core-governed-human-action-receipt:([0-9a-f-]{36})(?::v1)?$/iu.exec(evidenceRef)?.[1];
+}
+
 export interface ValidateGovernedHumanActionReceiptRequest extends GovernedHumanActionReceiptBinding {
   receiptId: string;
 }
@@ -90,7 +141,10 @@ function validRoute(kind: GovernedHumanActionKind, route: string): boolean {
   if (kind === 'CONTROLLED_HANDOFF') return handoff.test(route);
   if (kind === 'TRADING_LISTING_PUBLISH')
     return route === TRADING_LISTING_PUBLISH_AUTHORIZATION_ROUTE;
-  return route === EMAIL_CAMPAIGN_SEND_AUTHORIZATION_ROUTE;
+  if (kind === 'EMAIL_CAMPAIGN_SEND') return route === EMAIL_CAMPAIGN_SEND_AUTHORIZATION_ROUTE;
+  return /^\/api\/lite\/notification-automation-rules\/channel-notification-rule_[A-Za-z0-9_-]+\/activate$/u.test(
+    route
+  );
 }
 
 function validateBinding(value: Readonly<GovernedHumanActionReceiptBinding>): void {
@@ -227,6 +281,88 @@ export class GovernedHumanActionReceiptService {
         { cause: error instanceof Error ? error : undefined }
       );
     }
+  }
+
+  async validateNotificationAutomationActivation(
+    request: Readonly<ValidateNotificationAutomationActivationRequest>
+  ): Promise<Readonly<ChannelNotificationAutomationGovernanceEvidenceV1>> {
+    const receiptId = notificationActivationReceiptId(request.governanceEvidenceRef);
+    if (
+      !canonicalUuid(request.workspaceId) ||
+      !/^channel-notification-rule_[A-Za-z0-9_-]+$/u.test(request.notificationRuleId) ||
+      !Number.isSafeInteger(request.candidateRuleVersion) ||
+      request.candidateRuleVersion < 2 ||
+      !digest(request.candidateRuleFingerprintSha256) ||
+      !receiptId
+    )
+      throw new GovernedHumanActionReceiptError(
+        'INVALID_GOVERNED_HUMAN_ACTION_REQUEST',
+        'Exact Notification Automation activation evidence binding is required.',
+        400
+      );
+    let receipt: Readonly<GovernedHumanActionReceipt> | undefined;
+    try {
+      receipt = await this.options.store.findById(receiptId);
+    } catch (cause) {
+      if (cause instanceof GovernedHumanActionReceiptError) throw cause;
+      throw new GovernedHumanActionReceiptError(
+        'GOVERNED_HUMAN_ACTION_SOURCE_UNAVAILABLE',
+        'Governed human-action receipt source is unavailable.',
+        503,
+        true,
+        { cause: cause instanceof Error ? cause : undefined }
+      );
+    }
+    if (!receipt)
+      throw new GovernedHumanActionReceiptError(
+        'GOVERNED_HUMAN_ACTION_RECEIPT_NOT_FOUND',
+        'Exact governed human-action receipt was not found.',
+        404
+      );
+    const expectedDigest = notificationAutomationActivationReviewedActionDigestV1({
+      principalReference: receipt.principalReference,
+      notificationRuleId: request.notificationRuleId,
+      candidateRuleVersion: request.candidateRuleVersion
+    });
+    if (
+      receipt.workspaceId !== request.workspaceId.toLowerCase() ||
+      receipt.kind !== 'NOTIFICATION_AUTOMATION_ACTIVATE' ||
+      receipt.mutationRoute !== notificationAutomationActivateRouteV1(request.notificationRuleId) ||
+      receipt.reviewedActionDigest !== expectedDigest ||
+      receipt.authorityReference !== request.governanceEvidenceRef
+    )
+      throw new GovernedHumanActionReceiptError(
+        'GOVERNED_HUMAN_ACTION_REPLAY_CONFLICT',
+        'Notification Automation activation receipt does not match the exact candidate rule.',
+        409
+      );
+    try {
+      await this.options.currentWorkspaceAuthority.validate(
+        currentAuthorityRequest(receipt, receipt)
+      );
+    } catch (cause) {
+      throw mapCurrentAuthorityFailure(cause);
+    }
+    const evidenceBase = {
+      owner: 'CORE' as const,
+      kind: 'GOVERNED_HUMAN_ACTION_RECEIPT' as const,
+      action: 'ACTIVATE' as const,
+      workspaceId: request.workspaceId.toLowerCase(),
+      notificationRuleId: request.notificationRuleId,
+      authorizedRuleVersion: request.candidateRuleVersion,
+      authorizedRuleFingerprintSha256: request.candidateRuleFingerprintSha256,
+      evidenceRef: request.governanceEvidenceRef
+    };
+    return {
+      ...evidenceBase,
+      evidenceFingerprintSha256: fingerprint({
+        ...evidenceBase,
+        receiptId: receipt.receiptId,
+        receiptVersion: receipt.receiptVersion,
+        reviewedActionDigest: receipt.reviewedActionDigest
+      }),
+      verifiedAt: (this.options.clock ?? (() => new Date()))().toISOString()
+    };
   }
 
   async validateCurrent(

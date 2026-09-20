@@ -481,3 +481,39 @@ export function parseChannelNotificationSendIntentV1(
     authority: authority(item.authority)
   };
 }
+
+export function canonicalChannelNotificationTriggerPayloadV1(
+  value: Readonly<ChannelNotificationTriggerEvidenceV1>
+) {
+  const item = parseChannelNotificationTriggerEvidenceV1(value);
+  return {
+    schemaVersion: item.schemaVersion,
+    notificationTriggerEvidenceId: item.notificationTriggerEvidenceId,
+    workspaceId: item.workspaceId,
+    version: item.version,
+    owner: item.owner,
+    eventType: item.eventType,
+    eventId: item.eventId,
+    subject: item.subject,
+    occurredAt: item.occurredAt,
+    evidenceRefs: item.evidenceRefs
+  } as const;
+}
+
+export function canonicalChannelNotificationSendPlanPayloadV1(
+  value: Readonly<ChannelNotificationSendIntentV1>
+) {
+  const item = parseChannelNotificationSendIntentV1(value);
+  return {
+    schemaVersion: item.schemaVersion,
+    notificationSendIntentId: item.notificationSendIntentId,
+    workspaceId: item.workspaceId,
+    version: item.version,
+    featureKey: item.featureKey,
+    rule: item.rule,
+    trigger: item.trigger,
+    target: item.target,
+    content: item.content,
+    senderProfile: item.senderProfile
+  } as const;
+}
