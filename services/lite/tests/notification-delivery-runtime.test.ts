@@ -5,6 +5,7 @@ import type { ChannelNotificationAutomationRuleV1 } from '@markorbit/contracts/c
 import type { LifecycleEventProjection } from '@markorbit/contracts/evidence-lifecycle';
 import {
   EmailNotificationDeliveryRuntimeV1,
+  MarkRegSubjectWorkspaceDirectoryEmailResolverV1,
   NotificationDeliveryRuntimeError
 } from '../src/notification-delivery-runtime.js';
 import { MarkRegLifecycleNotificationTriggerCurrentnessReaderV1 } from '../src/notification-trigger-markreg.js';
@@ -234,5 +235,63 @@ describe('EMAIL_NOTIFICATION delivery runtime', () => {
     const replay = await runtime.deliver(command);
     expect(replay).toEqual(first);
     expect(transport.submit).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('MarkReg subject Workspace Directory destination resolution', () => {
+  it('uses an exact external-reference lookup rather than a bounded Directory list scan', async () => {
+    const entry = {
+      workspaceDirectoryEntryId: 'workspace-directory-entry_exact-destination',
+      version: 7
+    };
+    const directory = {
+      findLatestByExternalIdentityReference: vi.fn(async () => [entry])
+    };
+    const endpoints = {
+      resolve: vi.fn(async () => ({
+        state: 'CURRENT' as const,
+        endpoint: 'private@example.com',
+        endpointFingerprintSha256: '9'.repeat(64)
+      }))
+    };
+    const resolver = new MarkRegSubjectWorkspaceDirectoryEmailResolverV1(
+      directory as never,
+      endpoints as never
+    );
+
+    await expect(
+      resolver.resolve(workspaceId, 'formal-matter_exact-destination', 11)
+    ).resolves.toMatchObject({
+      entry,
+      endpointFingerprintSha256: '9'.repeat(64)
+    });
+    expect(directory.findLatestByExternalIdentityReference).toHaveBeenCalledWith(
+      workspaceId,
+      'formal-matter_exact-destination',
+      '11'
+    );
+    expect(endpoints.resolve).toHaveBeenCalledWith(
+      workspaceId,
+      expect.objectContaining({
+        id: entry.workspaceDirectoryEntryId,
+        version: entry.version
+      })
+    );
+  });
+
+  it('fails closed when the exact external reference is ambiguous', async () => {
+    const resolver = new MarkRegSubjectWorkspaceDirectoryEmailResolverV1(
+      {
+        findLatestByExternalIdentityReference: vi.fn(async () => [
+          { workspaceDirectoryEntryId: 'workspace-directory-entry_one', version: 1 },
+          { workspaceDirectoryEntryId: 'workspace-directory-entry_two', version: 1 }
+        ])
+      } as never,
+      { resolve: vi.fn() } as never
+    );
+
+    await expect(resolver.resolve(workspaceId, 'formal-matter_ambiguous', 1)).rejects.toMatchObject(
+      { code: 'DESTINATION_UNAVAILABLE' }
+    );
   });
 });

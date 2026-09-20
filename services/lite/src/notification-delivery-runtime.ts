@@ -110,19 +110,18 @@ export interface NotificationDestinationV1 {
 
 export class MarkRegSubjectWorkspaceDirectoryEmailResolverV1 {
   constructor(
-    private readonly directory: Pick<PostgresWorkspaceDirectoryStore, 'listLatest'>,
+    private readonly directory: Pick<
+      PostgresWorkspaceDirectoryStore,
+      'findLatestByExternalIdentityReference'
+    >,
     private readonly endpoints: EmailCampaignEndpointResolver
   ) {}
 
   async resolve(workspaceId: string, formalMatterId: string, formalMatterVersion: number) {
-    const entries = await this.directory.listLatest(workspaceId, { status: 'ACTIVE', limit: 100 });
-    const matches = entries.filter((entry) =>
-      entry.externalIdentityReferences.some(
-        (reference) =>
-          reference.referenceId === formalMatterId &&
-          (reference.referenceVersion === undefined ||
-            reference.referenceVersion === String(formalMatterVersion))
-      )
+    const matches = await this.directory.findLatestByExternalIdentityReference(
+      workspaceId,
+      formalMatterId,
+      String(formalMatterVersion)
     );
     if (matches.length !== 1)
       throw new NotificationDeliveryRuntimeError(
