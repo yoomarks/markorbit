@@ -1,5 +1,8 @@
 import {
   assertNotificationSendBindingV1,
+  type ChannelNotificationAutomationGovernanceEvidenceV1,
+  type ChannelNotificationSendIntentV1,
+  type ChannelNotificationTriggerEvidenceV1,
   type NotificationSendCurrentnessReasonV1,
   type NotificationSendCurrentnessStateV1,
   type NotificationSendCurrentnessV1
@@ -7,11 +10,8 @@ import {
 import {
   channelNotificationDeliveryPlanFingerprintSha256V1,
   channelNotificationSendEffectFingerprintSha256V1,
-  channelNotificationTriggerFingerprintSha256V1,
-  type ChannelNotificationAutomationGovernanceEvidenceV1,
-  type ChannelNotificationSendIntentV1,
-  type ChannelNotificationTriggerEvidenceV1
-} from '@markorbit/contracts';
+  channelNotificationTriggerFingerprintSha256V1
+} from '@markorbit/contracts/channel-notification-fingerprint';
 import type { OutboundContactTargetReferenceV1 } from '@markorbit/contracts/outbound-contact-policy';
 import type { NotificationAutomationGovernanceVerifierV1 } from './notification-automation-rule.js';
 import type { NotificationAutomationRuleCurrentnessResolver } from './notification-automation-rule-currentness.js';

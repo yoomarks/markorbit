@@ -1,12 +1,14 @@
 import { describe, expect, it, vi } from 'vitest';
 import {
-  channelNotificationDeliveryPlanFingerprintSha256V1,
-  channelNotificationSendEffectFingerprintSha256V1,
-  channelNotificationTriggerFingerprintSha256V1,
   noChannelNotificationAuthorityConsequencesV1,
   type ChannelNotificationSendIntentV1,
   type ChannelNotificationTriggerEvidenceV1
 } from '@markorbit/contracts/channel-notification';
+import {
+  channelNotificationDeliveryPlanFingerprintSha256V1,
+  channelNotificationSendEffectFingerprintSha256V1,
+  channelNotificationTriggerFingerprintSha256V1
+} from '@markorbit/contracts/channel-notification-fingerprint';
 import type {
   ChannelNotificationAutomationGovernanceEvidenceV1,
   ChannelNotificationAutomationRuleV1
