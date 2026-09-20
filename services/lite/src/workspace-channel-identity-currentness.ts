@@ -14,6 +14,7 @@ import {
   type ChannelEntitlementAccessV1,
   type ChannelFeatureKeyV1
 } from '@markorbit/contracts/channel-platform';
+import type { ExternalCredentialSecretKindV1 } from '@markorbit/contracts/external-credential';
 
 export interface WorkspaceChannelIdentityCurrentnessRequestV1 {
   workspaceId: string;
@@ -26,6 +27,10 @@ export interface WorkspaceChannelIdentityCurrentnessRequestV1 {
   oauthRequirements?: Readonly<{
     expectedProvider: string;
     requiredScopes: readonly string[];
+  }>;
+  externalCredentialRequirements?: Readonly<{
+    expectedProvider: string;
+    expectedSecretKind: ExternalCredentialSecretKindV1;
   }>;
 }
 
@@ -69,6 +74,23 @@ export interface OAuthCredentialCurrentnessReaderV1 {
   >;
 }
 
+export interface ExternalCredentialCurrentnessReaderV1 {
+  assess(input: {
+    credential: NonNullable<
+      WorkspaceChannelIdentityBindingV1['connection']['externalCredentialRef']
+    >;
+    expectedWorkspaceId: string;
+    expectedProvider: string;
+    expectedExternalAccountRef: string;
+    expectedSecretKind: ExternalCredentialSecretKindV1;
+    requiredCapabilityId: string;
+  }): Promise<
+    Readonly<{
+      state: 'CURRENT' | 'EXPIRED' | 'REAUTH_REQUIRED' | 'REVOKED' | 'UNKNOWN' | 'UNAVAILABLE';
+    }>
+  >;
+}
+
 export interface ChannelIdentityProvenanceCurrentnessReaderV1 {
   assess(input: {
     capabilityId: string;
@@ -83,7 +105,8 @@ export class WorkspaceChannelIdentityCurrentnessResolverV1 {
     private readonly bindings: WorkspaceChannelIdentityBindingReaderV1,
     private readonly entitlements: ChannelIdentityEntitlementReaderV1,
     private readonly verification: WorkspaceChannelIdentityVerificationAuthorityV1,
-    private readonly credentials: OAuthCredentialCurrentnessReaderV1,
+    private readonly oauthCredentials: OAuthCredentialCurrentnessReaderV1,
+    private readonly externalCredentials: ExternalCredentialCurrentnessReaderV1,
     private readonly provenance: ChannelIdentityProvenanceCurrentnessReaderV1,
     private readonly now: () => string = () => new Date().toISOString()
   ) {}
@@ -183,17 +206,39 @@ export class WorkspaceChannelIdentityCurrentnessResolverV1 {
       return result('UNAVAILABLE', 'IDENTITY_VERIFICATION_UNAVAILABLE');
     }
 
-    const credential = binding.connection.oauthCredentialRef;
-    if (!credential || !request.oauthRequirements) return result('UNKNOWN', 'CREDENTIAL_UNKNOWN');
-    let credentialState: Awaited<ReturnType<OAuthCredentialCurrentnessReaderV1['assess']>>;
+    const oauthCredential = binding.connection.oauthCredentialRef;
+    const externalCredential = binding.connection.externalCredentialRef;
+    if (
+      (oauthCredential && externalCredential) ||
+      (request.oauthRequirements && request.externalCredentialRequirements)
+    )
+      return result('UNKNOWN', 'CREDENTIAL_UNKNOWN');
+    let credentialState: Readonly<{
+      state: 'CURRENT' | 'EXPIRED' | 'REAUTH_REQUIRED' | 'REVOKED' | 'UNKNOWN' | 'UNAVAILABLE';
+    }>;
     try {
-      credentialState = await this.credentials.assess({
-        credential,
-        expectedWorkspaceId: request.workspaceId,
-        expectedProvider: request.oauthRequirements.expectedProvider,
-        expectedExternalAccountRef: binding.identity.externalAccountRef,
-        requiredScopes: request.oauthRequirements.requiredScopes
-      });
+      if (oauthCredential && request.oauthRequirements && !request.externalCredentialRequirements)
+        credentialState = await this.oauthCredentials.assess({
+          credential: oauthCredential,
+          expectedWorkspaceId: request.workspaceId,
+          expectedProvider: request.oauthRequirements.expectedProvider,
+          expectedExternalAccountRef: binding.identity.externalAccountRef,
+          requiredScopes: request.oauthRequirements.requiredScopes
+        });
+      else if (
+        externalCredential &&
+        request.externalCredentialRequirements &&
+        !request.oauthRequirements
+      )
+        credentialState = await this.externalCredentials.assess({
+          credential: externalCredential,
+          expectedWorkspaceId: request.workspaceId,
+          expectedProvider: request.externalCredentialRequirements.expectedProvider,
+          expectedExternalAccountRef: binding.identity.externalAccountRef,
+          expectedSecretKind: request.externalCredentialRequirements.expectedSecretKind,
+          requiredCapabilityId: binding.connection.capabilityRef.capabilityId
+        });
+      else return result('UNKNOWN', 'CREDENTIAL_UNKNOWN');
     } catch {
       return result('UNAVAILABLE', 'CREDENTIAL_UNAVAILABLE');
     }

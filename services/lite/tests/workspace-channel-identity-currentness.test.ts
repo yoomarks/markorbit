@@ -79,6 +79,7 @@ function harness(options: Options = {}) {
         })
     },
     { assess: () => Promise.resolve({ state: options.credential ?? 'CURRENT' }) },
+    { assess: () => Promise.resolve({ state: options.credential ?? 'CURRENT' }) },
     { assess: () => Promise.resolve({ state: options.provenance ?? 'CURRENT' }) },
     () => '2026-09-20T10:00:00.000Z'
   );
@@ -95,6 +96,88 @@ const request = {
   oauthRequirements: { expectedProvider: 'WHATSAPP', requiredScopes: ['messages.send'] }
 };
 
+const externalBinding = materializeTrustedWorkspaceChannelIdentityBindingV1(
+  {
+    workspaceId,
+    idempotencyKey: 'currentness-external-admit',
+    featureKey: 'WHATSAPP_BUSINESS',
+    identity: { externalAccountRef: 'account_primary', displayLabel: 'Primary' },
+    connection: {
+      sourceKind: 'PROVIDER_API',
+      capabilityRef: { capabilityId: 'capability_whatsapp', capabilityVersion: '1.0.0' },
+      implementationRef: {
+        implementationProfileId: 'implementation-profile_whatsapp' as const,
+        version: 2
+      },
+      externalCredentialRef: {
+        owner: 'CORE_IDENTITY',
+        credentialBindingId: 'external-credential-binding_whatsapp' as const,
+        version: 4
+      },
+      evidenceRefs: ['provider:verified']
+    }
+  },
+  '2026-09-20T09:00:00.000Z',
+  bindingId
+);
+
+function externalHarness(
+  state: Options['credential'] = 'CURRENT',
+  observe?: (input: unknown) => void
+) {
+  return new WorkspaceChannelIdentityCurrentnessResolverV1(
+    {
+      getExact: () => Promise.resolve(externalBinding),
+      getLatest: () => Promise.resolve(externalBinding)
+    },
+    {
+      resolve: () =>
+        Promise.resolve({
+          ...assessChannelEntitlementV1(workspaceId, 'WHATSAPP_BUSINESS', []),
+          status: 'ENABLED',
+          allowed: true
+        })
+    },
+    {
+      verify: (value) =>
+        Promise.resolve({
+          schemaVersion: 1,
+          binding: {
+            id: value.workspaceChannelIdentityBindingId,
+            version: value.version,
+            fingerprintSha256: value.bindingFingerprintSha256
+          },
+          status: 'VERIFIED',
+          observedAt: '2026-09-20T09:30:00.000Z',
+          evidenceRefs: ['provider-verification:current']
+        })
+    },
+    { assess: () => Promise.reject(new Error('OAuth reader must not be selected.')) },
+    {
+      assess: (input) => {
+        observe?.(input);
+        return Promise.resolve({ state: state ?? 'CURRENT' });
+      }
+    },
+    { assess: () => Promise.resolve({ state: 'CURRENT' }) },
+    () => '2026-09-20T10:00:00.000Z'
+  );
+}
+
+const externalRequest = {
+  workspaceId,
+  featureKey: 'WHATSAPP_BUSINESS' as const,
+  binding: {
+    id: bindingId,
+    version: 1,
+    fingerprintSha256: externalBinding.bindingFingerprintSha256
+  },
+  externalCredentialRequirements: {
+    expectedProvider: 'WHATSAPP',
+    expectedSecretKind: 'API_KEY' as const
+  }
+};
+
 describe('Workspace Channel identity JIT currentness', () => {
   it('returns CURRENT only for the exact fully-current chain without creating authority', async () => {
     const value = await harness().resolve(request);
@@ -104,6 +187,55 @@ describe('Workspace Channel identity JIT currentness', () => {
       createsExecutionAuthority: false
     });
     expect(JSON.stringify(value)).not.toMatch(/accessToken|refreshToken/u);
+  });
+
+  it('selects external credential currentness with the exact immutable context', async () => {
+    let received: unknown;
+    await expect(
+      externalHarness('CURRENT', (input) => {
+        received = input;
+      }).resolve(externalRequest)
+    ).resolves.toMatchObject({ state: 'CURRENT', createsExecutionAuthority: false });
+    expect(received).toEqual({
+      credential: externalBinding.connection.externalCredentialRef,
+      expectedWorkspaceId: workspaceId,
+      expectedProvider: 'WHATSAPP',
+      expectedExternalAccountRef: 'account_primary',
+      expectedSecretKind: 'API_KEY',
+      requiredCapabilityId: 'capability_whatsapp'
+    });
+  });
+
+  it.each([
+    ['EXPIRED', 'REAUTH_REQUIRED', 'CREDENTIAL_EXPIRED'],
+    ['REAUTH_REQUIRED', 'REAUTH_REQUIRED', 'CREDENTIAL_REAUTH_REQUIRED'],
+    ['REVOKED', 'REVOKED', 'CREDENTIAL_REVOKED'],
+    ['UNKNOWN', 'UNKNOWN', 'CREDENTIAL_UNKNOWN'],
+    ['UNAVAILABLE', 'UNAVAILABLE', 'CREDENTIAL_UNAVAILABLE']
+  ] as const)(
+    'fails closed when the external credential is %s',
+    async (credential, state, reason) => {
+      await expect(externalHarness(credential).resolve(externalRequest)).resolves.toMatchObject({
+        state,
+        reason
+      });
+    }
+  );
+
+  it('fails closed for missing or mixed credential requirements', async () => {
+    await expect(
+      externalHarness().resolve({
+        workspaceId,
+        featureKey: 'WHATSAPP_BUSINESS',
+        binding: externalRequest.binding
+      })
+    ).resolves.toMatchObject({ state: 'UNKNOWN', reason: 'CREDENTIAL_UNKNOWN' });
+    await expect(
+      externalHarness().resolve({
+        ...externalRequest,
+        oauthRequirements: { expectedProvider: 'WHATSAPP', requiredScopes: [] }
+      })
+    ).resolves.toMatchObject({ state: 'UNKNOWN', reason: 'CREDENTIAL_UNKNOWN' });
   });
 
   it.each([
