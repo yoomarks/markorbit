@@ -40,6 +40,8 @@ import type { WorkspaceCapabilityBindingRepositoryV1 } from './workspace-capabil
 import type { WorkspaceCapabilityBindingServiceV1 } from './workspace-capability-binding.js';
 import { createWorkspaceTrademarkIssueIntelligenceReadinessRoutesV1 } from './workspace-trademark-issue-intelligence-readiness-http.js';
 import type { WorkspaceTrademarkIssueIntelligenceReadinessServiceV1 } from './workspace-trademark-issue-intelligence-readiness.js';
+import { createChannelIdentityProvenanceCurrentnessRoutesV1 } from './channel-identity-provenance-currentness-http.js';
+import type { ChannelIdentityProvenanceCurrentnessServiceV1 } from './channel-identity-provenance-currentness.js';
 
 export * from './capability-audit-telemetry.js';
 export * from './capability-catalog-integrity.js';
@@ -54,6 +56,8 @@ export * from './capability-observation-source.js';
 export * from './capability-runtime-http.js';
 export * from './capability-runtime-quality-telemetry.js';
 export * from './capability-runtime.js';
+export * from './channel-identity-provenance-currentness.js';
+export * from './channel-identity-provenance-currentness-http.js';
 export * from './capability-source-output-identity.js';
 export * from './cn-duration-analytical-pilot.js';
 export * from './cn-duration-band-classification-pilot.js';
@@ -151,6 +155,10 @@ export interface CapabilityEngineOptions {
     WorkspaceCapabilityBindingValidityServiceV1,
     'evaluate'
   >;
+  channelIdentityProvenanceCurrentness?: Pick<
+    ChannelIdentityProvenanceCurrentnessServiceV1,
+    'assess'
+  >;
   internalServiceSecret?: string;
 }
 
@@ -194,6 +202,8 @@ export function createRuntime(options: CapabilityEngineOptions = {}) {
     );
   if (options.workspaceCapabilityBindingValidity && !options.internalServiceSecret)
     throw new Error('Workspace Capability binding validity requires internalServiceSecret.');
+  if (options.channelIdentityProvenanceCurrentness && !options.internalServiceSecret)
+    throw new Error('Channel identity provenance currentness requires internalServiceSecret.');
   if (options.privateReflectionCandidates && !options.internalServiceSecret) {
     throw new Error('privateReflectionCandidates requires internalServiceSecret.');
   }
@@ -360,6 +370,13 @@ export function createRuntime(options: CapabilityEngineOptions = {}) {
             : { exactOutputStore: options.managedAiExactOutputStore })
         })
       : [];
+  const channelIdentityProvenanceCurrentnessRoutes =
+    options.channelIdentityProvenanceCurrentness && options.internalServiceSecret
+      ? createChannelIdentityProvenanceCurrentnessRoutesV1({
+          currentness: options.channelIdentityProvenanceCurrentness,
+          internalServiceSecret: options.internalServiceSecret
+        })
+      : [];
   const managedCommunicationRoutes =
     managedCommunicationConfigured && options.internalServiceSecret
       ? createManagedCommunicationRoutesV1({
@@ -394,6 +411,7 @@ export function createRuntime(options: CapabilityEngineOptions = {}) {
         ...workspaceTrademarkIssueIntelligenceReadinessRoutes,
         ...workspaceCapabilityBindingRoutes,
         ...workspaceCapabilityBindingValidityRoutes,
+        ...channelIdentityProvenanceCurrentnessRoutes,
         ...managedAiExecutionRoutes,
         ...managedCommunicationRoutes
       ]

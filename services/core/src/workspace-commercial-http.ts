@@ -3,6 +3,10 @@ import {
   type CommercialOfferVersionV1,
   type RatePolicyVersionV1
 } from '@markorbit/contracts';
+import {
+  channelFeatureDefinitionV1,
+  type ChannelFeatureKeyV1
+} from '@markorbit/contracts/channel-platform';
 import { HttpError, json, type JsonRequest, type JsonRoute } from '@markorbit/service-kit';
 import { validateInternalServiceSecret } from './auth.js';
 import {
@@ -268,6 +272,43 @@ export function createWorkspaceCommercialRoutesV1(
               applicability: value.applicability,
               asOf: text(value.asOf, 'asOf')
             })
+          );
+        } catch (error) {
+          return translate(error);
+        }
+      }
+    },
+    {
+      method: 'POST',
+      path: '/internal/workspaces/:workspaceId/commercial/channel-entitlements/:featureKey/resolve',
+      async handle(request) {
+        internal(request, options.internalServiceSecret);
+        const value = object(request);
+        if (Object.keys(value).some((key) => key !== 'asOf'))
+          throw new HttpError(400, 'INVALID_REQUEST', 'Only asOf is accepted.');
+        const workspaceId = text(request.params.workspaceId, 'workspaceId').toLowerCase();
+        let definition;
+        try {
+          definition = channelFeatureDefinitionV1(
+            text(request.params.featureKey, 'featureKey') as ChannelFeatureKeyV1
+          );
+        } catch {
+          throw new HttpError(400, 'INVALID_REQUEST', 'featureKey is invalid.');
+        }
+        if (definition.sendingIdentityOwnership !== 'WORKSPACE_OWNED_IDENTITY')
+          throw new HttpError(
+            400,
+            'INVALID_REQUEST',
+            'Only identity-bound Channel features are supported.'
+          );
+        try {
+          return json(
+            200,
+            await options.service.resolveEntitlement(
+              { scope: 'WORKSPACE', workspaceId },
+              definition.entitlementKey,
+              text(value.asOf, 'asOf')
+            )
           );
         } catch (error) {
           return translate(error);
