@@ -1,4 +1,8 @@
-import { createCipheriv, createDecipheriv, randomBytes } from 'node:crypto';
+import {
+  decryptCredentialTextV1,
+  encryptCredentialTextV1,
+  type EncryptedCredentialEnvelopeV1
+} from './credential-crypto.js';
 
 export interface OAuthCredentialSecretMaterialV1 {
   accessToken: string;
@@ -6,12 +10,7 @@ export interface OAuthCredentialSecretMaterialV1 {
   accessExpiresAt: string;
 }
 
-export interface EncryptedOAuthSecretV1 {
-  keyId: string;
-  nonceBase64: string;
-  ciphertextBase64: string;
-  authTagBase64: string;
-}
+export type EncryptedOAuthSecretV1 = EncryptedCredentialEnvelopeV1;
 
 export class OAuthCredentialCryptoError extends Error {
   constructor(message: string, options?: ErrorOptions) {
@@ -75,19 +74,7 @@ export class OAuthCredentialKeyringV1 {
 
   encryptText(plaintext: string, aad: string): EncryptedOAuthSecretV1 {
     const key = this.keys.get(this.activeKeyId)!;
-    const nonce = randomBytes(12);
-    const cipher = createCipheriv('aes-256-gcm', key, nonce);
-    cipher.setAAD(Buffer.from(aad, 'utf8'));
-    const ciphertext = Buffer.concat([
-      cipher.update(Buffer.from(plaintext, 'utf8')),
-      cipher.final()
-    ]);
-    return {
-      keyId: this.activeKeyId,
-      nonceBase64: nonce.toString('base64'),
-      ciphertextBase64: ciphertext.toString('base64'),
-      authTagBase64: cipher.getAuthTag().toString('base64')
-    };
+    return encryptCredentialTextV1(this.activeKeyId, key, plaintext, aad);
   }
 
   decryptText(secret: Readonly<EncryptedOAuthSecretV1>, aad: string): string {
@@ -95,17 +82,7 @@ export class OAuthCredentialKeyringV1 {
     if (!key)
       throw new OAuthCredentialCryptoError('OAuth credential decryption key is unavailable.');
     try {
-      const decipher = createDecipheriv(
-        'aes-256-gcm',
-        key,
-        Buffer.from(secret.nonceBase64, 'base64')
-      );
-      decipher.setAAD(Buffer.from(aad, 'utf8'));
-      decipher.setAuthTag(Buffer.from(secret.authTagBase64, 'base64'));
-      return Buffer.concat([
-        decipher.update(Buffer.from(secret.ciphertextBase64, 'base64')),
-        decipher.final()
-      ]).toString('utf8');
+      return decryptCredentialTextV1(key, secret, aad);
     } catch (cause) {
       throw new OAuthCredentialCryptoError('OAuth credential secret could not be decrypted.', {
         cause: cause instanceof Error ? cause : undefined

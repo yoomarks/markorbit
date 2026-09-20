@@ -60,6 +60,8 @@ import { WorkspaceCommercialServiceV1 } from './workspace-commercial.js';
 import { PostgresWorkspaceCommercialRepositoryV1 } from './workspace-commercial-postgres.js';
 import { OAuthCredentialCurrentnessServiceV1 } from './oauth-credential-currentness.js';
 import { PostgresOAuthCredentialRepositoryV1 } from './oauth-credential-postgres.js';
+import { ExternalCredentialCurrentnessServiceV1 } from './external-credential-currentness.js';
+import { PostgresExternalCredentialRepositoryV1 } from './external-credential-postgres.js';
 
 const secret = process.env.MO_INTERNAL_SERVICE_SECRET;
 if (!secret) throw new Error('MO_INTERNAL_SERVICE_SECRET is required.');
@@ -179,6 +181,10 @@ const runtime = createRuntime({
   ),
   oauthCredentialCurrentness: new OAuthCredentialCurrentnessServiceV1(
     new PostgresOAuthCredentialRepositoryV1(database),
+    currentWorkspaceAuthorityService
+  ),
+  externalCredentialCurrentness: new ExternalCredentialCurrentnessServiceV1(
+    new PostgresExternalCredentialRepositoryV1(database),
     currentWorkspaceAuthorityService
   ),
   internalServiceSecret: secret
