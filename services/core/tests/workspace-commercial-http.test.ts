@@ -260,3 +260,31 @@ describe('Email Notification fixed entitlement seam', () => {
     expect(resolveEntitlement).not.toHaveBeenCalled();
   });
 });
+
+describe('Identity-bound Channel entitlement seam', () => {
+  it('maps the fixed feature definition to its Workspace entitlement without member authority', async () => {
+    const { routes, validate, resolveEntitlement } = fixture();
+    const route = routes.find((candidate) => candidate.path.includes('channel-entitlements'))!;
+    const value = request(route.path, { asOf: '2026-09-20T10:00:00.000Z' });
+    value.params = { workspaceId: ids.workspace, featureKey: 'WHATSAPP_BUSINESS' };
+    await route.handle(value);
+    expect(resolveEntitlement).toHaveBeenCalledWith(
+      { scope: 'WORKSPACE', workspaceId: ids.workspace },
+      'lite.channel.whatsapp.business',
+      '2026-09-20T10:00:00.000Z'
+    );
+    expect(validate).not.toHaveBeenCalled();
+  });
+
+  it('rejects non identity-bound features and arbitrary body fields', async () => {
+    const { routes, resolveEntitlement } = fixture();
+    const route = routes.find((candidate) => candidate.path.includes('channel-entitlements'))!;
+    const value = request(route.path, {
+      asOf: '2026-09-20T10:00:00.000Z',
+      entitlementKey: 'attacker.controlled'
+    });
+    value.params = { workspaceId: ids.workspace, featureKey: 'EMAIL_NOTIFICATION' };
+    await expect(route.handle(value)).rejects.toMatchObject({ status: 400 });
+    expect(resolveEntitlement).not.toHaveBeenCalled();
+  });
+});

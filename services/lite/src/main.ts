@@ -167,6 +167,17 @@ import {
   VisualBridgeService
 } from './visual-bridge.js';
 import { createVisualBridgeRoutes } from './visual-bridge-http.js';
+import { PostgresWorkspaceChannelIdentityBindingStoreV1 } from './workspace-channel-identity-binding.js';
+import {
+  UnavailableWorkspaceChannelIdentityVerificationAuthorityV1,
+  WorkspaceChannelIdentityCurrentnessResolverV1
+} from './workspace-channel-identity-currentness.js';
+import { createWorkspaceChannelIdentityCurrentnessRoutesV1 } from './workspace-channel-identity-currentness-http.js';
+import {
+  HttpCapabilityChannelIdentityProvenanceReaderV1,
+  HttpCoreChannelIdentityEntitlementReaderV1,
+  HttpCoreOAuthCredentialCurrentnessReaderV1
+} from './workspace-channel-identity-currentness-readers.js';
 
 export const serviceManifest = Object.freeze({
   name: 'lite',
@@ -198,6 +209,13 @@ const database = new ManagedDatabase(
 );
 await database.start();
 const pool = database.getPool();
+const workspaceChannelIdentityCurrentness = new WorkspaceChannelIdentityCurrentnessResolverV1(
+  new PostgresWorkspaceChannelIdentityBindingStoreV1(database, pool),
+  new HttpCoreChannelIdentityEntitlementReaderV1(coreUrl, internalServiceSecret),
+  new UnavailableWorkspaceChannelIdentityVerificationAuthorityV1(),
+  new HttpCoreOAuthCredentialCurrentnessReaderV1(coreUrl, internalServiceSecret),
+  new HttpCapabilityChannelIdentityProvenanceReaderV1(capabilityEngineUrl, internalServiceSecret)
+);
 const feedbackStore = new PostgresProductLoopFeedbackStore(database, pool);
 const analyticsStore = new PostgresProductConversionAnalyticsStore(pool);
 const dailySignalStore = new PostgresLiteDailySignalStore(
@@ -623,6 +641,10 @@ const tradingListingPublicationCurrentness = new TradingListingPublicationCurren
 );
 const runtime = createServiceRuntime(serviceManifest, {
   routes: [
+    ...createWorkspaceChannelIdentityCurrentnessRoutesV1({
+      internalServiceSecret,
+      resolver: workspaceChannelIdentityCurrentness
+    }),
     ...createLiteAdminRoutesV1({ internalServiceSecret }),
     ...createTradingListingPublicationCurrentnessRoutes({
       internalServiceSecret,
