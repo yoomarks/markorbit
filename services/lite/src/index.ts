@@ -104,3 +104,4 @@ export * from './notification-trigger-markreg.js';
 export * from './notification-delivery.js';
 export * from './notification-delivery-runtime.js';
 export * from './notification-delivery-ses.js';
+export * from './workspace-channel-identity-binding.js';
