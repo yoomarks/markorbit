@@ -8,6 +8,8 @@ import {
 import {
   GovernedHumanActionReceiptError,
   GovernedHumanActionReceiptService,
+  notificationAutomationActivateRouteV1,
+  notificationAutomationActivationReviewedActionDigestV1,
   type GovernedHumanActionReceipt,
   type GovernedHumanActionReceiptStore,
   type MaterializeGovernedHumanActionReceiptRequest
@@ -383,6 +385,88 @@ describe('Email Campaign Send HUMAN_USER receipt domain', () => {
       f.service.materializeOrResolve({
         ...emailCampaignCommand(),
         reviewedActionDigest: 'f'.repeat(64)
+      })
+    ).rejects.toMatchObject({
+      code: 'GOVERNED_HUMAN_ACTION_REPLAY_CONFLICT',
+      status: 409
+    });
+  });
+});
+
+describe('Notification Automation activation HUMAN_USER receipt domain', () => {
+  const notificationRuleId = 'channel-notification-rule_core-test' as const;
+  const candidateRuleVersion = 2;
+  const candidateRuleFingerprintSha256 = '7'.repeat(64);
+
+  function activationCommand(): MaterializeGovernedHumanActionReceiptRequest {
+    const principalReference = command().principalReference;
+    return {
+      ...command(),
+      kind: 'NOTIFICATION_AUTOMATION_ACTIVATE',
+      mutationRoute: notificationAutomationActivateRouteV1(notificationRuleId),
+      reviewedActionDigest: notificationAutomationActivationReviewedActionDigestV1({
+        principalReference,
+        notificationRuleId,
+        candidateRuleVersion
+      }),
+      idempotencyKey: 'notification-automation-activate-1'
+    };
+  }
+
+  it('materializes human activation once and derives bounded Core governance evidence for the candidate rule', async () => {
+    const store = new MemoryStore();
+    const f = service({ store });
+    const humanReceipt = await f.service.materializeOrResolve(activationCommand());
+    const evidence = await f.service.validateNotificationAutomationActivation({
+      workspaceId: ids.workspace,
+      notificationRuleId,
+      candidateRuleVersion,
+      candidateRuleFingerprintSha256,
+      governanceEvidenceRef: humanReceipt.authorityReference
+    });
+
+    expect(evidence).toMatchObject({
+      owner: 'CORE',
+      kind: 'GOVERNED_HUMAN_ACTION_RECEIPT',
+      action: 'ACTIVATE',
+      workspaceId: ids.workspace,
+      notificationRuleId,
+      authorizedRuleVersion: candidateRuleVersion,
+      authorizedRuleFingerprintSha256: candidateRuleFingerprintSha256,
+      evidenceRef: humanReceipt.authorityReference,
+      verifiedAt: '2026-09-05T09:01:00.000Z'
+    });
+    expect(evidence.evidenceFingerprintSha256).toMatch(/^[0-9a-f]{64}$/);
+    expect(evidence).not.toHaveProperty('externalSendAuthorized');
+    expect(evidence).not.toHaveProperty('executionReleaseId');
+    expect(f.validate).toHaveBeenCalledTimes(2);
+  });
+
+  it('rejects candidate version or rule identity drift against the exact browser-reviewed activation', async () => {
+    const store = new MemoryStore();
+    const f = service({ store });
+    const humanReceipt = await f.service.materializeOrResolve(activationCommand());
+
+    await expect(
+      f.service.validateNotificationAutomationActivation({
+        workspaceId: ids.workspace,
+        notificationRuleId,
+        candidateRuleVersion: 3,
+        candidateRuleFingerprintSha256,
+        governanceEvidenceRef: humanReceipt.authorityReference
+      })
+    ).rejects.toMatchObject({
+      code: 'GOVERNED_HUMAN_ACTION_REPLAY_CONFLICT',
+      status: 409
+    });
+
+    await expect(
+      f.service.validateNotificationAutomationActivation({
+        workspaceId: ids.workspace,
+        notificationRuleId: 'channel-notification-rule_other',
+        candidateRuleVersion,
+        candidateRuleFingerprintSha256,
+        governanceEvidenceRef: humanReceipt.authorityReference
       })
     ).rejects.toMatchObject({
       code: 'GOVERNED_HUMAN_ACTION_REPLAY_CONFLICT',

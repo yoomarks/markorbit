@@ -12,7 +12,12 @@ import type { GovernedHumanActionReceiptService } from './governed-human-action-
 export interface CurrentWorkspaceAuthorityHttpOptions {
   internalServiceSecret: string;
   service: Pick<CurrentWorkspaceAuthorityService, 'validate'> &
-    Partial<Pick<GovernedHumanActionReceiptService, 'materializeOrResolve' | 'validateCurrent'>>;
+    Partial<
+      Pick<
+        GovernedHumanActionReceiptService,
+        'materializeOrResolve' | 'validateCurrent' | 'validateNotificationAutomationActivation'
+      >
+    >;
 }
 
 const allowedKeys = new Set([
@@ -122,13 +127,19 @@ export function createCurrentWorkspaceAuthorityRoutes(
       }
     }
   ];
-  if (options.service.materializeOrResolve && options.service.validateCurrent)
+  if (
+    options.service.materializeOrResolve &&
+    options.service.validateCurrent &&
+    options.service.validateNotificationAutomationActivation
+  )
     routes.push(
       ...createGovernedHumanActionReceiptRoutes({
         internalServiceSecret: options.internalServiceSecret,
         service: {
           materializeOrResolve: options.service.materializeOrResolve.bind(options.service),
-          validateCurrent: options.service.validateCurrent.bind(options.service)
+          validateCurrent: options.service.validateCurrent.bind(options.service),
+          validateNotificationAutomationActivation:
+            options.service.validateNotificationAutomationActivation.bind(options.service)
         }
       })
     );

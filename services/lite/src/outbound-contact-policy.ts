@@ -581,6 +581,19 @@ export class PostgresOutboundContactPolicyStore {
       throw this.persistence(error);
     }
   }
+  async currentGlobalSuppressions(w: string, endpoint: string) {
+    try {
+      const workspaceId = workspace(w);
+      const result = await this.query.query<Row>(
+        `SELECT v.document_json FROM lite_outbound_contact_suppression_heads h JOIN lite_outbound_contact_suppression_versions v ON v.workspace_id=h.workspace_id AND v.suppression_id=h.suppression_id AND v.version=h.latest_version WHERE h.workspace_id=$1 AND h.endpoint_fingerprint_sha256=$2 AND h.scope='ALL_OUTBOUND' ORDER BY h.updated_at DESC`,
+        [workspaceId, sha(endpoint, 'endpointFingerprintSha256')]
+      );
+      return result.rows.map((r) => persistedSuppression(r.document_json, workspaceId));
+    } catch (error) {
+      if (error instanceof OutboundContactPolicyRuntimeError) throw error;
+      throw this.persistence(error);
+    }
+  }
   async currentSuppressions(w: string, endpoint: string, purpose: OutboundContactPurposeV1) {
     try {
       const result = await this.query.query<Row>(

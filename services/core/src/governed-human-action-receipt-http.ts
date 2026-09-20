@@ -6,12 +6,14 @@ import {
   type GovernedHumanActionKind,
   type GovernedHumanActionReceiptService,
   type MaterializeGovernedHumanActionReceiptRequest,
-  type ValidateGovernedHumanActionReceiptRequest
+  type ValidateGovernedHumanActionReceiptRequest,
+  type ValidateNotificationAutomationActivationRequest
 } from './governed-human-action-receipt.js';
 
 export interface GovernedHumanActionReceiptHttpOptions {
   internalServiceSecret: string;
-  service: Pick<GovernedHumanActionReceiptService, 'materializeOrResolve' | 'validateCurrent'>;
+  service: Pick<GovernedHumanActionReceiptService, 'materializeOrResolve' | 'validateCurrent'> &
+    Partial<Pick<GovernedHumanActionReceiptService, 'validateNotificationAutomationActivation'>>;
 }
 
 const materializeKeys = new Set([
@@ -125,7 +127,7 @@ function mapError(error: unknown): never {
 export function createGovernedHumanActionReceiptRoutes(
   options: GovernedHumanActionReceiptHttpOptions
 ): readonly JsonRoute[] {
-  return [
+  const routes: JsonRoute[] = [
     {
       method: 'POST',
       path: '/internal/auth/governed-human-actions/receipts',
@@ -151,4 +153,46 @@ export function createGovernedHumanActionReceiptRoutes(
       }
     }
   ];
+  const validateNotificationAutomationActivation =
+    options.service.validateNotificationAutomationActivation?.bind(options.service);
+  if (validateNotificationAutomationActivation)
+    routes.splice(1, 0, {
+      method: 'POST',
+      path: '/internal/auth/governed-human-actions/notification-automation-activate/validate-current',
+      async handle(request) {
+        authenticated(request, options.internalServiceSecret);
+        const value = recordBody(request);
+        const allowed = new Set([
+          'workspaceId',
+          'notificationRuleId',
+          'candidateRuleVersion',
+          'candidateRuleFingerprintSha256',
+          'governanceEvidenceRef'
+        ]);
+        if (
+          Object.keys(value).some((key) => !allowed.has(key)) ||
+          typeof value.workspaceId !== 'string' ||
+          typeof value.notificationRuleId !== 'string' ||
+          typeof value.candidateRuleVersion !== 'number' ||
+          typeof value.candidateRuleFingerprintSha256 !== 'string' ||
+          typeof value.governanceEvidenceRef !== 'string'
+        )
+          throw new HttpError(
+            400,
+            'INVALID_GOVERNED_HUMAN_ACTION_REQUEST',
+            'Exact Notification Automation activation verifier fields are required.'
+          );
+        try {
+          return json(
+            200,
+            await validateNotificationAutomationActivation(
+              value as unknown as ValidateNotificationAutomationActivationRequest
+            )
+          );
+        } catch (error) {
+          return mapError(error);
+        }
+      }
+    });
+  return routes;
 }

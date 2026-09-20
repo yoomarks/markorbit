@@ -3,6 +3,10 @@ import {
   type CoreHumanActionReceiptBindingV1,
   type EmailCampaignSendCurrentnessV1,
   type EmailCampaignSendIntentV1,
+  type NotificationSendCurrentnessV1,
+  type ChannelNotificationSendIntentV1,
+  type ChannelNotificationTriggerEvidenceV1,
+  type ChannelNotificationAutomationGovernanceEvidenceV1,
   type ProtectedExternalActionAuthorizationId,
   type TradingListingPublicationCurrentnessV1,
   type TradingListingPublicationIntentV1,
@@ -13,6 +17,7 @@ import {
   ProtectedExternalActionError,
   type CoreHumanReceiptCurrentnessClient,
   type EmailCampaignSendCurrentnessClient,
+  type NotificationSendCurrentnessClient,
   type ProtectedExternalActionService,
   type TradingPublicationCurrentnessClient
 } from './protected-external-action.js';
@@ -42,6 +47,19 @@ function principalOf(request: JsonRequest, secret: string): WorkspacePrincipal {
   return principal;
 }
 
+function internalWorkspaceOf(request: JsonRequest, secret: string): string {
+  if (!secret || request.headers['x-markorbit-internal-authorization'] !== secret)
+    throw new HttpError(
+      401,
+      'UNTRUSTED_INTERNAL_CALLER',
+      'Trusted internal authorization is required.'
+    );
+  const workspaceId = request.headers['x-markorbit-workspace-id']?.trim().toLowerCase();
+  if (!workspaceId)
+    throw new HttpError(400, 'WORKSPACE_REQUIRED', 'Trusted Workspace context is required.');
+  return workspaceId;
+}
+
 function bodyOf(request: JsonRequest): Record<string, unknown> {
   if (!request.body || typeof request.body !== 'object' || Array.isArray(request.body))
     throw new HttpError(400, 'INVALID_REQUEST', 'Request body must be an object.');
@@ -64,7 +82,12 @@ export function createProtectedExternalActionRoutes(options: {
   internalServiceSecret: string;
   service: Pick<
     ProtectedExternalActionService,
-    'authorize' | 'release' | 'authorizeEmailCampaignSend' | 'releaseEmailCampaignSend'
+    | 'authorize'
+    | 'release'
+    | 'authorizeEmailCampaignSend'
+    | 'releaseEmailCampaignSend'
+    | 'authorizeNotificationSend'
+    | 'releaseNotificationSend'
   >;
 }): readonly JsonRoute[] {
   return [
@@ -149,6 +172,69 @@ export function createProtectedExternalActionRoutes(options: {
             await options.service.releaseEmailCampaignSend({
               workspaceId: principal.workspaceId,
               actorUserId: principal.userId,
+              authorizationId: request.params
+                .authorizationId as ProtectedExternalActionAuthorizationId,
+              authorizationVersion: body.authorizationVersion as number,
+              idempotencyKey: keyOf(request)
+            })
+          );
+        } catch (error) {
+          return mapError(error);
+        }
+      }
+    },
+    {
+      method: 'POST',
+      path: '/v1/protected-external-actions/notification-send/authorizations',
+      handle: async (request) => {
+        const workspaceId = internalWorkspaceOf(request, options.internalServiceSecret);
+        const body = bodyOf(request);
+        if (
+          Object.keys(body).some(
+            (field) => !['intent', 'triggerEvidence', 'activationEvidence'].includes(field)
+          ) ||
+          !body.intent ||
+          !body.triggerEvidence ||
+          !body.activationEvidence
+        )
+          throw new HttpError(
+            400,
+            'INVALID_REQUEST',
+            'Exact Notification intent and owner evidence are required.'
+          );
+        try {
+          return json(
+            201,
+            await options.service.authorizeNotificationSend({
+              workspaceId,
+              intent: body.intent as ChannelNotificationSendIntentV1,
+              triggerEvidence: body.triggerEvidence as ChannelNotificationTriggerEvidenceV1,
+              activationEvidence:
+                body.activationEvidence as ChannelNotificationAutomationGovernanceEvidenceV1,
+              idempotencyKey: keyOf(request)
+            })
+          );
+        } catch (error) {
+          return mapError(error);
+        }
+      }
+    },
+    {
+      method: 'POST',
+      path: '/v1/protected-external-actions/notification-send/authorizations/:authorizationId/releases',
+      handle: async (request) => {
+        const workspaceId = internalWorkspaceOf(request, options.internalServiceSecret);
+        const body = bodyOf(request);
+        if (
+          Object.keys(body).some((field) => field !== 'authorizationVersion') ||
+          !Number.isSafeInteger(body.authorizationVersion)
+        )
+          throw new HttpError(400, 'INVALID_REQUEST', 'Exact authorizationVersion is required.');
+        try {
+          return json(
+            201,
+            await options.service.releaseNotificationSend({
+              workspaceId,
               authorizationId: request.params
                 .authorizationId as ProtectedExternalActionAuthorizationId,
               authorizationVersion: body.authorizationVersion as number,
@@ -342,5 +428,49 @@ export class HttpEmailCampaignSendCurrentnessClient implements EmailCampaignSend
         reason: 'OWNER_UNAVAILABLE'
       } satisfies EmailCampaignSendCurrentnessV1;
     return response.json() as Promise<EmailCampaignSendCurrentnessV1>;
+  }
+}
+
+export class HttpNotificationSendCurrentnessClient implements NotificationSendCurrentnessClient {
+  constructor(
+    private readonly liteUrl: string,
+    private readonly internalServiceSecret: string,
+    private readonly timeoutMs = 3_000
+  ) {}
+
+  async validateCurrent(
+    intent: Readonly<ChannelNotificationSendIntentV1>,
+    triggerEvidence: Readonly<ChannelNotificationTriggerEvidenceV1>,
+    activationEvidence: Readonly<ChannelNotificationAutomationGovernanceEvidenceV1>
+  ) {
+    const unavailable = (): NotificationSendCurrentnessV1 => ({
+      schemaVersion: 1,
+      workspaceId: intent.workspaceId,
+      actionKind: 'NOTIFICATION_SEND',
+      effectFingerprintSha256: intent.effectFingerprintSha256,
+      deliveryPlanFingerprintSha256: intent.deliveryPlanFingerprintSha256,
+      state: 'UNAVAILABLE',
+      reason: 'OWNER_UNAVAILABLE'
+    });
+    let response: Response;
+    try {
+      response = await fetch(
+        `${this.liteUrl}/internal/notification-automation/send-intents/validate-current`,
+        {
+          method: 'POST',
+          headers: {
+            'content-type': 'application/json',
+            'x-markorbit-internal-authorization': this.internalServiceSecret,
+            'x-markorbit-workspace-id': intent.workspaceId
+          },
+          body: JSON.stringify({ intent, triggerEvidence, activationEvidence }),
+          signal: AbortSignal.timeout(this.timeoutMs)
+        }
+      );
+    } catch {
+      return unavailable();
+    }
+    if (!response.ok) return unavailable();
+    return response.json() as Promise<NotificationSendCurrentnessV1>;
   }
 }

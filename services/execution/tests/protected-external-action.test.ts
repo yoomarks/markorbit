@@ -2,9 +2,14 @@ import { createHash } from 'node:crypto';
 import { describe, expect, it, vi } from 'vitest';
 import {
   canonicalTradingListingPublicationIntentPayloadV1,
+  noChannelNotificationAuthorityConsequencesV1,
+  type ChannelNotificationAutomationGovernanceEvidenceV1,
+  type ChannelNotificationSendIntentV1,
+  type ChannelNotificationTriggerEvidenceV1,
   type CoreHumanActionReceiptBindingV1,
   type EmailCampaignSendCurrentnessStateV1,
   type EmailCampaignSendIntentV1,
+  type NotificationSendCurrentnessStateV1,
   type TradingListingPublicationCurrentnessStateV1,
   type TradingListingPublicationIntentV1
 } from '@markorbit/contracts';
@@ -407,5 +412,226 @@ describe('Execution protected Email Campaign send authorization and release', ()
         idempotencyKey: 'release-email-suppressed'
       })
     ).rejects.toMatchObject({ code: 'EMAIL_CAMPAIGN_INTENT_SUPPRESSED' });
+  });
+});
+
+const notificationTrigger: ChannelNotificationTriggerEvidenceV1 = {
+  schemaVersion: 1,
+  notificationTriggerEvidenceId: 'channel-notification-trigger_1176',
+  workspaceId,
+  version: 1,
+  owner: 'MARKREG',
+  eventType: 'FORMAL_MATTER_STATUS_CHANGED',
+  eventId: 'markreg-event_1176',
+  subject: {
+    owner: 'LITE',
+    kind: 'WORKSPACE_DIRECTORY_ENTRY',
+    id: 'workspace-directory-entry_1176',
+    version: 4
+  },
+  occurredAt: '2026-09-20T00:00:00.000Z',
+  evidenceRefs: ['markreg-event:1176'],
+  triggerFingerprintSha256: '4'.repeat(64),
+  authority: noChannelNotificationAuthorityConsequencesV1
+};
+
+const notificationActivation: ChannelNotificationAutomationGovernanceEvidenceV1 = {
+  owner: 'CORE',
+  kind: 'GOVERNED_HUMAN_ACTION_RECEIPT',
+  action: 'ACTIVATE',
+  workspaceId,
+  notificationRuleId: 'channel-notification-rule_1176',
+  authorizedRuleVersion: 2,
+  authorizedRuleFingerprintSha256: '3'.repeat(64),
+  evidenceRef: 'core-governed-human-action-receipt:notification-1176',
+  evidenceFingerprintSha256: '9'.repeat(64),
+  verifiedAt: '2026-09-20T00:00:00.000Z'
+};
+
+const notificationIntent: ChannelNotificationSendIntentV1 = {
+  schemaVersion: 1,
+  notificationSendIntentId: 'channel-notification-send-intent_1176',
+  workspaceId,
+  version: 1,
+  featureKey: 'EMAIL_NOTIFICATION',
+  rule: {
+    notificationRuleId: notificationActivation.notificationRuleId,
+    version: notificationActivation.authorizedRuleVersion,
+    fingerprintSha256: notificationActivation.authorizedRuleFingerprintSha256
+  },
+  trigger: {
+    notificationTriggerEvidenceId: notificationTrigger.notificationTriggerEvidenceId,
+    version: 1,
+    fingerprintSha256: notificationTrigger.triggerFingerprintSha256
+  },
+  target: {
+    ...notificationTrigger.subject,
+    endpointFingerprintSha256: '5'.repeat(64)
+  },
+  content: {
+    publishPackageId: 'publish-package_1176',
+    version: 2,
+    fingerprintSha256: '1'.repeat(64)
+  },
+  senderProfile: {
+    senderProfileId: 'email-sender-profile_1176',
+    version: 3,
+    fingerprintSha256: '2'.repeat(64)
+  },
+  deliveryPlanFingerprintSha256: '6'.repeat(64),
+  effectFingerprintSha256: '7'.repeat(64),
+  authority: noChannelNotificationAuthorityConsequencesV1
+};
+
+function notificationHarness(state: NotificationSendCurrentnessStateV1 = 'CURRENT') {
+  const repository = new InMemoryProtectedExternalActionRepository();
+  const notification = {
+    validateCurrent: vi.fn(() =>
+      Promise.resolve({
+        schemaVersion: 1 as const,
+        workspaceId,
+        actionKind: 'NOTIFICATION_SEND' as const,
+        effectFingerprintSha256: notificationIntent.effectFingerprintSha256,
+        deliveryPlanFingerprintSha256: notificationIntent.deliveryPlanFingerprintSha256,
+        state,
+        reason:
+          state === 'CURRENT'
+            ? ('EXACT_NOTIFICATION_PLAN_CURRENT' as const)
+            : state === 'REVOKED'
+              ? ('ENTITLEMENT_REVOKED' as const)
+              : state === 'SUPPRESSED'
+                ? ('OUTBOUND_POLICY_SUPPRESSED' as const)
+                : state === 'UNAVAILABLE'
+                  ? ('OWNER_UNAVAILABLE' as const)
+                  : state === 'UNKNOWN'
+                    ? ('OWNER_DATA_UNKNOWN' as const)
+                    : ('RULE_STALE' as const)
+      })
+    )
+  };
+  const service = new ProtectedExternalActionService(
+    repository,
+    { validateCurrent: vi.fn(() => Promise.resolve()) },
+    {
+      validateCurrent: vi.fn(() =>
+        Promise.reject(new Error('Trading currentness must not be consulted for Notification.'))
+      )
+    },
+    () => new Date('2026-09-20T00:01:00.000Z'),
+    60_000,
+    undefined,
+    notification
+  );
+  return { repository, notification, service };
+}
+
+const authorizeNotification = (service: ProtectedExternalActionService) =>
+  service.authorizeNotificationSend({
+    workspaceId,
+    intent: notificationIntent,
+    triggerEvidence: notificationTrigger,
+    activationEvidence: notificationActivation,
+    idempotencyKey: 'authorize-notification-1176'
+  });
+
+describe('Execution protected Notification send authorization and release', () => {
+  it('uses Execution automation authority without fabricating a per-send human receipt', async () => {
+    const { service, notification } = notificationHarness();
+    const authorization = await authorizeNotification(service);
+    expect(authorization).toMatchObject({
+      actionKind: 'NOTIFICATION_SEND',
+      authorizedBy: 'EXECUTION_AUTOMATION',
+      authorizationStatus: 'AUTHORIZED'
+    });
+    expect(authorization).not.toHaveProperty('humanReceipt');
+
+    const release = await service.releaseNotificationSend({
+      workspaceId,
+      authorizationId: authorization.authorizationId,
+      authorizationVersion: 1,
+      idempotencyKey: 'release-notification-1176'
+    });
+    expect(release).toMatchObject({
+      actionKind: 'NOTIFICATION_SEND',
+      releasedBy: 'EXECUTION_AUTOMATION',
+      status: 'RELEASED_FOR_EXECUTION'
+    });
+    expect(notification.validateCurrent).toHaveBeenCalledTimes(2);
+  });
+
+  it.each([
+    ['STALE', 'NOTIFICATION_INTENT_STALE'],
+    ['REVOKED', 'NOTIFICATION_INTENT_REVOKED'],
+    ['SUPPRESSED', 'NOTIFICATION_INTENT_SUPPRESSED'],
+    ['UNKNOWN', 'NOTIFICATION_INTENT_UNKNOWN'],
+    ['UNAVAILABLE', 'NOTIFICATION_INTENT_UNAVAILABLE']
+  ] as const)('fails closed for Notification %s', async (state, code) => {
+    await expect(authorizeNotification(notificationHarness(state).service)).rejects.toMatchObject({
+      code
+    });
+  });
+
+  it('revalidates owner currentness at release and blocks newly suppressed delivery', async () => {
+    const h = notificationHarness();
+    const authorization = await authorizeNotification(h.service);
+    h.notification.validateCurrent.mockResolvedValueOnce({
+      schemaVersion: 1,
+      workspaceId,
+      actionKind: 'NOTIFICATION_SEND',
+      effectFingerprintSha256: notificationIntent.effectFingerprintSha256,
+      deliveryPlanFingerprintSha256: notificationIntent.deliveryPlanFingerprintSha256,
+      state: 'SUPPRESSED',
+      reason: 'OUTBOUND_POLICY_SUPPRESSED'
+    });
+    await expect(
+      h.service.releaseNotificationSend({
+        workspaceId,
+        authorizationId: authorization.authorizationId,
+        authorizationVersion: 1,
+        idempotencyKey: 'release-notification-suppressed'
+      })
+    ).rejects.toMatchObject({ code: 'NOTIFICATION_INTENT_SUPPRESSED' });
+  });
+
+  it('dedupes the same deterministic Notification effect across separate authorizations', async () => {
+    const h = notificationHarness();
+    const first = await authorizeNotification(h.service);
+    const second = await h.service.authorizeNotificationSend({
+      workspaceId,
+      intent: notificationIntent,
+      triggerEvidence: notificationTrigger,
+      activationEvidence: notificationActivation,
+      idempotencyKey: 'authorize-notification-1176-second'
+    });
+    expect(second.authorizationId).not.toBe(first.authorizationId);
+
+    await h.service.releaseNotificationSend({
+      workspaceId,
+      authorizationId: first.authorizationId,
+      authorizationVersion: 1,
+      idempotencyKey: 'release-notification-1176-first'
+    });
+    await expect(
+      h.service.releaseNotificationSend({
+        workspaceId,
+        authorizationId: second.authorizationId,
+        authorizationVersion: 1,
+        idempotencyKey: 'release-notification-1176-second'
+      })
+    ).rejects.toMatchObject({ code: 'RELEASE_ALREADY_EXISTS' });
+  });
+
+  it('rejects activation evidence drift before consulting currentness', async () => {
+    const h = notificationHarness();
+    await expect(
+      h.service.authorizeNotificationSend({
+        workspaceId,
+        intent: notificationIntent,
+        triggerEvidence: notificationTrigger,
+        activationEvidence: { ...notificationActivation, authorizedRuleVersion: 3 },
+        idempotencyKey: 'authorize-notification-drift'
+      })
+    ).rejects.toMatchObject({ code: 'INVALID_REQUEST' });
+    expect(h.notification.validateCurrent).not.toHaveBeenCalled();
   });
 });
