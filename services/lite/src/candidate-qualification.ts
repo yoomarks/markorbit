@@ -205,7 +205,7 @@ function opportunityReviewRecommendation(
     kind: 'OPPORTUNITY_REVIEW',
     title: candidate.title,
     explanation:
-      'A human Qualification Decision marked this exact Candidate QUALIFIED_FOR_MARKREG. Review the relationship model and the exact owner effect before any Formal Opportunity is created.',
+      'A human Qualification Decision marked this exact Candidate QUALIFIED_FOR_MARKREG. This is not customer instruction. Creating a Formal Opportunity still requires a separate explicit Prepared Action confirmation after reviewing the relationship model and exact owner effect.',
     sources: [
       {
         schemaVersion: 1,
