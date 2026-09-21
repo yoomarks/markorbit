@@ -149,7 +149,7 @@ describe('Today Opportunity Review MOVE card', () => {
       ).toBeVisible()
     );
     expect(
-      screen.getByRole('button', { name: 'Prepare Formal Opportunity action', hidden: true })
+      screen.queryByRole('button', { name: 'Prepare Formal Opportunity action' })
     ).not.toBeInTheDocument();
     expect(screen.getByText(/no longer matches the reviewed Candidate/)).toBeVisible();
   });
