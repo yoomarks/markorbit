@@ -406,6 +406,11 @@ suite('PostgreSQL Lite Opportunity Candidate qualification', () => {
             .getPool()
             .query<Record<string, unknown>>(
               'SELECT * FROM lite_prepared_actions ORDER BY workspace_id,prepared_action_id'
+            ),
+          database
+            .getPool()
+            .query<Record<string, unknown>>(
+              'SELECT * FROM lite_today_recommendations ORDER BY workspace_id,today_recommendation_id'
             )
         ]).then((results) => results.map((result) => result.rows));
       const before = await snapshot();
@@ -425,6 +430,35 @@ suite('PostgreSQL Lite Opportunity Candidate qualification', () => {
       expect(disposition.decision.expectedCandidateFingerprintSha256).not.toBe(
         disposition.currentCandidate.opportunityCandidateFingerprintSha256
       );
+      const recommendations = await database
+        .getPool()
+        .query<{ document_json: Record<string, unknown> }>(
+          'SELECT document_json FROM lite_today_recommendations WHERE workspace_id=$1 ORDER BY today_recommendation_id',
+          [workspaceId]
+        );
+      if (outcome === 'QUALIFIED_FOR_MARKREG') {
+        expect(recommendations.rows).toHaveLength(1);
+        expect(recommendations.rows[0]?.document_json).toMatchObject({
+          workspaceId,
+          version: 1,
+          kind: 'OPPORTUNITY_REVIEW',
+          title: created.title,
+          status: 'OPEN',
+          executionAuthorized: false,
+          sources: [
+            {
+              owner: 'LITE',
+              kind: 'OPPORTUNITY_CANDIDATE',
+              sourceId: created.opportunityCandidateId,
+              sourceVersion: created.version,
+              sourceFingerprintSha256: created.opportunityCandidateFingerprintSha256,
+              observedAt: created.updatedAt
+            }
+          ]
+        });
+      } else {
+        expect(recommendations.rows).toHaveLength(0);
+      }
       expect(await read()).toEqual({
         status: 200,
         body: { items: [disposition.currentCandidate], nextCursor: null }
@@ -522,6 +556,15 @@ suite('PostgreSQL Lite Opportunity Candidate qualification', () => {
         idempotencyKey: 'qualification-restart'
       })
     ).toEqual(disposition);
+    expect(
+      await database
+        .getPool()
+        .query<{ count: number }>(
+          'SELECT count(*)::int AS count FROM lite_today_recommendations WHERE workspace_id=$1',
+          [workspaceId]
+        )
+        .then((result) => result.rows[0]?.count)
+    ).toBe(1);
     expect(
       await afterRestart.findLatestCandidate(otherWorkspaceId, created.opportunityCandidateId)
     ).toBeUndefined();
