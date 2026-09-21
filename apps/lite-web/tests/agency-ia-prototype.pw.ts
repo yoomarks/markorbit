@@ -48,3 +48,36 @@ test('case approval remains visibly separate from filing', async ({ page }) => {
   await page.getByRole('button', { name: 'Approve draft' }).click();
   await expect(page.getByText(/It has not been filed/)).toBeVisible();
 });
+
+
+const workbenchStory =
+  '/iframe.html?id=lite-agency-ia-prototype-seed-contextual-workbench--opportunity-review&viewMode=story';
+
+test('contextual workbench keeps conversation separate from structured prepare and confirm', async ({
+  page
+}) => {
+  await page.goto(workbenchStory);
+
+  await expect(page.getByRole('heading', { name: 'Work on this' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Waiting for one bounded answer' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Confirm this action' })).toHaveCount(0);
+
+  await page.getByRole('button', { name: 'Review service need' }).click();
+  await expect(page.getByRole('heading', { name: 'Working proposal' })).toBeVisible();
+  await expect(page.getByText(/working context/i).first()).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Confirm this action' })).toHaveCount(0);
+
+  await page.getByRole('button', { name: 'Prepare reviewable opportunity action' }).click();
+  await expect(page.getByText('Confirmation effect')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Confirm this action' })).toBeVisible();
+  await expect(page.getByText('Committed result')).toHaveCount(0);
+
+  await page.getByRole('button', { name: 'Confirm this action' }).click();
+  await expect(page.getByText('Committed result')).toBeVisible();
+  await expect(page.getByText(/trademark-service-opportunity_workbench/)).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Open result receipt' })).toBeVisible();
+
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(
+    true
+  );
+});
