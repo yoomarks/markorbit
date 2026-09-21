@@ -185,7 +185,7 @@ suite('PostgreSQL Lite Opportunity Candidate qualification', () => {
     await database
       .getPool()
       .query(
-        'TRUNCATE lite_candidate_qualification_commands,lite_opportunity_qualification_decisions,lite_opportunity_candidates CASCADE'
+        'TRUNCATE lite_candidate_qualification_commands,lite_opportunity_qualification_decisions,lite_opportunity_candidates,lite_today_recommendations CASCADE'
       );
   });
 
