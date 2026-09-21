@@ -169,7 +169,6 @@ describe('Today qualified Opportunity Review client', () => {
     );
     const mutation = requests[mutationIndex];
     expect(mutation?.body).toEqual({
-      workspaceId,
       recommendationVersion: 1,
       expectedRecommendationFingerprintSha256: recommendation.recommendationFingerprintSha256,
       plan: {
@@ -190,7 +189,7 @@ describe('Today qualified Opportunity Review client', () => {
       `prepare-opportunity:${recommendation.todayRecommendationId}:1:${qualification.opportunityQualificationDecisionId}:1:WHITE_LABEL`
     );
     expect(JSON.stringify(mutation?.body)).not.toMatch(
-      /customerId|principalId|actorId|confirmedByPrincipalId|proposedCustomerIntent/
+      /workspaceId|customerId|principalId|actorId|confirmedByPrincipalId|proposedCustomerIntent/
     );
   });
 
