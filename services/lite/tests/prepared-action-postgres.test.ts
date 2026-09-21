@@ -254,14 +254,14 @@ suite('PostgreSQL Lite Today Prepared Action journey', () => {
         .getPool()
         .query(
           'INSERT INTO lite_today_recommendations (workspace_id,today_recommendation_id,version,recommendation_fingerprint_sha256,document_json,created_at,updated_at) VALUES ($1,$2,1,$3,$4::jsonb,$5,$5) ON CONFLICT (workspace_id,today_recommendation_id,version) DO UPDATE SET recommendation_fingerprint_sha256=EXCLUDED.recommendation_fingerprint_sha256,document_json=EXCLUDED.document_json,updated_at=EXCLUDED.updated_at',
-        [
-          workspaceId,
-          value.todayRecommendationId,
-          value.recommendationFingerprintSha256,
-          JSON.stringify(value),
-          timestamp
-        ]
-      );
+          [
+            workspaceId,
+            value.todayRecommendationId,
+            value.recommendationFingerprintSha256,
+            JSON.stringify(value),
+            timestamp
+          ]
+        );
 
     const wrong = recommendation('CONTENT_USE_FEEDBACK');
     await insert(wrong);
