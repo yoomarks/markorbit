@@ -166,8 +166,8 @@ export const OpportunityReview: Story = {
   args: {
     task: 'OPPORTUNITY_REVIEW',
     context,
-    onPrepare: async () => preparedOpportunity,
-    onConfirm: async () => completedOpportunity,
+    onPrepare: () => Promise.resolve(preparedOpportunity),
+    onConfirm: () => Promise.resolve(completedOpportunity),
     receiptHref: '#fixture-opportunity-receipt'
   }
 };
@@ -176,8 +176,8 @@ export const ClientActionDraft: Story = {
   args: {
     task: 'CLIENT_ACTION_DRAFT',
     context,
-    onPrepare: async () => preparedClientAction,
-    onConfirm: async () => completedClientAction,
+    onPrepare: () => Promise.resolve(preparedClientAction),
+    onConfirm: () => Promise.resolve(completedClientAction),
     receiptHref: '#fixture-client-action-receipt'
   }
 };
@@ -187,7 +187,7 @@ export const PreparedAwaitingConfirmation: Story = {
     task: 'OPPORTUNITY_REVIEW',
     context,
     initialJourney: preparedOpportunity,
-    onConfirm: async () => completedOpportunity
+    onConfirm: () => Promise.resolve(completedOpportunity)
   }
 };
 
@@ -221,8 +221,8 @@ export const Partial: Story = {
     task: 'OPPORTUNITY_REVIEW',
     context,
     state: 'partial',
-    onPrepare: async () => preparedOpportunity,
-    onConfirm: async () => completedOpportunity
+    onPrepare: () => Promise.resolve(preparedOpportunity),
+    onConfirm: () => Promise.resolve(completedOpportunity)
   }
 };
 
@@ -230,8 +230,8 @@ export const Mobile390: Story = {
   args: {
     task: 'CLIENT_ACTION_DRAFT',
     context,
-    onPrepare: async () => preparedClientAction,
-    onConfirm: async () => completedClientAction
+    onPrepare: () => Promise.resolve(preparedClientAction),
+    onConfirm: () => Promise.resolve(completedClientAction)
   },
   parameters: {
     viewport: {
