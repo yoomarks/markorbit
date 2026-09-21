@@ -178,7 +178,8 @@ function ReviewDetail({
       if (restoreFocus !== 'document-package-trigger' && storedFocus !== '1') return;
       requestAnimationFrame(() => {
         packageTrigger.current?.focus();
-        if (document.activeElement === packageTrigger.current) sessionStorage.removeItem(packageFocusKey);
+        if (document.activeElement === packageTrigger.current)
+          sessionStorage.removeItem(packageFocusKey);
       });
     };
 
