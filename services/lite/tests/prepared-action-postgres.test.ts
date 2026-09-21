@@ -205,8 +205,7 @@ suite('PostgreSQL Lite Today Prepared Action journey', () => {
   }
 
   it('requires the exact Opportunity Candidate source kind before formal-opportunity preparation', async () => {
-    const recommendationId =
-      'today-recommendation_candidate-source-kind' as TodayRecommendationId;
+    const recommendationId = 'today-recommendation_candidate-source-kind' as TodayRecommendationId;
     const candidateId = 'opportunity-candidate_candidate-source-kind' as const;
     const qualificationId = 'opportunity-qualification_candidate-source-kind' as const;
     const candidateFingerprintSha256 = 'b'.repeat(64);
