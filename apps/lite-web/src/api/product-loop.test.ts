@@ -142,15 +142,32 @@ describe('Today qualified Opportunity Review client', () => {
       qualificationDecision: qualification
     });
     expect(result).toEqual(prepared);
-    expect(requests.slice(0, 2).map((request) => request.url)).toEqual(
-      expect.arrayContaining([
-        expect.stringContaining(`/api/lite/opportunity-candidates/${candidateId}`),
-        expect.stringContaining(`/api/lite/opportunity-candidates/${candidateId}/qualification`)
-      ])
+    const ownerReads = requests.filter(
+      (request) =>
+        request.method === 'GET' &&
+        request.url.includes(`/api/lite/opportunity-candidates/${candidateId}`)
     );
-    const mutation = requests.find(
+    expect(ownerReads).toHaveLength(4);
+    expect(ownerReads.map((request) => request.url)).toEqual([
+      expect.stringContaining(`/api/lite/opportunity-candidates/${candidateId}`),
+      expect.stringContaining(`/api/lite/opportunity-candidates/${candidateId}/qualification`),
+      expect.stringContaining(`/api/lite/opportunity-candidates/${candidateId}`),
+      expect.stringContaining(`/api/lite/opportunity-candidates/${candidateId}/qualification`)
+    ]);
+    const mutationIndex = requests.findIndex(
       (request) => request.method === 'POST' && request.url.includes('/prepared-actions')
     );
+    expect(mutationIndex).toBeGreaterThan(
+      Math.max(
+        ...requests
+          .map((request, index) => ({ request, index }))
+          .filter(({ request }) =>
+            request.url.includes(`/api/lite/opportunity-candidates/${candidateId}`)
+          )
+          .map(({ index }) => index)
+      )
+    );
+    const mutation = requests[mutationIndex];
     expect(mutation?.body).toEqual({
       workspaceId,
       recommendationVersion: 1,
@@ -170,11 +187,53 @@ describe('Today qualified Opportunity Review client', () => {
     expect(headers?.['x-markorbit-workspace-id']).toBe(workspaceId);
     expect(headers?.['x-markorbit-csrf-token']).toBe('csrf-qualified-opportunity');
     expect(headers?.['idempotency-key']).toBe(
-      `prepare-opportunity:${recommendation.todayRecommendationId}:1`
+      `prepare-opportunity:${recommendation.todayRecommendationId}:1:${qualification.opportunityQualificationDecisionId}:1:WHITE_LABEL`
     );
     expect(JSON.stringify(mutation?.body)).not.toMatch(
       /customerId|principalId|actorId|confirmedByPrincipalId|proposedCustomerIntent/
     );
+  });
+
+  it('fails closed before POST when owner evidence changes after the user reviewed it', async () => {
+    const replacementQualification: OpportunityQualificationDecision = {
+      ...qualification,
+      opportunityQualificationDecisionId: 'opportunity-qualification_today-browser-replacement',
+      version: 2,
+      decidedAt: '2026-09-21T10:03:00.000Z'
+    };
+    let qualificationReads = 0;
+    const fetchMock = vi.fn((input: string | URL | Request, init?: RequestInit) => {
+      const url = requestUrl(input);
+      if (url.endsWith(`/api/lite/opportunity-candidates/${candidateId}/qualification`)) {
+        qualificationReads += 1;
+        return Promise.resolve(
+          jsonResponse(qualificationReads === 1 ? qualification : replacementQualification)
+        );
+      }
+      if (url.endsWith(`/api/lite/opportunity-candidates/${candidateId}`))
+        return Promise.resolve(jsonResponse(candidate));
+      if (init?.method === 'POST' && url.includes('/prepared-actions'))
+        throw new Error('Preparation POST must not occur after evidence changes.');
+      throw new Error(`Unexpected request: ${url}`);
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const client = createTodayClient(workspaceId);
+    const reviewed = await client.loadQualifiedOpportunityReview(recommendation);
+
+    await expect(
+      client.prepareQualifiedOpportunity(recommendation, reviewed, 'DIRECT')
+    ).rejects.toMatchObject({
+      status: 409,
+      code: 'OPPORTUNITY_REVIEW_CHANGED'
+    });
+    expect(qualificationReads).toBe(2);
+    expect(
+      fetchMock.mock.calls.some(
+        ([input, init]) =>
+          requestUrl(input).includes('/prepared-actions') && init?.method === 'POST'
+      )
+    ).toBe(false);
   });
 
   it('fails closed when Qualification no longer matches the exact reviewed Candidate source', async () => {

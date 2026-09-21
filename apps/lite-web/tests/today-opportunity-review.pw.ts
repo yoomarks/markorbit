@@ -216,7 +216,7 @@ test('Today qualified Opportunity Review requires explicit relationship model be
   expect(prepareRequest?.headers['x-markorbit-workspace-id']).toBe(workspaceId);
   expect(prepareRequest?.headers['x-markorbit-csrf-token']).toBe('csrf-today-opportunity');
   expect(prepareRequest?.headers['idempotency-key']).toBe(
-    `prepare-opportunity:${recommendationId}:1`
+    `prepare-opportunity:${recommendationId}:1:${qualification.opportunityQualificationDecisionId}:1:WHITE_LABEL`
   );
   expect(prepareRequest?.body).toEqual({
     workspaceId,
