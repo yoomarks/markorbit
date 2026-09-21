@@ -44,6 +44,7 @@ const access = {
 describe('Lite account entry', () => {
   it('takes a new professional from registration through first Workspace into Lite', async () => {
     sessionStorage.clear();
+    window.history.replaceState({}, '', '/');
     const register = vi.fn(() => Promise.resolve(access));
     const createWorkspace = vi.fn(() => Promise.resolve(workspace));
     const api: LiteAccountApi = {
@@ -54,7 +55,9 @@ describe('Lite account entry', () => {
       register,
       login: () => Promise.resolve(access),
       workspaces: () => Promise.resolve([]),
-      createWorkspace
+      createWorkspace,
+      previewSeedInvitation: vi.fn() as never,
+      claimSeedWorkspace: vi.fn() as never
     };
     const user = userEvent.setup();
     render(<LiteAccountEntry api={api} renderProduct={() => <div>Professional Lite ready</div>} />);
@@ -93,5 +96,106 @@ describe('Lite account entry', () => {
     await waitFor(() =>
       expect(sessionStorage.getItem('markorbit-workspace-id')).toBe(workspace.workspace.workspaceId)
     );
+    expect(new URLSearchParams(window.location.search).get('workspaceId')).toBe(
+      workspace.workspace.workspaceId
+    );
+  });
+
+  it('shows a prepared Seed preview before account access and requires an explicit claim', async () => {
+    sessionStorage.clear();
+    window.history.replaceState(
+      {},
+      '',
+      '/?seedPackageId=seed-workspace-package_agency-001&claimToken=opaque-claim-token'
+    );
+    const preview = {
+      schemaVersion: 1 as const,
+      seedWorkspacePackageId: 'seed-workspace-package_agency-001',
+      target: { kind: 'AGENCY' as const, displayName: 'Example IP Agency' },
+      counts: { representedApplicants: 23, relatedTrademarks: 87 },
+      preparedAt: '2026-09-21T00:00:00.000Z',
+      expiresAt: '2026-10-21T00:00:00.000Z'
+    };
+    const register = vi.fn(() => Promise.resolve(access));
+    const createWorkspace = vi.fn(() => Promise.resolve(workspace));
+    const previewSeedInvitation = vi.fn(() => Promise.resolve(preview));
+    const claimSeedWorkspace = vi.fn(() => Promise.resolve({ claimed: true }));
+    const api: LiteAccountApi = {
+      session: () =>
+        Promise.reject(
+          new LiteAccountApiError(401, 'AUTHENTICATION_REQUIRED', 'Authentication required')
+        ),
+      register,
+      login: () => Promise.resolve(access),
+      workspaces: () => Promise.resolve([]),
+      createWorkspace,
+      previewSeedInvitation,
+      claimSeedWorkspace
+    };
+    const user = userEvent.setup();
+
+    render(<LiteAccountEntry api={api} renderProduct={() => <div>Prepared Lite ready</div>} />);
+
+    expect(
+      await screen.findByRole('heading', {
+        name: 'We prepared a starting point for Example IP Agency.'
+      })
+    ).toBeTruthy();
+    expect(screen.getByText(/23 represented applicant candidates/)).toBeTruthy();
+    expect(previewSeedInvitation).toHaveBeenCalledWith({
+      packageId: 'seed-workspace-package_agency-001',
+      invitationClaimToken: 'opaque-claim-token'
+    });
+
+    await user.click(screen.getByRole('button', { name: 'Create professional account' }));
+    fireEvent.change(screen.getByLabelText('Your name'), {
+      target: { value: 'Professional One' }
+    });
+    fireEvent.change(screen.getByLabelText('Work email'), {
+      target: { value: 'professional@example.com' }
+    });
+    fireEvent.change(screen.getByLabelText('Password'), {
+      target: { value: 'secure professional password' }
+    });
+    const submit = screen
+      .getAllByRole('button', { name: 'Create professional account' })
+      .find((button) => button.getAttribute('type') === 'submit');
+    await user.click(submit!);
+
+    expect(
+      await screen.findByRole('heading', { name: 'Create your professional workspace' })
+    ).toBeTruthy();
+    expect(screen.getByLabelText<HTMLInputElement>('Workspace name').value).toBe(
+      'Example IP Agency'
+    );
+    await user.click(screen.getByRole('button', { name: 'Create professional workspace' }));
+
+    expect(
+      await screen.findByRole('heading', { name: 'Claim this prepared context' })
+    ).toBeTruthy();
+    expect(screen.queryByText('Prepared Lite ready')).toBeNull();
+    await user.click(screen.getByRole('button', { name: 'Confirm and claim prepared context' }));
+
+    expect(
+      await screen.findByRole('heading', { name: 'Your prepared starting point is ready' })
+    ).toBeTruthy();
+    expect(screen.queryByText('Prepared Lite ready')).toBeNull();
+    expect(claimSeedWorkspace).toHaveBeenCalledWith(
+      {
+        packageId: 'seed-workspace-package_agency-001',
+        invitationClaimToken: 'opaque-claim-token'
+      },
+      workspace.workspace.workspaceId,
+      'lite-ui-csrf',
+      expect.stringMatching(/^seed-claim-/u)
+    );
+    expect(sessionStorage.getItem('markorbit-seed-package-id')).toBe(
+      'seed-workspace-package_agency-001'
+    );
+    expect(window.location.search).toContain('seedPackageId=seed-workspace-package_agency-001');
+    expect(window.location.search).not.toContain('claimToken=');
+
+    await user.click(screen.getByRole('button', { name: 'Continue to Lite' }));
+    expect(await screen.findByText('Prepared Lite ready')).toBeTruthy();
   });
 });

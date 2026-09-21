@@ -1,15 +1,41 @@
 import { useEffect, useState, type FormEvent, type ReactNode } from 'react';
 import type { WorkspaceEntry } from '@markorbit/contracts';
 import { Alert, Button, Card, PageHeader, TextInput } from '@markorbit/ui';
-import { LiteAccountApiError, liteAccountApi, type LiteAccountApi } from './account-api.js';
+import {
+  LiteAccountApiError,
+  liteAccountApi,
+  type LiteAccountApi,
+  type SeedWorkspaceInvitationPreview
+} from './account-api.js';
 import './account-entry.css';
 
-type View = 'checking' | 'anonymous' | 'workspace-setup' | 'workspace-select' | 'ready' | 'error';
+type View =
+  | 'checking'
+  | 'anonymous'
+  | 'workspace-setup'
+  | 'workspace-select'
+  | 'seed-claim'
+  | 'seed-ready'
+  | 'ready'
+  | 'error';
 type Mode = 'login' | 'register';
+
+type SeedInvitation = Readonly<{
+  packageId: string;
+  invitationClaimToken: string;
+}>;
 
 export interface LiteAccountEntryProps {
   api?: LiteAccountApi;
   renderProduct: () => ReactNode;
+}
+
+function invitationFromLocation(): SeedInvitation | null {
+  const params = new URLSearchParams(window.location.search);
+  const packageId = params.get('seedPackageId')?.trim();
+  const invitationClaimToken =
+    params.get('claimToken')?.trim() ?? params.get('seedClaimToken')?.trim();
+  return packageId && invitationClaimToken ? { packageId, invitationClaimToken } : null;
 }
 
 function message(error: unknown) {
@@ -18,13 +44,44 @@ function message(error: unknown) {
     if (error.code === 'EMAIL_ALREADY_REGISTERED')
       return 'An account already exists for this email. Sign in instead.';
     if (error.code === 'WEAK_PASSWORD') return 'Use a password with at least 10 characters.';
+    if (error.code === 'SEED_INVITATION_NOT_FOUND')
+      return 'This prepared workspace invitation is no longer available.';
+    if (error.code === 'SEED_PACKAGE_EXPIRED')
+      return 'This prepared workspace invitation has expired.';
     if (error.status >= 500) return 'MarkOrbit Lite is temporarily unavailable. Please try again.';
     return error.message;
   }
   return 'The request could not be completed. Please try again.';
 }
 
+function previewSummary(preview: SeedWorkspaceInvitationPreview): string {
+  const parts = [
+    preview.counts.representedApplicants === undefined
+      ? null
+      : `${preview.counts.representedApplicants} represented applicant candidates`,
+    preview.counts.relatedTrademarks === undefined
+      ? null
+      : `${preview.counts.relatedTrademarks} related trademark candidates`,
+    preview.counts.opportunityCandidates === undefined
+      ? null
+      : `${preview.counts.opportunityCandidates} opportunity candidates`
+  ].filter((value): value is string => Boolean(value));
+  return parts.length
+    ? parts.join(' · ')
+    : 'A bounded prepared context is ready for review after you claim it.';
+}
+
+function scrubInvitationToken() {
+  const url = new URL(window.location.href);
+  url.searchParams.delete('claimToken');
+  url.searchParams.delete('seedClaimToken');
+  window.history.replaceState({}, '', `${url.pathname}${url.search}${url.hash}`);
+}
+
 export function LiteAccountEntry({ api = liteAccountApi, renderProduct }: LiteAccountEntryProps) {
+  const [invitation] = useState<SeedInvitation | null>(() => invitationFromLocation());
+  const [seedPreview, setSeedPreview] = useState<SeedWorkspaceInvitationPreview | null>(null);
+  const [selectedWorkspace, setSelectedWorkspace] = useState<WorkspaceEntry | null>(null);
   const [view, setView] = useState<View>('checking');
   const [mode, setMode] = useState<Mode>('login');
   const [displayName, setDisplayName] = useState('');
@@ -38,7 +95,15 @@ export function LiteAccountEntry({ api = liteAccountApi, renderProduct }: LiteAc
 
   const selectWorkspace = (entry: WorkspaceEntry) => {
     sessionStorage.setItem('markorbit-workspace-id', entry.workspace.workspaceId);
-    setView('ready');
+    const url = new URL(window.location.href);
+    url.searchParams.set('workspaceId', entry.workspace.workspaceId);
+    window.history.replaceState({}, '', `${url.pathname}${url.search}${url.hash}`);
+    if (invitation) {
+      setSelectedWorkspace(entry);
+      setView('seed-claim');
+    } else {
+      setView('ready');
+    }
   };
 
   const enterWorkspaces = async (csrfToken: string) => {
@@ -58,24 +123,31 @@ export function LiteAccountEntry({ api = liteAccountApi, renderProduct }: LiteAc
 
   useEffect(() => {
     let active = true;
-    void api
-      .session()
-      .then(async (session) => {
+    const open = async () => {
+      try {
+        if (invitation) {
+          const preview = await api.previewSeedInvitation(invitation);
+          if (!active) return;
+          setSeedPreview(preview);
+          setWorkspaceName(preview.target.displayName);
+        }
+        const session = await api.session();
         if (!active) return;
         await enterWorkspaces(session.csrfToken);
-      })
-      .catch((cause: unknown) => {
+      } catch (cause) {
         if (!active) return;
         if (cause instanceof LiteAccountApiError && cause.status === 401) setView('anonymous');
         else {
           setError(message(cause));
           setView('error');
         }
-      });
+      }
+    };
+    void open();
     return () => {
       active = false;
     };
-  }, [api]);
+  }, [api, invitation]);
 
   const submitAccess = async (event: FormEvent) => {
     event.preventDefault();
@@ -108,24 +180,66 @@ export function LiteAccountEntry({ api = liteAccountApi, renderProduct }: LiteAc
     }
   };
 
+  const claimSeedWorkspace = async () => {
+    if (!invitation || !seedPreview || !selectedWorkspace) return;
+    setBusy(true);
+    setError(null);
+    try {
+      const workspaceId = selectedWorkspace.workspace.workspaceId;
+      const suffix = invitation.packageId.slice(-80);
+      await api.claimSeedWorkspace(
+        invitation,
+        workspaceId,
+        csrf,
+        `seed-claim-${workspaceId}-${suffix}`
+      );
+      sessionStorage.setItem('markorbit-seed-package-id', seedPreview.seedWorkspacePackageId);
+      scrubInvitationToken();
+      setView('seed-ready');
+    } catch (cause) {
+      setError(message(cause));
+    } finally {
+      setBusy(false);
+    }
+  };
+
   if (view === 'ready') return <>{renderProduct()}</>;
 
   return (
     <main className="lite-account-entry">
       <section className="lite-account-entry__intro" aria-labelledby="lite-entry-heading">
-        <span className="lite-account-entry__eyebrow">MarkOrbit Lite · Professional workspace</span>
-        <h1 id="lite-entry-heading">Your trademark work, organized around what matters next.</h1>
+        <span className="lite-account-entry__eyebrow">
+          {seedPreview
+            ? 'MarkOrbit Lite · Prepared professional workspace'
+            : 'MarkOrbit Lite · Professional workspace'}
+        </span>
+        <h1 id="lite-entry-heading">
+          {seedPreview
+            ? `We prepared a starting point for ${seedPreview.target.displayName}.`
+            : 'Your trademark work, organized around what matters next.'}
+        </h1>
         <p>
-          Build a private workspace for client matters, reviews, evidence and opportunities without
-          mixing your professional context with a public customer account.
+          {seedPreview
+            ? 'Review the prepared context first, then choose exactly where to claim it. Nothing becomes a customer, managed trademark or qualified opportunity automatically.'
+            : 'Build a private workspace for client matters, reviews, evidence and opportunities without mixing your professional context with a public customer account.'}
         </p>
       </section>
       <Card className="lite-account-entry__card">
+        {seedPreview && (
+          <section aria-label="Prepared workspace preview">
+            <strong>{seedPreview.target.displayName}</strong>
+            <p>{previewSummary(seedPreview)}</p>
+          </section>
+        )}
         {view === 'checking' && (
           <div aria-live="polite">
             <PageHeader
-              title="Opening Lite"
-              description="Checking your secure professional session…"
+              title={invitation ? 'Opening your prepared workspace' : 'Opening Lite'}
+              description={
+                invitation
+                  ? 'Verifying the prepared invitation and your secure professional session…'
+                  : 'Checking your secure professional session…'
+              }
             />
           </div>
         )}
@@ -142,9 +256,11 @@ export function LiteAccountEntry({ api = liteAccountApi, renderProduct }: LiteAc
             <PageHeader
               title={mode === 'login' ? 'Sign in to Lite' : 'Create a professional account'}
               description={
-                mode === 'login'
-                  ? 'Continue to your private trademark workspace.'
-                  : 'For trademark agents, attorneys and IP professionals managing ongoing work.'
+                seedPreview
+                  ? 'Sign in or create an account before choosing the Workspace that will receive this prepared context.'
+                  : mode === 'login'
+                    ? 'Continue to your private trademark workspace.'
+                    : 'For trademark agents, attorneys and IP professionals managing ongoing work.'
               }
             />
             <div
@@ -214,7 +330,11 @@ export function LiteAccountEntry({ api = liteAccountApi, renderProduct }: LiteAc
           <>
             <PageHeader
               title="Create your professional workspace"
-              description="Use your firm, team or practice name. You will be its Workspace Admin."
+              description={
+                seedPreview
+                  ? 'Create the Workspace that will receive the prepared context. The claim remains a separate confirmation.'
+                  : 'Use your firm, team or practice name. You will be its Workspace Admin.'
+              }
             />
             <form onSubmit={(event) => void createWorkspace(event)}>
               <TextInput
@@ -238,8 +358,12 @@ export function LiteAccountEntry({ api = liteAccountApi, renderProduct }: LiteAc
         {view === 'workspace-select' && (
           <>
             <PageHeader
-              title="Choose your workspace"
-              description="Your workspace controls private context, roles and matter access."
+              title={seedPreview ? 'Choose where to claim this context' : 'Choose your workspace'}
+              description={
+                seedPreview
+                  ? 'Selecting a Workspace does not claim anything yet. You will review one final confirmation.'
+                  : 'Your workspace controls private context, roles and matter access.'
+              }
             />
             <div className="lite-account-entry__workspaces">
               {workspaces.map((entry) => (
@@ -253,6 +377,44 @@ export function LiteAccountEntry({ api = liteAccountApi, renderProduct }: LiteAc
                 </Button>
               ))}
             </div>
+          </>
+        )}
+        {view === 'seed-claim' && seedPreview && selectedWorkspace && (
+          <>
+            <PageHeader
+              title="Claim this prepared context"
+              description={`Attach the prepared starting point for ${seedPreview.target.displayName} to ${selectedWorkspace.workspace.name}.`}
+            />
+            <p>
+              By continuing, you confirm this is the Workspace where you want to review this
+              organization or subject. Claiming does not create customers, mark trademarks as
+              managed, qualify opportunities or authorize external actions.
+            </p>
+            {error && (
+              <Alert tone="danger" title="Prepared context could not be claimed">
+                {error}
+              </Alert>
+            )}
+            <Button type="button" disabled={busy} onClick={() => void claimSeedWorkspace()}>
+              {busy ? 'Claiming…' : 'Confirm and claim prepared context'}
+            </Button>
+          </>
+        )}
+        {view === 'seed-ready' && seedPreview && selectedWorkspace && (
+          <>
+            <PageHeader
+              title="Your prepared starting point is ready"
+              description={`${seedPreview.target.displayName} is now attached to ${selectedWorkspace.workspace.name} for review.`}
+            />
+            <p>{previewSummary(seedPreview)}</p>
+            <p>
+              MO has preserved the prepared evidence and context, but has not automatically created
+              a customer, marked any trademark as managed, qualified an opportunity or authorized an
+              external action.
+            </p>
+            <Button type="button" onClick={() => setView('ready')}>
+              Continue to Lite
+            </Button>
           </>
         )}
       </Card>

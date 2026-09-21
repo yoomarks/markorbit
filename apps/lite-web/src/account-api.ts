@@ -19,6 +19,23 @@ type AccessResponse = SessionResponse & {
   };
 };
 
+export interface SeedWorkspaceInvitationPreview {
+  schemaVersion: 1;
+  seedWorkspacePackageId: string;
+  target: {
+    kind: 'AGENCY' | 'TRADEMARK_INVESTOR' | 'OTHER';
+    displayName: string;
+  };
+  counts: {
+    representedApplicants?: number;
+    relatedTrademarks?: number;
+    opportunityCandidates?: number;
+    businessArchetypeCandidates?: number;
+  };
+  preparedAt: string;
+  expiresAt: string;
+}
+
 export class LiteAccountApiError extends Error {
   constructor(
     readonly status: number,
@@ -62,6 +79,16 @@ export interface LiteAccountApi {
     input: { name: string; slug?: string },
     csrfToken: string
   ): Promise<WorkspaceEntry>;
+  previewSeedInvitation(input: {
+    packageId: string;
+    invitationClaimToken: string;
+  }): Promise<SeedWorkspaceInvitationPreview>;
+  claimSeedWorkspace(
+    input: { packageId: string; invitationClaimToken: string },
+    workspaceId: string,
+    csrfToken: string,
+    idempotencyKey: string
+  ): Promise<unknown>;
 }
 
 export const liteAccountApi: LiteAccountApi = {
@@ -84,6 +111,21 @@ export const liteAccountApi: LiteAccountApi = {
     request<WorkspaceEntry>('/api/workspaces', {
       method: 'POST',
       headers: { 'x-markorbit-csrf-token': csrfToken },
+      body: JSON.stringify(input)
+    }),
+  previewSeedInvitation: (input) =>
+    request<SeedWorkspaceInvitationPreview>('/api/lite/seed-workspace-invitations/preview', {
+      method: 'POST',
+      body: JSON.stringify(input)
+    }),
+  claimSeedWorkspace: (input, workspaceId, csrfToken, idempotencyKey) =>
+    request<unknown>('/api/lite/seed-workspace-claims', {
+      method: 'POST',
+      headers: {
+        'x-markorbit-workspace-id': workspaceId,
+        'x-markorbit-csrf-token': csrfToken,
+        'idempotency-key': idempotencyKey
+      },
       body: JSON.stringify(input)
     })
 };

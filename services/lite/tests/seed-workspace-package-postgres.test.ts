@@ -243,6 +243,32 @@ suite('PostgreSQL Seed Workspace Package owner', () => {
     const token = 'seed-claim-token-agency-001';
     await invite(value.seedWorkspacePackageId, token, 'one');
 
+    await expect(
+      store.previewInvitation({
+        packageId: value.seedWorkspacePackageId,
+        invitationClaimToken: token
+      })
+    ).resolves.toEqual({
+      schemaVersion: 1,
+      seedWorkspacePackageId: value.seedWorkspacePackageId,
+      target: { kind: 'AGENCY', displayName: 'Example IP Agency' },
+      counts: {
+        representedApplicants: 23,
+        relatedTrademarks: 87
+      },
+      preparedAt: value.preparedAt,
+      expiresAt: value.expiresAt
+    });
+    await expect(
+      store.previewInvitation({
+        packageId: value.seedWorkspacePackageId,
+        invitationClaimToken: 'wrong-token'
+      })
+    ).rejects.toMatchObject({
+      code: 'SEED_INVITATION_NOT_FOUND',
+      status: 404
+    });
+
     clock = '2026-09-21T01:00:00.000Z';
     const claims = new SeedWorkspaceClaimService(store, education());
     const command = {
@@ -254,6 +280,15 @@ suite('PostgreSQL Seed Workspace Package owner', () => {
     };
     const result = await claims.claim(command);
     expect(result.journey.stage).toBe('WORKSPACE_ACTIVATED');
+    await expect(
+      store.previewInvitation({
+        packageId: value.seedWorkspacePackageId,
+        invitationClaimToken: token
+      })
+    ).rejects.toMatchObject({
+      code: 'SEED_INVITATION_NOT_FOUND',
+      status: 404
+    });
     expect(result.claim).toMatchObject({
       seedWorkspacePackageId: value.seedWorkspacePackageId,
       educationCommunityJourneyId: result.journey.educationCommunityJourneyId,
