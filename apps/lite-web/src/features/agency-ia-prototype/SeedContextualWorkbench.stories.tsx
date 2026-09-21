@@ -16,7 +16,7 @@ const context: SeedWorkbenchContextBrief = {
   evidence: [
     '18 historically represented trademarks',
     '46 related source records discovered',
-    'One maintenance item worth professional review'
+    'One maintenance item needs review'
   ],
   authorityNote:
     'Historical representation, discovered records and conversation text do not establish a current Customer Relationship, managed asset or customer instruction.'
@@ -44,6 +44,11 @@ const preparedOpportunity = {
     updatedAt: now
   },
   handoffState: 'AWAITING_CONFIRMATION'
+} as unknown as PreparedActionJourney;
+
+const pendingOpportunity = {
+  ...preparedOpportunity,
+  handoffState: 'HANDOFF_PENDING'
 } as unknown as PreparedActionJourney;
 
 const completedOpportunity = {
@@ -187,6 +192,15 @@ export const PreparedAwaitingConfirmation: Story = {
     task: 'OPPORTUNITY_REVIEW',
     context,
     initialJourney: preparedOpportunity,
+    onConfirm: () => Promise.resolve(completedOpportunity)
+  }
+};
+
+export const HandoffPending: Story = {
+  args: {
+    task: 'OPPORTUNITY_REVIEW',
+    context,
+    initialJourney: pendingOpportunity,
     onConfirm: () => Promise.resolve(completedOpportunity)
   }
 };
