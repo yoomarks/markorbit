@@ -61,7 +61,8 @@ export const productLoopSourceKinds = [
   'CUSTOMER_CONTEXT',
   'MARKREG_RECOMMENDED_ACTION',
   'MANUAL_WORK_SIGNAL',
-  'CONTENT_USE_FEEDBACK'
+  'CONTENT_USE_FEEDBACK',
+  'OPPORTUNITY_CANDIDATE'
 ] as const;
 export type ProductLoopSourceKind = (typeof productLoopSourceKinds)[number];
 
