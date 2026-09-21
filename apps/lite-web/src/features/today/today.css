@@ -245,6 +245,85 @@
   gap: var(--mo-space-sm);
 }
 
+.today-opportunity-loading {
+  padding: var(--mo-space-md);
+  border: 1px solid var(--mo-border);
+  border-radius: var(--mo-radius-md);
+  color: var(--mo-secondary);
+}
+
+.today-opportunity-evidence {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--mo-space-md);
+  margin-block: var(--mo-space-lg);
+}
+
+.today-opportunity-evidence > div {
+  display: grid;
+  gap: var(--mo-space-xs);
+  min-width: 0;
+  padding: var(--mo-space-md);
+  border: 1px solid var(--mo-border);
+  border-radius: var(--mo-radius-md);
+}
+
+.today-opportunity-evidence span,
+.today-opportunity-evidence small {
+  color: var(--mo-secondary);
+}
+
+.today-opportunity-evidence strong,
+.today-opportunity-evidence code,
+.today-opportunity-evidence small {
+  overflow-wrap: anywhere;
+}
+
+.today-opportunity-evidence code {
+  font-size: 0.76rem;
+}
+
+.today-relationship-fieldset {
+  display: grid;
+  gap: var(--mo-space-md);
+  margin-block: var(--mo-space-lg);
+  padding: var(--mo-space-lg);
+  border: 1px solid var(--mo-border);
+  border-radius: var(--mo-radius-md);
+}
+
+.today-relationship-fieldset legend {
+  padding-inline: var(--mo-space-xs);
+  font-weight: 700;
+}
+
+.today-relationship-options {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--mo-space-sm);
+}
+
+.today-relationship-options label {
+  display: flex;
+  align-items: center;
+  gap: var(--mo-space-sm);
+  min-width: 0;
+  padding: var(--mo-space-sm) var(--mo-space-md);
+  border: 1px solid var(--mo-border);
+  border-radius: var(--mo-radius-md);
+  cursor: pointer;
+}
+
+.today-relationship-options label:focus-within {
+  outline: 2px solid currentColor;
+  outline-offset: 2px;
+}
+
+.today-relationship-options span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
 .today-confirmation-effect {
   margin-block: var(--mo-space-lg);
   padding: var(--mo-space-lg);
@@ -294,7 +373,9 @@
   }
 
   .daily-score-grid,
-  .daily-visual-form {
+  .daily-visual-form,
+  .today-opportunity-evidence,
+  .today-relationship-options {
     grid-template-columns: minmax(0, 1fr);
   }
 
@@ -309,7 +390,8 @@
 
   .daily-feedback-actions button,
   .daily-visual-result button,
-  .daily-card-grid button {
+  .daily-card-grid button,
+  .daily-action-stack > * > button {
     width: 100%;
   }
 }
