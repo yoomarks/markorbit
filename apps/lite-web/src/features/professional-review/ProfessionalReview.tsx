@@ -168,10 +168,29 @@ function ReviewDetail({
   );
   const claimed = value.assignment.status === 'CLAIMED';
   const complete = value.status === 'REVIEWED_READY_FOR_NEXT_STEP';
-  const restoreFocus = (history.state as { restoreFocus?: string } | null)?.restoreFocus;
+  const packageFocusKey = `markorbit:document-package-return-focus:${value.reviewCaseId}`;
   useEffect(() => {
-    if (complete && restoreFocus === 'document-package-trigger') packageTrigger.current?.focus();
-  }, [complete, restoreFocus]);
+    if (!complete) return;
+
+    const restorePackageTriggerFocus = () => {
+      const restoreFocus = (history.state as { restoreFocus?: string } | null)?.restoreFocus;
+      const storedFocus = sessionStorage.getItem(packageFocusKey);
+      if (restoreFocus !== 'document-package-trigger' && storedFocus !== '1') return;
+      requestAnimationFrame(() => {
+        packageTrigger.current?.focus();
+        if (document.activeElement === packageTrigger.current)
+          sessionStorage.removeItem(packageFocusKey);
+      });
+    };
+
+    restorePackageTriggerFocus();
+    window.addEventListener('pageshow', restorePackageTriggerFocus);
+    window.addEventListener('popstate', restorePackageTriggerFocus);
+    return () => {
+      window.removeEventListener('pageshow', restorePackageTriggerFocus);
+      window.removeEventListener('popstate', restorePackageTriggerFocus);
+    };
+  }, [complete, packageFocusKey]);
   return (
     <section>
       <Button variant="secondary" onClick={onBack}>
@@ -276,7 +295,10 @@ function ReviewDetail({
           </Alert>
           <a
             ref={packageTrigger}
-            onClick={() => history.replaceState({ restoreFocus: 'document-package-trigger' }, '')}
+            onClick={() => {
+              history.replaceState({ restoreFocus: 'document-package-trigger' }, '');
+              sessionStorage.setItem(packageFocusKey, '1');
+            }}
             href={`/?documentPackageReviewCaseId=${encodeURIComponent(value.reviewCaseId)}&workspaceId=${encodeURIComponent(workspaceId)}${new URLSearchParams(window.location.search).get('otherWorkspaceId') ? `&otherWorkspaceId=${encodeURIComponent(new URLSearchParams(window.location.search).get('otherWorkspaceId')!)}` : ''}`}
           >
             Start or resume Document Package
