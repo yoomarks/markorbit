@@ -458,7 +458,8 @@ suite('PostgreSQL Lite Opportunity Candidate qualification', () => {
         });
         const explanation = recommendations.rows[0]?.document_json.explanation;
         expect(typeof explanation).toBe('string');
-        if (typeof explanation !== 'string') throw new Error('Expected recommendation explanation.');
+        if (typeof explanation !== 'string')
+          throw new Error('Expected recommendation explanation.');
         expect(explanation).toMatch(
           /not customer instruction.*separate explicit Prepared Action confirmation/u
         );
