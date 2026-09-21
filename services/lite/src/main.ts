@@ -97,11 +97,16 @@ import {
   PostgresPartnerReferralStore
 } from './partner-referral.js';
 import { createEducationCommunityRoutes } from './education-community-http.js';
+import { createSeedWorkspacePackageRoutes } from './seed-workspace-package-http.js';
 import {
   EducationCommunityService,
   HttpCoreEducationCommunityWorkspaceReader,
   PostgresEducationCommunityWorkItemReader
 } from './education-community.js';
+import {
+  PostgresSeedWorkspacePackageStore,
+  SeedWorkspaceClaimService
+} from './seed-workspace-package.js';
 import { createCommunicationLinkRoutes } from './communication-link-http.js';
 import { CommunicationLinkService, PostgresCommunicationLinkStore } from './communication-link.js';
 import {
@@ -292,6 +297,11 @@ const educationCommunityService = new EducationCommunityService(
   new PostgresEducationCommunityWorkItemReader(pool),
   new HttpCoreEducationCommunityWorkspaceReader(coreUrl, internalServiceSecret),
   businessAttributionStore
+);
+const seedWorkspacePackageStore = new PostgresSeedWorkspacePackageStore(pool);
+const seedWorkspaceClaimService = new SeedWorkspaceClaimService(
+  seedWorkspacePackageStore,
+  educationCommunityService
 );
 const partnerReferralStore = new PostgresPartnerReferralStore(database, pool);
 const partnerReferralService = new PartnerReferralService(
@@ -768,6 +778,11 @@ const runtime = createServiceRuntime(serviceManifest, {
     ...createEducationCommunityRoutes({
       internalServiceSecret,
       service: educationCommunityService
+    }),
+    ...createSeedWorkspacePackageRoutes({
+      internalServiceSecret,
+      store: seedWorkspacePackageStore,
+      claims: seedWorkspaceClaimService
     }),
     ...createAgencyLineageRoutes({ internalServiceSecret, service: agencyLineage }),
     ...createDiscoveredTrademarkAdmissionRoutes({
