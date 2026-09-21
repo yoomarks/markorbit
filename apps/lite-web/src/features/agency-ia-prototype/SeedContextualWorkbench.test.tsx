@@ -145,6 +145,53 @@ describe('SeedContextualWorkbench', () => {
     );
   });
 
+  it('invalidates a prepared result when the working proposal changes', async () => {
+    const onPrepare = vi.fn().mockResolvedValue(prepared);
+    const onConfirm = vi.fn().mockResolvedValue(completed);
+    render(
+      <SeedContextualWorkbench
+        task="OPPORTUNITY_REVIEW"
+        context={context}
+        onPrepare={onPrepare}
+        onConfirm={onConfirm}
+      />
+    );
+
+    const user = userEvent.setup();
+    await user.click(screen.getByRole('button', { name: 'Review service need' }));
+    await user.click(screen.getByRole('button', { name: 'Prepare reviewable opportunity action' }));
+    expect(await screen.findByText(prepared.preparedAction.summary)).toBeVisible();
+    expect(screen.getByRole('button', { name: 'Confirm this action' })).toBeVisible();
+
+    await user.click(screen.getByRole('button', { name: 'Need more evidence' }));
+
+    expect(screen.queryByText(prepared.preparedAction.summary)).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Confirm this action' })).not.toBeInTheDocument();
+    expect(screen.getAllByText('Need more evidence').length).toBeGreaterThan(0);
+    expect(onConfirm).not.toHaveBeenCalled();
+  });
+
+  it('resets conversational working state when the structured context changes', async () => {
+    const otherContext: SeedWorkbenchContextBrief = {
+      ...context,
+      contextId: 'seed-context_other',
+      title: 'Second Organization Ltd.'
+    };
+    const { rerender } = render(
+      <SeedContextualWorkbench task="OPPORTUNITY_REVIEW" context={context} />
+    );
+
+    await userEvent.setup().click(screen.getByRole('button', { name: 'Review service need' }));
+    expect(screen.getByText('3 turns')).toBeVisible();
+    expect(screen.getByRole('heading', { name: 'Working proposal' })).toBeVisible();
+
+    rerender(<SeedContextualWorkbench task="OPPORTUNITY_REVIEW" context={otherContext} />);
+
+    expect(screen.getByRole('heading', { name: 'Second Organization Ltd.' })).toBeVisible();
+    expect(screen.getByText('1 turns')).toBeVisible();
+    expect(screen.getByRole('heading', { name: 'Waiting for one bounded answer' })).toBeVisible();
+  });
+
   it('retains free text as working context without mutating until Prepare is explicit', async () => {
     const onPrepare = vi.fn().mockResolvedValue(prepared);
     render(
