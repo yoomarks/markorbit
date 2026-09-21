@@ -166,10 +166,13 @@ function uniqueEvidence(
   return [...keyed.values()];
 }
 
-function assertSignalEvidence<T extends string>(
+function assertSignal<T extends string>(
   signal: OpportunityEvidenceSignalV1<T>,
+  allowedValues: readonly T[],
   field: string
 ): void {
+  if (!allowedValues.includes(signal.value))
+    throw new CrossSourceOpportunityValidationError(`${field}.value is invalid.`);
   if (!Array.isArray(signal.evidenceRefs) || signal.evidenceRefs.length === 0)
     throw new CrossSourceOpportunityValidationError(`${field}.evidenceRefs must be non-empty.`);
   signal.evidenceRefs.forEach((item) => parseBrainEvidenceRef(item));
@@ -192,10 +195,13 @@ export function evaluateMaintenanceOpportunityV1(
   if (!input.methodVersionId.startsWith('brain-method-version_'))
     throw new CrossSourceOpportunityValidationError('methodVersionId is invalid.');
 
-  assertSignalEvidence(input.lifecycle, 'lifecycle');
-  assertSignalEvidence(input.subjectOperatingState, 'subjectOperatingState');
-  assertSignalEvidence(input.holderContinuity, 'holderContinuity');
-  assertSignalEvidence(input.workspaceRelationship, 'workspaceRelationship');
+  if (input.trademarkRef.owner !== 'DATA_ENGINE' && input.trademarkRef.owner !== 'LITE')
+    throw new CrossSourceOpportunityValidationError('trademarkRef.owner is invalid.');
+
+  assertSignal(input.lifecycle, maintenanceLifecycleStatesV1, 'lifecycle');
+  assertSignal(input.subjectOperatingState, subjectOperatingStatesV1, 'subjectOperatingState');
+  assertSignal(input.holderContinuity, holderContinuityStatesV1, 'holderContinuity');
+  assertSignal(input.workspaceRelationship, workspaceRelationshipStatesV1, 'workspaceRelationship');
 
   const evidenceRefs = uniqueEvidence(
     [
