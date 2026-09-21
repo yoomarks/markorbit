@@ -21,7 +21,8 @@ export class NotificationDeliveryPersistenceError extends Error {
 }
 
 const clone = <T>(value: T): T => structuredClone(value);
-const forbidden = /(?:recipient|email|subject|body|credential|secret|password|token)/iu;
+const forbidden =
+  /(?:recipient|email|subject|body|credential|secret|password|token|phone|msisdn|textcontent|htmlcontent|providerrequest|rawendpoint)/iu;
 
 function privacyCheck(value: unknown, path = 'attempt'): void {
   if (Array.isArray(value))

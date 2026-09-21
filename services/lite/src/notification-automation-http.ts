@@ -14,7 +14,8 @@ import {
 import type { NotificationSendCurrentnessResolverV1 } from './notification-send-currentness.js';
 import {
   NotificationDeliveryRuntimeError,
-  type EmailNotificationDeliveryRuntimeV1
+  type EmailNotificationDeliveryRuntimeV1,
+  type SmsNotificationDeliveryRuntimeV1
 } from './notification-delivery-runtime.js';
 import type { NotificationAmazonSesAuthenticatedEventIngestionV1 } from './notification-delivery-ses.js';
 
@@ -116,6 +117,7 @@ export function createNotificationAutomationRoutesV1(options: {
   store: Pick<PostgresNotificationAutomationRuleStore, 'activate'>;
   sendCurrentness: Pick<NotificationSendCurrentnessResolverV1, 'resolve'>;
   deliveryRuntime?: Pick<EmailNotificationDeliveryRuntimeV1, 'deliver'>;
+  smsDeliveryRuntime?: Pick<SmsNotificationDeliveryRuntimeV1, 'deliver'>;
   providerEvents?: Pick<NotificationAmazonSesAuthenticatedEventIngestionV1, 'ingest'>;
 }): readonly JsonRoute[] {
   return [
@@ -160,6 +162,44 @@ export function createNotificationAutomationRoutesV1(options: {
                 return json(
                   200,
                   await options.deliveryRuntime!.deliver({
+                    workspaceId,
+                    notificationRuleId: text(
+                      body.notificationRuleId,
+                      'notificationRuleId'
+                    ) as ChannelNotificationRuleId,
+                    lifecycleEventId: text(body.lifecycleEventId, 'lifecycleEventId'),
+                    idempotencyKey: idempotencyKey(request)
+                  })
+                );
+              } catch (error) {
+                return mapRuleError(error);
+              }
+            }
+          }
+        ] as const)
+      : []),
+    ...(options.smsDeliveryRuntime
+      ? ([
+          {
+            method: 'POST' as const,
+            path: '/internal/notification-automation/sms-workspace-notification/deliver',
+            handle: async (request: JsonRequest) => {
+              const workspaceId = workspaceOf(request, options.internalServiceSecret);
+              const body = bodyOf(request);
+              if (
+                Object.keys(body).some(
+                  (field) => !['notificationRuleId', 'lifecycleEventId'].includes(field)
+                )
+              )
+                throw new HttpError(
+                  400,
+                  'INVALID_REQUEST',
+                  'Only exact rule and lifecycle event references are accepted.'
+                );
+              try {
+                return json(
+                  200,
+                  await options.smsDeliveryRuntime!.deliver({
                     workspaceId,
                     notificationRuleId: text(
                       body.notificationRuleId,

@@ -32,6 +32,8 @@ export class NotificationAmazonSesAuthenticatedEventIngestionV1 {
       verified.workspaceId,
       verified.deliveryAttemptId as never
     );
+    if (!('senderProfile' in attempt))
+      throw new Error('SES provider evidence only correlates to EMAIL_NOTIFICATION attempts.');
     const sender: WorkspaceEmailSenderProfileV1 = await this.senders.getExactSenderProfile(
       attempt.workspaceId,
       attempt.senderProfile.id,
