@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import type { RelationshipModel } from '@markorbit/contracts';
 import type {
   ContentKit,
   ContentPick,
@@ -299,7 +300,7 @@ export function TodayWorkspace({
       (candidate) => candidate.preparedAction.preparedActionId === selection.preparedActionId
     ) ?? selectedToday?.preparedActions[0];
 
-  const prepare = async (recommendation: Readonly<TodayRecommendation>) => {
+  const prepareContent = async (recommendation: Readonly<TodayRecommendation>) => {
     setBusy('prepare');
     setTodayError(undefined);
     try {
@@ -319,6 +320,42 @@ export function TodayWorkspace({
         cause instanceof TodayHttpError
           ? cause
           : new TodayHttpError(503, 'PREPARE_FAILED', 'Prepared Action could not be created.')
+      );
+    } finally {
+      setBusy('');
+    }
+  };
+
+  const prepareOpportunity = async (
+    recommendation: Readonly<TodayRecommendation>,
+    relationshipModel: RelationshipModel
+  ) => {
+    setBusy('prepare');
+    setTodayError(undefined);
+    try {
+      const created = await todayClient.prepareQualifiedOpportunity(
+        recommendation,
+        relationshipModel
+      );
+      await reload();
+      setSelection(workspaceId, {
+        recommendationId: recommendation.todayRecommendationId,
+        preparedActionId: created.preparedAction.preparedActionId
+      });
+      setCurrentSelection((current) => ({
+        ...current,
+        recommendationId: recommendation.todayRecommendationId,
+        preparedActionId: created.preparedAction.preparedActionId
+      }));
+    } catch (cause) {
+      setTodayError(
+        cause instanceof TodayHttpError
+          ? cause
+          : new TodayHttpError(
+              503,
+              'OPPORTUNITY_PREPARE_FAILED',
+              'Formal Opportunity Prepared Action could not be created.'
+            )
       );
     } finally {
       setBusy('');
@@ -615,13 +652,22 @@ export function TodayWorkspace({
         {...(selectedJourney ? { selectedJourney } : {})}
         busy={busy}
         feedbackBusyPackageId={feedbackBusyPackageId}
+        loadOpportunityReview={todayClient.loadOpportunityReview}
         onPrepare={(recommendation) => {
           setSelection(workspaceId, { recommendationId: recommendation.todayRecommendationId });
           setCurrentSelection((current) => ({
             ...current,
             recommendationId: recommendation.todayRecommendationId
           }));
-          void prepare(recommendation);
+          void prepareContent(recommendation);
+        }}
+        onPrepareOpportunity={(recommendation, relationshipModel) => {
+          setSelection(workspaceId, { recommendationId: recommendation.todayRecommendationId });
+          setCurrentSelection((current) => ({
+            ...current,
+            recommendationId: recommendation.todayRecommendationId
+          }));
+          void prepareOpportunity(recommendation, relationshipModel);
         }}
         onConfirm={(journey) => void confirm(journey)}
         onRecordFeedback={(publishPackage, outcome) => void recordFeedback(publishPackage, outcome)}
