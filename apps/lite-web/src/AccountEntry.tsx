@@ -97,11 +97,7 @@ export function LiteAccountEntry({ api = liteAccountApi, renderProduct }: LiteAc
     sessionStorage.setItem('markorbit-workspace-id', entry.workspace.workspaceId);
     const url = new URL(window.location.href);
     url.searchParams.set('workspaceId', entry.workspace.workspaceId);
-    window.history.replaceState(
-      window.history.state,
-      '',
-      `${url.pathname}${url.search}${url.hash}`
-    );
+    window.history.replaceState({}, '', `${url.pathname}${url.search}${url.hash}`);
     if (invitation) {
       setSelectedWorkspace(entry);
       setView('seed-claim');
