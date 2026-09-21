@@ -56,6 +56,11 @@ For Seed Customer Review, conversational answers remain proposals and route back
 structured review. For Opportunity Review and Client Action, the prototype delegates preparation and
 confirmation through an injected existing Prepared Action journey seam.
 
+Prepared confirmation is bound to the working proposal that produced it. If the user changes that
+proposal, the prepared result is discarded and must be prepared again before confirmation. Changing
+the structured task/context also starts a fresh workbench session so conversation state cannot bleed
+between customers, opportunities or client actions.
+
 ## Information architecture
 
 Desktop:
