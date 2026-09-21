@@ -84,7 +84,8 @@
     "lite_email_delivery_evidence": "@markorbit/lite-service",
     "lite_notification_automation_rules": "@markorbit/lite-service",
     "lite_notification_delivery_evidence": "@markorbit/lite-service",
-    "lite_workspace_channel_identity_bindings": "@markorbit/lite-service"
+    "lite_workspace_channel_identity_bindings": "@markorbit/lite-service",
+    "lite_seed_workspace_packages": "@markorbit/lite-service"
   },
   "protectedTableFamilies": {
     "capability_communication_": "@markorbit/capability-engine",
@@ -103,7 +104,8 @@
     "lite_notification_automation_rule_": "@markorbit/lite-service",
     "lite_notification_delivery_": "@markorbit/lite-service",
     "lite_workspace_channel_identity_binding_": "@markorbit/lite-service",
-    "core_external_credential_": "@markorbit/core-service"
+    "core_external_credential_": "@markorbit/core-service",
+    "lite_seed_workspace_": "@markorbit/lite-service"
   },
   "migrations": {
     "0018_identity_workspace_membership": "@markorbit/core-service",
@@ -234,6 +236,7 @@
     "0143_core_external_credentials": "@markorbit/core-service",
     "0144_core_external_credential_resolution_audit": "@markorbit/core-service",
     "0145_lite_outbound_contact_policy_sms": "@markorbit/lite-service",
-    "0146_lite_notification_automation_sms": "@markorbit/lite-service"
+    "0146_lite_notification_automation_sms": "@markorbit/lite-service",
+    "0147_lite_seed_workspace_packages": "@markorbit/lite-service"
   }
 }
