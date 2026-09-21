@@ -168,23 +168,10 @@ function ReviewDetail({
   );
   const claimed = value.assignment.status === 'CLAIMED';
   const complete = value.status === 'REVIEWED_READY_FOR_NEXT_STEP';
+  const restoreFocus = (history.state as { restoreFocus?: string } | null)?.restoreFocus;
   useEffect(() => {
-    if (!complete) return;
-
-    const restorePackageTriggerFocus = () => {
-      const restoreFocus = (history.state as { restoreFocus?: string } | null)?.restoreFocus;
-      if (restoreFocus !== 'document-package-trigger') return;
-      requestAnimationFrame(() => packageTrigger.current?.focus());
-    };
-
-    restorePackageTriggerFocus();
-    window.addEventListener('pageshow', restorePackageTriggerFocus);
-    window.addEventListener('popstate', restorePackageTriggerFocus);
-    return () => {
-      window.removeEventListener('pageshow', restorePackageTriggerFocus);
-      window.removeEventListener('popstate', restorePackageTriggerFocus);
-    };
-  }, [complete]);
+    if (complete && restoreFocus === 'document-package-trigger') packageTrigger.current?.focus();
+  }, [complete, restoreFocus]);
   return (
     <section>
       <Button variant="secondary" onClick={onBack}>
