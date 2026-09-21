@@ -103,7 +103,7 @@ const opportunitySource = {
   schemaVersion: 1 as const,
   owner: 'LITE' as const,
   kind: 'OPPORTUNITY_CANDIDATE' as const,
-  sourceId: 'opportunity-candidate_story',
+  sourceId: 'opportunity-candidate_story' as const,
   sourceVersion: 1,
   sourceFingerprintSha256: 'f'.repeat(64),
   observedAt: '2026-08-11T08:20:00.000Z'
