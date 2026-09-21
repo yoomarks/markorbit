@@ -18,6 +18,7 @@ import type { NotificationAutomationRuleCurrentnessResolver } from './notificati
 import type { PostgresNotificationAutomationRuleStore } from './notification-automation-rule.js';
 import type { EmailCampaignEndpointResolver } from './email-campaign-delivery-currentness.js';
 import type { PostgresOutboundContactPolicyStore } from './outbound-contact-policy.js';
+import type { WorkspaceDirectorySmsEndpointResolverV1 } from './sms-endpoint-currentness.js';
 
 export type NotificationTriggerOwnerCurrentnessState =
   'CURRENT' | 'STALE' | 'REVOKED' | 'UNKNOWN' | 'UNAVAILABLE';
@@ -42,8 +43,12 @@ export class NotificationSendCurrentnessResolverV1 {
     >,
     private readonly governance: NotificationAutomationGovernanceVerifierV1,
     private readonly triggers: NotificationTriggerEvidenceCurrentnessReaderV1,
-    private readonly endpoints: EmailCampaignEndpointResolver,
-    private readonly outbound: Pick<PostgresOutboundContactPolicyStore, 'currentGlobalSuppressions'>
+    private readonly emailEndpoints: EmailCampaignEndpointResolver,
+    private readonly outbound: Pick<
+      PostgresOutboundContactPolicyStore,
+      'currentGlobalSuppressions' | 'evaluate'
+    >,
+    private readonly smsEndpoints?: Pick<WorkspaceDirectorySmsEndpointResolverV1, 'resolve'>
   ) {}
 
   async resolve(
@@ -103,10 +108,34 @@ export class NotificationSendCurrentnessResolverV1 {
         rule.notificationRuleId,
         rule.version
       );
-      if (ruleState.state === 'UNAVAILABLE') return result('UNAVAILABLE', 'OWNER_UNAVAILABLE');
-      if (ruleState.state === 'UNKNOWN') return result('UNKNOWN', 'OWNER_DATA_UNKNOWN');
-      if (ruleState.state === 'REVOKED') return result('REVOKED', 'ENTITLEMENT_REVOKED');
-      if (ruleState.state !== 'CURRENT') return result('STALE', 'RULE_STALE');
+      if (ruleState.state === 'UNAVAILABLE')
+        return result(
+          'UNAVAILABLE',
+          ruleState.reason === 'CHANNEL_IDENTITY_UNAVAILABLE'
+            ? 'CHANNEL_IDENTITY_UNAVAILABLE'
+            : 'OWNER_UNAVAILABLE'
+        );
+      if (ruleState.state === 'UNKNOWN')
+        return result(
+          'UNKNOWN',
+          ruleState.reason === 'CHANNEL_IDENTITY_UNKNOWN'
+            ? 'CHANNEL_IDENTITY_UNKNOWN'
+            : 'OWNER_DATA_UNKNOWN'
+        );
+      if (ruleState.state === 'REAUTH_REQUIRED')
+        return result('REAUTH_REQUIRED', 'CHANNEL_IDENTITY_REAUTH_REQUIRED');
+      if (ruleState.state === 'REVOKED')
+        return result(
+          'REVOKED',
+          ruleState.reason === 'CHANNEL_IDENTITY_REVOKED'
+            ? 'CHANNEL_IDENTITY_REVOKED'
+            : 'ENTITLEMENT_REVOKED'
+        );
+      if (ruleState.state !== 'CURRENT')
+        return result(
+          'STALE',
+          ruleState.reason === 'CHANNEL_IDENTITY_STALE' ? 'CHANNEL_IDENTITY_STALE' : 'RULE_STALE'
+        );
       if (
         !rule.activationEvidence ||
         rule.activationEvidence.evidenceRef !== activationEvidence.evidenceRef ||
@@ -151,14 +180,31 @@ export class NotificationSendCurrentnessResolverV1 {
       if (triggerState.state !== 'CURRENT') return result('STALE', 'TRIGGER_STALE');
 
       if (
+        rule.spec.featureKey !== intent.featureKey ||
         rule.spec.content.publishPackageId !== intent.content.publishPackageId ||
         rule.spec.content.version !== intent.content.version ||
-        rule.spec.content.fingerprintSha256 !== intent.content.fingerprintSha256 ||
-        rule.spec.senderProfile.senderProfileId !== intent.senderProfile.senderProfileId ||
-        rule.spec.senderProfile.version !== intent.senderProfile.version ||
-        rule.spec.senderProfile.fingerprintSha256 !== intent.senderProfile.fingerprintSha256
+        rule.spec.content.fingerprintSha256 !== intent.content.fingerprintSha256
       )
         return result('STALE', 'RULE_STALE');
+
+      if (rule.spec.featureKey === 'EMAIL_NOTIFICATION') {
+        if (
+          intent.featureKey !== 'EMAIL_NOTIFICATION' ||
+          rule.spec.senderProfile.senderProfileId !== intent.senderProfile.senderProfileId ||
+          rule.spec.senderProfile.version !== intent.senderProfile.version ||
+          rule.spec.senderProfile.fingerprintSha256 !== intent.senderProfile.fingerprintSha256
+        )
+          return result('STALE', 'RULE_STALE');
+      } else {
+        if (
+          intent.featureKey !== 'SMS_WORKSPACE_NOTIFICATION' ||
+          rule.spec.channelIdentityBinding.id !== intent.channelIdentityBinding.id ||
+          rule.spec.channelIdentityBinding.version !== intent.channelIdentityBinding.version ||
+          rule.spec.channelIdentityBinding.fingerprintSha256 !==
+            intent.channelIdentityBinding.fingerprintSha256
+        )
+          return result('STALE', 'RULE_STALE');
+      }
 
       const targetRef: OutboundContactTargetReferenceV1 = {
         owner: intent.target.owner,
@@ -166,7 +212,12 @@ export class NotificationSendCurrentnessResolverV1 {
         id: intent.target.id,
         version: intent.target.version
       };
-      const endpoint = await this.endpoints.resolve(workspaceId, targetRef);
+      const endpoint =
+        intent.featureKey === 'SMS_WORKSPACE_NOTIFICATION'
+          ? this.smsEndpoints
+            ? await this.smsEndpoints.resolve(workspaceId, targetRef)
+            : { state: 'UNAVAILABLE' as const }
+          : await this.emailEndpoints.resolve(workspaceId, targetRef);
       if (endpoint.state === 'UNAVAILABLE') return result('UNAVAILABLE', 'ENDPOINT_UNAVAILABLE');
       if (endpoint.state === 'UNKNOWN' || endpoint.state === 'NOT_FOUND')
         return result('UNKNOWN', 'ENDPOINT_UNAVAILABLE');
@@ -176,12 +227,37 @@ export class NotificationSendCurrentnessResolverV1 {
       )
         return result('STALE', 'ENDPOINT_DRIFT');
 
-      const suppressions = await this.outbound.currentGlobalSuppressions(
-        workspaceId,
-        intent.target.endpointFingerprintSha256
-      );
-      if (suppressions.some((item) => item.status === 'ACTIVE'))
-        return result('SUPPRESSED', 'OUTBOUND_POLICY_SUPPRESSED');
+      if (intent.featureKey === 'SMS_WORKSPACE_NOTIFICATION') {
+        if (rule.spec.featureKey !== 'SMS_WORKSPACE_NOTIFICATION')
+          return result('STALE', 'RULE_STALE');
+        const readiness = await this.outbound.evaluate({
+          workspaceId,
+          actorPrincipalId: 'notification-automation-currentness',
+          targetRef,
+          endpointFingerprintSha256: intent.target.endpointFingerprintSha256,
+          channel: 'SMS',
+          purpose: 'WORKSPACE_NOTIFICATION',
+          policyRef: rule.spec.contactPolicyRef,
+          reviewedSendFingerprintSha256: intent.effectFingerprintSha256
+        });
+        if (readiness.outcome === 'BLOCKED')
+          return result(
+            'SUPPRESSED',
+            readiness.reason === 'ACTIVE_SUPPRESSION'
+              ? 'OUTBOUND_POLICY_SUPPRESSED'
+              : 'OUTBOUND_POLICY_BLOCKED'
+          );
+        if (readiness.outcome !== 'READY_FOR_HUMAN_SEND')
+          return result('UNKNOWN', 'OUTBOUND_POLICY_UNKNOWN');
+      } else {
+        const suppressions = await this.outbound.currentGlobalSuppressions(
+          workspaceId,
+          intent.target.endpointFingerprintSha256,
+          'EMAIL'
+        );
+        if (suppressions.some((item) => item.status === 'ACTIVE'))
+          return result('SUPPRESSED', 'OUTBOUND_POLICY_SUPPRESSED');
+      }
 
       return result('CURRENT', 'EXACT_NOTIFICATION_PLAN_CURRENT');
     } catch (error) {

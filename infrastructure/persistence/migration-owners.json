@@ -233,6 +233,7 @@
     "0142_lite_workspace_channel_identity_bindings": "@markorbit/lite-service",
     "0143_core_external_credentials": "@markorbit/core-service",
     "0144_core_external_credential_resolution_audit": "@markorbit/core-service",
-    "0145_lite_outbound_contact_policy_sms": "@markorbit/lite-service"
+    "0145_lite_outbound_contact_policy_sms": "@markorbit/lite-service",
+    "0146_lite_notification_automation_sms": "@markorbit/lite-service"
   }
 }

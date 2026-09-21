@@ -44,12 +44,17 @@ import { PostgresOutboundContactPolicyStore } from './outbound-contact-policy.js
 import { PostgresEmailCampaignStore } from './email-campaign.js';
 import { PostgresEmailSenderProfileStore } from './email-sender-profile.js';
 import { PostgresNotificationAutomationRuleStore } from './notification-automation-rule.js';
-import { NotificationAutomationRuleCurrentnessResolver } from './notification-automation-rule-currentness.js';
+import {
+  C6SmsNotificationChannelIdentityCurrentnessReaderV1,
+  NotificationAutomationRuleCurrentnessResolver,
+  UnavailableSmsNotificationChannelIdentityRequirementsReaderV1
+} from './notification-automation-rule-currentness.js';
 import {
   HttpCoreNotificationAutomationEntitlementReader,
   HttpCoreNotificationAutomationGovernanceVerifier
 } from './notification-automation-governance.js';
 import { NotificationSendCurrentnessResolverV1 } from './notification-send-currentness.js';
+import { WorkspaceDirectorySmsEndpointResolverV1 } from './sms-endpoint-currentness.js';
 import { MarkRegLifecycleNotificationTriggerCurrentnessReaderV1 } from './notification-trigger-markreg.js';
 import { createNotificationAutomationRoutesV1 } from './notification-automation-http.js';
 import { PostgresNotificationDeliveryStore } from './notification-delivery.js';
@@ -373,9 +378,18 @@ const notificationAutomationRuleCurrentness = new NotificationAutomationRuleCurr
   notificationAutomationRuleStore,
   contentStore,
   emailSenderProfileStore,
-  new HttpCoreNotificationAutomationEntitlementReader(coreUrl, internalServiceSecret)
+  new HttpCoreNotificationAutomationEntitlementReader(coreUrl, internalServiceSecret),
+  undefined,
+  undefined,
+  new C6SmsNotificationChannelIdentityCurrentnessReaderV1(
+    workspaceChannelIdentityCurrentness,
+    new UnavailableSmsNotificationChannelIdentityRequirementsReaderV1()
+  )
 );
 const notificationEndpointResolver = new WorkspaceDirectoryEmailEndpointResolver(
+  workspaceDirectoryStore
+);
+const notificationSmsEndpointResolver = new WorkspaceDirectorySmsEndpointResolverV1(
   workspaceDirectoryStore
 );
 const notificationTriggerReader = new MarkRegLifecycleNotificationTriggerCurrentnessReaderV1(
@@ -388,7 +402,8 @@ const notificationSendCurrentness = new NotificationSendCurrentnessResolverV1(
   notificationAutomationGovernance,
   notificationTriggerReader,
   notificationEndpointResolver,
-  outboundContactPolicyStore
+  outboundContactPolicyStore,
+  notificationSmsEndpointResolver
 );
 const notificationDeliveryStore = new PostgresNotificationDeliveryStore(database, pool);
 const notificationSesRouting = process.env.MO_SES_ROUTES_JSON

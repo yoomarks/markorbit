@@ -202,6 +202,11 @@ export class EmailNotificationDeliveryRuntimeV1 {
         'RULE_NOT_ACTIVE',
         'Exact active rule is required.'
       );
+    if (rule.spec.featureKey !== 'EMAIL_NOTIFICATION')
+      throw new NotificationDeliveryRuntimeError(
+        'RULE_NOT_ACTIVE',
+        'Email Notification delivery accepts EMAIL_NOTIFICATION rules only.'
+      );
     const exactRule = await this.rules.getExact(
       command.workspaceId,
       command.notificationRuleId,

@@ -34,6 +34,7 @@ export type ProtectedExternalActionErrorCode =
   | 'EMAIL_CAMPAIGN_INTENT_UNAVAILABLE'
   | 'NOTIFICATION_INTENT_STALE'
   | 'NOTIFICATION_INTENT_REVOKED'
+  | 'NOTIFICATION_INTENT_REAUTH_REQUIRED'
   | 'NOTIFICATION_INTENT_SUPPRESSED'
   | 'NOTIFICATION_INTENT_UNKNOWN'
   | 'NOTIFICATION_INTENT_UNAVAILABLE'
@@ -221,6 +222,11 @@ function mapNotificationCurrentness(value: Readonly<NotificationSendCurrentnessV
     throw new ProtectedExternalActionError(
       'NOTIFICATION_INTENT_REVOKED',
       'Notification send intent contains revoked owner state.'
+    );
+  if (value.state === 'REAUTH_REQUIRED')
+    throw new ProtectedExternalActionError(
+      'NOTIFICATION_INTENT_REAUTH_REQUIRED',
+      'Notification sending identity requires credential reauthorization.'
     );
   if (value.state === 'SUPPRESSED')
     throw new ProtectedExternalActionError(

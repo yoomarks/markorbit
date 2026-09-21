@@ -60,6 +60,34 @@ const trigger = {
   authority: noChannelNotificationAuthorityConsequencesV1
 };
 
+const smsRule = {
+  schemaVersion: 1 as const,
+  notificationRuleId: 'channel-notification-rule_sms-primary' as const,
+  workspaceId,
+  version: 1,
+  featureKey: 'SMS_WORKSPACE_NOTIFICATION' as const,
+  triggerSelector: rule.triggerSelector,
+  destinationResolver: {
+    kind: 'EVENT_SUBJECT_WORKSPACE_DIRECTORY_PHONE' as const
+  },
+  content: rule.content,
+  channelIdentityBinding: {
+    id: 'workspace-channel-identity-binding_primary' as const,
+    version: 4,
+    fingerprintSha256: '8'.repeat(64)
+  },
+  contactPolicyRef: {
+    policyId: 'outbound-contact-policy_sms-notification',
+    version: 2
+  },
+  ratePolicyRef: 'notification-rate-policy_sms-default',
+  dedupePolicy: {
+    mode: 'ONE_PER_RULE_TRIGGER' as const
+  },
+  ruleFingerprintSha256: '9'.repeat(64),
+  authority: noChannelNotificationAuthorityConsequencesV1
+};
+
 const intent = {
   schemaVersion: 1 as const,
   notificationSendIntentId: 'channel-notification-send-intent_primary' as const,
@@ -90,10 +118,55 @@ const intent = {
   authority: noChannelNotificationAuthorityConsequencesV1
 };
 
+const smsIntent = {
+  schemaVersion: 1 as const,
+  notificationSendIntentId: 'channel-notification-send-intent_sms-primary' as const,
+  workspaceId,
+  version: 1 as const,
+  featureKey: 'SMS_WORKSPACE_NOTIFICATION' as const,
+  rule: {
+    notificationRuleId: smsRule.notificationRuleId,
+    version: smsRule.version,
+    fingerprintSha256: smsRule.ruleFingerprintSha256
+  },
+  trigger: intent.trigger,
+  target: intent.target,
+  content: smsRule.content,
+  channelIdentityBinding: smsRule.channelIdentityBinding,
+  deliveryPlanFingerprintSha256: 'a'.repeat(64),
+  effectFingerprintSha256: 'b'.repeat(64),
+  authority: noChannelNotificationAuthorityConsequencesV1
+};
+
 describe('Channel Notification contracts', () => {
   it('admits a bounded EMAIL_NOTIFICATION rule without send authority', () => {
     expect(parseChannelNotificationRuleSpecV1(rule)).toEqual(rule);
     expect(Object.values(rule.authority).every((value) => value === false)).toBe(true);
+  });
+
+  it('admits a bounded SMS_WORKSPACE_NOTIFICATION rule/send intent without email sender truth', () => {
+    expect(parseChannelNotificationRuleSpecV1(smsRule)).toEqual(smsRule);
+    expect(parseChannelNotificationSendIntentV1(smsIntent)).toEqual(smsIntent);
+
+    expect(() =>
+      parseChannelNotificationRuleSpecV1({
+        ...smsRule,
+        senderProfile: rule.senderProfile
+      })
+    ).toThrow(/bounded V1 fields/);
+
+    const { channelIdentityBinding: omittedBinding, ...missingBinding } = smsRule;
+    void omittedBinding;
+    expect(() => parseChannelNotificationRuleSpecV1(missingBinding)).toThrow(/bounded V1 fields/);
+  });
+
+  it('rejects raw phone material in durable SMS truth', () => {
+    expect(() =>
+      parseChannelNotificationSendIntentV1({
+        ...smsIntent,
+        recipientPhone: '+14155550123'
+      })
+    ).toThrow(/forbidden durable notification material/);
   });
 
   it('admits trigger evidence as owner references without event payload', () => {
@@ -155,6 +228,6 @@ describe('Channel Notification contracts', () => {
         ...rule,
         featureKey: 'EMAIL_CAMPAIGN'
       })
-    ).toThrow(/EMAIL_NOTIFICATION only/);
+    ).toThrow(/EMAIL_NOTIFICATION or SMS_WORKSPACE_NOTIFICATION only/);
   });
 });

@@ -483,7 +483,33 @@ const notificationIntent: ChannelNotificationSendIntentV1 = {
   authority: noChannelNotificationAuthorityConsequencesV1
 };
 
-function notificationHarness(state: NotificationSendCurrentnessStateV1 = 'CURRENT') {
+const smsNotificationIntent: ChannelNotificationSendIntentV1 = {
+  schemaVersion: 1,
+  notificationSendIntentId: 'channel-notification-send-intent_sms-1176',
+  workspaceId,
+  version: 1,
+  featureKey: 'SMS_WORKSPACE_NOTIFICATION',
+  rule: notificationIntent.rule,
+  trigger: notificationIntent.trigger,
+  target: {
+    ...notificationIntent.target,
+    endpointFingerprintSha256: '8'.repeat(64)
+  },
+  content: notificationIntent.content,
+  channelIdentityBinding: {
+    id: 'workspace-channel-identity-binding_sms-1176',
+    version: 4,
+    fingerprintSha256: '9'.repeat(64)
+  },
+  deliveryPlanFingerprintSha256: 'a'.repeat(64),
+  effectFingerprintSha256: 'b'.repeat(64),
+  authority: noChannelNotificationAuthorityConsequencesV1
+};
+
+function notificationHarness(
+  state: NotificationSendCurrentnessStateV1 = 'CURRENT',
+  sendIntent: ChannelNotificationSendIntentV1 = notificationIntent
+) {
   const repository = new InMemoryProtectedExternalActionRepository();
   const notification = {
     validateCurrent: vi.fn(() =>
@@ -491,21 +517,23 @@ function notificationHarness(state: NotificationSendCurrentnessStateV1 = 'CURREN
         schemaVersion: 1 as const,
         workspaceId,
         actionKind: 'NOTIFICATION_SEND' as const,
-        effectFingerprintSha256: notificationIntent.effectFingerprintSha256,
-        deliveryPlanFingerprintSha256: notificationIntent.deliveryPlanFingerprintSha256,
+        effectFingerprintSha256: sendIntent.effectFingerprintSha256,
+        deliveryPlanFingerprintSha256: sendIntent.deliveryPlanFingerprintSha256,
         state,
         reason:
           state === 'CURRENT'
             ? ('EXACT_NOTIFICATION_PLAN_CURRENT' as const)
             : state === 'REVOKED'
               ? ('ENTITLEMENT_REVOKED' as const)
-              : state === 'SUPPRESSED'
-                ? ('OUTBOUND_POLICY_SUPPRESSED' as const)
-                : state === 'UNAVAILABLE'
-                  ? ('OWNER_UNAVAILABLE' as const)
-                  : state === 'UNKNOWN'
-                    ? ('OWNER_DATA_UNKNOWN' as const)
-                    : ('RULE_STALE' as const)
+              : state === 'REAUTH_REQUIRED'
+                ? ('CHANNEL_IDENTITY_REAUTH_REQUIRED' as const)
+                : state === 'SUPPRESSED'
+                  ? ('OUTBOUND_POLICY_SUPPRESSED' as const)
+                  : state === 'UNAVAILABLE'
+                    ? ('OWNER_UNAVAILABLE' as const)
+                    : state === 'UNKNOWN'
+                      ? ('OWNER_DATA_UNKNOWN' as const)
+                      : ('RULE_STALE' as const)
       })
     )
   };
@@ -525,13 +553,17 @@ function notificationHarness(state: NotificationSendCurrentnessStateV1 = 'CURREN
   return { repository, notification, service };
 }
 
-const authorizeNotification = (service: ProtectedExternalActionService) =>
+const authorizeNotification = (
+  service: ProtectedExternalActionService,
+  sendIntent: ChannelNotificationSendIntentV1 = notificationIntent,
+  idempotencyKey = 'authorize-notification-1176'
+) =>
   service.authorizeNotificationSend({
     workspaceId,
-    intent: notificationIntent,
+    intent: sendIntent,
     triggerEvidence: notificationTrigger,
     activationEvidence: notificationActivation,
-    idempotencyKey: 'authorize-notification-1176'
+    idempotencyKey
   });
 
 describe('Execution protected Notification send authorization and release', () => {
@@ -559,9 +591,41 @@ describe('Execution protected Notification send authorization and release', () =
     expect(notification.validateCurrent).toHaveBeenCalledTimes(2);
   });
 
+  it('authorizes and releases SMS through the same NOTIFICATION_SEND JIT bridge', async () => {
+    const h = notificationHarness('CURRENT', smsNotificationIntent);
+    const authorization = await authorizeNotification(
+      h.service,
+      smsNotificationIntent,
+      'authorize-notification-sms-1176'
+    );
+    expect(authorization).toMatchObject({
+      actionKind: 'NOTIFICATION_SEND',
+      intent: { featureKey: 'SMS_WORKSPACE_NOTIFICATION' }
+    });
+    const release = await h.service.releaseNotificationSend({
+      workspaceId,
+      authorizationId: authorization.authorizationId,
+      authorizationVersion: 1,
+      idempotencyKey: 'release-notification-sms-1176'
+    });
+    expect(release).toMatchObject({
+      actionKind: 'NOTIFICATION_SEND',
+      status: 'RELEASED_FOR_EXECUTION',
+      effectFingerprintSha256: smsNotificationIntent.effectFingerprintSha256
+    });
+    expect(h.notification.validateCurrent).toHaveBeenCalledTimes(2);
+    expect(h.notification.validateCurrent).toHaveBeenNthCalledWith(
+      1,
+      smsNotificationIntent,
+      notificationTrigger,
+      notificationActivation
+    );
+  });
+
   it.each([
     ['STALE', 'NOTIFICATION_INTENT_STALE'],
     ['REVOKED', 'NOTIFICATION_INTENT_REVOKED'],
+    ['REAUTH_REQUIRED', 'NOTIFICATION_INTENT_REAUTH_REQUIRED'],
     ['SUPPRESSED', 'NOTIFICATION_INTENT_SUPPRESSED'],
     ['UNKNOWN', 'NOTIFICATION_INTENT_UNKNOWN'],
     ['UNAVAILABLE', 'NOTIFICATION_INTENT_UNAVAILABLE']

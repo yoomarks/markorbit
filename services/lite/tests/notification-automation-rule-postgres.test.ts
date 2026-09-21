@@ -83,6 +83,33 @@ suite('PostgreSQL Notification Automation Rule owner', () => {
     ratePolicyRef: 'notification-rate-policy_default'
   });
 
+  const createSms = (key: string, workspaceId = workspaceA) => ({
+    workspaceId,
+    actorPrincipalId: 'principal_rule_owner',
+    idempotencyKey: key,
+    featureKey: 'SMS_WORKSPACE_NOTIFICATION' as const,
+    triggerSelector: {
+      owner: 'MARKREG',
+      eventType: 'FORMAL_MATTER_STATUS_CHANGED',
+      subjectKind: 'WORKSPACE_DIRECTORY_ENTRY'
+    },
+    content: {
+      publishPackageId: 'publish-package_notification-test' as const,
+      version: 2,
+      fingerprintSha256: '1'.repeat(64)
+    },
+    channelIdentityBinding: {
+      id: 'workspace-channel-identity-binding_notification-test' as const,
+      version: 4,
+      fingerprintSha256: '8'.repeat(64)
+    },
+    contactPolicyRef: {
+      policyId: 'outbound-contact-policy_sms-notification',
+      version: 2
+    },
+    ratePolicyRef: 'notification-rate-policy_sms-default'
+  });
+
   function store(
     verifier: NotificationAutomationGovernanceVerifierV1 = new ExactGovernanceVerifier()
   ) {
@@ -163,6 +190,81 @@ suite('PostgreSQL Notification Automation Rule owner', () => {
     ).rejects.toMatchObject({ code: 'IDEMPOTENCY_CONFLICT' });
   });
 
+  it('persists SMS draft/activation with exact Channel binding and survives restart/idempotent replay', async () => {
+    const verifier = new ExactGovernanceVerifier();
+    const service = store(verifier);
+    const command = createSms('sms-draft');
+    const draft = await service.createDraft(command);
+
+    expect(draft.spec).toMatchObject({
+      featureKey: 'SMS_WORKSPACE_NOTIFICATION',
+      destinationResolver: { kind: 'EVENT_SUBJECT_WORKSPACE_DIRECTORY_PHONE' },
+      channelIdentityBinding: command.channelIdentityBinding,
+      contactPolicyRef: command.contactPolicyRef
+    });
+    expect(draft.spec).not.toHaveProperty('senderProfile');
+
+    const restarted = store(verifier);
+    await expect(restarted.createDraft(command)).resolves.toEqual(draft);
+    await expect(restarted.getExact(workspaceA, draft.notificationRuleId, 1)).resolves.toEqual(
+      draft
+    );
+    await expect(restarted.getLatest(workspaceA, draft.notificationRuleId)).resolves.toEqual(draft);
+
+    const active = await restarted.activate({
+      workspaceId: workspaceA,
+      notificationRuleId: draft.notificationRuleId,
+      expectedVersion: 1,
+      actorPrincipalId: 'principal_activator',
+      idempotencyKey: 'sms-activate',
+      governanceEvidenceRef: 'governed-human-action-receipt_sms-activate'
+    });
+    expect(active).toMatchObject({
+      version: 2,
+      status: 'ACTIVE',
+      spec: {
+        featureKey: 'SMS_WORKSPACE_NOTIFICATION',
+        channelIdentityBinding: command.channelIdentityBinding,
+        contactPolicyRef: command.contactPolicyRef
+      }
+    });
+    await expect(store(verifier).getLatest(workspaceA, draft.notificationRuleId)).resolves.toEqual(
+      active
+    );
+
+    const projection = await database.getPool().query<{
+      sender_profile_id: string | null;
+      channel_identity_binding_id: string | null;
+      channel_identity_binding_version: number | null;
+      channel_identity_binding_fingerprint_sha256: string | null;
+      contact_policy_id: string | null;
+      contact_policy_version: number | null;
+    }>(
+      `SELECT sender_profile_id,channel_identity_binding_id,channel_identity_binding_version,
+              channel_identity_binding_fingerprint_sha256,contact_policy_id,contact_policy_version
+         FROM lite_notification_automation_rule_heads
+        WHERE workspace_id=$1 AND notification_rule_id=$2`,
+      [workspaceA, draft.notificationRuleId]
+    );
+    expect(projection.rows[0]).toEqual({
+      sender_profile_id: null,
+      channel_identity_binding_id: command.channelIdentityBinding.id,
+      channel_identity_binding_version: command.channelIdentityBinding.version,
+      channel_identity_binding_fingerprint_sha256: command.channelIdentityBinding.fingerprintSha256,
+      contact_policy_id: command.contactPolicyRef.policyId,
+      contact_policy_version: command.contactPolicyRef.version
+    });
+
+    await expect(
+      database.getPool().query(
+        `UPDATE lite_notification_automation_rule_heads
+            SET sender_profile_id='email-sender-profile_forbidden'
+          WHERE workspace_id=$1 AND notification_rule_id=$2`,
+        [workspaceA, draft.notificationRuleId]
+      )
+    ).rejects.toThrow();
+  });
+
   it('fails closed when activation has no governance verifier', async () => {
     const noVerifier = new PostgresNotificationAutomationRuleStore(
       database,
@@ -214,6 +316,11 @@ suite('PostgreSQL Notification Automation Rule owner', () => {
       authorizedRuleFingerprintSha256: active.spec.ruleFingerprintSha256
     });
     expect(active.spec.content).toEqual(draft.spec.content);
+    if (
+      active.spec.featureKey !== 'EMAIL_NOTIFICATION' ||
+      draft.spec.featureKey !== 'EMAIL_NOTIFICATION'
+    )
+      throw new Error('Expected EMAIL_NOTIFICATION fixtures.');
     expect(active.spec.senderProfile).toEqual(draft.spec.senderProfile);
     expect(active.spec.ruleFingerprintSha256).not.toBe(draft.spec.ruleFingerprintSha256);
     expect(verifier.calls).toBe(1);
@@ -381,6 +488,9 @@ suite('PostgreSQL Notification Automation Rule owner', () => {
     ).toBe(false);
     expect(names).toContain('publish_package_fingerprint_sha256');
     expect(names).toContain('sender_profile_fingerprint_sha256');
+    expect(names).toContain('channel_identity_binding_id');
+    expect(names).toContain('channel_identity_binding_fingerprint_sha256');
+    expect(names).toContain('contact_policy_id');
     expect(names).toContain('rule_fingerprint_sha256');
   });
 });
