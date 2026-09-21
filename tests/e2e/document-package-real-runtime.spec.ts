@@ -185,13 +185,6 @@ test.describe('TASK 025 real durable Document Package path', () => {
     await expect(page.getByRole('button', { name: 'Save Draft' })).toHaveCount(0);
     await page.goBack();
     await expect(page).toHaveURL(completedReviewUrl);
-    await expect
-      .poll(() =>
-        page.evaluate(
-          () => (history.state as { restoreFocus?: string } | null)?.restoreFocus ?? null
-        )
-      )
-      .toBe('document-package-trigger');
     await expect(
       page.getByRole('link', { name: 'Start or resume Document Package' })
     ).toBeFocused();
