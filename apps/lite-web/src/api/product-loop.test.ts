@@ -5,7 +5,7 @@ import type {
   PreparedActionJourney,
   TodayRecommendation
 } from '@markorbit/contracts/product-loop';
-import { createTodayClient, type TodayHttpError } from './product-loop.js';
+import { createTodayClient } from './product-loop.js';
 
 const workspaceId = '25252525-2525-4252-8252-252525252525';
 const candidateId = 'opportunity-candidate_today-browser';
@@ -191,7 +191,7 @@ describe('Today qualified Opportunity Review client', () => {
 
     await expect(
       createTodayClient(workspaceId).loadQualifiedOpportunityReview(recommendation)
-    ).rejects.toMatchObject<TodayHttpError>({
+    ).rejects.toMatchObject({
       status: 409,
       code: 'STALE_OPPORTUNITY_REVIEW'
     });
