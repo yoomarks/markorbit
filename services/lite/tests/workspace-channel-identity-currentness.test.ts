@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import type { WorkspaceChannelIdentityBindingId } from '@markorbit/contracts/channel-identity-binding';
 import { assessChannelEntitlementV1 } from '@markorbit/contracts/channel-platform';
 import { materializeTrustedWorkspaceChannelIdentityBindingV1 } from '../src/workspace-channel-identity-binding.js';
@@ -123,7 +123,9 @@ const externalBinding = materializeTrustedWorkspaceChannelIdentityBindingV1(
 
 function externalHarness(
   state: Options['credential'] = 'CURRENT',
-  observe?: (input: unknown) => void
+  observe?: (input: unknown) => void,
+  onVerify?: () => void,
+  provenance: Options['provenance'] = 'CURRENT'
 ) {
   return new WorkspaceChannelIdentityCurrentnessResolverV1(
     {
@@ -139,18 +141,20 @@ function externalHarness(
         })
     },
     {
-      verify: (value) =>
-        Promise.resolve({
+      verify: (value) => {
+        onVerify?.();
+        return Promise.resolve({
           schemaVersion: 1,
           binding: {
             id: value.workspaceChannelIdentityBindingId,
             version: value.version,
             fingerprintSha256: value.bindingFingerprintSha256
           },
-          status: 'VERIFIED',
+          status: 'VERIFIED' as const,
           observedAt: '2026-09-20T09:30:00.000Z',
           evidenceRefs: ['provider-verification:current']
-        })
+        });
+      }
     },
     { assess: () => Promise.reject(new Error('OAuth reader must not be selected.')) },
     {
@@ -159,7 +163,7 @@ function externalHarness(
         return Promise.resolve({ state: state ?? 'CURRENT' });
       }
     },
-    { assess: () => Promise.resolve({ state: 'CURRENT' }) },
+    { assess: () => Promise.resolve({ state: provenance ?? 'CURRENT' }) },
     () => '2026-09-20T10:00:00.000Z'
   );
 }
@@ -221,6 +225,26 @@ describe('Workspace Channel identity JIT currentness', () => {
       });
     }
   );
+
+  it('checks credential and Implementation currentness before provider identity verification', async () => {
+    const verifyExpired = vi.fn();
+    await expect(
+      externalHarness('REAUTH_REQUIRED', undefined, verifyExpired).resolve(externalRequest)
+    ).resolves.toMatchObject({
+      state: 'REAUTH_REQUIRED',
+      reason: 'CREDENTIAL_REAUTH_REQUIRED'
+    });
+    expect(verifyExpired).not.toHaveBeenCalled();
+
+    const verifyStaleProfile = vi.fn();
+    await expect(
+      externalHarness('CURRENT', undefined, verifyStaleProfile, 'STALE').resolve(externalRequest)
+    ).resolves.toMatchObject({
+      state: 'STALE',
+      reason: 'IMPLEMENTATION_STALE'
+    });
+    expect(verifyStaleProfile).not.toHaveBeenCalled();
+  });
 
   it('fails closed for missing or mixed credential requirements', async () => {
     await expect(
