@@ -1,5 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react';
 import type {
+  OpportunityCandidate,
+  OpportunityQualificationDecision,
   PreparedActionJourney,
   ProductLoopUseFeedback,
   PublishPackage,
@@ -97,6 +99,90 @@ const completed: PreparedActionJourney = {
     }
   }
 };
+const opportunitySource = {
+  schemaVersion: 1 as const,
+  owner: 'LITE' as const,
+  kind: 'OPPORTUNITY_CANDIDATE' as const,
+  sourceId: 'opportunity-candidate_story-qualified',
+  sourceVersion: 2,
+  sourceFingerprintSha256: '8'.repeat(64),
+  observedAt: '2026-09-21T10:00:00.000Z'
+};
+const opportunityRecommendation: TodayRecommendation = {
+  schemaVersion: 1,
+  todayRecommendationId: 'today-recommendation_story-qualified',
+  workspaceId,
+  version: 1,
+  kind: 'OPPORTUNITY_REVIEW',
+  title: 'Review qualified trademark-service need',
+  explanation:
+    'A human Qualification Decision marked this exact Candidate version ready for a separate MarkReg opportunity review.',
+  sources: [opportunitySource],
+  status: 'OPEN',
+  recommendationFingerprintSha256: '9'.repeat(64),
+  executionAuthorized: false,
+  createdAt: '2026-09-21T10:01:00.000Z',
+  updatedAt: '2026-09-21T10:01:00.000Z'
+};
+const opportunityCandidate: OpportunityCandidate = {
+  schemaVersion: 1,
+  opportunityCandidateId: opportunitySource.sourceId,
+  workspaceId,
+  version: 3,
+  kind: 'TRADEMARK_SERVICE',
+  title: 'Renewal service review',
+  serviceNeedSummary: 'The reviewed evidence supports a bounded professional service discussion.',
+  sources: [],
+  status: 'DISPOSITIONED',
+  opportunityCandidateFingerprintSha256: 'a'.repeat(64),
+  formalOpportunityCreated: false,
+  customerContacted: false,
+  createdAt: '2026-09-21T09:00:00.000Z',
+  updatedAt: '2026-09-21T10:00:30.000Z'
+};
+const opportunityQualification: OpportunityQualificationDecision = {
+  schemaVersion: 1,
+  opportunityQualificationDecisionId: 'opportunity-qualification_story-qualified',
+  workspaceId,
+  version: 1,
+  candidate: {
+    id: opportunityCandidate.opportunityCandidateId,
+    version: Number(opportunitySource.sourceVersion)
+  },
+  expectedCandidateFingerprintSha256: opportunitySource.sourceFingerprintSha256,
+  outcome: 'QUALIFIED_FOR_MARKREG',
+  decidedByPrincipalId: '11111111-1111-4111-8111-111111111111',
+  rationale: 'Human reviewer confirmed this exact Candidate version for MarkReg review.',
+  decidedAt: '2026-09-21T10:00:00.000Z',
+  formalOpportunityCreated: false,
+  customerContacted: false
+};
+const opportunityPrepared: PreparedActionJourney = {
+  schemaVersion: 1,
+  preparedAction: {
+    schemaVersion: 1,
+    preparedActionId: 'prepared-action_story-qualified',
+    workspaceId,
+    version: 1,
+    recommendation: { id: opportunityRecommendation.todayRecommendationId, version: 1 },
+    recommendationFingerprintSha256:
+      opportunityRecommendation.recommendationFingerprintSha256,
+    kind: 'CREATE_FORMAL_TRADEMARK_SERVICE_OPPORTUNITY',
+    summary:
+      'Promote the explicitly qualified trademark-service need into MarkReg for review.',
+    confirmationEffect:
+      'Create one MarkReg Formal Trademark Service Opportunity from the exact qualified Candidate. This does not contact the customer or create an Intake, Order, Matter, payment, appointment or filing.',
+    handoffTarget: 'MARKREG_FORMAL_TRADEMARK_SERVICE_OPPORTUNITY',
+    sources: opportunityRecommendation.sources,
+    preparedActionFingerprintSha256: '7'.repeat(64),
+    confirmationRequired: true,
+    executionAuthorized: false,
+    createdAt: '2026-09-21T10:05:00.000Z',
+    updatedAt: '2026-09-21T10:05:00.000Z'
+  },
+  handoffState: 'AWAITING_CONFIRMATION'
+};
+
 const publishPackage: PublishPackage = {
   schemaVersion: 1,
   publishPackageId: 'publish-package_story',
@@ -144,11 +230,33 @@ function snapshot(
   };
 }
 
+function opportunitySnapshot(
+  actions: PreparedActionJourney[] = []
+): TodayProductLoopSnapshot {
+  return {
+    schemaVersion: 1,
+    workspaceId,
+    generatedAt: '2026-09-21T10:06:00.000Z',
+    items: [{ recommendation: opportunityRecommendation, preparedActions: actions }],
+    partial: false,
+    warnings: [],
+    recentFeedback: [],
+    feedbackPendingPackages: []
+  };
+}
+
 function clientFor(value: TodayProductLoopSnapshot): TodayClient {
   return {
     loadToday: () => Promise.resolve(value),
     loadPreparedAction: () => Promise.resolve(prepared),
     prepareContent: () => Promise.resolve(prepared),
+    loadOpportunityReview: () =>
+      Promise.resolve({
+        source: opportunitySource,
+        candidate: opportunityCandidate,
+        qualification: opportunityQualification
+      }),
+    prepareQualifiedOpportunity: () => Promise.resolve(opportunityPrepared),
     confirm: () => Promise.resolve(completed),
     recordUseFeedback: (_publishPackage, outcome) => Promise.resolve({ ...feedback, outcome })
   };
@@ -172,6 +280,37 @@ export const RecommendationDetail: Story = {
 };
 export const PreparedActionReview: Story = {
   args: { workspaceId, client: clientFor(snapshot([prepared])) }
+};
+export const QualifiedOpportunityReady: Story = {
+  args: { workspaceId, client: clientFor(opportunitySnapshot()) }
+};
+export const StaleOpportunityEvidence: Story = {
+  args: {
+    workspaceId,
+    client: {
+      ...clientFor(opportunitySnapshot()),
+      loadOpportunityReview: () =>
+        Promise.reject(
+          new TodayHttpError(
+            409,
+            'STALE_OPPORTUNITY_EVIDENCE',
+            'Qualification evidence no longer matches the Candidate reviewed by this Recommendation.'
+          )
+        )
+    }
+  }
+};
+export const QualifiedOpportunityPrepared: Story = {
+  args: { workspaceId, client: clientFor(opportunitySnapshot([opportunityPrepared])) }
+};
+export const QualifiedOpportunityMobile390: Story = {
+  args: { workspaceId, client: clientFor(opportunitySnapshot()) },
+  parameters: {
+    viewport: {
+      defaultViewport: 'mobile1',
+      viewports: { mobile1: { name: '390px mobile', styles: { width: '390px', height: '844px' } } }
+    }
+  }
 };
 export const HandoffSuccess: Story = {
   args: { workspaceId, client: clientFor(snapshot([completed])) }
