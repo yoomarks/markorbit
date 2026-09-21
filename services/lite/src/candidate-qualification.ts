@@ -10,8 +10,7 @@ import {
   type OpportunityQualificationDecisionId,
   type OpportunityQualificationOutcome,
   type ProductLoopSourceReference,
-  type TodayRecommendation,
-  type TodayRecommendationId
+  type TodayRecommendation
 } from '@markorbit/contracts/product-loop';
 import type { QueryClient } from '@markorbit/persistence';
 import type {
@@ -200,7 +199,7 @@ function opportunityReviewRecommendation(
     schemaVersion: 1,
     todayRecommendationId: `today-recommendation_${createHash('sha256')
       .update(decision.opportunityQualificationDecisionId)
-      .digest('hex')}` as TodayRecommendationId,
+      .digest('hex')}`,
     workspaceId: candidate.workspaceId,
     version: 1,
     kind: 'OPPORTUNITY_REVIEW',
