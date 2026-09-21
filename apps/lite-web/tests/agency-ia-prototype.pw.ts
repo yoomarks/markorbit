@@ -49,7 +49,6 @@ test('case approval remains visibly separate from filing', async ({ page }) => {
   await expect(page.getByText(/It has not been filed/)).toBeVisible();
 });
 
-
 const workbenchStory =
   '/iframe.html?id=lite-agency-ia-prototype-seed-contextual-workbench--opportunity-review&viewMode=story';
 
