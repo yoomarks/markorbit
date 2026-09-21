@@ -68,9 +68,18 @@ type Method = JsonRequest['method'];
 
 function setup() {
   const item = packageFor();
+  const preview = {
+    schemaVersion: 1 as const,
+    seedWorkspacePackageId: item.seedWorkspacePackageId,
+    target: { kind: item.target.kind, displayName: item.target.displayName },
+    counts: {},
+    preparedAt: item.preparedAt,
+    expiresAt: item.expiresAt
+  };
   const store = {
     savePrepared: vi.fn().mockResolvedValue(item),
-    readForWorkspace: vi.fn().mockResolvedValue(item)
+    readForWorkspace: vi.fn().mockResolvedValue(item),
+    previewInvitation: vi.fn().mockResolvedValue(preview)
   };
   const claimResult = {
     package: item,
@@ -105,7 +114,7 @@ function setup() {
     if (!found) throw new Error(`Missing ${method} ${path}`);
     return found;
   };
-  return { item, store, claims, routes, route, claimResult };
+  return { item, preview, store, claims, routes, route, claimResult };
 }
 
 function request(input: {
@@ -131,9 +140,10 @@ function request(input: {
 }
 
 describe('Seed Workspace Package HTTP owner boundary', () => {
-  it('exposes only prepare, scoped read and exact claim routes', () => {
+  it('exposes only preview, prepare, scoped read and exact claim routes', () => {
     const { routes } = setup();
     expect(routes.map(({ method, path }) => `${method} ${path}`)).toEqual([
+      'POST /v1/seed-workspace-invitations/preview',
       'POST /v1/seed-workspace-packages',
       'GET /v1/seed-workspace-packages/:packageId',
       'POST /v1/seed-workspace-claims'
@@ -141,6 +151,31 @@ describe('Seed Workspace Package HTTP owner boundary', () => {
     expect(
       routes.some(({ path }) => /send|customer|managed|opportunity|publish|filing/i.test(path))
     ).toBe(false);
+  });
+
+  it('previews only sanitized package metadata from the invitation bearer token', async () => {
+    const { route, item, preview, store } = setup();
+    expect(
+      await route('POST', '/v1/seed-workspace-invitations/preview').handle(
+        request({
+          method: 'POST',
+          path: '/v1/seed-workspace-invitations/preview',
+          body: {
+            packageId: item.seedWorkspacePackageId,
+            invitationClaimToken: 'opaque-invitation-token'
+          },
+          headers: {
+            'x-markorbit-principal': '',
+            'x-markorbit-workspace-id': ''
+          }
+        })
+      )
+    ).toEqual({ status: 200, body: preview });
+    expect(store.previewInvitation).toHaveBeenCalledWith({
+      packageId: item.seedWorkspacePackageId,
+      invitationClaimToken: 'opaque-invitation-token'
+    });
+    expect(JSON.stringify(preview)).not.toContain('sourceRefs');
   });
 
   it('persists only a package prepared by the authenticated Workspace', async () => {

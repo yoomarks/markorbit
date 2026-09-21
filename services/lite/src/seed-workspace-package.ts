@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import type { EducationCommunityJourneyV1 } from '@markorbit/contracts/education-community';
 import {
   parseSeedWorkspacePackageV1,
@@ -9,6 +10,7 @@ import type { EducationCommunityService } from './education-community.js';
 
 export type SeedWorkspacePackageOwnerErrorCode =
   | 'SEED_PACKAGE_NOT_FOUND'
+  | 'SEED_INVITATION_NOT_FOUND'
   | 'SEED_PACKAGE_CONFLICT'
   | 'SEED_PACKAGE_EXPIRED'
   | 'SEED_CLAIM_LINEAGE_MISMATCH'
@@ -49,11 +51,69 @@ export interface SeedWorkspaceClaimResultV1 {
   journey: Readonly<EducationCommunityJourneyV1>;
 }
 
+export interface SeedWorkspaceInvitationPreviewV1 {
+  schemaVersion: 1;
+  seedWorkspacePackageId: SeedWorkspacePackageIdV1;
+  target: Readonly<{
+    kind: SeedWorkspacePackageV1['target']['kind'];
+    displayName: string;
+  }>;
+  counts: Readonly<{
+    representedApplicants?: number;
+    relatedTrademarks?: number;
+    opportunityCandidates?: number;
+    businessArchetypeCandidates?: number;
+  }>;
+  preparedAt: string;
+  expiresAt: string;
+}
+
 type Row = Record<string, unknown>;
 
 function storedDocument(value: unknown): SeedWorkspacePackageV1 {
   const decoded: unknown = typeof value === 'string' ? (JSON.parse(value) as unknown) : value;
   return parseSeedWorkspacePackageV1(decoded);
+}
+
+function invitationFingerprint(value: string): string {
+  const normalized = value.trim();
+  if (!normalized || normalized.length > 500)
+    throw new SeedWorkspacePackageOwnerError(
+      'SEED_INVITATION_NOT_FOUND',
+      'Seed Workspace invitation was not found.',
+      404
+    );
+  return createHash('sha256').update(normalized).digest('hex');
+}
+
+function invitationPreview(
+  value: SeedWorkspacePackageV1
+): Readonly<SeedWorkspaceInvitationPreviewV1> {
+  const counts: SeedWorkspaceInvitationPreviewV1['counts'] = {
+    ...(value.collections.representedApplicants
+      ? { representedApplicants: value.collections.representedApplicants.count }
+      : {}),
+    ...(value.collections.relatedTrademarks
+      ? { relatedTrademarks: value.collections.relatedTrademarks.count }
+      : {}),
+    ...(value.collections.opportunityCandidates
+      ? { opportunityCandidates: value.collections.opportunityCandidates.count }
+      : {}),
+    ...(value.collections.businessArchetypeCandidates
+      ? { businessArchetypeCandidates: value.collections.businessArchetypeCandidates.count }
+      : {})
+  };
+  return Object.freeze({
+    schemaVersion: 1 as const,
+    seedWorkspacePackageId: value.seedWorkspacePackageId,
+    target: Object.freeze({
+      kind: value.target.kind,
+      displayName: value.target.displayName
+    }),
+    counts: Object.freeze(counts),
+    preparedAt: value.preparedAt,
+    expiresAt: value.expiresAt
+  });
 }
 
 function text(value: string, field: string, maximum = 300): string {
@@ -181,6 +241,48 @@ export class PostgresSeedWorkspacePackageStore {
         [packageId, workspaceId]
       );
       return result.rows[0] ? storedDocument(result.rows[0].document_json) : null;
+    } catch (error) {
+      return this.persistence(error);
+    }
+  }
+
+  async previewInvitation(input: {
+    packageId: SeedWorkspacePackageIdV1;
+    invitationClaimToken: string;
+    at?: string;
+  }): Promise<Readonly<SeedWorkspaceInvitationPreviewV1>> {
+    const fingerprint = invitationFingerprint(input.invitationClaimToken);
+    try {
+      const result = await this.query.query<Row>(
+        `SELECT p.document_json
+         FROM lite_seed_workspace_packages p
+         JOIN lite_education_community_journey_heads h
+           ON h.campaign_workspace_id=p.prepared_by_workspace_id
+         JOIN lite_education_community_journey_versions v
+           ON v.education_community_journey_id=h.education_community_journey_id
+          AND v.version=h.latest_version
+         WHERE p.seed_workspace_package_id=$1
+           AND h.claim_fingerprint_sha256=$2
+           AND h.stage='INVITATION_PREPARED'
+           AND v.document_json->>'participantRef'=p.seed_workspace_package_id
+         LIMIT 1`,
+        [input.packageId, fingerprint]
+      );
+      const row = result.rows[0];
+      if (!row)
+        throw new SeedWorkspacePackageOwnerError(
+          'SEED_INVITATION_NOT_FOUND',
+          'Seed Workspace invitation was not found.',
+          404
+        );
+      const prepared = storedDocument(row.document_json);
+      if (Date.parse(prepared.expiresAt) <= Date.parse(input.at ?? this.now()))
+        throw new SeedWorkspacePackageOwnerError(
+          'SEED_PACKAGE_EXPIRED',
+          'Seed Workspace Package has expired and cannot be claimed.',
+          409
+        );
+      return invitationPreview(prepared);
     } catch (error) {
       return this.persistence(error);
     }

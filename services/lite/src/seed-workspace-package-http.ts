@@ -88,10 +88,43 @@ function map(error: unknown): never {
 
 export function createSeedWorkspacePackageRoutes(options: {
   internalServiceSecret: string;
-  store: Pick<PostgresSeedWorkspacePackageStore, 'savePrepared' | 'readForWorkspace'>;
+  store: Pick<
+    PostgresSeedWorkspacePackageStore,
+    'savePrepared' | 'readForWorkspace' | 'previewInvitation'
+  >;
   claims: Pick<SeedWorkspaceClaimService, 'claim'>;
 }): readonly JsonRoute[] {
   return [
+    {
+      method: 'POST',
+      path: '/v1/seed-workspace-invitations/preview',
+      handle: async (request) => {
+        if (
+          !trusted(
+            options.internalServiceSecret,
+            request.headers['x-markorbit-internal-authorization']
+          )
+        )
+          throw new HttpError(
+            401,
+            'UNTRUSTED_INTERNAL_CALLER',
+            'Trusted internal authorization is required.'
+          );
+        const body = bodyOf(request);
+        exact(body, ['packageId', 'invitationClaimToken']);
+        try {
+          return json(
+            200,
+            await options.store.previewInvitation({
+              packageId: value(body.packageId, 'packageId') as SeedWorkspacePackageIdV1,
+              invitationClaimToken: value(body.invitationClaimToken, 'invitationClaimToken')
+            })
+          );
+        } catch (error) {
+          return map(error);
+        }
+      }
+    },
     {
       method: 'POST',
       path: '/v1/seed-workspace-packages',

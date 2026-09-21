@@ -27,6 +27,7 @@ import {
 export * from './auth.js';
 export * from './governed-action.js';
 export * from './account-access-http.js';
+export * from './seed-workspace-http.js';
 export * from './capability-http.js';
 export * from './order-http.js';
 export * from './customer-context-http.js';
@@ -67,6 +68,7 @@ import {
   validateCsrf
 } from './auth.js';
 import { createGatewayAccountAccessRoutes } from './account-access-http.js';
+import { createGatewaySeedWorkspaceRoutes } from './seed-workspace-http.js';
 import { createGatewayCapabilityRoutes } from './capability-http.js';
 import { createGatewayOrderRoutes } from './order-http.js';
 import { createGatewayCustomerContextRoutes } from './customer-context-http.js';
@@ -474,6 +476,18 @@ export function createRuntime(options: GatewayOptions = {}) {
           csrfSecret,
           allowedOrigins,
           secureCookies: options.secureCookies ?? process.env.NODE_ENV === 'production'
+        }),
+        ...createGatewaySeedWorkspaceRoutes({
+          liteUrl,
+          ...(authenticationClient ? { authenticationClient } : {}),
+          ...((options.internalServiceSecret ?? process.env.MO_INTERNAL_SERVICE_SECRET)
+            ? {
+                internalServiceSecret: (options.internalServiceSecret ??
+                  process.env.MO_INTERNAL_SERVICE_SECRET)!
+              }
+            : {}),
+          csrfSecret,
+          allowedOrigins
         }),
         ...createGatewayProtectedExternalActionRoutes({
           executionUrl,

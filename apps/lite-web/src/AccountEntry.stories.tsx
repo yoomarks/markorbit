@@ -47,7 +47,17 @@ const api = (workspaces: readonly WorkspaceEntry[]): LiteAccountApi => ({
   login: () => Promise.resolve(access),
   workspaces: () => Promise.resolve(workspaces),
   createWorkspace: () =>
-    Promise.resolve(entry('018f0000-0000-7000-8000-000000000110', 'IP Practice'))
+    Promise.resolve(entry('018f0000-0000-7000-8000-000000000110', 'IP Practice')),
+  previewSeedInvitation: () =>
+    Promise.resolve({
+      schemaVersion: 1,
+      seedWorkspacePackageId: 'seed-workspace-package_storybook',
+      target: { kind: 'AGENCY', displayName: 'Prepared IP Practice' },
+      counts: { representedApplicants: 12, relatedTrademarks: 31 },
+      preparedAt: '2026-09-21T00:00:00.000Z',
+      expiresAt: '2026-10-21T00:00:00.000Z'
+    }),
+  claimSeedWorkspace: () => Promise.resolve({ claimed: true })
 });
 const anonymous: LiteAccountApi = {
   ...api([]),
