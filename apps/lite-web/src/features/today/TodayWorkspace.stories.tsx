@@ -162,8 +162,7 @@ const opportunityPrepared: PreparedActionJourney = {
     workspaceId,
     version: 1,
     recommendation: { id: opportunityRecommendation.todayRecommendationId, version: 1 },
-    recommendationFingerprintSha256:
-      opportunityRecommendation.recommendationFingerprintSha256,
+    recommendationFingerprintSha256: opportunityRecommendation.recommendationFingerprintSha256,
     kind: 'CREATE_FORMAL_TRADEMARK_SERVICE_OPPORTUNITY',
     summary: 'Prepare one exact qualified Candidate for explicit MarkReg opportunity creation.',
     confirmationEffect:
@@ -226,9 +225,7 @@ function snapshot(
   };
 }
 
-function opportunitySnapshot(
-  actions: PreparedActionJourney[] = []
-): TodayProductLoopSnapshot {
+function opportunitySnapshot(actions: PreparedActionJourney[] = []): TodayProductLoopSnapshot {
   return {
     schemaVersion: 1,
     workspaceId,
