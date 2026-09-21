@@ -42,6 +42,10 @@ import { createWorkspaceTrademarkIssueIntelligenceReadinessRoutesV1 } from './wo
 import type { WorkspaceTrademarkIssueIntelligenceReadinessServiceV1 } from './workspace-trademark-issue-intelligence-readiness.js';
 import { createChannelIdentityProvenanceCurrentnessRoutesV1 } from './channel-identity-provenance-currentness-http.js';
 import type { ChannelIdentityProvenanceCurrentnessServiceV1 } from './channel-identity-provenance-currentness.js';
+import {
+  createTwilioSmsIdentityVerificationRoutesV1,
+  type TwilioSmsIdentityVerificationAuthorityV1
+} from './twilio-sms-identity.js';
 
 export * from './capability-audit-telemetry.js';
 export * from './capability-catalog-integrity.js';
@@ -58,6 +62,7 @@ export * from './capability-runtime-quality-telemetry.js';
 export * from './capability-runtime.js';
 export * from './channel-identity-provenance-currentness.js';
 export * from './channel-identity-provenance-currentness-http.js';
+export * from './twilio-sms-identity.js';
 export * from './capability-source-output-identity.js';
 export * from './cn-duration-analytical-pilot.js';
 export * from './cn-duration-band-classification-pilot.js';
@@ -160,6 +165,7 @@ export interface CapabilityEngineOptions {
     ChannelIdentityProvenanceCurrentnessServiceV1,
     'assess'
   >;
+  channelIdentityVerification?: Pick<TwilioSmsIdentityVerificationAuthorityV1, 'verify'>;
   internalServiceSecret?: string;
 }
 
@@ -205,6 +211,8 @@ export function createRuntime(options: CapabilityEngineOptions = {}) {
     throw new Error('Workspace Capability binding validity requires internalServiceSecret.');
   if (options.channelIdentityProvenanceCurrentness && !options.internalServiceSecret)
     throw new Error('Channel identity provenance currentness requires internalServiceSecret.');
+  if (options.channelIdentityVerification && !options.internalServiceSecret)
+    throw new Error('Channel identity verification requires internalServiceSecret.');
   if (options.privateReflectionCandidates && !options.internalServiceSecret) {
     throw new Error('privateReflectionCandidates requires internalServiceSecret.');
   }
@@ -378,6 +386,13 @@ export function createRuntime(options: CapabilityEngineOptions = {}) {
           internalServiceSecret: options.internalServiceSecret
         })
       : [];
+  const channelIdentityVerificationRoutes =
+    options.channelIdentityVerification && options.internalServiceSecret
+      ? createTwilioSmsIdentityVerificationRoutesV1({
+          verification: options.channelIdentityVerification,
+          internalServiceSecret: options.internalServiceSecret
+        })
+      : [];
   const managedCommunicationRoutes =
     managedCommunicationConfigured && options.internalServiceSecret
       ? createManagedCommunicationRoutesV1({
@@ -413,6 +428,7 @@ export function createRuntime(options: CapabilityEngineOptions = {}) {
         ...workspaceCapabilityBindingRoutes,
         ...workspaceCapabilityBindingValidityRoutes,
         ...channelIdentityProvenanceCurrentnessRoutes,
+        ...channelIdentityVerificationRoutes,
         ...managedAiExecutionRoutes,
         ...managedCommunicationRoutes
       ]

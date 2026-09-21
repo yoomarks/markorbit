@@ -46,8 +46,7 @@ import { PostgresEmailSenderProfileStore } from './email-sender-profile.js';
 import { PostgresNotificationAutomationRuleStore } from './notification-automation-rule.js';
 import {
   C6SmsNotificationChannelIdentityCurrentnessReaderV1,
-  NotificationAutomationRuleCurrentnessResolver,
-  UnavailableSmsNotificationChannelIdentityRequirementsReaderV1
+  NotificationAutomationRuleCurrentnessResolver
 } from './notification-automation-rule-currentness.js';
 import {
   HttpCoreNotificationAutomationEntitlementReader,
@@ -173,10 +172,7 @@ import {
 } from './visual-bridge.js';
 import { createVisualBridgeRoutes } from './visual-bridge-http.js';
 import { PostgresWorkspaceChannelIdentityBindingStoreV1 } from './workspace-channel-identity-binding.js';
-import {
-  UnavailableWorkspaceChannelIdentityVerificationAuthorityV1,
-  WorkspaceChannelIdentityCurrentnessResolverV1
-} from './workspace-channel-identity-currentness.js';
+import { WorkspaceChannelIdentityCurrentnessResolverV1 } from './workspace-channel-identity-currentness.js';
 import { createWorkspaceChannelIdentityCurrentnessRoutesV1 } from './workspace-channel-identity-currentness-http.js';
 import {
   HttpCapabilityChannelIdentityProvenanceReaderV1,
@@ -184,6 +180,10 @@ import {
   HttpCoreExternalCredentialCurrentnessReaderV1,
   HttpCoreOAuthCredentialCurrentnessReaderV1
 } from './workspace-channel-identity-currentness-readers.js';
+import {
+  HttpCapabilityWorkspaceChannelIdentityVerificationAuthorityV1,
+  TwilioSmsNotificationChannelIdentityRequirementsReaderV1
+} from './twilio-sms-identity-readers.js';
 
 export const serviceManifest = Object.freeze({
   name: 'lite',
@@ -215,10 +215,17 @@ const database = new ManagedDatabase(
 );
 await database.start();
 const pool = database.getPool();
+const workspaceChannelIdentityBindingStore = new PostgresWorkspaceChannelIdentityBindingStoreV1(
+  database,
+  pool
+);
 const workspaceChannelIdentityCurrentness = new WorkspaceChannelIdentityCurrentnessResolverV1(
-  new PostgresWorkspaceChannelIdentityBindingStoreV1(database, pool),
+  workspaceChannelIdentityBindingStore,
   new HttpCoreChannelIdentityEntitlementReaderV1(coreUrl, internalServiceSecret),
-  new UnavailableWorkspaceChannelIdentityVerificationAuthorityV1(),
+  new HttpCapabilityWorkspaceChannelIdentityVerificationAuthorityV1(
+    capabilityEngineUrl,
+    internalServiceSecret
+  ),
   new HttpCoreOAuthCredentialCurrentnessReaderV1(coreUrl, internalServiceSecret),
   new HttpCoreExternalCredentialCurrentnessReaderV1(coreUrl, internalServiceSecret),
   new HttpCapabilityChannelIdentityProvenanceReaderV1(capabilityEngineUrl, internalServiceSecret)
@@ -383,7 +390,9 @@ const notificationAutomationRuleCurrentness = new NotificationAutomationRuleCurr
   undefined,
   new C6SmsNotificationChannelIdentityCurrentnessReaderV1(
     workspaceChannelIdentityCurrentness,
-    new UnavailableSmsNotificationChannelIdentityRequirementsReaderV1()
+    new TwilioSmsNotificationChannelIdentityRequirementsReaderV1(
+      workspaceChannelIdentityBindingStore
+    )
   )
 );
 const notificationEndpointResolver = new WorkspaceDirectoryEmailEndpointResolver(

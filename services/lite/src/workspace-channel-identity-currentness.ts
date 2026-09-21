@@ -180,32 +180,6 @@ export class WorkspaceChannelIdentityCurrentnessResolverV1 {
     if (!entitlement) return result('UNAVAILABLE', 'OWNER_DATA_UNKNOWN');
     if (!entitlement.allowed) return result('NOT_ENTITLED', 'ENTITLEMENT_NOT_ENABLED');
 
-    let observation: Readonly<WorkspaceChannelIdentityVerificationObservationV1>;
-    try {
-      observation = await this.verification.verify(binding);
-      const verificationAssessedAt = this.now();
-      const eligibility = assessWorkspaceChannelIdentityBindingEligibilityV1(binding, {
-        workspaceId: request.workspaceId,
-        featureKey: request.featureKey,
-        assessedAt: verificationAssessedAt,
-        verification: observation
-      });
-      if (!eligibility.eligible) {
-        if (eligibility.reason === 'VERIFICATION_UNAVAILABLE')
-          return result('UNAVAILABLE', 'IDENTITY_VERIFICATION_UNAVAILABLE');
-        if (eligibility.reason === 'VERIFICATION_UNKNOWN')
-          return result('UNKNOWN', 'IDENTITY_VERIFICATION_UNKNOWN');
-        if (eligibility.reason === 'BINDING_STALE') return result('STALE', 'BINDING_STALE');
-        if (eligibility.reason === 'BINDING_REVOKED') return result('REVOKED', 'BINDING_REVOKED');
-        if (eligibility.reason === 'WORKSPACE_MISMATCH')
-          return result('UNKNOWN', 'WORKSPACE_MISMATCH');
-        if (eligibility.reason === 'FEATURE_MISMATCH') return result('UNKNOWN', 'FEATURE_MISMATCH');
-        return result('UNKNOWN', 'OWNER_DATA_UNKNOWN');
-      }
-    } catch {
-      return result('UNAVAILABLE', 'IDENTITY_VERIFICATION_UNAVAILABLE');
-    }
-
     const oauthCredential = binding.connection.oauthCredentialRef;
     const externalCredential = binding.connection.externalCredentialRef;
     if (
@@ -267,6 +241,33 @@ export class WorkspaceChannelIdentityCurrentnessResolverV1 {
     if (provenanceState.state === 'UNKNOWN') return result('UNKNOWN', 'OWNER_DATA_UNKNOWN');
     if (provenanceState.state === 'UNAVAILABLE')
       return result('UNAVAILABLE', 'IMPLEMENTATION_UNAVAILABLE');
+
+    let observation: Readonly<WorkspaceChannelIdentityVerificationObservationV1>;
+    try {
+      observation = await this.verification.verify(binding);
+      const verificationAssessedAt = this.now();
+      const eligibility = assessWorkspaceChannelIdentityBindingEligibilityV1(binding, {
+        workspaceId: request.workspaceId,
+        featureKey: request.featureKey,
+        assessedAt: verificationAssessedAt,
+        verification: observation
+      });
+      if (!eligibility.eligible) {
+        if (eligibility.reason === 'VERIFICATION_UNAVAILABLE')
+          return result('UNAVAILABLE', 'IDENTITY_VERIFICATION_UNAVAILABLE');
+        if (eligibility.reason === 'VERIFICATION_UNKNOWN')
+          return result('UNKNOWN', 'IDENTITY_VERIFICATION_UNKNOWN');
+        if (eligibility.reason === 'BINDING_STALE') return result('STALE', 'BINDING_STALE');
+        if (eligibility.reason === 'BINDING_REVOKED') return result('REVOKED', 'BINDING_REVOKED');
+        if (eligibility.reason === 'WORKSPACE_MISMATCH')
+          return result('UNKNOWN', 'WORKSPACE_MISMATCH');
+        if (eligibility.reason === 'FEATURE_MISMATCH') return result('UNKNOWN', 'FEATURE_MISMATCH');
+        return result('UNKNOWN', 'OWNER_DATA_UNKNOWN');
+      }
+    } catch {
+      return result('UNAVAILABLE', 'IDENTITY_VERIFICATION_UNAVAILABLE');
+    }
+
     return result('CURRENT', 'EXACT_BINDING_CURRENT');
   }
 }

@@ -48,6 +48,12 @@ import { PostgresWorkspaceImplementationPreferenceStoreV1 } from './workspace-im
 import { HttpCoreWorkspaceTrademarkIssueIntelligenceReaderV1 } from './workspace-trademark-issue-intelligence-http-reader.js';
 import { WorkspaceTrademarkIssueIntelligenceReadinessServiceV1 } from './workspace-trademark-issue-intelligence-readiness.js';
 import { ChannelIdentityProvenanceCurrentnessServiceV1 } from './channel-identity-provenance-currentness.js';
+import { CoreBackedExternalCredentialProviderV1 } from './external-credential-provider.js';
+import {
+  TWILIO_SMS_ACCEPTED_CAPABILITY_CANON_V1,
+  TWILIO_SMS_IMPLEMENTATION_PROFILE_V1,
+  TwilioSmsIdentityVerificationAuthorityV1
+} from './twilio-sms-identity.js';
 
 const milestoneFixtureMode = process.env.MO_MILESTONE_TEST_RUNTIME === '1';
 let database: ManagedDatabase | undefined;
@@ -100,6 +106,14 @@ if (milestoneFixtureMode) {
     }
   });
   await implementationProfiles.register(US_TRADEMARK_MARK_REPRESENTATION_IMPLEMENTATION_PROFILE);
+  await registry.importAccepted({
+    idempotencyKey: 'channels-1394-twilio-sms-notification-v1',
+    definition: TWILIO_SMS_ACCEPTED_CAPABILITY_CANON_V1
+  });
+  await implementationProfiles.register(TWILIO_SMS_IMPLEMENTATION_PROFILE_V1);
+  const channelIdentityVerification = new TwilioSmsIdentityVerificationAuthorityV1(
+    new CoreBackedExternalCredentialProviderV1(coreUrl, internalServiceSecret)
+  );
   const capabilityCognitiveRead = new CapabilityCognitiveReadServiceV1(
     new PostgresCurrentRuntimeCapabilityCatalogV1(pool, registry),
     implementationProfiles
@@ -239,6 +253,7 @@ if (milestoneFixtureMode) {
       registry,
       implementationProfiles
     ),
+    channelIdentityVerification,
     ...(managedAiRuntime ?? {}),
     ...(managedCommunicationRuntime ?? {}),
     ...(governedCapabilityRuntime ? { governedCapabilityRuntime } : {}),
