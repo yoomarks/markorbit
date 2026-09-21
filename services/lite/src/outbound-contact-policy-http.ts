@@ -7,6 +7,7 @@ import {
 import type {
   OutboundContactBasisAssertionIdV1,
   OutboundContactBasisStateV1,
+  OutboundContactChannelV1,
   OutboundContactPolicyReferenceV1,
   OutboundContactPurposeV1,
   OutboundContactSuppressionIdV1,
@@ -147,6 +148,7 @@ export function createOutboundContactPolicyRoutes(options: {
         const b = bodyOf(r);
         exact(b, [
           'targetRef',
+          'channel',
           'endpointFingerprintSha256',
           'purpose',
           'marketOrJurisdiction',
@@ -162,6 +164,10 @@ export function createOutboundContactPolicyRoutes(options: {
               actorPrincipalId: p.userId,
               idempotencyKey: idempotency(r),
               targetRef: object<OutboundContactTargetReferenceV1>(b.targetRef, 'targetRef'),
+              channel:
+                b.channel === undefined
+                  ? 'EMAIL'
+                  : (text(b.channel, 'channel') as OutboundContactChannelV1),
               endpointFingerprintSha256: text(
                 b.endpointFingerprintSha256,
                 'endpointFingerprintSha256'
@@ -198,6 +204,7 @@ export function createOutboundContactPolicyRoutes(options: {
         noQuery(r);
         const b = bodyOf(r);
         exact(b, [
+          'channel',
           'endpointFingerprintSha256',
           'scope',
           'reasonCode',
@@ -212,6 +219,10 @@ export function createOutboundContactPolicyRoutes(options: {
               workspaceId: p.workspaceId,
               actorPrincipalId: p.userId,
               idempotencyKey: idempotency(r),
+              channel:
+                b.channel === undefined
+                  ? 'EMAIL'
+                  : (text(b.channel, 'channel') as OutboundContactChannelV1),
               endpointFingerprintSha256: text(
                 b.endpointFingerprintSha256,
                 'endpointFingerprintSha256'
@@ -277,6 +288,7 @@ export function createOutboundContactPolicyRoutes(options: {
         const b = bodyOf(r);
         exact(b, [
           'targetRef',
+          'channel',
           'endpointFingerprintSha256',
           'purpose',
           'policyRef',
@@ -289,6 +301,10 @@ export function createOutboundContactPolicyRoutes(options: {
               workspaceId: p.workspaceId,
               actorPrincipalId: p.userId,
               targetRef: object<OutboundContactTargetReferenceV1>(b.targetRef, 'targetRef'),
+              channel:
+                b.channel === undefined
+                  ? 'EMAIL'
+                  : (text(b.channel, 'channel') as OutboundContactChannelV1),
               endpointFingerprintSha256: text(
                 b.endpointFingerprintSha256,
                 'endpointFingerprintSha256'
