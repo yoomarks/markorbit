@@ -131,6 +131,22 @@ function SeedContextualWorkbenchSession({
 
   const committed = journey?.handoffState === 'HANDOFF_COMPLETED';
   const result = useMemo(() => (journey ? resultReference(journey) : null), [journey]);
+  const workingStateTitle = committed
+    ? 'Committed structured result'
+    : journey?.handoffState === 'HANDOFF_PENDING'
+      ? 'Structured confirmation pending'
+      : journey
+        ? 'Prepared structured result'
+        : proposal
+          ? 'Working proposal'
+          : 'Waiting for one bounded answer';
+  const workingStateDescription = proposal
+    ? proposal
+    : committed
+      ? 'The existing owner returned a committed result. Review the result reference or receipt below.'
+      : journey
+        ? 'A structured result is ready below. Conversation remains working context only.'
+        : 'Conversation is working context only. No customer, opportunity, message or filing state has changed.';
 
   const recordAnswer = (answer: string) => {
     const value = answer.trim();
@@ -295,11 +311,8 @@ function SeedContextualWorkbenchSession({
         <aside className="seed-contextual-workbench__working" aria-label="Current working state">
           <Card>
             <p className="seed-contextual-workbench__eyebrow">Current working state</p>
-            <h2>{proposal ? 'Working proposal' : 'Waiting for one bounded answer'}</h2>
-            <p>
-              {proposal ||
-                'Conversation is working context only. No customer, opportunity, message or filing state has changed.'}
-            </p>
+            <h2>{workingStateTitle}</h2>
+            <p>{workingStateDescription}</p>
 
             {task === 'SEED_CUSTOMER_REVIEW' && proposal ? (
               <Alert title="Proposal only">
