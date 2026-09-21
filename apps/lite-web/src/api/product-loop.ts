@@ -1,7 +1,12 @@
+import { relationshipModels, type RelationshipModel } from '@markorbit/contracts';
 import type {
   LiteTodaySnapshot,
+  OpportunityCandidate,
+  OpportunityCandidateId,
+  OpportunityQualificationDecision,
   PreparedActionJourney,
   ProductLoopFeedbackOutcome,
+  ProductLoopSourceReference,
   ProductLoopUseFeedback,
   PublishPackage,
   TodayRecommendation
@@ -13,6 +18,12 @@ export type TodayProductLoopSnapshot = LiteTodaySnapshot & {
   recentFeedback: ReadonlyArray<Readonly<ProductLoopUseFeedback>>;
   feedbackPendingPackages: ReadonlyArray<Readonly<PublishPackage>>;
 };
+
+export interface OpportunityReviewEvidence {
+  readonly source: Readonly<ProductLoopSourceReference>;
+  readonly candidate: Readonly<OpportunityCandidate>;
+  readonly qualification: Readonly<OpportunityQualificationDecision>;
+}
 
 export class TodayHttpError extends Error {
   constructor(
@@ -30,6 +41,13 @@ export interface TodayClient {
   loadToday(): Promise<TodayProductLoopSnapshot>;
   loadPreparedAction(preparedActionId: string): Promise<PreparedActionJourney>;
   prepareContent(recommendation: Readonly<TodayRecommendation>): Promise<PreparedActionJourney>;
+  loadOpportunityReview(
+    recommendation: Readonly<TodayRecommendation>
+  ): Promise<OpportunityReviewEvidence>;
+  prepareQualifiedOpportunity(
+    recommendation: Readonly<TodayRecommendation>,
+    relationshipModel: RelationshipModel
+  ): Promise<PreparedActionJourney>;
   confirm(journey: Readonly<PreparedActionJourney>): Promise<PreparedActionJourney>;
   recordUseFeedback(
     publishPackage: Readonly<PublishPackage>,
@@ -58,7 +76,8 @@ async function request<T>(
   workspaceId: string,
   method: 'GET' | 'POST' = 'GET',
   body?: unknown,
-  idempotencyKey?: string
+  idempotencyKey?: string,
+  includeWorkspaceBody = true
 ): Promise<T> {
   const csrf = method === 'GET' ? '' : await csrfToken();
   let response: Response;
@@ -74,7 +93,13 @@ async function request<T>(
       },
       ...(method === 'GET'
         ? {}
-        : { body: JSON.stringify({ workspaceId, ...(body as Record<string, unknown>) }) })
+        : {
+            body: JSON.stringify(
+              includeWorkspaceBody
+                ? { workspaceId, ...(body as Record<string, unknown>) }
+                : (body as Record<string, unknown>)
+            )
+          })
     });
   } catch (cause) {
     throw new TodayHttpError(
@@ -102,6 +127,90 @@ async function request<T>(
   return value;
 }
 
+function opportunityCandidateSource(
+  recommendation: Readonly<TodayRecommendation>
+): Readonly<ProductLoopSourceReference> {
+  if (recommendation.kind !== 'OPPORTUNITY_REVIEW')
+    throw new TodayHttpError(
+      422,
+      'OPPORTUNITY_REVIEW_REQUIRED',
+      'Only an Opportunity Review Recommendation can load qualified Candidate evidence.'
+    );
+  const sources = recommendation.sources.filter(
+    (source) => source.owner === 'LITE' && source.kind === 'OPPORTUNITY_CANDIDATE'
+  );
+  if (sources.length !== 1)
+    throw new TodayHttpError(
+      422,
+      'OPPORTUNITY_CANDIDATE_SOURCE_REQUIRED',
+      'Opportunity Review requires exactly one Lite Opportunity Candidate source.'
+    );
+  const source = sources[0]!;
+  if (
+    !source.sourceId.startsWith('opportunity-candidate_') ||
+    !Number.isSafeInteger(source.sourceVersion) ||
+    Number(source.sourceVersion) < 1 ||
+    !/^[0-9a-f]{64}$/u.test(source.sourceFingerprintSha256)
+  )
+    throw new TodayHttpError(
+      422,
+      'OPPORTUNITY_CANDIDATE_SOURCE_INVALID',
+      'Opportunity Review Candidate source is malformed.'
+    );
+  return source;
+}
+
+async function loadOpportunityReviewEvidence(
+  workspaceId: string,
+  recommendation: Readonly<TodayRecommendation>
+): Promise<OpportunityReviewEvidence> {
+  const source = opportunityCandidateSource(recommendation);
+  const candidateId = source.sourceId as OpportunityCandidateId;
+  const [candidate, qualification] = await Promise.all([
+    request<OpportunityCandidate>(
+      `/api/lite/opportunity-candidates/${encodeURIComponent(candidateId)}`,
+      workspaceId
+    ),
+    request<OpportunityQualificationDecision | null>(
+      `/api/lite/opportunity-candidates/${encodeURIComponent(candidateId)}/qualification`,
+      workspaceId
+    )
+  ]);
+  if (!qualification)
+    throw new TodayHttpError(
+      409,
+      'QUALIFICATION_ABSENT',
+      'This Candidate no longer has a recorded Qualification Decision.'
+    );
+  if (qualification.outcome !== 'QUALIFIED_FOR_MARKREG')
+    throw new TodayHttpError(
+      409,
+      'CANDIDATE_NOT_QUALIFIED',
+      'The current Qualification Decision does not qualify this Candidate for MarkReg.'
+    );
+  if (
+    qualification.candidate.id !== candidateId ||
+    qualification.candidate.version !== Number(source.sourceVersion) ||
+    qualification.expectedCandidateFingerprintSha256 !== source.sourceFingerprintSha256
+  )
+    throw new TodayHttpError(
+      409,
+      'STALE_OPPORTUNITY_EVIDENCE',
+      'Qualification evidence no longer matches the Candidate version reviewed by this Recommendation.'
+    );
+  if (
+    candidate.opportunityCandidateId !== candidateId ||
+    candidate.workspaceId !== recommendation.workspaceId ||
+    candidate.version < Number(source.sourceVersion)
+  )
+    throw new TodayHttpError(
+      409,
+      'STALE_OPPORTUNITY_EVIDENCE',
+      'Current Candidate owner truth no longer matches this Opportunity Review.'
+    );
+  return { source, candidate, qualification };
+}
+
 export function createTodayClient(workspaceId: string): TodayClient {
   return {
     loadToday: () => request<TodayProductLoopSnapshot>('/api/lite/today', workspaceId),
@@ -126,6 +235,42 @@ export function createTodayClient(workspaceId: string): TodayClient {
         },
         `prepare:${recommendation.todayRecommendationId}:${recommendation.version}`
       ),
+    loadOpportunityReview: (recommendation) =>
+      loadOpportunityReviewEvidence(workspaceId, recommendation),
+    prepareQualifiedOpportunity: async (recommendation, relationshipModel) => {
+      if (!relationshipModels.includes(relationshipModel))
+        throw new TodayHttpError(
+          422,
+          'RELATIONSHIP_MODEL_REQUIRED',
+          'Select one supported relationship model before preparing the Formal Opportunity action.'
+        );
+      const evidence = await loadOpportunityReviewEvidence(workspaceId, recommendation);
+      return request<PreparedActionJourney>(
+        `/api/lite/today/${encodeURIComponent(recommendation.todayRecommendationId)}/prepared-actions`,
+        workspaceId,
+        'POST',
+        {
+          recommendationVersion: recommendation.version,
+          expectedRecommendationFingerprintSha256: recommendation.recommendationFingerprintSha256,
+          plan: {
+            kind: 'CREATE_FORMAL_TRADEMARK_SERVICE_OPPORTUNITY',
+            candidate: {
+              id: evidence.qualification.candidate.id,
+              version: evidence.qualification.candidate.version
+            },
+            expectedCandidateFingerprintSha256:
+              evidence.qualification.expectedCandidateFingerprintSha256,
+            qualificationDecision: {
+              id: evidence.qualification.opportunityQualificationDecisionId,
+              version: evidence.qualification.version
+            },
+            relationshipModel
+          }
+        },
+        `prepare-opportunity:${recommendation.todayRecommendationId}:${recommendation.version}:${relationshipModel}`,
+        false
+      );
+    },
     confirm: (journey) =>
       request<PreparedActionJourney>(
         `/api/lite/prepared-actions/${encodeURIComponent(journey.preparedAction.preparedActionId)}/confirm`,
