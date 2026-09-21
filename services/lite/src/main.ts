@@ -60,8 +60,11 @@ import { PostgresNotificationDeliveryStore } from './notification-delivery.js';
 import {
   EmailNotificationDeliveryRuntimeV1,
   HttpNotificationExecutionClientV1,
-  MarkRegSubjectWorkspaceDirectoryEmailResolverV1
+  MarkRegSubjectWorkspaceDirectoryEmailResolverV1,
+  MarkRegSubjectWorkspaceDirectorySmsResolverV1,
+  SmsNotificationDeliveryRuntimeV1
 } from './notification-delivery-runtime.js';
+import { HttpCapabilityTwilioSmsTransportV1 } from './sms-transport-capability.js';
 import {
   AmazonSesV2EmailTransport,
   AmazonSnsSesEventAuthenticatorV1,
@@ -204,6 +207,7 @@ const dataEngineApiKey = process.env.DATA_ENGINE_API_KEY;
 const coreUrl = process.env.CORE_URL ?? 'http://127.0.0.1:4101';
 const capabilityEngineUrl = process.env.CAPABILITY_ENGINE_URL ?? 'http://127.0.0.1:4103';
 const liteVisualStyleId = process.env.MOKI_LITE_STYLE_ID ?? 'markorbit-lite-editorial-v1';
+const twilioSmsTransportConfigured = Boolean(process.env.MO_TWILIO_SMS_STATUS_CALLBACK_URL);
 
 const { ManagedDatabase, parseDatabaseConfig } = await import('@markorbit/persistence');
 const database = new ManagedDatabase(
@@ -381,6 +385,10 @@ const contentStore = new PostgresLiteContentPreparationStore(
   pool,
   productLoopSourceAuthority
 );
+const smsNotificationIdentityCurrentness = new C6SmsNotificationChannelIdentityCurrentnessReaderV1(
+  workspaceChannelIdentityCurrentness,
+  new TwilioSmsNotificationChannelIdentityRequirementsReaderV1(workspaceChannelIdentityBindingStore)
+);
 const notificationAutomationRuleCurrentness = new NotificationAutomationRuleCurrentnessResolver(
   notificationAutomationRuleStore,
   contentStore,
@@ -388,12 +396,7 @@ const notificationAutomationRuleCurrentness = new NotificationAutomationRuleCurr
   new HttpCoreNotificationAutomationEntitlementReader(coreUrl, internalServiceSecret),
   undefined,
   undefined,
-  new C6SmsNotificationChannelIdentityCurrentnessReaderV1(
-    workspaceChannelIdentityCurrentness,
-    new TwilioSmsNotificationChannelIdentityRequirementsReaderV1(
-      workspaceChannelIdentityBindingStore
-    )
-  )
+  smsNotificationIdentityCurrentness
 );
 const notificationEndpointResolver = new WorkspaceDirectoryEmailEndpointResolver(
   workspaceDirectoryStore
@@ -437,6 +440,22 @@ const notificationDeliveryRuntime = (() => {
     )
   );
 })();
+const notificationSmsDeliveryRuntime = twilioSmsTransportConfigured
+  ? new SmsNotificationDeliveryRuntimeV1(
+      notificationAutomationRuleStore,
+      notificationTriggerReader,
+      new MarkRegSubjectWorkspaceDirectorySmsResolverV1(
+        workspaceDirectoryStore,
+        notificationSmsEndpointResolver
+      ),
+      contentStore,
+      smsNotificationIdentityCurrentness,
+      workspaceChannelIdentityBindingStore,
+      new HttpNotificationExecutionClientV1(executionUrl, internalServiceSecret),
+      notificationDeliveryStore,
+      new HttpCapabilityTwilioSmsTransportV1(capabilityEngineUrl, internalServiceSecret)
+    )
+  : undefined;
 const notificationProviderEvents = notificationSesRouting
   ? new NotificationAmazonSesAuthenticatedEventIngestionV1(
       new AmazonSnsSesEventAuthenticatorV1(
@@ -685,6 +704,9 @@ const runtime = createServiceRuntime(serviceManifest, {
       store: notificationAutomationRuleStore,
       sendCurrentness: notificationSendCurrentness,
       ...(notificationDeliveryRuntime ? { deliveryRuntime: notificationDeliveryRuntime } : {}),
+      ...(notificationSmsDeliveryRuntime
+        ? { smsDeliveryRuntime: notificationSmsDeliveryRuntime }
+        : {}),
       ...(notificationProviderEvents ? { providerEvents: notificationProviderEvents } : {})
     }),
     ...createTradingStudioReadRoutes({
