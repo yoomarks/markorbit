@@ -61,6 +61,10 @@ proposal, the prepared result is discarded and must be prepared again before con
 the structured task/context also starts a fresh workbench session so conversation state cannot bleed
 between customers, opportunities or client actions.
 
+Any live adapter that prepares or confirms an owner-backed action must re-read the exact owner evidence
+and fail closed when its expected version/fingerprint/currentness no longer matches the reviewed input.
+The prototype does not weaken the existing Product Loop or owner idempotency/currentness rules.
+
 ## Information architecture
 
 Desktop:
@@ -105,7 +109,7 @@ prove the same storage, privacy, currentness and ownership seam.
 The PR must provide:
 
 - Storybook stories for the three initial tasks;
-- loading / empty / error / permission / partial / prepared / committed states;
+- loading / empty / error / permission / partial / prepared / handoff-pending / committed states;
 - a 390px mobile story;
 - focused tests proving conversation alone does not invoke a mutation callback;
 - focused tests proving Prepare and Confirm are separate explicit steps;
