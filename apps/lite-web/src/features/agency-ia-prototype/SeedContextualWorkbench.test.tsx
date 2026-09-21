@@ -214,6 +214,23 @@ describe('SeedContextualWorkbench', () => {
     expect(onPrepare).toHaveBeenCalledTimes(1);
   });
 
+  it('describes an owner-backed committed result without claiming that nothing changed', () => {
+    render(
+      <SeedContextualWorkbench
+        task="OPPORTUNITY_REVIEW"
+        context={context}
+        initialJourney={completed}
+        receiptHref="/receipts/opportunity-test"
+      />
+    );
+
+    expect(screen.getByRole('heading', { name: 'Committed structured result' })).toBeVisible();
+    expect(screen.getByText(/existing owner returned a committed result/i)).toBeVisible();
+    expect(
+      screen.queryByText(/No customer, opportunity, message or filing state has changed/i)
+    ).not.toBeInTheDocument();
+  });
+
   it('does not expose work actions when permission is unavailable', () => {
     render(
       <SeedContextualWorkbench task="OPPORTUNITY_REVIEW" context={context} state="permission" />
