@@ -357,7 +357,7 @@ export function TodayWorkspace({
           : new TodayHttpError(
               503,
               'PREPARE_OPPORTUNITY_FAILED',
-              'Formal Opportunity Prepared Action could not be created.'
+              'Formal Opportunity action could not be prepared.'
             )
       );
     } finally {
