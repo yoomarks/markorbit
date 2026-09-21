@@ -72,7 +72,7 @@ test('contextual workbench keeps conversation separate from structured prepare a
   await expect(page.getByText('Committed result')).toHaveCount(0);
 
   await page.getByRole('button', { name: 'Confirm this action' }).click();
-  await expect(page.getByText('Committed result')).toBeVisible();
+  await expect(page.getByText('Committed result').first()).toBeVisible();
   await expect(page.getByText(/trademark-service-opportunity_workbench/)).toBeVisible();
   await expect(page.getByRole('link', { name: 'Open result receipt' })).toBeVisible();
 
