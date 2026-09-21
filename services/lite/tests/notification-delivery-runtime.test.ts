@@ -88,6 +88,12 @@ const rule: ChannelNotificationAutomationRuleV1 = {
   revokedAt: null,
   authority: noChannelNotificationAuthorityConsequencesV1
 };
+const emailRuleSpec =
+  rule.spec.featureKey === 'EMAIL_NOTIFICATION'
+    ? rule.spec
+    : (() => {
+        throw new Error('Expected EMAIL_NOTIFICATION fixture.');
+      })();
 
 function harness(
   options: { releaseRejects?: boolean; transportStatus?: 'ACCEPTED' | 'UNKNOWN' } = {}
@@ -169,7 +175,7 @@ function harness(
     } as never,
     {
       getExactSenderProfile: vi.fn(async () => ({
-        senderProfileId: rule.spec.senderProfile.senderProfileId,
+        senderProfileId: emailRuleSpec.senderProfile.senderProfileId,
         version: 1,
         status: 'ACTIVE',
         fromAddress: 'notice@example.com',

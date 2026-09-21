@@ -13,7 +13,9 @@ import {
   noChannelNotificationAuthorityConsequencesV1,
   parseChannelNotificationRuleSpecV1,
   type ChannelNotificationRuleId,
-  type ChannelNotificationRuleSpecV1
+  type ChannelNotificationRuleSpecV1,
+  type EmailChannelNotificationRuleSpecV1,
+  type SmsWorkspaceChannelNotificationRuleSpecV1
 } from '@markorbit/contracts/channel-notification';
 import type { QueryClient } from '@markorbit/persistence';
 import type { LiteTransactionHost } from './content-preparation.js';
@@ -49,15 +51,30 @@ export class NotificationAutomationRuleRuntimeError extends Error {
   }
 }
 
-export interface CreateNotificationAutomationRuleCommand {
+interface CreateNotificationAutomationRuleCommandBase {
   workspaceId: string;
   actorPrincipalId: string;
   idempotencyKey: string;
   triggerSelector: Readonly<ChannelNotificationRuleSpecV1['triggerSelector']>;
   content: Readonly<ChannelNotificationRuleSpecV1['content']>;
-  senderProfile: Readonly<ChannelNotificationRuleSpecV1['senderProfile']>;
   ratePolicyRef: string;
 }
+
+export interface CreateEmailNotificationAutomationRuleCommand extends CreateNotificationAutomationRuleCommandBase {
+  featureKey?: 'EMAIL_NOTIFICATION';
+  senderProfile: Readonly<EmailChannelNotificationRuleSpecV1['senderProfile']>;
+}
+
+export interface CreateSmsNotificationAutomationRuleCommand extends CreateNotificationAutomationRuleCommandBase {
+  featureKey: 'SMS_WORKSPACE_NOTIFICATION';
+  channelIdentityBinding: Readonly<
+    SmsWorkspaceChannelNotificationRuleSpecV1['channelIdentityBinding']
+  >;
+  contactPolicyRef: Readonly<SmsWorkspaceChannelNotificationRuleSpecV1['contactPolicyRef']>;
+}
+
+export type CreateNotificationAutomationRuleCommand =
+  CreateEmailNotificationAutomationRuleCommand | CreateSmsNotificationAutomationRuleCommand;
 
 export interface ActivateNotificationAutomationRuleCommand {
   workspaceId: string;
@@ -105,12 +122,22 @@ export interface NotificationAutomationGovernanceVerifierV1 {
   ): Promise<Readonly<ChannelNotificationAutomationGovernanceEvidenceV1>>;
 }
 
-interface NormalizedRuleDefinition {
-  triggerSelector: ChannelNotificationRuleSpecV1['triggerSelector'];
-  content: ChannelNotificationRuleSpecV1['content'];
-  senderProfile: ChannelNotificationRuleSpecV1['senderProfile'];
-  ratePolicyRef: string;
-}
+type NormalizedRuleDefinition =
+  | Readonly<{
+      featureKey: 'EMAIL_NOTIFICATION';
+      triggerSelector: EmailChannelNotificationRuleSpecV1['triggerSelector'];
+      content: EmailChannelNotificationRuleSpecV1['content'];
+      senderProfile: EmailChannelNotificationRuleSpecV1['senderProfile'];
+      ratePolicyRef: string;
+    }>
+  | Readonly<{
+      featureKey: 'SMS_WORKSPACE_NOTIFICATION';
+      triggerSelector: SmsWorkspaceChannelNotificationRuleSpecV1['triggerSelector'];
+      content: SmsWorkspaceChannelNotificationRuleSpecV1['content'];
+      channelIdentityBinding: SmsWorkspaceChannelNotificationRuleSpecV1['channelIdentityBinding'];
+      contactPolicyRef: SmsWorkspaceChannelNotificationRuleSpecV1['contactPolicyRef'];
+      ratePolicyRef: string;
+    }>;
 
 const clone = <T>(value: T): T => structuredClone(value);
 
@@ -236,12 +263,22 @@ function parsePersistedRule(
 function definitionFromSpec(
   spec: Readonly<ChannelNotificationRuleSpecV1>
 ): NormalizedRuleDefinition {
-  return {
-    triggerSelector: clone(spec.triggerSelector),
-    content: clone(spec.content),
-    senderProfile: clone(spec.senderProfile),
-    ratePolicyRef: spec.ratePolicyRef
-  };
+  return spec.featureKey === 'EMAIL_NOTIFICATION'
+    ? {
+        featureKey: 'EMAIL_NOTIFICATION',
+        triggerSelector: clone(spec.triggerSelector),
+        content: clone(spec.content),
+        senderProfile: clone(spec.senderProfile),
+        ratePolicyRef: spec.ratePolicyRef
+      }
+    : {
+        featureKey: 'SMS_WORKSPACE_NOTIFICATION',
+        triggerSelector: clone(spec.triggerSelector),
+        content: clone(spec.content),
+        channelIdentityBinding: clone(spec.channelIdentityBinding),
+        contactPolicyRef: clone(spec.contactPolicyRef),
+        ratePolicyRef: spec.ratePolicyRef
+      };
 }
 
 function specFingerprintInput(
@@ -250,19 +287,29 @@ function specFingerprintInput(
   version: number,
   definition: Readonly<NormalizedRuleDefinition>
 ): Record<string, unknown> {
-  return {
+  const common = {
     schemaVersion: 1,
     notificationRuleId,
     workspaceId,
     version,
-    featureKey: 'EMAIL_NOTIFICATION',
+    featureKey: definition.featureKey,
     triggerSelector: definition.triggerSelector,
-    destinationResolver: { kind: 'EVENT_SUBJECT_WORKSPACE_DIRECTORY_EMAIL' },
     content: definition.content,
-    senderProfile: definition.senderProfile,
     ratePolicyRef: definition.ratePolicyRef,
     dedupePolicy: { mode: 'ONE_PER_RULE_TRIGGER' }
   };
+  return definition.featureKey === 'EMAIL_NOTIFICATION'
+    ? {
+        ...common,
+        destinationResolver: { kind: 'EVENT_SUBJECT_WORKSPACE_DIRECTORY_EMAIL' },
+        senderProfile: definition.senderProfile
+      }
+    : {
+        ...common,
+        destinationResolver: { kind: 'EVENT_SUBJECT_WORKSPACE_DIRECTORY_PHONE' },
+        channelIdentityBinding: definition.channelIdentityBinding,
+        contactPolicyRef: definition.contactPolicyRef
+      };
 }
 
 function materializeSpec(
@@ -294,27 +341,52 @@ function normalizeDefinition(
 ): NormalizedRuleDefinition {
   const workspaceId = cleanWorkspaceId(command.workspaceId);
   const validationId = 'channel-notification-rule_validation' as ChannelNotificationRuleId;
-  const spec = materializeSpec(workspaceId, validationId, 1, {
+  const common = {
     triggerSelector: command.triggerSelector,
     content: command.content,
-    senderProfile: command.senderProfile,
     ratePolicyRef: cleanText(command.ratePolicyRef, 'ratePolicyRef', 300)
-  });
-  return definitionFromSpec(spec);
+  };
+  const definition: NormalizedRuleDefinition =
+    command.featureKey === 'SMS_WORKSPACE_NOTIFICATION'
+      ? {
+          featureKey: 'SMS_WORKSPACE_NOTIFICATION',
+          ...common,
+          channelIdentityBinding: command.channelIdentityBinding,
+          contactPolicyRef: command.contactPolicyRef
+        }
+      : {
+          featureKey: 'EMAIL_NOTIFICATION',
+          ...common,
+          senderProfile: command.senderProfile
+        };
+  return definitionFromSpec(materializeSpec(workspaceId, validationId, 1, definition));
 }
 
 export function notificationAutomationRuleIntentFingerprintSha256V1(
   definition: Readonly<NormalizedRuleDefinition>
 ): string {
-  return fingerprint({
-    featureKey: 'EMAIL_NOTIFICATION',
-    triggerSelector: definition.triggerSelector,
-    destinationResolver: { kind: 'EVENT_SUBJECT_WORKSPACE_DIRECTORY_EMAIL' },
-    content: definition.content,
-    senderProfile: definition.senderProfile,
-    ratePolicyRef: definition.ratePolicyRef,
-    dedupePolicy: { mode: 'ONE_PER_RULE_TRIGGER' }
-  });
+  return fingerprint(
+    definition.featureKey === 'EMAIL_NOTIFICATION'
+      ? {
+          featureKey: 'EMAIL_NOTIFICATION',
+          triggerSelector: definition.triggerSelector,
+          destinationResolver: { kind: 'EVENT_SUBJECT_WORKSPACE_DIRECTORY_EMAIL' },
+          content: definition.content,
+          senderProfile: definition.senderProfile,
+          ratePolicyRef: definition.ratePolicyRef,
+          dedupePolicy: { mode: 'ONE_PER_RULE_TRIGGER' }
+        }
+      : {
+          featureKey: 'SMS_WORKSPACE_NOTIFICATION',
+          triggerSelector: definition.triggerSelector,
+          destinationResolver: { kind: 'EVENT_SUBJECT_WORKSPACE_DIRECTORY_PHONE' },
+          content: definition.content,
+          channelIdentityBinding: definition.channelIdentityBinding,
+          contactPolicyRef: definition.contactPolicyRef,
+          ratePolicyRef: definition.ratePolicyRef,
+          dedupePolicy: { mode: 'ONE_PER_RULE_TRIGGER' }
+        }
+  );
 }
 
 export function materializeNotificationAutomationDraftV1(
@@ -369,6 +441,41 @@ function timestampEqual(left: unknown, right: string | null): boolean {
   return Number.isFinite(leftTime) && leftTime === Date.parse(right);
 }
 
+function nullish(value: unknown): boolean {
+  return value === null || value === undefined;
+}
+
+function senderProjectionMismatch(
+  spec: Readonly<ChannelNotificationRuleSpecV1>,
+  row: Row,
+  prefix = ''
+): boolean {
+  const value = (name: string) => row[`${prefix}${name}`];
+  if (spec.featureKey === 'EMAIL_NOTIFICATION')
+    return (
+      spec.senderProfile.senderProfileId !== String(value('sender_profile_id')) ||
+      spec.senderProfile.version !== Number(value('sender_profile_version')) ||
+      spec.senderProfile.fingerprintSha256 !== String(value('sender_profile_fingerprint_sha256')) ||
+      !nullish(value('channel_identity_binding_id')) ||
+      !nullish(value('channel_identity_binding_version')) ||
+      !nullish(value('channel_identity_binding_fingerprint_sha256')) ||
+      !nullish(value('contact_policy_id')) ||
+      !nullish(value('contact_policy_version'))
+    );
+
+  return (
+    !nullish(value('sender_profile_id')) ||
+    !nullish(value('sender_profile_version')) ||
+    !nullish(value('sender_profile_fingerprint_sha256')) ||
+    spec.channelIdentityBinding.id !== String(value('channel_identity_binding_id')) ||
+    spec.channelIdentityBinding.version !== Number(value('channel_identity_binding_version')) ||
+    spec.channelIdentityBinding.fingerprintSha256 !==
+      String(value('channel_identity_binding_fingerprint_sha256')) ||
+    spec.contactPolicyRef.policyId !== String(value('contact_policy_id')) ||
+    spec.contactPolicyRef.version !== Number(value('contact_policy_version'))
+  );
+}
+
 function versionItemFromRow(row: Row): ChannelNotificationAutomationRuleV1 {
   const workspaceId = String(row.workspace_id);
   const item = parsePersistedRule(row.document_json, workspaceId);
@@ -383,9 +490,7 @@ function versionItemFromRow(row: Row): ChannelNotificationAutomationRuleV1 {
     item.spec.content.publishPackageId !== String(row.publish_package_id) ||
     item.spec.content.version !== Number(row.publish_package_version) ||
     item.spec.content.fingerprintSha256 !== String(row.publish_package_fingerprint_sha256) ||
-    item.spec.senderProfile.senderProfileId !== String(row.sender_profile_id) ||
-    item.spec.senderProfile.version !== Number(row.sender_profile_version) ||
-    item.spec.senderProfile.fingerprintSha256 !== String(row.sender_profile_fingerprint_sha256) ||
+    senderProjectionMismatch(item.spec, row) ||
     item.spec.ratePolicyRef !== String(row.rate_policy_ref) ||
     item.ruleIntentFingerprintSha256 !== String(row.rule_intent_fingerprint_sha256) ||
     item.spec.ruleFingerprintSha256 !== String(row.rule_fingerprint_sha256) ||
@@ -414,10 +519,7 @@ function latestItemFromRow(row: Row): ChannelNotificationAutomationRuleV1 {
     item.spec.content.publishPackageId !== String(row.head_publish_package_id) ||
     item.spec.content.version !== Number(row.head_publish_package_version) ||
     item.spec.content.fingerprintSha256 !== String(row.head_publish_package_fingerprint_sha256) ||
-    item.spec.senderProfile.senderProfileId !== String(row.head_sender_profile_id) ||
-    item.spec.senderProfile.version !== Number(row.head_sender_profile_version) ||
-    item.spec.senderProfile.fingerprintSha256 !==
-      String(row.head_sender_profile_fingerprint_sha256) ||
+    senderProjectionMismatch(item.spec, row, 'head_') ||
     item.spec.ratePolicyRef !== String(row.head_rate_policy_ref) ||
     item.ruleIntentFingerprintSha256 !== String(row.head_rule_intent_fingerprint_sha256) ||
     item.spec.ruleFingerprintSha256 !== String(row.head_rule_fingerprint_sha256) ||
@@ -429,6 +531,30 @@ function latestItemFromRow(row: Row): ChannelNotificationAutomationRuleV1 {
       500
     );
   return item;
+}
+
+function senderProjectionValues(spec: Readonly<ChannelNotificationRuleSpecV1>): readonly unknown[] {
+  return spec.featureKey === 'EMAIL_NOTIFICATION'
+    ? [
+        spec.senderProfile.senderProfileId,
+        spec.senderProfile.version,
+        spec.senderProfile.fingerprintSha256,
+        null,
+        null,
+        null,
+        null,
+        null
+      ]
+    : [
+        null,
+        null,
+        null,
+        spec.channelIdentityBinding.id,
+        spec.channelIdentityBinding.version,
+        spec.channelIdentityBinding.fingerprintSha256,
+        spec.contactPolicyRef.policyId,
+        spec.contactPolicyRef.version
+      ];
 }
 
 const latestSelect = `SELECT v.*,
@@ -444,6 +570,11 @@ const latestSelect = `SELECT v.*,
        h.sender_profile_id AS head_sender_profile_id,
        h.sender_profile_version AS head_sender_profile_version,
        h.sender_profile_fingerprint_sha256 AS head_sender_profile_fingerprint_sha256,
+       h.channel_identity_binding_id AS head_channel_identity_binding_id,
+       h.channel_identity_binding_version AS head_channel_identity_binding_version,
+       h.channel_identity_binding_fingerprint_sha256 AS head_channel_identity_binding_fingerprint_sha256,
+       h.contact_policy_id AS head_contact_policy_id,
+       h.contact_policy_version AS head_contact_policy_version,
        h.rate_policy_ref AS head_rate_policy_ref,
        h.rule_intent_fingerprint_sha256 AS head_rule_intent_fingerprint_sha256,
        h.rule_fingerprint_sha256 AS head_rule_fingerprint_sha256,
@@ -979,11 +1110,13 @@ export class PostgresNotificationAutomationRuleStore {
          trigger_owner,trigger_event_type,trigger_subject_kind,
          publish_package_id,publish_package_version,publish_package_fingerprint_sha256,
          sender_profile_id,sender_profile_version,sender_profile_fingerprint_sha256,
+         channel_identity_binding_id,channel_identity_binding_version,
+         channel_identity_binding_fingerprint_sha256,contact_policy_id,contact_policy_version,
          rate_policy_ref,rule_intent_fingerprint_sha256,rule_fingerprint_sha256,
          document_json,created_at,updated_at,suspended_at,revoked_at
        ) VALUES(
-         $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,
-         $18::jsonb,$19,$20,$21,$22
+         $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,
+         $20,$21,$22,$23::jsonb,$24,$25,$26,$27
        )`,
       [
         parsed.workspaceId,
@@ -997,9 +1130,7 @@ export class PostgresNotificationAutomationRuleStore {
         parsed.spec.content.publishPackageId,
         parsed.spec.content.version,
         parsed.spec.content.fingerprintSha256,
-        parsed.spec.senderProfile.senderProfileId,
-        parsed.spec.senderProfile.version,
-        parsed.spec.senderProfile.fingerprintSha256,
+        ...senderProjectionValues(parsed.spec),
         parsed.spec.ratePolicyRef,
         parsed.ruleIntentFingerprintSha256,
         parsed.spec.ruleFingerprintSha256,
@@ -1022,9 +1153,11 @@ export class PostgresNotificationAutomationRuleStore {
          trigger_owner,trigger_event_type,trigger_subject_kind,
          publish_package_id,publish_package_version,publish_package_fingerprint_sha256,
          sender_profile_id,sender_profile_version,sender_profile_fingerprint_sha256,
+         channel_identity_binding_id,channel_identity_binding_version,
+         channel_identity_binding_fingerprint_sha256,contact_policy_id,contact_policy_version,
          rate_policy_ref,rule_intent_fingerprint_sha256,rule_fingerprint_sha256,updated_at
        ) VALUES(
-         $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18
+         $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23
        )`,
       this.headValues(item)
     );
@@ -1043,9 +1176,12 @@ export class PostgresNotificationAutomationRuleStore {
               publish_package_id=$9,publish_package_version=$10,
               publish_package_fingerprint_sha256=$11,
               sender_profile_id=$12,sender_profile_version=$13,
-              sender_profile_fingerprint_sha256=$14,rate_policy_ref=$15,
-              rule_intent_fingerprint_sha256=$16,rule_fingerprint_sha256=$17,updated_at=$18
-        WHERE workspace_id=$1 AND notification_rule_id=$2 AND latest_version=$19`,
+              sender_profile_fingerprint_sha256=$14,
+              channel_identity_binding_id=$15,channel_identity_binding_version=$16,
+              channel_identity_binding_fingerprint_sha256=$17,
+              contact_policy_id=$18,contact_policy_version=$19,rate_policy_ref=$20,
+              rule_intent_fingerprint_sha256=$21,rule_fingerprint_sha256=$22,updated_at=$23
+        WHERE workspace_id=$1 AND notification_rule_id=$2 AND latest_version=$24`,
       [...values, expectedVersion]
     );
     if (updated.rowCount !== 1)
@@ -1068,9 +1204,7 @@ export class PostgresNotificationAutomationRuleStore {
       item.spec.content.publishPackageId,
       item.spec.content.version,
       item.spec.content.fingerprintSha256,
-      item.spec.senderProfile.senderProfileId,
-      item.spec.senderProfile.version,
-      item.spec.senderProfile.fingerprintSha256,
+      ...senderProjectionValues(item.spec),
       item.spec.ratePolicyRef,
       item.ruleIntentFingerprintSha256,
       item.spec.ruleFingerprintSha256,

@@ -1,4 +1,6 @@
 import type { WorkspaceEmailSenderProfileId } from './email-sender-profile.js';
+import type { WorkspaceChannelIdentityBindingId } from './channel-identity-binding.js';
+import type { OutboundContactPolicyReferenceV1 } from './outbound-contact-policy.js';
 import type { PublishPackageId } from './product-loop.js';
 
 export type ChannelNotificationRuleId = `channel-notification-rule_${string}`;
@@ -19,37 +21,58 @@ export const noChannelNotificationAuthorityConsequencesV1 = Object.freeze({
 export type ChannelNotificationAuthorityConsequencesV1 =
   typeof noChannelNotificationAuthorityConsequencesV1;
 
-export interface ChannelNotificationRuleSpecV1 {
+export interface ChannelNotificationTriggerSelectorV1 {
+  owner: string;
+  eventType: string;
+  subjectKind: string;
+}
+
+export interface ChannelNotificationContentRefV1 {
+  publishPackageId: PublishPackageId;
+  version: number;
+  fingerprintSha256: string;
+}
+
+export interface ChannelNotificationEmailSenderProfileRefV1 {
+  senderProfileId: WorkspaceEmailSenderProfileId;
+  version: number;
+  fingerprintSha256: string;
+}
+
+export interface ChannelNotificationChannelIdentityBindingRefV1 {
+  id: WorkspaceChannelIdentityBindingId;
+  version: number;
+  fingerprintSha256: string;
+}
+
+interface ChannelNotificationRuleSpecBaseV1 {
   schemaVersion: 1;
   notificationRuleId: ChannelNotificationRuleId;
   workspaceId: string;
   version: number;
-  featureKey: 'EMAIL_NOTIFICATION';
-  triggerSelector: Readonly<{
-    owner: string;
-    eventType: string;
-    subjectKind: string;
-  }>;
-  destinationResolver: Readonly<{
-    kind: 'EVENT_SUBJECT_WORKSPACE_DIRECTORY_EMAIL';
-  }>;
-  content: Readonly<{
-    publishPackageId: PublishPackageId;
-    version: number;
-    fingerprintSha256: string;
-  }>;
-  senderProfile: Readonly<{
-    senderProfileId: WorkspaceEmailSenderProfileId;
-    version: number;
-    fingerprintSha256: string;
-  }>;
+  triggerSelector: Readonly<ChannelNotificationTriggerSelectorV1>;
+  content: Readonly<ChannelNotificationContentRefV1>;
   ratePolicyRef: string;
-  dedupePolicy: Readonly<{
-    mode: 'ONE_PER_RULE_TRIGGER';
-  }>;
+  dedupePolicy: Readonly<{ mode: 'ONE_PER_RULE_TRIGGER' }>;
   ruleFingerprintSha256: string;
   authority: Readonly<ChannelNotificationAuthorityConsequencesV1>;
 }
+
+export interface EmailChannelNotificationRuleSpecV1 extends ChannelNotificationRuleSpecBaseV1 {
+  featureKey: 'EMAIL_NOTIFICATION';
+  destinationResolver: Readonly<{ kind: 'EVENT_SUBJECT_WORKSPACE_DIRECTORY_EMAIL' }>;
+  senderProfile: Readonly<ChannelNotificationEmailSenderProfileRefV1>;
+}
+
+export interface SmsWorkspaceChannelNotificationRuleSpecV1 extends ChannelNotificationRuleSpecBaseV1 {
+  featureKey: 'SMS_WORKSPACE_NOTIFICATION';
+  destinationResolver: Readonly<{ kind: 'EVENT_SUBJECT_WORKSPACE_DIRECTORY_PHONE' }>;
+  channelIdentityBinding: Readonly<ChannelNotificationChannelIdentityBindingRefV1>;
+  contactPolicyRef: Readonly<OutboundContactPolicyReferenceV1>;
+}
+
+export type ChannelNotificationRuleSpecV1 =
+  EmailChannelNotificationRuleSpecV1 | SmsWorkspaceChannelNotificationRuleSpecV1;
 
 export interface ChannelNotificationTriggerEvidenceV1 {
   schemaVersion: 1;
@@ -59,24 +82,18 @@ export interface ChannelNotificationTriggerEvidenceV1 {
   owner: string;
   eventType: string;
   eventId: string;
-  subject: Readonly<{
-    owner: string;
-    kind: string;
-    id: string;
-    version: number;
-  }>;
+  subject: Readonly<{ owner: string; kind: string; id: string; version: number }>;
   occurredAt: string;
   evidenceRefs: readonly string[];
   triggerFingerprintSha256: string;
   authority: Readonly<ChannelNotificationAuthorityConsequencesV1>;
 }
 
-export interface ChannelNotificationSendIntentV1 {
+interface ChannelNotificationSendIntentBaseV1 {
   schemaVersion: 1;
   notificationSendIntentId: ChannelNotificationSendIntentId;
   workspaceId: string;
   version: 1;
-  featureKey: 'EMAIL_NOTIFICATION';
   rule: Readonly<{
     notificationRuleId: ChannelNotificationRuleId;
     version: number;
@@ -94,20 +111,24 @@ export interface ChannelNotificationSendIntentV1 {
     version: number;
     endpointFingerprintSha256: string;
   }>;
-  content: Readonly<{
-    publishPackageId: PublishPackageId;
-    version: number;
-    fingerprintSha256: string;
-  }>;
-  senderProfile: Readonly<{
-    senderProfileId: WorkspaceEmailSenderProfileId;
-    version: number;
-    fingerprintSha256: string;
-  }>;
+  content: Readonly<ChannelNotificationContentRefV1>;
   deliveryPlanFingerprintSha256: string;
   effectFingerprintSha256: string;
   authority: Readonly<ChannelNotificationAuthorityConsequencesV1>;
 }
+
+export interface EmailChannelNotificationSendIntentV1 extends ChannelNotificationSendIntentBaseV1 {
+  featureKey: 'EMAIL_NOTIFICATION';
+  senderProfile: Readonly<ChannelNotificationEmailSenderProfileRefV1>;
+}
+
+export interface SmsWorkspaceChannelNotificationSendIntentV1 extends ChannelNotificationSendIntentBaseV1 {
+  featureKey: 'SMS_WORKSPACE_NOTIFICATION';
+  channelIdentityBinding: Readonly<ChannelNotificationChannelIdentityBindingRefV1>;
+}
+
+export type ChannelNotificationSendIntentV1 =
+  EmailChannelNotificationSendIntentV1 | SmsWorkspaceChannelNotificationSendIntentV1;
 
 export class ChannelNotificationContractError extends TypeError {
   constructor(message: string) {
@@ -124,11 +145,18 @@ const TRIGGER = /^channel-notification-trigger_[A-Za-z0-9_-]+$/u;
 const INTENT = /^channel-notification-send-intent_[A-Za-z0-9_-]+$/u;
 const PUBLISH = /^publish-package_[A-Za-z0-9_-]+$/u;
 const SENDER = /^email-sender-profile_[A-Za-z0-9_-]+$/u;
+const CHANNEL_IDENTITY_BINDING = /^workspace-channel-identity-binding_[A-Za-z0-9_-]+$/u;
 const forbiddenKeys = new Set([
   'email',
   'emailaddress',
   'recipient',
   'recipientemail',
+  'phone',
+  'phonenumber',
+  'recipientphone',
+  'fromphone',
+  'tophone',
+  'rawphone',
   'fromaddress',
   'toaddress',
   'replytoaddress',
@@ -253,7 +281,7 @@ function publishPackage(value: unknown, field: string) {
   } as const;
 }
 
-function senderProfile(value: unknown, field: string) {
+function senderProfile(value: unknown, field: string): ChannelNotificationEmailSenderProfileRefV1 {
   const item = object(value, field);
   exactKeys(item, ['senderProfileId', 'version', 'fingerprintSha256'], field);
   return {
@@ -264,7 +292,33 @@ function senderProfile(value: unknown, field: string) {
     ),
     version: integer(item.version, `${field}.version`),
     fingerprintSha256: sha(item.fingerprintSha256, `${field}.fingerprintSha256`)
-  } as const;
+  };
+}
+
+function channelIdentityBinding(
+  value: unknown,
+  field: string
+): ChannelNotificationChannelIdentityBindingRefV1 {
+  const item = object(value, field);
+  exactKeys(item, ['id', 'version', 'fingerprintSha256'], field);
+  return {
+    id: prefixed<WorkspaceChannelIdentityBindingId>(
+      item.id,
+      `${field}.id`,
+      CHANNEL_IDENTITY_BINDING
+    ),
+    version: integer(item.version, `${field}.version`),
+    fingerprintSha256: sha(item.fingerprintSha256, `${field}.fingerprintSha256`)
+  };
+}
+
+function contactPolicyRef(value: unknown, field: string): OutboundContactPolicyReferenceV1 {
+  const item = object(value, field);
+  exactKeys(item, ['policyId', 'version'], field);
+  return {
+    policyId: text(item.policyId, `${field}.policyId`, 240),
+    version: integer(item.version, `${field}.version`)
+  };
 }
 
 function evidenceRefs(value: unknown): readonly string[] {
@@ -281,6 +335,17 @@ function evidenceRefs(value: unknown): readonly string[] {
 export function parseChannelNotificationRuleSpecV1(value: unknown): ChannelNotificationRuleSpecV1 {
   rejectForbidden(value, 'notificationRule');
   const item = object(value, 'notificationRule');
+  if (item.schemaVersion !== 1)
+    throw new ChannelNotificationContractError('Notification Rule schemaVersion must be 1.');
+  if (item.featureKey !== 'EMAIL_NOTIFICATION' && item.featureKey !== 'SMS_WORKSPACE_NOTIFICATION')
+    throw new ChannelNotificationContractError(
+      'Notification Rule V1 supports EMAIL_NOTIFICATION or SMS_WORKSPACE_NOTIFICATION only.'
+    );
+
+  const variantFields =
+    item.featureKey === 'EMAIL_NOTIFICATION'
+      ? ['senderProfile']
+      : ['channelIdentityBinding', 'contactPolicyRef'];
   exactKeys(
     item,
     [
@@ -292,7 +357,7 @@ export function parseChannelNotificationRuleSpecV1(value: unknown): ChannelNotif
       'triggerSelector',
       'destinationResolver',
       'content',
-      'senderProfile',
+      ...variantFields,
       'ratePolicyRef',
       'dedupePolicy',
       'ruleFingerprintSha256',
@@ -300,22 +365,17 @@ export function parseChannelNotificationRuleSpecV1(value: unknown): ChannelNotif
     ],
     'notificationRule'
   );
-  if (item.schemaVersion !== 1 || item.featureKey !== 'EMAIL_NOTIFICATION')
-    throw new ChannelNotificationContractError(
-      'Notification Rule V1 supports EMAIL_NOTIFICATION only.'
-    );
   const triggerSelector = object(item.triggerSelector, 'triggerSelector');
   exactKeys(triggerSelector, ['owner', 'eventType', 'subjectKind'], 'triggerSelector');
   const destinationResolver = object(item.destinationResolver, 'destinationResolver');
   exactKeys(destinationResolver, ['kind'], 'destinationResolver');
-  if (destinationResolver.kind !== 'EVENT_SUBJECT_WORKSPACE_DIRECTORY_EMAIL')
-    throw new ChannelNotificationContractError('destinationResolver.kind is invalid.');
   const dedupePolicy = object(item.dedupePolicy, 'dedupePolicy');
   exactKeys(dedupePolicy, ['mode'], 'dedupePolicy');
   if (dedupePolicy.mode !== 'ONE_PER_RULE_TRIGGER')
     throw new ChannelNotificationContractError('dedupePolicy.mode is invalid.');
-  return {
-    schemaVersion: 1,
+
+  const common = {
+    schemaVersion: 1 as const,
     notificationRuleId: prefixed<ChannelNotificationRuleId>(
       item.notificationRuleId,
       'notificationRuleId',
@@ -323,21 +383,44 @@ export function parseChannelNotificationRuleSpecV1(value: unknown): ChannelNotif
     ),
     workspaceId: workspace(item.workspaceId),
     version: integer(item.version, 'version'),
-    featureKey: 'EMAIL_NOTIFICATION',
     triggerSelector: {
       owner: text(triggerSelector.owner, 'triggerSelector.owner', 120),
       eventType: text(triggerSelector.eventType, 'triggerSelector.eventType', 160),
       subjectKind: text(triggerSelector.subjectKind, 'triggerSelector.subjectKind', 120)
     },
-    destinationResolver: {
-      kind: 'EVENT_SUBJECT_WORKSPACE_DIRECTORY_EMAIL'
-    },
     content: publishPackage(item.content, 'content'),
-    senderProfile: senderProfile(item.senderProfile, 'senderProfile'),
     ratePolicyRef: text(item.ratePolicyRef, 'ratePolicyRef', 300),
-    dedupePolicy: { mode: 'ONE_PER_RULE_TRIGGER' },
+    dedupePolicy: { mode: 'ONE_PER_RULE_TRIGGER' as const },
     ruleFingerprintSha256: sha(item.ruleFingerprintSha256, 'ruleFingerprintSha256'),
     authority: authority(item.authority)
+  };
+
+  if (item.featureKey === 'EMAIL_NOTIFICATION') {
+    if (destinationResolver.kind !== 'EVENT_SUBJECT_WORKSPACE_DIRECTORY_EMAIL')
+      throw new ChannelNotificationContractError(
+        'EMAIL_NOTIFICATION destinationResolver.kind is invalid.'
+      );
+    return {
+      ...common,
+      featureKey: 'EMAIL_NOTIFICATION',
+      destinationResolver: { kind: 'EVENT_SUBJECT_WORKSPACE_DIRECTORY_EMAIL' },
+      senderProfile: senderProfile(item.senderProfile, 'senderProfile')
+    };
+  }
+
+  if (destinationResolver.kind !== 'EVENT_SUBJECT_WORKSPACE_DIRECTORY_PHONE')
+    throw new ChannelNotificationContractError(
+      'SMS_WORKSPACE_NOTIFICATION destinationResolver.kind is invalid.'
+    );
+  return {
+    ...common,
+    featureKey: 'SMS_WORKSPACE_NOTIFICATION',
+    destinationResolver: { kind: 'EVENT_SUBJECT_WORKSPACE_DIRECTORY_PHONE' },
+    channelIdentityBinding: channelIdentityBinding(
+      item.channelIdentityBinding,
+      'channelIdentityBinding'
+    ),
+    contactPolicyRef: contactPolicyRef(item.contactPolicyRef, 'contactPolicyRef')
   };
 }
 
@@ -400,6 +483,17 @@ export function parseChannelNotificationSendIntentV1(
 ): ChannelNotificationSendIntentV1 {
   rejectForbidden(value, 'notificationSendIntent');
   const item = object(value, 'notificationSendIntent');
+  if (
+    item.schemaVersion !== 1 ||
+    item.version !== 1 ||
+    (item.featureKey !== 'EMAIL_NOTIFICATION' && item.featureKey !== 'SMS_WORKSPACE_NOTIFICATION')
+  )
+    throw new ChannelNotificationContractError(
+      'Notification Send Intent V1 supports EMAIL_NOTIFICATION or SMS_WORKSPACE_NOTIFICATION only.'
+    );
+
+  const variantFields =
+    item.featureKey === 'EMAIL_NOTIFICATION' ? ['senderProfile'] : ['channelIdentityBinding'];
   exactKeys(
     item,
     [
@@ -412,17 +506,13 @@ export function parseChannelNotificationSendIntentV1(
       'trigger',
       'target',
       'content',
-      'senderProfile',
+      ...variantFields,
       'deliveryPlanFingerprintSha256',
       'effectFingerprintSha256',
       'authority'
     ],
     'notificationSendIntent'
   );
-  if (item.schemaVersion !== 1 || item.version !== 1 || item.featureKey !== 'EMAIL_NOTIFICATION')
-    throw new ChannelNotificationContractError(
-      'Notification Send Intent V1 supports EMAIL_NOTIFICATION only.'
-    );
 
   const rule = object(item.rule, 'rule');
   exactKeys(rule, ['notificationRuleId', 'version', 'fingerprintSha256'], 'rule');
@@ -433,16 +523,15 @@ export function parseChannelNotificationSendIntentV1(
   const target = object(item.target, 'target');
   exactKeys(target, ['owner', 'kind', 'id', 'version', 'endpointFingerprintSha256'], 'target');
 
-  return {
-    schemaVersion: 1,
+  const common = {
+    schemaVersion: 1 as const,
     notificationSendIntentId: prefixed<ChannelNotificationSendIntentId>(
       item.notificationSendIntentId,
       'notificationSendIntentId',
       INTENT
     ),
     workspaceId: workspace(item.workspaceId),
-    version: 1,
-    featureKey: 'EMAIL_NOTIFICATION',
+    version: 1 as const,
     rule: {
       notificationRuleId: prefixed<ChannelNotificationRuleId>(
         rule.notificationRuleId,
@@ -458,7 +547,7 @@ export function parseChannelNotificationSendIntentV1(
         'trigger.notificationTriggerEvidenceId',
         TRIGGER
       ),
-      version: 1,
+      version: 1 as const,
       fingerprintSha256: sha(trigger.fingerprintSha256, 'trigger.fingerprintSha256')
     },
     target: {
@@ -472,13 +561,28 @@ export function parseChannelNotificationSendIntentV1(
       )
     },
     content: publishPackage(item.content, 'content'),
-    senderProfile: senderProfile(item.senderProfile, 'senderProfile'),
     deliveryPlanFingerprintSha256: sha(
       item.deliveryPlanFingerprintSha256,
       'deliveryPlanFingerprintSha256'
     ),
     effectFingerprintSha256: sha(item.effectFingerprintSha256, 'effectFingerprintSha256'),
     authority: authority(item.authority)
+  };
+
+  if (item.featureKey === 'EMAIL_NOTIFICATION')
+    return {
+      ...common,
+      featureKey: 'EMAIL_NOTIFICATION',
+      senderProfile: senderProfile(item.senderProfile, 'senderProfile')
+    };
+
+  return {
+    ...common,
+    featureKey: 'SMS_WORKSPACE_NOTIFICATION',
+    channelIdentityBinding: channelIdentityBinding(
+      item.channelIdentityBinding,
+      'channelIdentityBinding'
+    )
   };
 }
 
@@ -504,7 +608,7 @@ export function canonicalChannelNotificationSendPlanPayloadV1(
   value: Readonly<ChannelNotificationSendIntentV1>
 ) {
   const item = parseChannelNotificationSendIntentV1(value);
-  return {
+  const common = {
     schemaVersion: item.schemaVersion,
     notificationSendIntentId: item.notificationSendIntentId,
     workspaceId: item.workspaceId,
@@ -513,7 +617,9 @@ export function canonicalChannelNotificationSendPlanPayloadV1(
     rule: item.rule,
     trigger: item.trigger,
     target: item.target,
-    content: item.content,
-    senderProfile: item.senderProfile
-  } as const;
+    content: item.content
+  };
+  return item.featureKey === 'EMAIL_NOTIFICATION'
+    ? { ...common, senderProfile: item.senderProfile }
+    : { ...common, channelIdentityBinding: item.channelIdentityBinding };
 }

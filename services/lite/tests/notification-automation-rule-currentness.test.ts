@@ -5,6 +5,10 @@ import {
   type ChannelNotificationRuleSpecV1
 } from '@markorbit/contracts/channel-notification';
 import type { ChannelNotificationAutomationRuleV1 } from '@markorbit/contracts/channel-notification-automation';
+import type {
+  WorkspaceChannelIdentityCurrentnessReasonV1,
+  WorkspaceChannelIdentityCurrentnessStateV1
+} from '@markorbit/contracts/channel-identity-binding';
 import type { PublishPackage } from '@markorbit/contracts/product-loop';
 import { noChannelPlatformAuthorityConsequencesV1 } from '@markorbit/contracts/channel-platform';
 import {
@@ -12,7 +16,9 @@ import {
   type WorkspaceEmailSenderProfileV1
 } from '@markorbit/contracts/email-sender-profile';
 import {
+  C6SmsNotificationChannelIdentityCurrentnessReaderV1,
   NotificationAutomationRuleCurrentnessResolver,
+  UnavailableSmsNotificationChannelIdentityRequirementsReaderV1,
   type NotificationAutomationEntitlementReader
 } from '../src/notification-automation-rule-currentness.js';
 
@@ -134,6 +140,42 @@ const activeRule: ChannelNotificationAutomationRuleV1 = {
   authority: noChannelNotificationAuthorityConsequencesV1
 };
 
+const smsSpec: ChannelNotificationRuleSpecV1 = {
+  schemaVersion: 1,
+  notificationRuleId: 'channel-notification-rule_sms-primary',
+  workspaceId,
+  version: 2,
+  featureKey: 'SMS_WORKSPACE_NOTIFICATION',
+  triggerSelector: spec.triggerSelector,
+  destinationResolver: { kind: 'EVENT_SUBJECT_WORKSPACE_DIRECTORY_PHONE' },
+  content: spec.content,
+  channelIdentityBinding: {
+    id: 'workspace-channel-identity-binding_sms-primary',
+    version: 4,
+    fingerprintSha256: '8'.repeat(64)
+  },
+  contactPolicyRef: {
+    policyId: 'outbound-contact-policy_sms-notification',
+    version: 2
+  },
+  ratePolicyRef: 'notification-rate-policy_sms-default',
+  dedupePolicy: { mode: 'ONE_PER_RULE_TRIGGER' },
+  ruleFingerprintSha256: '9'.repeat(64),
+  authority: noChannelNotificationAuthorityConsequencesV1
+};
+
+const smsActiveRule: ChannelNotificationAutomationRuleV1 = {
+  ...activeRule,
+  notificationRuleId: smsSpec.notificationRuleId,
+  spec: smsSpec,
+  ruleIntentFingerprintSha256: '7'.repeat(64),
+  activationEvidence: {
+    ...activeRule.activationEvidence!,
+    notificationRuleId: smsSpec.notificationRuleId,
+    authorizedRuleFingerprintSha256: smsSpec.ruleFingerprintSha256
+  }
+};
+
 function harness(
   options: {
     latest?: ChannelNotificationAutomationRuleV1;
@@ -207,6 +249,169 @@ function harness(
     () => '2026-09-19T10:05:00.000Z'
   );
 }
+
+function smsHarness(
+  state: WorkspaceChannelIdentityCurrentnessStateV1,
+  reason: WorkspaceChannelIdentityCurrentnessReasonV1
+) {
+  const rules = {
+    getExact: vi.fn(() => Promise.resolve(smsActiveRule)),
+    getLatest: vi.fn(() => Promise.resolve(smsActiveRule))
+  };
+  const content = {
+    findPublishPackage: vi.fn(() => Promise.resolve(publishPackage))
+  };
+  const getExactSenderProfile = vi.fn(() =>
+    Promise.reject(new Error('email sender must not be read'))
+  );
+  const evaluateSenderProfileCurrentness = vi.fn(() =>
+    Promise.reject(new Error('email sender currentness must not be read'))
+  );
+  const senders = {
+    getExactSenderProfile,
+    evaluateSenderProfileCurrentness
+  };
+  const entitlementResolve = vi.fn(() =>
+    Promise.reject(new Error('email entitlement must not be read'))
+  );
+  const entitlement: NotificationAutomationEntitlementReader = {
+    resolve: entitlementResolve
+  };
+  const smsIdentityResolve = vi.fn(() =>
+    Promise.resolve({
+      schemaVersion: 1 as const,
+      workspaceId,
+      featureKey: 'SMS_WORKSPACE_NOTIFICATION' as const,
+      binding:
+        smsSpec.featureKey === 'SMS_WORKSPACE_NOTIFICATION'
+          ? smsSpec.channelIdentityBinding
+          : {
+              id: 'workspace-channel-identity-binding_never' as const,
+              version: 1,
+              fingerprintSha256: '0'.repeat(64)
+            },
+      state,
+      reason,
+      assessedAt: '2026-09-19T10:05:00.000Z',
+      createsExecutionAuthority: false as const
+    })
+  );
+  const smsIdentity = { resolve: smsIdentityResolve };
+  return {
+    getExactSenderProfile,
+    entitlementResolve,
+    smsIdentityResolve,
+    resolver: new NotificationAutomationRuleCurrentnessResolver(
+      rules,
+      content,
+      senders,
+      entitlement,
+      () => '2026-09-19T10:05:00.000Z',
+      24 * 60 * 60 * 1000,
+      smsIdentity
+    )
+  };
+}
+
+describe('C6 SMS Notification identity bridge', () => {
+  const binding = {
+    id: 'workspace-channel-identity-binding_sms-primary' as const,
+    version: 4,
+    fingerprintSha256: '8'.repeat(64)
+  };
+
+  it('passes trusted external-credential requirements into the C6 currentness owner', async () => {
+    const currentness = {
+      resolve: vi.fn(() =>
+        Promise.resolve({
+          schemaVersion: 1 as const,
+          workspaceId,
+          featureKey: 'SMS_WORKSPACE_NOTIFICATION' as const,
+          binding,
+          state: 'CURRENT' as const,
+          reason: 'EXACT_BINDING_CURRENT' as const,
+          assessedAt: '2026-09-19T10:05:00.000Z',
+          createsExecutionAuthority: false as const
+        })
+      )
+    };
+    const requirements = {
+      resolve: vi.fn(() =>
+        Promise.resolve({
+          kind: 'EXTERNAL_CREDENTIAL' as const,
+          expectedProvider: 'provider:test-sms',
+          expectedSecretKind: 'API_KEY' as const
+        })
+      )
+    };
+    const reader = new C6SmsNotificationChannelIdentityCurrentnessReaderV1(
+      currentness,
+      requirements
+    );
+
+    await expect(
+      reader.resolve({ workspaceId, featureKey: 'SMS_WORKSPACE_NOTIFICATION', binding })
+    ).resolves.toMatchObject({ state: 'CURRENT', reason: 'EXACT_BINDING_CURRENT' });
+    expect(currentness.resolve).toHaveBeenCalledWith({
+      workspaceId,
+      featureKey: 'SMS_WORKSPACE_NOTIFICATION',
+      binding,
+      externalCredentialRequirements: {
+        expectedProvider: 'provider:test-sms',
+        expectedSecretKind: 'API_KEY'
+      }
+    });
+  });
+
+  it('passes trusted OAuth provider/scopes into the same C6 currentness owner', async () => {
+    const currentness = {
+      resolve: vi.fn(() =>
+        Promise.resolve({
+          schemaVersion: 1 as const,
+          workspaceId,
+          featureKey: 'SMS_WORKSPACE_NOTIFICATION' as const,
+          binding,
+          state: 'CURRENT' as const,
+          reason: 'EXACT_BINDING_CURRENT' as const,
+          assessedAt: '2026-09-19T10:05:00.000Z',
+          createsExecutionAuthority: false as const
+        })
+      )
+    };
+    const reader = new C6SmsNotificationChannelIdentityCurrentnessReaderV1(currentness, {
+      resolve: vi.fn(() =>
+        Promise.resolve({
+          kind: 'OAUTH' as const,
+          expectedProvider: 'provider:test-oauth',
+          requiredScopes: ['sms.send']
+        })
+      )
+    });
+    await reader.resolve({ workspaceId, featureKey: 'SMS_WORKSPACE_NOTIFICATION', binding });
+    expect(currentness.resolve).toHaveBeenCalledWith({
+      workspaceId,
+      featureKey: 'SMS_WORKSPACE_NOTIFICATION',
+      binding,
+      oauthRequirements: {
+        expectedProvider: 'provider:test-oauth',
+        requiredScopes: ['sms.send']
+      }
+    });
+  });
+
+  it('fails closed before C6 resolution when trusted provider requirements are unavailable', async () => {
+    const currentness = { resolve: vi.fn() };
+    const reader = new C6SmsNotificationChannelIdentityCurrentnessReaderV1(
+      currentness,
+      new UnavailableSmsNotificationChannelIdentityRequirementsReaderV1(),
+      () => '2026-09-19T10:05:00.000Z'
+    );
+    await expect(
+      reader.resolve({ workspaceId, featureKey: 'SMS_WORKSPACE_NOTIFICATION', binding })
+    ).resolves.toMatchObject({ state: 'UNAVAILABLE', createsExecutionAuthority: false });
+    expect(currentness.resolve).not.toHaveBeenCalled();
+  });
+});
 
 describe('Notification Automation Rule currentness', () => {
   it('returns CURRENT only for exact active rule/content/sender/entitlement truth', async () => {
@@ -286,4 +491,58 @@ describe('Notification Automation Rule currentness', () => {
       harness({ entitlementUnavailable: true }).resolve(workspaceId, ruleId, 2)
     ).resolves.toMatchObject({ state: 'UNAVAILABLE', reason: 'OWNER_UNAVAILABLE' });
   });
+
+  it('returns CURRENT for exact SMS identity currentness without consulting email owners', async () => {
+    const h = smsHarness('CURRENT', 'EXACT_BINDING_CURRENT');
+    await expect(
+      h.resolver.resolve(workspaceId, smsSpec.notificationRuleId, 2)
+    ).resolves.toMatchObject({
+      state: 'CURRENT',
+      reason: 'EXACT_ACTIVE_RULE_CURRENT'
+    });
+    expect(h.smsIdentityResolve).toHaveBeenCalledTimes(1);
+    expect(h.getExactSenderProfile).not.toHaveBeenCalled();
+    expect(h.entitlementResolve).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ['STALE', 'BINDING_STALE', 'STALE', 'CHANNEL_IDENTITY_STALE'],
+    ['STALE', 'IMPLEMENTATION_STALE', 'STALE', 'CHANNEL_IDENTITY_STALE'],
+    ['REVOKED', 'BINDING_REVOKED', 'REVOKED', 'CHANNEL_IDENTITY_REVOKED'],
+    ['REVOKED', 'CREDENTIAL_REVOKED', 'REVOKED', 'CHANNEL_IDENTITY_REVOKED'],
+    [
+      'REAUTH_REQUIRED',
+      'CREDENTIAL_REAUTH_REQUIRED',
+      'REAUTH_REQUIRED',
+      'CHANNEL_IDENTITY_REAUTH_REQUIRED'
+    ],
+    [
+      'REAUTH_REQUIRED',
+      'CREDENTIAL_EXPIRED',
+      'REAUTH_REQUIRED',
+      'CHANNEL_IDENTITY_REAUTH_REQUIRED'
+    ],
+    ['UNKNOWN', 'CREDENTIAL_UNKNOWN', 'UNKNOWN', 'CHANNEL_IDENTITY_UNKNOWN'],
+    ['UNKNOWN', 'IDENTITY_VERIFICATION_UNKNOWN', 'UNKNOWN', 'CHANNEL_IDENTITY_UNKNOWN'],
+    ['UNAVAILABLE', 'CREDENTIAL_UNAVAILABLE', 'UNAVAILABLE', 'CHANNEL_IDENTITY_UNAVAILABLE'],
+    [
+      'UNAVAILABLE',
+      'IDENTITY_VERIFICATION_UNAVAILABLE',
+      'UNAVAILABLE',
+      'CHANNEL_IDENTITY_UNAVAILABLE'
+    ],
+    ['UNAVAILABLE', 'IMPLEMENTATION_UNAVAILABLE', 'UNAVAILABLE', 'CHANNEL_IDENTITY_UNAVAILABLE'],
+    ['NOT_ENTITLED', 'ENTITLEMENT_NOT_ENABLED', 'REVOKED', 'ENTITLEMENT_REVOKED']
+  ] as const)(
+    'fails closed for SMS identity %s / %s',
+    async (identityState, identityReason, expectedState, expectedReason) => {
+      await expect(
+        smsHarness(identityState, identityReason).resolver.resolve(
+          workspaceId,
+          smsSpec.notificationRuleId,
+          2
+        )
+      ).resolves.toMatchObject({ state: expectedState, reason: expectedReason });
+    }
+  );
 });

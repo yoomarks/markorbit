@@ -79,6 +79,51 @@ const activeRule: ChannelNotificationAutomationRuleV1 = {
   revokedAt: null,
   authority: noChannelNotificationAuthorityConsequencesV1
 };
+const emailRuleSpec =
+  activeRule.spec.featureKey === 'EMAIL_NOTIFICATION'
+    ? activeRule.spec
+    : (() => {
+        throw new Error('Expected EMAIL_NOTIFICATION fixture.');
+      })();
+
+const smsRule: ChannelNotificationAutomationRuleV1 = {
+  ...activeRule,
+  notificationRuleId: 'channel-notification-rule_sms-currentness',
+  spec: {
+    schemaVersion: 1,
+    notificationRuleId: 'channel-notification-rule_sms-currentness',
+    workspaceId,
+    version: 2,
+    featureKey: 'SMS_WORKSPACE_NOTIFICATION',
+    triggerSelector: activeRule.spec.triggerSelector,
+    destinationResolver: { kind: 'EVENT_SUBJECT_WORKSPACE_DIRECTORY_PHONE' },
+    content: activeRule.spec.content,
+    channelIdentityBinding: {
+      id: 'workspace-channel-identity-binding_sms-currentness',
+      version: 4,
+      fingerprintSha256: '8'.repeat(64)
+    },
+    contactPolicyRef: {
+      policyId: 'outbound-contact-policy_sms-notification',
+      version: 2
+    },
+    ratePolicyRef: 'notification-rate-policy_sms-default',
+    dedupePolicy: { mode: 'ONE_PER_RULE_TRIGGER' },
+    ruleFingerprintSha256: 'c'.repeat(64),
+    authority: noChannelNotificationAuthorityConsequencesV1
+  },
+  activationEvidence: {
+    ...activationEvidence,
+    notificationRuleId: 'channel-notification-rule_sms-currentness',
+    authorizedRuleFingerprintSha256: 'c'.repeat(64)
+  }
+};
+const smsRuleSpec =
+  smsRule.spec.featureKey === 'SMS_WORKSPACE_NOTIFICATION'
+    ? smsRule.spec
+    : (() => {
+        throw new Error('Expected SMS_WORKSPACE_NOTIFICATION fixture.');
+      })();
 
 function trigger(): ChannelNotificationTriggerEvidenceV1 {
   const value: ChannelNotificationTriggerEvidenceV1 = {
@@ -128,7 +173,42 @@ function intent(
       endpointFingerprintSha256
     },
     content: activeRule.spec.content,
-    senderProfile: activeRule.spec.senderProfile,
+    senderProfile: emailRuleSpec.senderProfile,
+    deliveryPlanFingerprintSha256: '0'.repeat(64),
+    effectFingerprintSha256: '0'.repeat(64),
+    authority: noChannelNotificationAuthorityConsequencesV1
+  };
+  value.deliveryPlanFingerprintSha256 = channelNotificationDeliveryPlanFingerprintSha256V1(value);
+  value.effectFingerprintSha256 = channelNotificationSendEffectFingerprintSha256V1(value);
+  return value;
+}
+
+function smsIntent(
+  triggerEvidence: ChannelNotificationTriggerEvidenceV1,
+  endpointFingerprint = 'a'.repeat(64)
+): ChannelNotificationSendIntentV1 {
+  const value: ChannelNotificationSendIntentV1 = {
+    schemaVersion: 1,
+    notificationSendIntentId: 'channel-notification-send-intent_sms-currentness',
+    workspaceId,
+    version: 1,
+    featureKey: 'SMS_WORKSPACE_NOTIFICATION',
+    rule: {
+      notificationRuleId: smsRule.notificationRuleId,
+      version: smsRule.version,
+      fingerprintSha256: smsRuleSpec.ruleFingerprintSha256
+    },
+    trigger: {
+      notificationTriggerEvidenceId: triggerEvidence.notificationTriggerEvidenceId,
+      version: 1,
+      fingerprintSha256: triggerEvidence.triggerFingerprintSha256
+    },
+    target: {
+      ...triggerEvidence.subject,
+      endpointFingerprintSha256: endpointFingerprint
+    },
+    content: smsRuleSpec.content,
+    channelIdentityBinding: smsRuleSpec.channelIdentityBinding,
     deliveryPlanFingerprintSha256: '0'.repeat(64),
     effectFingerprintSha256: '0'.repeat(64),
     authority: noChannelNotificationAuthorityConsequencesV1
@@ -204,6 +284,90 @@ function harness(
     )
   };
 }
+
+function smsHarness(
+  options: {
+    endpointState?: 'CURRENT' | 'STALE' | 'NOT_FOUND' | 'UNKNOWN' | 'UNAVAILABLE';
+    endpointFingerprint?: string;
+    policyOutcome?: 'READY_FOR_HUMAN_SEND' | 'BLOCKED' | 'UNKNOWN';
+    policyReason?:
+      | 'CURRENT_ALLOWED_ASSERTION'
+      | 'ACTIVE_SUPPRESSION'
+      | 'ASSERTED_BLOCKED'
+      | 'NO_CURRENT_ASSERTION';
+    ruleCurrentnessState?:
+      'CURRENT' | 'STALE' | 'REVOKED' | 'REAUTH_REQUIRED' | 'UNKNOWN' | 'UNAVAILABLE';
+    ruleCurrentnessReason?:
+      | 'EXACT_ACTIVE_RULE_CURRENT'
+      | 'CHANNEL_IDENTITY_STALE'
+      | 'CHANNEL_IDENTITY_REVOKED'
+      | 'CHANNEL_IDENTITY_REAUTH_REQUIRED'
+      | 'CHANNEL_IDENTITY_UNKNOWN'
+      | 'CHANNEL_IDENTITY_UNAVAILABLE'
+      | 'ENTITLEMENT_REVOKED';
+  } = {}
+) {
+  const smsActivation = smsRule.activationEvidence!;
+  const rules = { getExact: vi.fn(() => Promise.resolve(smsRule)) };
+  const ruleCurrentness = {
+    resolve: vi.fn(() =>
+      Promise.resolve({
+        schemaVersion: 1 as const,
+        workspaceId,
+        notificationRuleId: smsRule.notificationRuleId,
+        version: smsRule.version,
+        ruleFingerprintSha256: smsRuleSpec.ruleFingerprintSha256,
+        state: options.ruleCurrentnessState ?? ('CURRENT' as const),
+        reason: options.ruleCurrentnessReason ?? ('EXACT_ACTIVE_RULE_CURRENT' as const),
+        evaluatedAt: '2026-09-20T00:06:00.000Z',
+        protectedActionAuthorized: false as const,
+        externalSendAuthorized: false as const
+      })
+    )
+  };
+  const governance = {
+    verify: vi.fn(() => Promise.resolve(smsActivation))
+  };
+  const triggers = {
+    validateCurrent: vi.fn(() => Promise.resolve({ state: 'CURRENT' as const }))
+  };
+  const emailEndpoints = {
+    resolve: vi.fn(() => Promise.reject(new Error('email endpoint must not be read')))
+  };
+  const smsEndpoints = {
+    resolve: vi.fn(() =>
+      Promise.resolve({
+        state: options.endpointState ?? ('CURRENT' as const),
+        endpointFingerprintSha256: options.endpointFingerprint ?? 'a'.repeat(64)
+      })
+    )
+  };
+  const outbound = {
+    currentGlobalSuppressions: vi.fn(() =>
+      Promise.reject(new Error('email suppression path must not be read'))
+    ),
+    evaluate: vi.fn(() =>
+      Promise.resolve({
+        outcome: options.policyOutcome ?? ('READY_FOR_HUMAN_SEND' as const),
+        reason: options.policyReason ?? ('CURRENT_ALLOWED_ASSERTION' as const)
+      })
+    )
+  };
+  return {
+    outbound,
+    smsEndpoints,
+    resolver: new NotificationSendCurrentnessResolverV1(
+      rules,
+      ruleCurrentness,
+      governance,
+      triggers,
+      emailEndpoints,
+      outbound as never,
+      smsEndpoints
+    )
+  };
+}
+
 describe('Notification send currentness', () => {
   it('returns CURRENT only for exact active rule, activation, trigger, endpoint and policy truth', async () => {
     const triggerEvidence = trigger();
@@ -279,5 +443,86 @@ describe('Notification send currentness', () => {
         activationEvidence
       )
     ).resolves.toMatchObject({ state: 'UNAVAILABLE', reason: 'OWNER_UNAVAILABLE' });
+  });
+
+  it('returns CURRENT for exact SMS rule, PHONE and explicit SMS contact policy', async () => {
+    const triggerEvidence = trigger();
+    const sendIntent = smsIntent(triggerEvidence);
+    const h = smsHarness();
+    await expect(
+      h.resolver.resolve(workspaceId, sendIntent, triggerEvidence, smsRule.activationEvidence!)
+    ).resolves.toMatchObject({
+      state: 'CURRENT',
+      reason: 'EXACT_NOTIFICATION_PLAN_CURRENT'
+    });
+    expect(h.smsEndpoints.resolve).toHaveBeenCalledTimes(1);
+    expect(h.outbound.evaluate).toHaveBeenCalledWith({
+      workspaceId,
+      actorPrincipalId: 'notification-automation-currentness',
+      targetRef: triggerEvidence.subject,
+      endpointFingerprintSha256: sendIntent.target.endpointFingerprintSha256,
+      channel: 'SMS',
+      purpose: 'WORKSPACE_NOTIFICATION',
+      policyRef: smsRuleSpec.contactPolicyRef,
+      reviewedSendFingerprintSha256: sendIntent.effectFingerprintSha256
+    });
+    expect(h.outbound.currentGlobalSuppressions).not.toHaveBeenCalled();
+  });
+
+  it('fails closed for SMS PHONE drift and missing basis', async () => {
+    const triggerEvidence = trigger();
+    const sendIntent = smsIntent(triggerEvidence);
+
+    await expect(
+      smsHarness({ endpointFingerprint: 'b'.repeat(64) }).resolver.resolve(
+        workspaceId,
+        sendIntent,
+        triggerEvidence,
+        smsRule.activationEvidence!
+      )
+    ).resolves.toMatchObject({ state: 'STALE', reason: 'ENDPOINT_DRIFT' });
+
+    await expect(
+      smsHarness({
+        policyOutcome: 'UNKNOWN',
+        policyReason: 'NO_CURRENT_ASSERTION'
+      }).resolver.resolve(workspaceId, sendIntent, triggerEvidence, smsRule.activationEvidence!)
+    ).resolves.toMatchObject({ state: 'UNKNOWN', reason: 'OUTBOUND_POLICY_UNKNOWN' });
+  });
+
+  it.each([
+    ['ACTIVE_SUPPRESSION', 'OUTBOUND_POLICY_SUPPRESSED'],
+    ['ASSERTED_BLOCKED', 'OUTBOUND_POLICY_BLOCKED']
+  ] as const)('blocks SMS policy reason %s', async (policyReason, expectedReason) => {
+    const triggerEvidence = trigger();
+    const sendIntent = smsIntent(triggerEvidence);
+    await expect(
+      smsHarness({ policyOutcome: 'BLOCKED', policyReason }).resolver.resolve(
+        workspaceId,
+        sendIntent,
+        triggerEvidence,
+        smsRule.activationEvidence!
+      )
+    ).resolves.toMatchObject({ state: 'SUPPRESSED', reason: expectedReason });
+  });
+
+  it('preserves SMS identity reauth and entitlement loss as fail-closed currentness', async () => {
+    const triggerEvidence = trigger();
+    const sendIntent = smsIntent(triggerEvidence);
+    await expect(
+      smsHarness({
+        ruleCurrentnessState: 'REAUTH_REQUIRED',
+        ruleCurrentnessReason: 'CHANNEL_IDENTITY_REAUTH_REQUIRED'
+      }).resolver.resolve(workspaceId, sendIntent, triggerEvidence, smsRule.activationEvidence!)
+    ).resolves.toMatchObject({
+      state: 'REAUTH_REQUIRED',
+      reason: 'CHANNEL_IDENTITY_REAUTH_REQUIRED'
+    });
+    await expect(
+      smsHarness({
+        ruleCurrentnessState: 'REVOKED',
+        ruleCurrentnessReason: 'ENTITLEMENT_REVOKED'
+      }).resolver.resolve(workspaceId, sendIntent, triggerEvidence, smsRule.activationEvidence!)
+    ).resolves.toMatchObject({ state: 'REVOKED', reason: 'ENTITLEMENT_REVOKED' });
   });
 });

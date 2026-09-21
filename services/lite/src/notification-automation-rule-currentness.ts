@@ -8,6 +8,9 @@ import type { ChannelNotificationRuleId } from '@markorbit/contracts/channel-not
 import type { PublishPackage } from '@markorbit/contracts/product-loop';
 import type { ChannelEntitlementAccessV1 } from '@markorbit/contracts/channel-platform';
 import type { WorkspaceEmailSenderProfileV1 } from '@markorbit/contracts/email-sender-profile';
+import type { WorkspaceChannelIdentityCurrentnessV1 } from '@markorbit/contracts/channel-identity-binding';
+import type { ExternalCredentialSecretKindV1 } from '@markorbit/contracts/external-credential';
+import type { WorkspaceChannelIdentityCurrentnessResolverV1 } from './workspace-channel-identity-currentness.js';
 import type { PostgresLiteContentPreparationStore } from './content-preparation.js';
 import type { PostgresEmailSenderProfileStore } from './email-sender-profile.js';
 import type { PostgresNotificationAutomationRuleStore } from './notification-automation-rule.js';
@@ -16,6 +19,121 @@ export interface NotificationAutomationEntitlementReader {
   resolve(
     workspaceId: string
   ): Promise<Readonly<ChannelEntitlementAccessV1> | Readonly<{ unavailable: true }>>;
+}
+
+export interface SmsNotificationChannelIdentityCurrentnessReaderV1 {
+  resolve(input: {
+    workspaceId: string;
+    featureKey: 'SMS_WORKSPACE_NOTIFICATION';
+    binding: Readonly<{
+      id: `workspace-channel-identity-binding_${string}`;
+      version: number;
+      fingerprintSha256: string;
+    }>;
+  }): Promise<Readonly<WorkspaceChannelIdentityCurrentnessV1>>;
+}
+
+export type SmsNotificationChannelCredentialRequirementsV1 =
+  | Readonly<{
+      kind: 'OAUTH';
+      expectedProvider: string;
+      requiredScopes: readonly string[];
+    }>
+  | Readonly<{
+      kind: 'EXTERNAL_CREDENTIAL';
+      expectedProvider: string;
+      expectedSecretKind: ExternalCredentialSecretKindV1;
+    }>;
+
+export interface SmsNotificationChannelIdentityRequirementsReaderV1 {
+  resolve(input: {
+    workspaceId: string;
+    featureKey: 'SMS_WORKSPACE_NOTIFICATION';
+    binding: Readonly<{
+      id: `workspace-channel-identity-binding_${string}`;
+      version: number;
+      fingerprintSha256: string;
+    }>;
+  }): Promise<
+    Readonly<SmsNotificationChannelCredentialRequirementsV1> | Readonly<{ unavailable: true }>
+  >;
+}
+
+export class UnavailableSmsNotificationChannelIdentityRequirementsReaderV1 implements SmsNotificationChannelIdentityRequirementsReaderV1 {
+  resolve(): Promise<Readonly<{ unavailable: true }>> {
+    return Promise.resolve({ unavailable: true });
+  }
+}
+
+function unavailableSmsIdentityCurrentness(
+  input: Parameters<SmsNotificationChannelIdentityCurrentnessReaderV1['resolve']>[0],
+  now: () => string
+): Readonly<WorkspaceChannelIdentityCurrentnessV1> {
+  return {
+    schemaVersion: 1,
+    workspaceId: input.workspaceId,
+    featureKey: input.featureKey,
+    binding: input.binding,
+    state: 'UNAVAILABLE',
+    reason: 'OWNER_DATA_UNKNOWN',
+    assessedAt: now(),
+    createsExecutionAuthority: false
+  };
+}
+
+export class C6SmsNotificationChannelIdentityCurrentnessReaderV1 implements SmsNotificationChannelIdentityCurrentnessReaderV1 {
+  constructor(
+    private readonly currentness: Pick<WorkspaceChannelIdentityCurrentnessResolverV1, 'resolve'>,
+    private readonly requirements: SmsNotificationChannelIdentityRequirementsReaderV1,
+    private readonly now: () => string = () => new Date().toISOString()
+  ) {}
+
+  async resolve(
+    input: Parameters<SmsNotificationChannelIdentityCurrentnessReaderV1['resolve']>[0]
+  ): Promise<Readonly<WorkspaceChannelIdentityCurrentnessV1>> {
+    let requirements: Awaited<
+      ReturnType<SmsNotificationChannelIdentityRequirementsReaderV1['resolve']>
+    >;
+    try {
+      requirements = await this.requirements.resolve(input);
+    } catch {
+      return unavailableSmsIdentityCurrentness(input, this.now);
+    }
+    if ('unavailable' in requirements) return unavailableSmsIdentityCurrentness(input, this.now);
+
+    try {
+      return await this.currentness.resolve({
+        workspaceId: input.workspaceId,
+        featureKey: input.featureKey,
+        binding: input.binding,
+        ...(requirements.kind === 'OAUTH'
+          ? {
+              oauthRequirements: {
+                expectedProvider: requirements.expectedProvider,
+                requiredScopes: requirements.requiredScopes
+              }
+            }
+          : {
+              externalCredentialRequirements: {
+                expectedProvider: requirements.expectedProvider,
+                expectedSecretKind: requirements.expectedSecretKind
+              }
+            })
+      });
+    } catch {
+      return unavailableSmsIdentityCurrentness(input, this.now);
+    }
+  }
+}
+
+export class UnavailableSmsNotificationChannelIdentityCurrentnessReaderV1 implements SmsNotificationChannelIdentityCurrentnessReaderV1 {
+  constructor(private readonly now: () => string = () => new Date().toISOString()) {}
+
+  resolve(
+    input: Parameters<SmsNotificationChannelIdentityCurrentnessReaderV1['resolve']>[0]
+  ): Promise<Readonly<WorkspaceChannelIdentityCurrentnessV1>> {
+    return Promise.resolve(unavailableSmsIdentityCurrentness(input, this.now));
+  }
 }
 
 function canonical(value: unknown): unknown {
@@ -47,7 +165,10 @@ export class NotificationAutomationRuleCurrentnessResolver {
     >,
     private readonly entitlement: NotificationAutomationEntitlementReader,
     private readonly now: () => string = () => new Date().toISOString(),
-    private readonly verificationMaximumAgeMs = 24 * 60 * 60 * 1000
+    private readonly verificationMaximumAgeMs = 24 * 60 * 60 * 1000,
+    private readonly smsIdentity: SmsNotificationChannelIdentityCurrentnessReaderV1 = new UnavailableSmsNotificationChannelIdentityCurrentnessReaderV1(
+      now
+    )
   ) {}
 
   async resolve(
@@ -89,16 +210,6 @@ export class NotificationAutomationRuleCurrentnessResolver {
       if (exact.status === 'REVOKED') return result('REVOKED', 'RULE_NOT_ACTIVE');
       if (exact.status !== 'ACTIVE') return result('STALE', 'RULE_NOT_ACTIVE');
 
-      const entitlement = await this.entitlement.resolve(workspaceId);
-      if ('unavailable' in entitlement) return result('UNAVAILABLE', 'OWNER_UNAVAILABLE');
-      if (
-        entitlement.workspaceId !== workspaceId ||
-        entitlement.featureKey !== 'EMAIL_NOTIFICATION' ||
-        entitlement.entitlementKey !== 'lite.channel.email.notification'
-      )
-        return result('UNKNOWN', 'OWNER_DATA_UNKNOWN');
-      if (!entitlement.allowed) return result('REVOKED', 'ENTITLEMENT_REVOKED');
-
       const publishPackage = await this.content.findPublishPackage(
         workspaceId,
         exact.spec.content.publishPackageId,
@@ -110,6 +221,42 @@ export class NotificationAutomationRuleCurrentnessResolver {
         publishPackage.publishPackageFingerprintSha256 !== exact.spec.content.fingerprintSha256
       )
         return result('STALE', 'CONTENT_FINGERPRINT_MISMATCH');
+
+      if (exact.spec.featureKey === 'SMS_WORKSPACE_NOTIFICATION') {
+        const identity = await this.smsIdentity.resolve({
+          workspaceId,
+          featureKey: 'SMS_WORKSPACE_NOTIFICATION',
+          binding: exact.spec.channelIdentityBinding
+        });
+        if (
+          identity.workspaceId !== workspaceId ||
+          identity.featureKey !== 'SMS_WORKSPACE_NOTIFICATION' ||
+          identity.binding.id !== exact.spec.channelIdentityBinding.id ||
+          identity.binding.version !== exact.spec.channelIdentityBinding.version ||
+          identity.binding.fingerprintSha256 !== exact.spec.channelIdentityBinding.fingerprintSha256
+        )
+          return result('UNKNOWN', 'CHANNEL_IDENTITY_UNKNOWN');
+        if (identity.state === 'STALE') return result('STALE', 'CHANNEL_IDENTITY_STALE');
+        if (identity.state === 'REVOKED') return result('REVOKED', 'CHANNEL_IDENTITY_REVOKED');
+        if (identity.state === 'REAUTH_REQUIRED')
+          return result('REAUTH_REQUIRED', 'CHANNEL_IDENTITY_REAUTH_REQUIRED');
+        if (identity.state === 'NOT_ENTITLED') return result('REVOKED', 'ENTITLEMENT_REVOKED');
+        if (identity.state === 'UNKNOWN') return result('UNKNOWN', 'CHANNEL_IDENTITY_UNKNOWN');
+        if (identity.state === 'UNAVAILABLE')
+          return result('UNAVAILABLE', 'CHANNEL_IDENTITY_UNAVAILABLE');
+        if (identity.state !== 'CURRENT') return result('UNKNOWN', 'CHANNEL_IDENTITY_UNKNOWN');
+        return result('CURRENT', 'EXACT_ACTIVE_RULE_CURRENT');
+      }
+
+      const entitlement = await this.entitlement.resolve(workspaceId);
+      if ('unavailable' in entitlement) return result('UNAVAILABLE', 'OWNER_UNAVAILABLE');
+      if (
+        entitlement.workspaceId !== workspaceId ||
+        entitlement.featureKey !== 'EMAIL_NOTIFICATION' ||
+        entitlement.entitlementKey !== 'lite.channel.email.notification'
+      )
+        return result('UNKNOWN', 'OWNER_DATA_UNKNOWN');
+      if (!entitlement.allowed) return result('REVOKED', 'ENTITLEMENT_REVOKED');
 
       let sender: WorkspaceEmailSenderProfileV1;
       try {
