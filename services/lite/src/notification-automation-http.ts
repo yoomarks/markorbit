@@ -18,6 +18,10 @@ import {
   type SmsNotificationDeliveryRuntimeV1
 } from './notification-delivery-runtime.js';
 import type { NotificationAmazonSesAuthenticatedEventIngestionV1 } from './notification-delivery-ses.js';
+import {
+  TWILIO_SMS_STATUS_CALLBACK_PATH_V1,
+  type NotificationTwilioSmsAuthenticatedEventIngestionV1
+} from './notification-delivery-twilio-sms.js';
 
 function internal(request: JsonRequest, secret: string): void {
   if (!secret || request.headers['x-markorbit-internal-authorization'] !== secret)
@@ -61,6 +65,21 @@ function bodyOf(request: JsonRequest): Record<string, unknown> {
     throw new HttpError(400, 'INVALID_REQUEST', 'Request body must be an object.');
   return request.body as Record<string, unknown>;
 }
+function formPairs(value: unknown): readonly Readonly<{ name: string; value: string }>[] {
+  if (!Array.isArray(value) || value.length < 1 || value.length > 100)
+    throw new HttpError(400, 'INVALID_REQUEST', 'Twilio callback form is invalid.');
+  return value.map((pair) => {
+    if (
+      !Array.isArray(pair) ||
+      pair.length !== 2 ||
+      typeof pair[0] !== 'string' ||
+      typeof pair[1] !== 'string'
+    )
+      throw new HttpError(400, 'INVALID_REQUEST', 'Twilio callback form is invalid.');
+    return { name: pair[0], value: pair[1] };
+  });
+}
+
 function positive(value: unknown, field: string): number {
   if (!Number.isSafeInteger(value) || Number(value) < 1)
     throw new HttpError(400, 'INVALID_REQUEST', `${field} must be a positive integer.`);
@@ -119,8 +138,39 @@ export function createNotificationAutomationRoutesV1(options: {
   deliveryRuntime?: Pick<EmailNotificationDeliveryRuntimeV1, 'deliver'>;
   smsDeliveryRuntime?: Pick<SmsNotificationDeliveryRuntimeV1, 'deliver'>;
   providerEvents?: Pick<NotificationAmazonSesAuthenticatedEventIngestionV1, 'ingest'>;
+  twilioSmsProviderEvents?: Pick<NotificationTwilioSmsAuthenticatedEventIngestionV1, 'ingest'>;
 }): readonly JsonRoute[] {
   return [
+    ...(options.twilioSmsProviderEvents
+      ? ([
+          {
+            method: 'POST' as const,
+            path: TWILIO_SMS_STATUS_CALLBACK_PATH_V1,
+            bodyParser: 'FORM_URLENCODED' as const,
+            bodyLimitBytes: 32 * 1024,
+            handle: async (request: JsonRequest) => {
+              try {
+                const signature = request.headers['x-twilio-signature'];
+                if (typeof signature !== 'string' || !signature)
+                  throw new Error('Twilio signature is required.');
+                return json(
+                  200,
+                  await options.twilioSmsProviderEvents!.ingest({
+                    signature,
+                    formParams: formPairs(request.body)
+                  })
+                );
+              } catch {
+                throw new HttpError(
+                  401,
+                  'UNAUTHENTICATED_PROVIDER_EVENT',
+                  'Authenticated, exactly correlated Twilio SMS evidence is required.'
+                );
+              }
+            }
+          }
+        ] as const)
+      : []),
     ...(options.providerEvents
       ? ([
           {

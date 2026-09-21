@@ -55,6 +55,7 @@ import {
   TwilioSmsIdentityVerificationAuthorityV1
 } from './twilio-sms-identity.js';
 import { TwilioSmsTransportAuthorityV1 } from './twilio-sms-transport.js';
+import { TwilioSmsStatusCallbackVerificationAuthorityV1 } from './twilio-sms-webhook.js';
 
 const milestoneFixtureMode = process.env.MO_MILESTONE_TEST_RUNTIME === '1';
 let database: ManagedDatabase | undefined;
@@ -122,6 +123,12 @@ if (milestoneFixtureMode) {
   const twilioSmsStatusCallbackUrl = process.env.MO_TWILIO_SMS_STATUS_CALLBACK_URL;
   const twilioSmsTransport = twilioSmsStatusCallbackUrl
     ? new TwilioSmsTransportAuthorityV1(externalCredentialProvider, twilioSmsStatusCallbackUrl)
+    : undefined;
+  const twilioSmsStatusCallbackVerification = twilioSmsStatusCallbackUrl
+    ? new TwilioSmsStatusCallbackVerificationAuthorityV1(
+        externalCredentialProvider,
+        twilioSmsStatusCallbackUrl
+      )
     : undefined;
   const capabilityCognitiveRead = new CapabilityCognitiveReadServiceV1(
     new PostgresCurrentRuntimeCapabilityCatalogV1(pool, registry),
@@ -264,6 +271,7 @@ if (milestoneFixtureMode) {
     ),
     channelIdentityVerification,
     ...(twilioSmsTransport ? { twilioSmsTransport } : {}),
+    ...(twilioSmsStatusCallbackVerification ? { twilioSmsStatusCallbackVerification } : {}),
     ...(managedAiRuntime ?? {}),
     ...(managedCommunicationRuntime ?? {}),
     ...(governedCapabilityRuntime ? { governedCapabilityRuntime } : {}),

@@ -73,6 +73,11 @@ import {
 } from './email-delivery-ses.js';
 import { NotificationAmazonSesAuthenticatedEventIngestionV1 } from './notification-delivery-ses.js';
 import {
+  HttpCapabilityTwilioSmsStatusCallbackVerifierV1,
+  NotificationTwilioSmsAuthenticatedEventIngestionV1,
+  TWILIO_SMS_STATUS_CALLBACK_PATH_V1
+} from './notification-delivery-twilio-sms.js';
+import {
   createEmailCampaignDeliveryCurrentnessResolver,
   WorkspaceDirectoryEmailEndpointResolver
 } from './email-campaign-delivery-currentness.js';
@@ -213,7 +218,15 @@ const dataEngineApiKey = process.env.DATA_ENGINE_API_KEY;
 const coreUrl = process.env.CORE_URL ?? 'http://127.0.0.1:4101';
 const capabilityEngineUrl = process.env.CAPABILITY_ENGINE_URL ?? 'http://127.0.0.1:4103';
 const liteVisualStyleId = process.env.MOKI_LITE_STYLE_ID ?? 'markorbit-lite-editorial-v1';
-const twilioSmsTransportConfigured = Boolean(process.env.MO_TWILIO_SMS_STATUS_CALLBACK_URL);
+const twilioSmsStatusCallbackUrl = process.env.MO_TWILIO_SMS_STATUS_CALLBACK_URL;
+if (
+  twilioSmsStatusCallbackUrl &&
+  new URL(twilioSmsStatusCallbackUrl).pathname !== TWILIO_SMS_STATUS_CALLBACK_PATH_V1
+)
+  throw new Error(
+    `MO_TWILIO_SMS_STATUS_CALLBACK_URL path must be ${TWILIO_SMS_STATUS_CALLBACK_PATH_V1}.`
+  );
+const twilioSmsTransportConfigured = Boolean(twilioSmsStatusCallbackUrl);
 
 const { ManagedDatabase, parseDatabaseConfig } = await import('@markorbit/persistence');
 const database = new ManagedDatabase(
@@ -473,6 +486,17 @@ const notificationSmsDeliveryRuntime = twilioSmsTransportConfigured
       new HttpCapabilityTwilioSmsTransportV1(capabilityEngineUrl, internalServiceSecret)
     )
   : undefined;
+const notificationTwilioSmsProviderEvents = twilioSmsStatusCallbackUrl
+  ? new NotificationTwilioSmsAuthenticatedEventIngestionV1(
+      notificationDeliveryStore,
+      workspaceChannelIdentityBindingStore,
+      smsNotificationIdentityCurrentness,
+      new HttpCapabilityTwilioSmsStatusCallbackVerifierV1(
+        capabilityEngineUrl,
+        internalServiceSecret
+      )
+    )
+  : undefined;
 const notificationProviderEvents = notificationSesRouting
   ? new NotificationAmazonSesAuthenticatedEventIngestionV1(
       new AmazonSnsSesEventAuthenticatorV1(
@@ -724,7 +748,10 @@ const runtime = createServiceRuntime(serviceManifest, {
       ...(notificationSmsDeliveryRuntime
         ? { smsDeliveryRuntime: notificationSmsDeliveryRuntime }
         : {}),
-      ...(notificationProviderEvents ? { providerEvents: notificationProviderEvents } : {})
+      ...(notificationProviderEvents ? { providerEvents: notificationProviderEvents } : {}),
+      ...(notificationTwilioSmsProviderEvents
+        ? { twilioSmsProviderEvents: notificationTwilioSmsProviderEvents }
+        : {})
     }),
     ...createTradingStudioReadRoutes({
       internalServiceSecret,

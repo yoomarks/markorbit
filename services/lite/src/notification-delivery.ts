@@ -207,4 +207,51 @@ export class PostgresNotificationDeliveryStore {
       ? clone(result.rows[0].attempt_json as ChannelNotificationDeliveryAttemptV1)
       : undefined;
   }
+
+  async findByProviderSubmissionRefGlobal(providerSubmissionRef: string) {
+    try {
+      const result = await this.query.query<Row>(
+        `SELECT attempt_json FROM lite_notification_delivery_attempts
+          WHERE provider_submission_ref=$1
+          LIMIT 2`,
+        [providerSubmissionRef]
+      );
+      if (result.rows.length > 1)
+        throw new NotificationDeliveryPersistenceError(
+          'INTEGRITY_FAILURE',
+          'Provider submission reference is not globally unique.'
+        );
+      return result.rows[0]
+        ? clone(result.rows[0].attempt_json as ChannelNotificationDeliveryAttemptV1)
+        : undefined;
+    } catch (error) {
+      if (error instanceof NotificationDeliveryPersistenceError) throw error;
+      throw new NotificationDeliveryPersistenceError(
+        'PERSISTENCE_UNAVAILABLE',
+        'Notification provider correlation is unavailable.'
+      );
+    }
+  }
+
+  async listObservationsForAttempt(
+    workspaceId: string,
+    attemptId: ChannelNotificationDeliveryAttemptId
+  ): Promise<readonly ChannelNotificationDeliveryObservationV1[]> {
+    try {
+      const result = await this.query.query<Row>(
+        `SELECT observation_json FROM lite_notification_delivery_observations
+          WHERE workspace_id=$1 AND notification_delivery_attempt_id=$2
+          ORDER BY observed_at ASC, notification_delivery_observation_id ASC`,
+        [workspaceId, attemptId]
+      );
+      return result.rows.map((row) =>
+        clone(row.observation_json as ChannelNotificationDeliveryObservationV1)
+      );
+    } catch {
+      throw new NotificationDeliveryPersistenceError(
+        'PERSISTENCE_UNAVAILABLE',
+        'Notification delivery observations are unavailable.'
+      );
+    }
+  }
 }

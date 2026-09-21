@@ -20,7 +20,7 @@ export interface HealthResponse {
 export interface JsonRequest {
   body: unknown;
   /**
-   * Exact bytes received on the wire for non-GET JSON requests.
+   * Exact bytes received on the wire for non-GET requests.
    *
    * This is additive so existing route handlers remain source-compatible. Consumers that
    * authenticate or fingerprint an exact wire representation must use these bytes rather than
@@ -42,6 +42,11 @@ export interface JsonRoute {
   method: 'GET' | 'POST' | 'PATCH';
   path: string;
   bodyLimitBytes?: number;
+  /**
+   * Request body decoder. Routes remain JSON-only unless they explicitly opt into form data.
+   * FORM_URLENCODED preserves every decoded name/value pair, including duplicate names.
+   */
+  bodyParser?: 'JSON' | 'FORM_URLENCODED';
   handle(request: JsonRequest): Promise<JsonResult> | JsonResult;
 }
 export interface ServiceRuntime {
@@ -105,11 +110,15 @@ function send(request: IncomingMessage, response: ServerResponse, result: JsonRe
   });
   response.end(JSON.stringify(result.body));
 }
-type ReadJsonBody = {
+type ReadRequestBody = {
   body: unknown;
   rawBody: Buffer;
 };
-async function readBody(request: IncomingMessage, limit: number): Promise<ReadJsonBody> {
+async function readBody(
+  request: IncomingMessage,
+  limit: number,
+  parser: NonNullable<JsonRoute['bodyParser']>
+): Promise<ReadRequestBody> {
   const chunks: Buffer[] = [];
   let size = 0;
   for await (const chunk of request) {
@@ -119,8 +128,12 @@ async function readBody(request: IncomingMessage, limit: number): Promise<ReadJs
       throw new HttpError(400, 'INVALID_REQUEST', 'Request body exceeds the size limit.');
     chunks.push(buffer);
   }
-  if (size === 0) throw new HttpError(400, 'INVALID_REQUEST', 'A JSON request body is required.');
+  if (size === 0) throw new HttpError(400, 'INVALID_REQUEST', 'A request body is required.');
   const rawBody = Buffer.concat(chunks);
+  if (parser === 'FORM_URLENCODED') {
+    const form = new URLSearchParams(rawBody.toString('utf8'));
+    return { body: Array.from(form.entries()), rawBody };
+  }
   try {
     return { body: JSON.parse(rawBody.toString('utf8')) as unknown, rawBody };
   } catch {
@@ -190,16 +203,25 @@ export function createServiceRuntime(
           const matched = pathRoutes.find((candidate) => candidate.route.method === request.method);
           if (!matched) throw new HttpError(405, 'METHOD_NOT_ALLOWED', 'Method not allowed.');
           const contentType = request.headers['content-type'];
+          const bodyParser = matched.route.bodyParser ?? 'JSON';
+          const expectedContentType =
+            bodyParser === 'FORM_URLENCODED'
+              ? 'application/x-www-form-urlencoded'
+              : 'application/json';
           if (
             request.method !== 'GET' &&
             (typeof contentType !== 'string' ||
-              contentType.split(';', 1)[0]?.trim().toLowerCase() !== 'application/json')
+              contentType.split(';', 1)[0]?.trim().toLowerCase() !== expectedContentType)
           )
-            throw new HttpError(400, 'INVALID_REQUEST', 'Content-Type must be application/json.');
+            throw new HttpError(
+              400,
+              'INVALID_REQUEST',
+              `Content-Type must be ${expectedContentType}.`
+            );
           const read =
             request.method === 'GET'
               ? { body: undefined, rawBody: undefined }
-              : await readBody(request, matched.route.bodyLimitBytes ?? limit);
+              : await readBody(request, matched.route.bodyLimitBytes ?? limit, bodyParser);
           const headers: Record<string, string | undefined> = {};
           for (const [key, value] of Object.entries(request.headers))
             headers[key] = Array.isArray(value) ? value[0] : value;
