@@ -153,9 +153,9 @@ function OpportunityReviewCard({
             ))}
           </Select>
           <Alert tone="warning" title="What Prepare will do">
-            Create a reviewable Prepared Action for one MarkReg Formal Trademark Service
-            Opportunity from this exact qualified Candidate. Nothing is created in MarkReg until
-            you separately confirm the Prepared Action.
+            Create a reviewable Prepared Action for one MarkReg Formal Trademark Service Opportunity
+            from this exact qualified Candidate. Nothing is created in MarkReg until you separately
+            confirm the Prepared Action.
           </Alert>
           <Button
             disabled={busy !== '' || relationshipModel === ''}
