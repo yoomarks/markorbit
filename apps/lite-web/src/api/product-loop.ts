@@ -77,7 +77,8 @@ async function request<T>(
   workspaceId: string,
   method: 'GET' | 'POST' = 'GET',
   body?: unknown,
-  idempotencyKey?: string
+  idempotencyKey?: string,
+  includeWorkspaceBody = true
 ): Promise<T> {
   const csrf = method === 'GET' ? '' : await csrfToken();
   let response: Response;
@@ -93,7 +94,13 @@ async function request<T>(
       },
       ...(method === 'GET'
         ? {}
-        : { body: JSON.stringify({ workspaceId, ...(body as Record<string, unknown>) }) })
+        : {
+            body: JSON.stringify(
+              includeWorkspaceBody
+                ? { workspaceId, ...(body as Record<string, unknown>) }
+                : (body as Record<string, unknown>)
+            )
+          })
     });
   } catch (cause) {
     throw new TodayHttpError(
@@ -167,6 +174,39 @@ function assertQualifiedOpportunityReview(
     );
 }
 
+async function loadQualifiedOpportunityReviewEvidence(
+  workspaceId: string,
+  recommendation: Readonly<TodayRecommendation>
+): Promise<QualifiedOpportunityReviewEvidence> {
+  if (recommendation.kind !== 'OPPORTUNITY_REVIEW')
+    throw new TodayHttpError(
+      422,
+      'INVALID_RECOMMENDATION_KIND',
+      'Only an Opportunity Review can load qualified Candidate evidence.'
+    );
+  const source = exactOpportunityCandidateSource(recommendation);
+  const candidateId = source.sourceId as OpportunityCandidateId;
+  const [candidate, qualificationDecision] = await Promise.all([
+    request<OpportunityCandidate>(
+      `/api/lite/opportunity-candidates/${encodeURIComponent(candidateId)}`,
+      workspaceId
+    ),
+    request<OpportunityQualificationDecision | null>(
+      `/api/lite/opportunity-candidates/${encodeURIComponent(candidateId)}/qualification`,
+      workspaceId
+    )
+  ]);
+  if (!qualificationDecision)
+    throw new TodayHttpError(
+      409,
+      'QUALIFICATION_REQUIRED',
+      'The Opportunity Candidate has no current human Qualification Decision.'
+    );
+  const evidence = { source, candidate, qualificationDecision };
+  assertQualifiedOpportunityReview(recommendation, evidence);
+  return evidence;
+}
+
 export function createTodayClient(workspaceId: string): TodayClient {
   return {
     loadToday: () => request<TodayProductLoopSnapshot>('/api/lite/today', workspaceId),
@@ -175,35 +215,8 @@ export function createTodayClient(workspaceId: string): TodayClient {
         `/api/lite/prepared-actions/${encodeURIComponent(preparedActionId)}`,
         workspaceId
       ),
-    loadQualifiedOpportunityReview: async (recommendation) => {
-      if (recommendation.kind !== 'OPPORTUNITY_REVIEW')
-        throw new TodayHttpError(
-          422,
-          'INVALID_RECOMMENDATION_KIND',
-          'Only an Opportunity Review can load qualified Candidate evidence.'
-        );
-      const source = exactOpportunityCandidateSource(recommendation);
-      const candidateId = source.sourceId as OpportunityCandidateId;
-      const [candidate, qualificationDecision] = await Promise.all([
-        request<OpportunityCandidate>(
-          `/api/lite/opportunity-candidates/${encodeURIComponent(candidateId)}`,
-          workspaceId
-        ),
-        request<OpportunityQualificationDecision | null>(
-          `/api/lite/opportunity-candidates/${encodeURIComponent(candidateId)}/qualification`,
-          workspaceId
-        )
-      ]);
-      if (!qualificationDecision)
-        throw new TodayHttpError(
-          409,
-          'QUALIFICATION_REQUIRED',
-          'The Opportunity Candidate has no current human Qualification Decision.'
-        );
-      const evidence = { source, candidate, qualificationDecision };
-      assertQualifiedOpportunityReview(recommendation, evidence);
-      return evidence;
-    },
+    loadQualifiedOpportunityReview: (recommendation) =>
+      loadQualifiedOpportunityReviewEvidence(workspaceId, recommendation),
     prepareContent: (recommendation) =>
       request<PreparedActionJourney>(
         `/api/lite/today/${encodeURIComponent(recommendation.todayRecommendationId)}/prepared-actions`,
@@ -220,8 +233,13 @@ export function createTodayClient(workspaceId: string): TodayClient {
         },
         `prepare:${recommendation.todayRecommendationId}:${recommendation.version}`
       ),
-    prepareQualifiedOpportunity: (recommendation, evidence, relationshipModel) => {
+    prepareQualifiedOpportunity: async (recommendation, evidence, relationshipModel) => {
+      // UI evidence is display context only. Re-read owner truth immediately before mutation.
       assertQualifiedOpportunityReview(recommendation, evidence);
+      const freshEvidence = await loadQualifiedOpportunityReviewEvidence(
+        workspaceId,
+        recommendation
+      );
       return request<PreparedActionJourney>(
         `/api/lite/today/${encodeURIComponent(recommendation.todayRecommendationId)}/prepared-actions`,
         workspaceId,
@@ -232,19 +250,20 @@ export function createTodayClient(workspaceId: string): TodayClient {
           plan: {
             kind: 'CREATE_FORMAL_TRADEMARK_SERVICE_OPPORTUNITY',
             candidate: {
-              id: evidence.qualificationDecision.candidate.id,
-              version: evidence.qualificationDecision.candidate.version
+              id: freshEvidence.qualificationDecision.candidate.id,
+              version: freshEvidence.qualificationDecision.candidate.version
             },
             expectedCandidateFingerprintSha256:
-              evidence.qualificationDecision.expectedCandidateFingerprintSha256,
+              freshEvidence.qualificationDecision.expectedCandidateFingerprintSha256,
             qualificationDecision: {
-              id: evidence.qualificationDecision.opportunityQualificationDecisionId,
-              version: evidence.qualificationDecision.version
+              id: freshEvidence.qualificationDecision.opportunityQualificationDecisionId,
+              version: freshEvidence.qualificationDecision.version
             },
             relationshipModel
           }
         },
-        `prepare-opportunity:${recommendation.todayRecommendationId}:${recommendation.version}`
+        `prepare-opportunity:${recommendation.todayRecommendationId}:${recommendation.version}`,
+        false
       );
     },
     confirm: (journey) =>
