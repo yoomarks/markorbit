@@ -54,6 +54,7 @@ import {
   TWILIO_SMS_IMPLEMENTATION_PROFILE_V1,
   TwilioSmsIdentityVerificationAuthorityV1
 } from './twilio-sms-identity.js';
+import { TwilioSmsTransportAuthorityV1 } from './twilio-sms-transport.js';
 
 const milestoneFixtureMode = process.env.MO_MILESTONE_TEST_RUNTIME === '1';
 let database: ManagedDatabase | undefined;
@@ -111,9 +112,17 @@ if (milestoneFixtureMode) {
     definition: TWILIO_SMS_ACCEPTED_CAPABILITY_CANON_V1
   });
   await implementationProfiles.register(TWILIO_SMS_IMPLEMENTATION_PROFILE_V1);
-  const channelIdentityVerification = new TwilioSmsIdentityVerificationAuthorityV1(
-    new CoreBackedExternalCredentialProviderV1(coreUrl, internalServiceSecret)
+  const externalCredentialProvider = new CoreBackedExternalCredentialProviderV1(
+    coreUrl,
+    internalServiceSecret
   );
+  const channelIdentityVerification = new TwilioSmsIdentityVerificationAuthorityV1(
+    externalCredentialProvider
+  );
+  const twilioSmsStatusCallbackUrl = process.env.MO_TWILIO_SMS_STATUS_CALLBACK_URL;
+  const twilioSmsTransport = twilioSmsStatusCallbackUrl
+    ? new TwilioSmsTransportAuthorityV1(externalCredentialProvider, twilioSmsStatusCallbackUrl)
+    : undefined;
   const capabilityCognitiveRead = new CapabilityCognitiveReadServiceV1(
     new PostgresCurrentRuntimeCapabilityCatalogV1(pool, registry),
     implementationProfiles
@@ -254,6 +263,7 @@ if (milestoneFixtureMode) {
       implementationProfiles
     ),
     channelIdentityVerification,
+    ...(twilioSmsTransport ? { twilioSmsTransport } : {}),
     ...(managedAiRuntime ?? {}),
     ...(managedCommunicationRuntime ?? {}),
     ...(governedCapabilityRuntime ? { governedCapabilityRuntime } : {}),
