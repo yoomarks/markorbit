@@ -10,11 +10,11 @@ import type {
   WorkspaceChannelIdentityVerificationAuthorityV1
 } from './workspace-channel-identity-currentness.js';
 
-const TWILIO_SMS_CAPABILITY_ID = 'channel.sms.notification';
-const TWILIO_SMS_CAPABILITY_VERSION = '1';
-const TWILIO_SMS_IMPLEMENTATION_PROFILE_ID =
+export const TWILIO_SMS_CAPABILITY_ID = 'channel.sms.notification';
+export const TWILIO_SMS_CAPABILITY_VERSION = '1';
+export const TWILIO_SMS_IMPLEMENTATION_PROFILE_ID =
   'implementation-profile_twilio-sms-incoming-phone-number-v1';
-const TWILIO_SMS_IMPLEMENTATION_PROFILE_VERSION = 1;
+export const TWILIO_SMS_IMPLEMENTATION_PROFILE_VERSION = 1;
 
 function unavailable(
   binding: Readonly<WorkspaceChannelIdentityBindingV1>,

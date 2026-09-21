@@ -26,7 +26,8 @@
     "@markorbit/contracts": "workspace:*",
     "@markorbit/events": "workspace:*",
     "@markorbit/persistence": "workspace:*",
-    "@markorbit/service-kit": "workspace:*"
+    "@markorbit/service-kit": "workspace:*",
+    "twilio": "6.1.1"
   },
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",

@@ -50,6 +50,10 @@ import {
   createTwilioSmsTransportRoutesV1,
   type TwilioSmsTransportAuthorityV1
 } from './twilio-sms-transport.js';
+import {
+  createTwilioSmsStatusCallbackVerificationRoutesV1,
+  type TwilioSmsStatusCallbackVerificationAuthorityV1
+} from './twilio-sms-webhook.js';
 
 export * from './capability-audit-telemetry.js';
 export * from './capability-catalog-integrity.js';
@@ -68,6 +72,7 @@ export * from './channel-identity-provenance-currentness.js';
 export * from './channel-identity-provenance-currentness-http.js';
 export * from './twilio-sms-identity.js';
 export * from './twilio-sms-transport.js';
+export * from './twilio-sms-webhook.js';
 export * from './capability-source-output-identity.js';
 export * from './cn-duration-analytical-pilot.js';
 export * from './cn-duration-band-classification-pilot.js';
@@ -172,6 +177,10 @@ export interface CapabilityEngineOptions {
   >;
   channelIdentityVerification?: Pick<TwilioSmsIdentityVerificationAuthorityV1, 'verify'>;
   twilioSmsTransport?: Pick<TwilioSmsTransportAuthorityV1, 'submit'>;
+  twilioSmsStatusCallbackVerification?: Pick<
+    TwilioSmsStatusCallbackVerificationAuthorityV1,
+    'verify'
+  >;
   internalServiceSecret?: string;
 }
 
@@ -221,6 +230,8 @@ export function createRuntime(options: CapabilityEngineOptions = {}) {
     throw new Error('Channel identity verification requires internalServiceSecret.');
   if (options.twilioSmsTransport && !options.internalServiceSecret)
     throw new Error('Twilio SMS transport requires internalServiceSecret.');
+  if (options.twilioSmsStatusCallbackVerification && !options.internalServiceSecret)
+    throw new Error('Twilio SMS callback verification requires internalServiceSecret.');
   if (options.privateReflectionCandidates && !options.internalServiceSecret) {
     throw new Error('privateReflectionCandidates requires internalServiceSecret.');
   }
@@ -408,6 +419,13 @@ export function createRuntime(options: CapabilityEngineOptions = {}) {
           internalServiceSecret: options.internalServiceSecret
         })
       : [];
+  const twilioSmsStatusCallbackVerificationRoutes =
+    options.twilioSmsStatusCallbackVerification && options.internalServiceSecret
+      ? createTwilioSmsStatusCallbackVerificationRoutesV1({
+          verifier: options.twilioSmsStatusCallbackVerification,
+          internalServiceSecret: options.internalServiceSecret
+        })
+      : [];
   const managedCommunicationRoutes =
     managedCommunicationConfigured && options.internalServiceSecret
       ? createManagedCommunicationRoutesV1({
@@ -445,6 +463,7 @@ export function createRuntime(options: CapabilityEngineOptions = {}) {
         ...channelIdentityProvenanceCurrentnessRoutes,
         ...channelIdentityVerificationRoutes,
         ...twilioSmsTransportRoutes,
+        ...twilioSmsStatusCallbackVerificationRoutes,
         ...managedAiExecutionRoutes,
         ...managedCommunicationRoutes
       ]

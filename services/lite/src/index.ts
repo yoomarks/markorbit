@@ -105,6 +105,7 @@ export * from './notification-trigger-markreg.js';
 export * from './notification-delivery.js';
 export * from './notification-delivery-runtime.js';
 export * from './notification-delivery-ses.js';
+export * from './notification-delivery-twilio-sms.js';
 export * from './workspace-channel-identity-binding.js';
 export * from './workspace-channel-identity-currentness.js';
 export * from './workspace-channel-identity-currentness-http.js';
