@@ -5,7 +5,7 @@ import type {
   PreparedActionJourney,
   TodayRecommendation
 } from '@markorbit/contracts/product-loop';
-import { TodayHttpError, createTodayClient } from './product-loop.js';
+import { createTodayClient, type TodayHttpError } from './product-loop.js';
 
 const workspaceId = '25252525-2525-4252-8252-252525252525';
 const candidateId = 'opportunity-candidate_today-browser';
