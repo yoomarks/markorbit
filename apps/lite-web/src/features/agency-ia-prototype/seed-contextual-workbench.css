@@ -1,0 +1,165 @@
+.seed-contextual-workbench {
+  display: grid;
+  gap: var(--mo-space-lg, 1.25rem);
+  min-width: 0;
+}
+
+.seed-contextual-workbench__grid {
+  display: grid;
+  grid-template-columns: minmax(14rem, 0.8fr) minmax(22rem, 1.5fr) minmax(17rem, 0.9fr);
+  gap: var(--mo-space-lg, 1.25rem);
+  align-items: start;
+  min-width: 0;
+}
+
+.seed-contextual-workbench__context,
+.seed-contextual-workbench__conversation,
+.seed-contextual-workbench__working,
+.seed-contextual-workbench__result {
+  min-width: 0;
+}
+
+.seed-contextual-workbench__eyebrow {
+  margin: 0 0 var(--mo-space-xs, 0.35rem);
+  color: var(--mo-secondary, #657184);
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.seed-contextual-workbench__context h2,
+.seed-contextual-workbench__working h2,
+.seed-contextual-workbench__heading h2,
+.seed-contextual-workbench__result h3 {
+  margin-block: 0 var(--mo-space-sm, 0.65rem);
+}
+
+.seed-contextual-workbench__context ul {
+  display: grid;
+  gap: var(--mo-space-xs, 0.35rem);
+  padding-left: 1.25rem;
+}
+
+.seed-contextual-workbench__heading {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--mo-space-md, 1rem);
+  align-items: start;
+}
+
+.seed-contextual-workbench__turns {
+  display: grid;
+  gap: var(--mo-space-sm, 0.65rem);
+  margin: var(--mo-space-md, 1rem) 0;
+  padding: 0;
+  list-style: none;
+}
+
+.seed-contextual-workbench__turn {
+  max-width: 92%;
+  padding: var(--mo-space-sm, 0.65rem) var(--mo-space-md, 1rem);
+  border: 1px solid var(--mo-border, #d8dee8);
+  border-radius: var(--mo-radius-md, 0.75rem);
+  overflow-wrap: anywhere;
+}
+
+.seed-contextual-workbench__turn p {
+  margin: var(--mo-space-xs, 0.35rem) 0 0;
+}
+
+.seed-contextual-workbench__turn--mo {
+  justify-self: start;
+  background: var(--mo-surface-subtle, #f6f8fb);
+}
+
+.seed-contextual-workbench__turn--you {
+  justify-self: end;
+  background: var(--mo-surface, #fff);
+}
+
+.seed-contextual-workbench__suggestions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--mo-space-sm, 0.65rem);
+  margin-block: var(--mo-space-md, 1rem);
+}
+
+.seed-contextual-workbench__free-text {
+  display: grid;
+  gap: var(--mo-space-xs, 0.35rem);
+}
+
+.seed-contextual-workbench__free-text label {
+  font-weight: 650;
+}
+
+.seed-contextual-workbench__free-text textarea {
+  width: 100%;
+  max-width: 100%;
+  resize: vertical;
+  box-sizing: border-box;
+  padding: var(--mo-space-sm, 0.65rem);
+  border: 1px solid var(--mo-border, #d8dee8);
+  border-radius: var(--mo-radius-md, 0.75rem);
+  background: var(--mo-surface, #fff);
+  color: inherit;
+  font: inherit;
+}
+
+.seed-contextual-workbench__working > div,
+.seed-contextual-workbench__result {
+  display: grid;
+  gap: var(--mo-space-md, 1rem);
+}
+
+.seed-contextual-workbench__link {
+  display: inline-flex;
+  width: fit-content;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
+
+.seed-contextual-workbench__result {
+  margin-top: var(--mo-space-md, 1rem);
+  padding-top: var(--mo-space-md, 1rem);
+  border-top: 1px solid var(--mo-border, #d8dee8);
+}
+
+@media (max-width: 1080px) {
+  .seed-contextual-workbench__grid {
+    grid-template-columns: minmax(13rem, 0.8fr) minmax(20rem, 1.4fr);
+  }
+
+  .seed-contextual-workbench__working {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 760px) {
+  .seed-contextual-workbench__grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .seed-contextual-workbench__working {
+    grid-column: auto;
+  }
+
+  .seed-contextual-workbench__heading {
+    align-items: center;
+  }
+
+  .seed-contextual-workbench__turn {
+    max-width: 100%;
+  }
+
+  .seed-contextual-workbench__suggestions {
+    display: grid;
+  }
+
+  .seed-contextual-workbench__suggestions button,
+  .seed-contextual-workbench__free-text button,
+  .seed-contextual-workbench__working button {
+    width: 100%;
+  }
+}
