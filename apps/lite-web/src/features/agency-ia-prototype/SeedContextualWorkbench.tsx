@@ -62,7 +62,7 @@ const taskCopy: Record<
   },
   OPPORTUNITY_REVIEW: {
     label: 'Opportunity review',
-    question: 'What should MO prepare for your next professional review?',
+    question: 'What should MO prepare for your next review?',
     suggestions: ['Review service need', 'Need more evidence', 'Defer for now'],
     next: 'Prepare reviewable opportunity action'
   },
