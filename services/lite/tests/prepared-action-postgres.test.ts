@@ -1,14 +1,8 @@
-[Reading 877 lines from start (total: 877 lines, 0 remaining)]
-
-import path from "node:path";
-import { createHash } from "node:crypto";
-import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
-import type { WorkspacePrincipal } from "@markorbit/contracts";
-import {
-  ManagedDatabase,
-  loadMigrationsForOwner,
-  migrate,
-} from "@markorbit/persistence";
+import path from 'node:path';
+import { createHash } from 'node:crypto';
+import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import type { WorkspacePrincipal } from '@markorbit/contracts';
+import { ManagedDatabase, loadMigrationsForOwner, migrate } from '@markorbit/persistence';
 import {
   clientNotificationConfirmationFingerprintSha256V1,
   clientNotificationReviewedContentFingerprintSha256V1,
@@ -18,110 +12,103 @@ import {
   type PreparedActionId,
   type ProductLoopSourceReference,
   type TodayRecommendation,
-  type TodayRecommendationId,
-} from "@markorbit/contracts/product-loop";
+  type TodayRecommendationId
+} from '@markorbit/contracts/product-loop';
 import {
   PostgresLiteContentPreparationStore,
-  type ProductLoopSourceAuthority,
-} from "../src/content-preparation.js";
+  type ProductLoopSourceAuthority
+} from '../src/content-preparation.js';
 import {
   handoffResult,
   PostgresPreparedActionStore,
   PreparedActionJourneyError,
   PreparedActionJourneyService,
-  type PreparedActionHandoffAuthority,
-} from "../src/prepared-action.js";
+  type PreparedActionHandoffAuthority
+} from '../src/prepared-action.js';
 import {
   clientNotificationManagedCommunicationSendCommandV1,
-  type ManagedCommunicationClientNotificationSender,
-} from "../src/client-notification-handoff.js";
-import { ClientNotificationFollowupService } from "../src/client-notification-followup.js";
+  type ManagedCommunicationClientNotificationSender
+} from '../src/client-notification-handoff.js';
+import { ClientNotificationFollowupService } from '../src/client-notification-followup.js';
 import {
   CommunicationLinkService,
-  PostgresCommunicationLinkStore,
-} from "../src/communication-link.js";
-import { PostgresLiteWorkItemStore } from "../src/lite-work-item.js";
+  PostgresCommunicationLinkStore
+} from '../src/communication-link.js';
+import { PostgresLiteWorkItemStore } from '../src/lite-work-item.js';
 
 const url = process.env.LITE_TODAY_TEST_DATABASE_URL;
-const required = process.env.LITE_TODAY_POSTGRES_TEST_REQUIRED === "1";
+const required = process.env.LITE_TODAY_POSTGRES_TEST_REQUIRED === '1';
 if (required && !url)
   throw new Error(
-    "LITE_TODAY_TEST_DATABASE_URL is required when LITE_TODAY_POSTGRES_TEST_REQUIRED=1.",
+    'LITE_TODAY_TEST_DATABASE_URL is required when LITE_TODAY_POSTGRES_TEST_REQUIRED=1.'
   );
 const suite = url ? describe : describe.skip;
-const workspaceId = "25252525-2525-4252-8252-252525252525";
-const otherWorkspaceId = "26262626-2626-4262-8262-262626262626";
-const principalId = "11111111-1111-4111-8111-111111111111";
+const workspaceId = '25252525-2525-4252-8252-252525252525';
+const otherWorkspaceId = '26262626-2626-4262-8262-262626262626';
+const principalId = '11111111-1111-4111-8111-111111111111';
 const principal: WorkspacePrincipal = {
-  kind: "WORKSPACE",
-  sessionId: "session_pg-notice",
+  kind: 'WORKSPACE',
+  sessionId: 'session_pg-notice',
   userId: principalId,
   workspaceId,
-  membershipId: "membership_pg-notice",
-  role: "WORKSPACE_ADMIN",
-  permissions: ["workspace:read", "matter:manage"],
-  sessionExpiresAt: "2026-09-13T12:00:00.000Z",
+  membershipId: 'membership_pg-notice',
+  role: 'WORKSPACE_ADMIN',
+  permissions: ['workspace:read', 'matter:manage'],
+  sessionExpiresAt: '2026-09-13T12:00:00.000Z'
 };
-const sourceFingerprint = "a".repeat(64);
+const sourceFingerprint = 'a'.repeat(64);
 
 function sequence<T extends string>(prefix: string) {
   let value = 0;
   return () => `${prefix}_${++value}` as T;
 }
 
-suite("PostgreSQL Lite Today Prepared Action journey", () => {
+suite('PostgreSQL Lite Today Prepared Action journey', () => {
   const database = new ManagedDatabase({
     connection: { url: url! },
-    applicationName: "lite-prepared-action-test",
+    applicationName: 'lite-prepared-action-test',
     poolMaximum: 10,
     connectionTimeoutMs: 2000,
     idleTimeoutMs: 2000,
     statementTimeoutMs: 5000,
-    sslMode: "disable",
-    migrationNamespace: "lite_today_test",
+    sslMode: 'disable',
+    migrationNamespace: 'lite_today_test'
   });
-  const migrationsDirectory = path.resolve(
-    "../../infrastructure/persistence/migrations",
-  );
-  const migrationOwners = path.resolve(
-    "../../infrastructure/persistence/migration-owners.json",
-  );
+  const migrationsDirectory = path.resolve('../../infrastructure/persistence/migrations');
+  const migrationOwners = path.resolve('../../infrastructure/persistence/migration-owners.json');
   const source: ProductLoopSourceReference = {
     schemaVersion: 1,
-    owner: "KNOWLEDGE",
-    kind: "KNOWLEDGE_READY_PACKAGE",
-    sourceId: "rdp_wp05-today",
-    sourceVersion: "accepted-v3",
+    owner: 'KNOWLEDGE',
+    kind: 'KNOWLEDGE_READY_PACKAGE',
+    sourceId: 'rdp_wp05-today',
+    sourceVersion: 'accepted-v3',
     sourceFingerprintSha256: sourceFingerprint,
-    observedAt: "2026-08-11T10:00:00.000Z",
-    correlationId: "correlation_wp05-today",
+    observedAt: '2026-08-11T10:00:00.000Z',
+    correlationId: 'correlation_wp05-today'
   };
   const sourceAuthority: ProductLoopSourceAuthority = {
     resolve(requestWorkspaceId, locator) {
       if (![workspaceId, otherWorkspaceId].includes(requestWorkspaceId))
-        throw new Error("unexpected workspace");
+        throw new Error('unexpected workspace');
       if (
         locator.owner !== source.owner ||
         locator.kind !== source.kind ||
         locator.sourceId !== source.sourceId
       )
-        throw new Error("unexpected source locator");
+        throw new Error('unexpected source locator');
       return Promise.resolve(structuredClone(source));
-    },
+    }
   };
   let tick = 0;
-  const now = () =>
-    new Date(Date.UTC(2026, 7, 11, 10, 1, tick++)).toISOString();
+  const now = () => new Date(Date.UTC(2026, 7, 11, 10, 1, tick++)).toISOString();
   const contentIds = {
-    recommendation: sequence<TodayRecommendationId>("today-recommendation"),
-    opportunity: sequence<ContentOpportunityId>("content-opportunity"),
-    draft: sequence<`content-draft_${string}`>("content-draft"),
-    review: sequence<`content-review-decision_${string}`>(
-      "content-review-decision",
-    ),
-    publishPackage: sequence<`publish-package_${string}`>("publish-package"),
+    recommendation: sequence<TodayRecommendationId>('today-recommendation'),
+    opportunity: sequence<ContentOpportunityId>('content-opportunity'),
+    draft: sequence<`content-draft_${string}`>('content-draft'),
+    review: sequence<`content-review-decision_${string}`>('content-review-decision'),
+    publishPackage: sequence<`publish-package_${string}`>('publish-package')
   };
-  const preparedActionId = sequence<PreparedActionId>("prepared-action");
+  const preparedActionId = sequence<PreparedActionId>('prepared-action');
 
   const contentStore = () =>
     new PostgresLiteContentPreparationStore(
@@ -129,35 +116,30 @@ suite("PostgreSQL Lite Today Prepared Action journey", () => {
       database.getPool(),
       sourceAuthority,
       now,
-      contentIds,
+      contentIds
     );
   const preparedStore = () =>
-    new PostgresPreparedActionStore(
-      database,
-      database.getPool(),
-      now,
-      preparedActionId,
-    );
+    new PostgresPreparedActionStore(database, database.getPool(), now, preparedActionId);
 
   beforeAll(async () => {
     await database.start();
     await database
       .getPool()
       .query(
-        "CREATE TABLE IF NOT EXISTS workspaces (workspace_id uuid PRIMARY KEY, name text NOT NULL, slug text NOT NULL UNIQUE)",
+        'CREATE TABLE IF NOT EXISTS workspaces (workspace_id uuid PRIMARY KEY, name text NOT NULL, slug text NOT NULL UNIQUE)'
       );
     const liteMigrations = await loadMigrationsForOwner(
       migrationsDirectory,
       migrationOwners,
-      "@markorbit/lite-service",
+      '@markorbit/lite-service'
     );
-    await migrate(database.getPool(), "lite_today_test", liteMigrations);
+    await migrate(database.getPool(), 'lite_today_test', liteMigrations);
     await database.getPool().query(
       `INSERT INTO workspaces (workspace_id,name,slug) VALUES
        ($1,'WP05 Today','wp05-today'),
        ($2,'WP05 Other','wp05-other')
        ON CONFLICT (workspace_id) DO NOTHING`,
-      [workspaceId, otherWorkspaceId],
+      [workspaceId, otherWorkspaceId]
     );
   });
 
@@ -183,7 +165,7 @@ suite("PostgreSQL Lite Today Prepared Action journey", () => {
         lite_content_drafts,
         lite_content_opportunities,
         lite_today_recommendations
-       CASCADE`,
+       CASCADE`
     );
   });
 
@@ -192,17 +174,16 @@ suite("PostgreSQL Lite Today Prepared Action journey", () => {
   async function recommendation() {
     return contentStore().createRecommendation({
       workspaceId,
-      title: "Explain the reviewed trademark maintenance change",
-      explanation:
-        "Accepted Knowledge is ready for one bounded professional content preparation.",
+      title: 'Explain the reviewed trademark maintenance change',
+      explanation: 'Accepted Knowledge is ready for one bounded professional content preparation.',
       sources: [
         {
           owner: source.owner,
           kind: source.kind,
-          sourceId: source.sourceId,
-        },
+          sourceId: source.sourceId
+        }
       ],
-      idempotencyKey: "wp05-recommendation",
+      idempotencyKey: 'wp05-recommendation'
     });
   }
 
@@ -212,233 +193,211 @@ suite("PostgreSQL Lite Today Prepared Action journey", () => {
     const journey = await store.prepare({
       workspaceId,
       recommendation: { id: rec.todayRecommendationId, version: rec.version },
-      expectedRecommendationFingerprintSha256:
-        rec.recommendationFingerprintSha256,
+      expectedRecommendationFingerprintSha256: rec.recommendationFingerprintSha256,
       plan: {
-        kind: "PREPARE_CONTENT",
+        kind: 'PREPARE_CONTENT',
         title: rec.title,
-        rationale: rec.explanation,
+        rationale: rec.explanation
       },
-      idempotencyKey: "wp05-prepare",
+      idempotencyKey: 'wp05-prepare'
     });
     return { rec, store, journey };
   }
 
-  it("requires the exact Opportunity Candidate source kind before formal-opportunity preparation", async () => {
-    const recommendationId =
-      "today-recommendation_candidate-source-kind" as TodayRecommendationId;
-    const candidateId = "opportunity-candidate_candidate-source-kind" as const;
-    const qualificationId =
-      "opportunity-qualification_candidate-source-kind" as const;
-    const candidateFingerprintSha256 = "b".repeat(64);
-    const timestamp = "2026-08-11T10:04:00.000Z";
-    const recommendation = (
-      kind: ProductLoopSourceReference["kind"],
-    ): TodayRecommendation => {
-      const base: Omit<TodayRecommendation, "recommendationFingerprintSha256"> =
-        {
-          schemaVersion: 1,
-          todayRecommendationId: recommendationId,
-          workspaceId,
-          version: 1,
-          kind: "OPPORTUNITY_REVIEW",
-          title: "Review the qualified Candidate",
-          explanation:
-            "Human qualification is ready for an explicit owner handoff review.",
-          sources: [
-            {
-              schemaVersion: 1,
-              owner: "LITE",
-              kind,
-              sourceId: candidateId,
-              sourceVersion: 1,
-              sourceFingerprintSha256: candidateFingerprintSha256,
-              observedAt: timestamp,
-            },
-          ],
-          status: "OPEN",
-          executionAuthorized: false,
-          createdAt: timestamp,
-          updatedAt: timestamp,
-        };
+  it('requires the exact Opportunity Candidate source kind before formal-opportunity preparation', async () => {
+    const recommendationId = 'today-recommendation_candidate-source-kind' as TodayRecommendationId;
+    const candidateId = 'opportunity-candidate_candidate-source-kind' as const;
+    const qualificationId = 'opportunity-qualification_candidate-source-kind' as const;
+    const candidateFingerprintSha256 = 'b'.repeat(64);
+    const timestamp = '2026-08-11T10:04:00.000Z';
+    const recommendation = (kind: ProductLoopSourceReference['kind']): TodayRecommendation => {
+      const base: Omit<TodayRecommendation, 'recommendationFingerprintSha256'> = {
+        schemaVersion: 1,
+        todayRecommendationId: recommendationId,
+        workspaceId,
+        version: 1,
+        kind: 'OPPORTUNITY_REVIEW',
+        title: 'Review the qualified Candidate',
+        explanation: 'Human qualification is ready for an explicit owner handoff review.',
+        sources: [
+          {
+            schemaVersion: 1,
+            owner: 'LITE',
+            kind,
+            sourceId: candidateId,
+            sourceVersion: 1,
+            sourceFingerprintSha256: candidateFingerprintSha256,
+            observedAt: timestamp
+          }
+        ],
+        status: 'OPEN',
+        executionAuthorized: false,
+        createdAt: timestamp,
+        updatedAt: timestamp
+      };
       return {
         ...base,
-        recommendationFingerprintSha256: createHash("sha256")
+        recommendationFingerprintSha256: createHash('sha256')
           .update(JSON.stringify(base))
-          .digest("hex"),
+          .digest('hex')
       };
     };
     const plan = {
-      kind: "CREATE_FORMAL_TRADEMARK_SERVICE_OPPORTUNITY" as const,
+      kind: 'CREATE_FORMAL_TRADEMARK_SERVICE_OPPORTUNITY' as const,
       candidate: { id: candidateId, version: 1 },
       expectedCandidateFingerprintSha256: candidateFingerprintSha256,
       qualificationDecision: { id: qualificationId, version: 1 },
-      relationshipModel: "DIRECT" as const,
+      relationshipModel: 'DIRECT' as const
     };
     const insert = async (value: TodayRecommendation) =>
       database
         .getPool()
         .query(
-          "INSERT INTO lite_today_recommendations (workspace_id,today_recommendation_id,version,recommendation_fingerprint_sha256,document_json,created_at,updated_at) VALUES ($1,$2,1,$3,$4::jsonb,$5,$5) ON CONFLICT (workspace_id,today_recommendation_id,version) DO UPDATE SET recommendation_fingerprint_sha256=EXCLUDED.recommendation_fingerprint_sha256,document_json=EXCLUDED.document_json,updated_at=EXCLUDED.updated_at",
+          'INSERT INTO lite_today_recommendations (workspace_id,today_recommendation_id,version,recommendation_fingerprint_sha256,document_json,created_at,updated_at) VALUES ($1,$2,1,$3,$4::jsonb,$5,$5) ON CONFLICT (workspace_id,today_recommendation_id,version) DO UPDATE SET recommendation_fingerprint_sha256=EXCLUDED.recommendation_fingerprint_sha256,document_json=EXCLUDED.document_json,updated_at=EXCLUDED.updated_at',
           [
             workspaceId,
             value.todayRecommendationId,
             value.recommendationFingerprintSha256,
             JSON.stringify(value),
-            timestamp,
-          ],
+            timestamp
+          ]
         );
 
-    const wrong = recommendation("CONTENT_USE_FEEDBACK");
+    const wrong = recommendation('CONTENT_USE_FEEDBACK');
     await insert(wrong);
     await expect(
       preparedStore().prepare({
         workspaceId,
         recommendation: { id: recommendationId, version: 1 },
-        expectedRecommendationFingerprintSha256:
-          wrong.recommendationFingerprintSha256,
+        expectedRecommendationFingerprintSha256: wrong.recommendationFingerprintSha256,
         plan,
-        idempotencyKey: "candidate-source-kind-wrong",
-      }),
-    ).rejects.toMatchObject({ code: "STALE_SOURCE" });
+        idempotencyKey: 'candidate-source-kind-wrong'
+      })
+    ).rejects.toMatchObject({ code: 'STALE_SOURCE' });
 
-    const exact = recommendation("OPPORTUNITY_CANDIDATE");
+    const exact = recommendation('OPPORTUNITY_CANDIDATE');
     await insert(exact);
     await expect(
       preparedStore().prepare({
         workspaceId,
         recommendation: { id: recommendationId, version: 1 },
-        expectedRecommendationFingerprintSha256:
-          exact.recommendationFingerprintSha256,
+        expectedRecommendationFingerprintSha256: exact.recommendationFingerprintSha256,
         plan,
-        idempotencyKey: "candidate-source-kind-exact",
-      }),
+        idempotencyKey: 'candidate-source-kind-exact'
+      })
     ).resolves.toMatchObject({
-      handoffState: "AWAITING_CONFIRMATION",
+      handoffState: 'AWAITING_CONFIRMATION',
       preparedAction: {
-        kind: "CREATE_FORMAL_TRADEMARK_SERVICE_OPPORTUNITY",
-        handoffTarget: "MARKREG_FORMAL_TRADEMARK_SERVICE_OPPORTUNITY",
-      },
+        kind: 'CREATE_FORMAL_TRADEMARK_SERVICE_OPPORTUNITY',
+        handoffTarget: 'MARKREG_FORMAL_TRADEMARK_SERVICE_OPPORTUNITY'
+      }
     });
   });
 
   function notificationPlan(): ClientNotificationHandoffPlanV1 {
-    const subject = "Please confirm the reviewed trademark details";
-    const body = "Please review the details and reply with your confirmation.";
+    const subject = 'Please confirm the reviewed trademark details';
+    const body = 'Please review the details and reply with your confirmation.';
     const attachments = [] as const;
     const withoutConfirmation = {
       schemaVersion: 1 as const,
-      kind: "CLIENT_NOTIFICATION_HANDOFF" as const,
+      kind: 'CLIENT_NOTIFICATION_HANDOFF' as const,
       workspaceId,
       sourceDraft: {
-        owner: "LITE" as const,
-        kind: "TRADEMARK_SERVICE_COMMUNICATION_DRAFT" as const,
-        workPackage: {
-          id: "trademark-service-work-package_pg-notice",
-          version: 2,
-        },
-        preparationId: "trademark-service-preparation_pg-notice",
-        draftKind: "CLIENT_INFORMATION_REQUEST" as const,
-        draftFingerprintSha256: "d".repeat(64),
+        owner: 'LITE' as const,
+        kind: 'TRADEMARK_SERVICE_COMMUNICATION_DRAFT' as const,
+        workPackage: { id: 'trademark-service-work-package_pg-notice', version: 2 },
+        preparationId: 'trademark-service-preparation_pg-notice',
+        draftKind: 'CLIENT_INFORMATION_REQUEST' as const,
+        draftFingerprintSha256: 'd'.repeat(64)
       },
-      accountRef: "mailbox_pg-notice",
-      channel: "EMAIL" as const,
-      sender: { role: "SENDER" as const, address: "service@example.com" },
+      accountRef: 'mailbox_pg-notice',
+      channel: 'EMAIL' as const,
+      sender: { role: 'SENDER' as const, address: 'service@example.com' },
       recipients: [
         {
-          participant: { role: "TO" as const, address: "client@example.com" },
-          source: { kind: "MANUAL_ENTRY" as const },
-        },
+          participant: { role: 'TO' as const, address: 'client@example.com' },
+          source: { kind: 'MANUAL_ENTRY' as const }
+        }
       ],
       subject,
       body,
       attachments,
-      reviewedContentFingerprintSha256:
-        clientNotificationReviewedContentFingerprintSha256V1({
-          subject,
-          body,
-          attachments,
-        }),
+      reviewedContentFingerprintSha256: clientNotificationReviewedContentFingerprintSha256V1({
+        subject,
+        body,
+        attachments
+      }),
       relatedWorkItem: {
-        owner: "LITE" as const,
-        kind: "WORK_ITEM" as const,
+        owner: 'LITE' as const,
+        kind: 'WORK_ITEM' as const,
         workspaceId,
-        workItemId: "lite-work-item_pg-notice" as const,
-        version: 1,
+        workItemId: 'lite-work-item_pg-notice' as const,
+        version: 1
       },
       relatedBusinessRefs: [
         {
-          targetKind: "WORKSPACE_DIRECTORY_ENTRY" as const,
-          owner: "LITE" as const,
+          targetKind: 'WORKSPACE_DIRECTORY_ENTRY' as const,
+          owner: 'LITE' as const,
           workspaceId,
-          workspaceDirectoryEntryId:
-            "workspace-directory-entry_pg-notice" as const,
-          version: 1,
-        },
-      ],
+          workspaceDirectoryEntryId: 'workspace-directory-entry_pg-notice' as const,
+          version: 1
+        }
+      ]
     };
     return {
       ...withoutConfirmation,
       confirmationFingerprintSha256:
         clientNotificationConfirmationFingerprintSha256V1(withoutConfirmation),
-      authorityConsequences:
-        noClientNotificationPreparationAuthorityConsequencesV1,
+      authorityConsequences: noClientNotificationPreparationAuthorityConsequencesV1
     };
   }
 
-  it("persists exact Prepared Action, Core Principal confirmation and one content handoff across restart/replay", async () => {
+  it('persists exact Prepared Action, Core Principal confirmation and one content handoff across restart/replay', async () => {
     const { journey } = await prepare();
     let ownerCalls = 0;
     const authority: PreparedActionHandoffAuthority = {
       async perform(action, plan, _confirmation, key) {
         ownerCalls += 1;
-        expect(plan.kind).toBe("PREPARE_CONTENT");
-        if (plan.kind !== "PREPARE_CONTENT") throw new Error("unexpected plan");
+        expect(plan.kind).toBe('PREPARE_CONTENT');
+        if (plan.kind !== 'PREPARE_CONTENT') throw new Error('unexpected plan');
         const opportunity = await contentStore().acceptContentOpportunity({
           workspaceId,
           recommendation: {
             id: action.recommendation.id,
-            version: Number(action.recommendation.version),
+            version: Number(action.recommendation.version)
           },
-          expectedRecommendationFingerprintSha256:
-            action.recommendationFingerprintSha256,
+          expectedRecommendationFingerprintSha256: action.recommendationFingerprintSha256,
           title: plan.title,
           rationale: plan.rationale,
-          idempotencyKey: key,
+          idempotencyKey: key
         });
         return handoffResult({
           preparedAction: action,
-          owner: "LITE",
-          ownerRecord: {
-            id: opportunity.contentOpportunityId,
-            version: opportunity.version,
-          },
-          completedAt: opportunity.updatedAt,
+          owner: 'LITE',
+          ownerRecord: { id: opportunity.contentOpportunityId, version: opportunity.version },
+          completedAt: opportunity.updatedAt
         });
-      },
+      }
     };
-    const service = new PreparedActionJourneyService(
-      preparedStore(),
-      authority,
-    );
+    const service = new PreparedActionJourneyService(preparedStore(), authority);
     const command = {
       workspaceId,
       preparedAction: {
         id: journey.preparedAction.preparedActionId,
-        version: journey.preparedAction.version,
+        version: journey.preparedAction.version
       },
       expectedPreparedActionFingerprintSha256:
         journey.preparedAction.preparedActionFingerprintSha256,
       confirmedByPrincipalId: principalId,
       acknowledgedEffect: journey.preparedAction.confirmationEffect,
-      idempotencyKey: "wp05-confirm",
+      idempotencyKey: 'wp05-confirm'
     };
     const completed = await service.confirmAndHandoff(command);
-    expect(completed.handoffState).toBe("HANDOFF_COMPLETED");
+    expect(completed.handoffState).toBe('HANDOFF_COMPLETED');
     expect(completed.confirmation?.confirmedByPrincipalId).toBe(principalId);
     expect(completed.handoffResult).toMatchObject({
-      owner: "LITE",
-      target: "LITE_CONTENT_PREPARATION",
+      owner: 'LITE',
+      target: 'LITE_CONTENT_PREPARATION'
     });
     expect(completed.handoffResult?.consequences).toMatchObject({
       externalPublishExecuted: false,
@@ -448,97 +407,86 @@ suite("PostgreSQL Lite Today Prepared Action journey", () => {
       paymentCreated: false,
       providerAppointed: false,
       filingSubmitted: false,
-      officialTruthCreated: false,
+      officialTruthCreated: false
     });
     expect(ownerCalls).toBe(1);
 
-    const afterRestart = new PreparedActionJourneyService(
-      preparedStore(),
-      authority,
-    );
+    const afterRestart = new PreparedActionJourneyService(preparedStore(), authority);
     expect(
-      await afterRestart.findJourney(
-        workspaceId,
-        journey.preparedAction.preparedActionId,
-      ),
+      await afterRestart.findJourney(workspaceId, journey.preparedAction.preparedActionId)
     ).toEqual(completed);
     expect(await afterRestart.confirmAndHandoff(command)).toEqual(completed);
     expect(ownerCalls).toBe(1);
     const count = await database
       .getPool()
-      .query("SELECT count(*)::int AS count FROM lite_content_opportunities");
+      .query('SELECT count(*)::int AS count FROM lite_content_opportunities');
     expect((count.rows[0] as { count?: number } | undefined)?.count).toBe(1);
   });
 
-  it("persists client-notification send lineage, Link and Work follow-up across restart/replay", async () => {
+  it('persists client-notification send lineage, Link and Work follow-up across restart/replay', async () => {
     const workStore = () =>
       new PostgresLiteWorkItemStore(
         database,
         database.getPool(),
         now,
-        () => "lite-work-item_pg-notice",
+        () => 'lite-work-item_pg-notice'
       );
     const work = await workStore().createManual({
       workspaceId,
       actorPrincipalId: principalId,
-      idempotencyKey: "pg-notice-work-create",
-      taskType: "GENERAL_FOLLOW_UP",
-      title: "Wait for client reply to reviewed notification",
-      priority: "NOTICE",
+      idempotencyKey: 'pg-notice-work-create',
+      taskType: 'GENERAL_FOLLOW_UP',
+      title: 'Wait for client reply to reviewed notification',
+      priority: 'NOTICE'
     });
     expect(work).toMatchObject({
-      liteWorkItemId: "lite-work-item_pg-notice",
+      liteWorkItemId: 'lite-work-item_pg-notice',
       version: 1,
-      status: "OPEN",
+      status: 'OPEN'
     });
     const plan = notificationPlan();
-    const recommendationId =
-      "today-recommendation_pg-notice" as TodayRecommendationId;
-    const recommendationFingerprintSha256 = "e".repeat(64);
-    const createdAt = "2026-08-11T10:05:00.000Z";
+    const recommendationId = 'today-recommendation_pg-notice' as TodayRecommendationId;
+    const recommendationFingerprintSha256 = 'e'.repeat(64);
+    const createdAt = '2026-08-11T10:05:00.000Z';
     const notificationRecommendation = {
       schemaVersion: 1,
       todayRecommendationId: recommendationId,
       workspaceId,
       version: 1,
-      kind: "WORK_FOLLOW_UP",
-      title: "Send the reviewed client notification",
-      explanation:
-        "A human-reviewed client communication is ready for explicit confirmation.",
+      kind: 'WORK_FOLLOW_UP',
+      title: 'Send the reviewed client notification',
+      explanation: 'A human-reviewed client communication is ready for explicit confirmation.',
       sources: [source],
-      status: "OPEN",
+      status: 'OPEN',
       recommendationFingerprintSha256,
       executionAuthorized: false,
       createdAt,
-      updatedAt: createdAt,
+      updatedAt: createdAt
     };
     await database
       .getPool()
       .query(
-        "INSERT INTO lite_today_recommendations (workspace_id,today_recommendation_id,version,recommendation_fingerprint_sha256,document_json,created_at,updated_at) VALUES ($1,$2,1,$3,$4::jsonb,$5,$5)",
+        'INSERT INTO lite_today_recommendations (workspace_id,today_recommendation_id,version,recommendation_fingerprint_sha256,document_json,created_at,updated_at) VALUES ($1,$2,1,$3,$4::jsonb,$5,$5)',
         [
           workspaceId,
           recommendationId,
           recommendationFingerprintSha256,
           JSON.stringify(notificationRecommendation),
-          createdAt,
-        ],
+          createdAt
+        ]
       );
 
     const journey = await preparedStore().prepare({
       workspaceId,
       recommendation: { id: recommendationId, version: 1 },
       expectedRecommendationFingerprintSha256: recommendationFingerprintSha256,
-      plan: {
-        kind: "PREPARE_CLIENT_NOTIFICATION",
-        clientNotificationPlan: plan,
-      },
-      idempotencyKey: "wp05-notification-prepare",
+      plan: { kind: 'PREPARE_CLIENT_NOTIFICATION', clientNotificationPlan: plan },
+      idempotencyKey: 'wp05-notification-prepare'
     });
     expect(journey.preparedAction).toMatchObject({
-      kind: "PREPARE_CLIENT_NOTIFICATION",
-      handoffTarget: "MANAGED_COMMUNICATION_CLIENT_NOTIFICATION",
-      clientNotificationPlan: plan,
+      kind: 'PREPARE_CLIENT_NOTIFICATION',
+      handoffTarget: 'MANAGED_COMMUNICATION_CLIENT_NOTIFICATION',
+      clientNotificationPlan: plan
     });
 
     let ownerCalls = 0;
@@ -546,60 +494,54 @@ suite("PostgreSQL Lite Today Prepared Action journey", () => {
       perform(action, localPlan, confirmation, key) {
         ownerCalls += 1;
         expect(localPlan).toEqual({
-          kind: "PREPARE_CLIENT_NOTIFICATION",
-          clientNotificationPlan: plan,
+          kind: 'PREPARE_CLIENT_NOTIFICATION',
+          clientNotificationPlan: plan
         });
-        expect(
-          confirmation.expectedClientNotificationPlanFingerprintSha256,
-        ).toBe(plan.confirmationFingerprintSha256);
+        expect(confirmation.expectedClientNotificationPlanFingerprintSha256).toBe(
+          plan.confirmationFingerprintSha256
+        );
         expect(key).toBe(`prepared-action-handoff:${action.preparedActionId}`);
         return Promise.resolve(
           handoffResult({
             preparedAction: action,
-            owner: "MANAGED_COMMUNICATION",
+            owner: 'MANAGED_COMMUNICATION',
             ownerRecord: {
-              id: "managed-communication-send_pg-notice",
-              version: "f".repeat(64),
+              id: 'managed-communication-send_pg-notice',
+              version: 'f'.repeat(64)
             },
-            completedAt: "2026-08-11T10:06:00.000Z",
-          }),
+            completedAt: '2026-08-11T10:06:00.000Z'
+          })
         );
-      },
+      }
     };
     const command = {
       workspaceId,
-      preparedAction: {
-        id: journey.preparedAction.preparedActionId,
-        version: 1,
-      },
+      preparedAction: { id: journey.preparedAction.preparedActionId, version: 1 },
       expectedPreparedActionFingerprintSha256:
         journey.preparedAction.preparedActionFingerprintSha256,
       confirmedByPrincipalId: principalId,
       acknowledgedEffect: journey.preparedAction.confirmationEffect,
-      idempotencyKey: "wp05-notification-confirm",
+      idempotencyKey: 'wp05-notification-confirm'
     };
     const completed = await new PreparedActionJourneyService(
       preparedStore(),
-      authority,
+      authority
     ).confirmAndHandoff(command);
-    expect(completed.handoffState).toBe("HANDOFF_COMPLETED");
-    expect(
-      completed.confirmation?.expectedClientNotificationPlanFingerprintSha256,
-    ).toBe(plan.confirmationFingerprintSha256);
+    expect(completed.handoffState).toBe('HANDOFF_COMPLETED');
+    expect(completed.confirmation?.expectedClientNotificationPlanFingerprintSha256).toBe(
+      plan.confirmationFingerprintSha256
+    );
     expect(completed.handoffResult).toMatchObject({
-      owner: "MANAGED_COMMUNICATION",
-      target: "MANAGED_COMMUNICATION_CLIENT_NOTIFICATION",
-      ownerRecord: {
-        id: "managed-communication-send_pg-notice",
-        version: "f".repeat(64),
-      },
+      owner: 'MANAGED_COMMUNICATION',
+      target: 'MANAGED_COMMUNICATION_CLIENT_NOTIFICATION',
+      ownerRecord: { id: 'managed-communication-send_pg-notice', version: 'f'.repeat(64) }
     });
     expect(ownerCalls).toBe(1);
 
     const replayCommand = clientNotificationManagedCommunicationSendCommandV1(
       journey.preparedAction,
       plan,
-      `prepared-action-handoff:${journey.preparedAction.preparedActionId}`,
+      `prepared-action-handoff:${journey.preparedAction.preparedActionId}`
     );
     let sendReplays = 0;
     const sender: ManagedCommunicationClientNotificationSender = {
@@ -608,86 +550,61 @@ suite("PostgreSQL Lite Today Prepared Action journey", () => {
         expect(input).toEqual(replayCommand);
         return Promise.resolve({
           schemaVersion: 1,
-          sendId: "managed-communication-send_pg-notice",
+          sendId: 'managed-communication-send_pg-notice',
           workspaceId,
           accountRef: plan.accountRef,
-          idempotencyKeySha256: createHash("sha256")
+          idempotencyKeySha256: createHash('sha256')
             .update(replayCommand.idempotencyKey)
-            .digest("hex"),
-          requestFingerprintSha256: "f".repeat(64),
-          state: "SENT",
-          messageId: "message_pg-notice",
-          threadRef: "thread_pg-notice",
-          provider: "TEST",
-          providerMessageId: "provider-message_pg-notice",
-          providerReceiptRef: "provider-receipt_pg-notice",
-          acceptedAt: "2026-08-11T10:06:00.000Z",
+            .digest('hex'),
+          requestFingerprintSha256: 'f'.repeat(64),
+          state: 'SENT',
+          messageId: 'message_pg-notice',
+          threadRef: 'thread_pg-notice',
+          provider: 'TEST',
+          providerMessageId: 'provider-message_pg-notice',
+          providerReceiptRef: 'provider-receipt_pg-notice',
+          acceptedAt: '2026-08-11T10:06:00.000Z',
           authority: {
             externalMessageSent: true,
             customerTruthMutated: false,
             matterTruthMutated: false,
             legalTruthCreated: false,
             knowledgeApproved: false,
-            professionalDecisionCreated: false,
-          },
+            professionalDecisionCreated: false
+          }
         });
-      },
+      }
     };
     const linkService = () =>
       new CommunicationLinkService(
         new PostgresCommunicationLinkStore(
           database,
           database.getPool(),
-          () => "2026-08-11T10:07:00.000Z",
-          () => "communication-link_pg-notice",
+          () => '2026-08-11T10:07:00.000Z',
+          () => 'communication-link_pg-notice'
         ),
-        { validateCreate: () => Promise.resolve() },
+        { validateCreate: () => Promise.resolve() }
       );
     const firstFollowup = await new ClientNotificationFollowupService(
       preparedStore(),
       sender,
       linkService(),
-      workStore(),
-    ).reconcile(
-      workspaceId,
-      journey.preparedAction.preparedActionId,
-      principal,
-    );
+      workStore()
+    ).reconcile(workspaceId, journey.preparedAction.preparedActionId, principal);
     expect(firstFollowup).toMatchObject({
-      state: "COMPLETE",
-      send: {
-        sendId: "managed-communication-send_pg-notice",
-        messageId: "message_pg-notice",
-      },
-      links: [
-        {
-          state: "LINKED",
-          communicationLinkId: "communication-link_pg-notice",
-          version: 1,
-        },
-      ],
-      work: {
-        state: "WAITING_FOR_CLIENT",
-        workItemId: "lite-work-item_pg-notice",
-        version: 2,
-      },
+      state: 'COMPLETE',
+      send: { sendId: 'managed-communication-send_pg-notice', messageId: 'message_pg-notice' },
+      links: [{ state: 'LINKED', communicationLinkId: 'communication-link_pg-notice', version: 1 }],
+      work: { state: 'WAITING_FOR_CLIENT', workItemId: 'lite-work-item_pg-notice', version: 2 }
     });
-    expect(
-      await workStore().get(workspaceId, "lite-work-item_pg-notice"),
-    ).toMatchObject({
+    expect(await workStore().get(workspaceId, 'lite-work-item_pg-notice')).toMatchObject({
       version: 2,
-      status: "WAITING_FOR_CLIENT",
+      status: 'WAITING_FOR_CLIENT'
     });
 
-    const afterRestart = new PreparedActionJourneyService(
-      preparedStore(),
-      authority,
-    );
+    const afterRestart = new PreparedActionJourneyService(preparedStore(), authority);
     expect(
-      await afterRestart.findJourney(
-        workspaceId,
-        journey.preparedAction.preparedActionId,
-      ),
+      await afterRestart.findJourney(workspaceId, journey.preparedAction.preparedActionId)
     ).toEqual(completed);
     expect(await afterRestart.confirmAndHandoff(command)).toEqual(completed);
     expect(ownerCalls).toBe(1);
@@ -695,12 +612,8 @@ suite("PostgreSQL Lite Today Prepared Action journey", () => {
       preparedStore(),
       sender,
       linkService(),
-      workStore(),
-    ).reconcile(
-      workspaceId,
-      journey.preparedAction.preparedActionId,
-      principal,
-    );
+      workStore()
+    ).reconcile(workspaceId, journey.preparedAction.preparedActionId, principal);
     expect(replayedFollowup).toEqual(firstFollowup);
     expect(sendReplays).toBe(2);
     const durableCounts = await database.getPool().query(
@@ -708,174 +621,141 @@ suite("PostgreSQL Lite Today Prepared Action journey", () => {
         (SELECT count(*)::int FROM lite_communication_link_versions) AS links,
         (SELECT count(*)::int FROM lite_communication_link_commands) AS link_commands,
         (SELECT count(*)::int FROM lite_work_items) AS work_items,
-        (SELECT count(*)::int FROM lite_work_item_commands) AS work_commands`,
+        (SELECT count(*)::int FROM lite_work_item_commands) AS work_commands`
     );
     expect(durableCounts.rows[0]).toMatchObject({
       links: 1,
       link_commands: 1,
       work_items: 1,
-      work_commands: 2,
+      work_commands: 2
     });
   });
 
-  it("keeps confirmation durable when the owner is unavailable, then retries without a second confirmation", async () => {
+  it('keeps confirmation durable when the owner is unavailable, then retries without a second confirmation', async () => {
     const { journey } = await prepare();
     let calls = 0;
     const authority: PreparedActionHandoffAuthority = {
       perform(action) {
         calls += 1;
-        if (calls === 1)
-          return Promise.reject(new Error("owner temporarily unavailable"));
+        if (calls === 1) return Promise.reject(new Error('owner temporarily unavailable'));
         return Promise.resolve(
           handoffResult({
             preparedAction: action,
-            owner: "LITE",
-            ownerRecord: { id: "content-opportunity_retry", version: 1 },
-            completedAt: "2026-08-11T10:10:00.000Z",
-          }),
+            owner: 'LITE',
+            ownerRecord: { id: 'content-opportunity_retry', version: 1 },
+            completedAt: '2026-08-11T10:10:00.000Z'
+          })
         );
-      },
+      }
     };
     const command = {
       workspaceId,
-      preparedAction: {
-        id: journey.preparedAction.preparedActionId,
-        version: 1,
-      },
+      preparedAction: { id: journey.preparedAction.preparedActionId, version: 1 },
       expectedPreparedActionFingerprintSha256:
         journey.preparedAction.preparedActionFingerprintSha256,
       confirmedByPrincipalId: principalId,
       acknowledgedEffect: journey.preparedAction.confirmationEffect,
-      idempotencyKey: "wp05-confirm-retry",
+      idempotencyKey: 'wp05-confirm-retry'
     };
     await expect(
-      new PreparedActionJourneyService(
-        preparedStore(),
-        authority,
-      ).confirmAndHandoff(command),
+      new PreparedActionJourneyService(preparedStore(), authority).confirmAndHandoff(command)
     ).rejects.toMatchObject({
-      code: "DEPENDENCY_UNAVAILABLE",
-      details: { confirmationPersisted: true, handoffPending: true },
+      code: 'DEPENDENCY_UNAVAILABLE',
+      details: { confirmationPersisted: true, handoffPending: true }
     });
 
     const pending = await preparedStore().findJourney(
       workspaceId,
-      journey.preparedAction.preparedActionId,
+      journey.preparedAction.preparedActionId
     );
-    expect(pending?.handoffState).toBe("HANDOFF_PENDING");
+    expect(pending?.handoffState).toBe('HANDOFF_PENDING');
     expect(pending?.confirmation?.confirmedByPrincipalId).toBe(principalId);
     const confirmationCount = await database
       .getPool()
-      .query(
-        "SELECT count(*)::int AS count FROM lite_prepared_action_confirmations",
-      );
-    expect(
-      (confirmationCount.rows[0] as { count?: number } | undefined)?.count,
-    ).toBe(1);
+      .query('SELECT count(*)::int AS count FROM lite_prepared_action_confirmations');
+    expect((confirmationCount.rows[0] as { count?: number } | undefined)?.count).toBe(1);
 
     const retried = await new PreparedActionJourneyService(
       preparedStore(),
-      authority,
+      authority
     ).confirmAndHandoff(command);
-    expect(retried.handoffState).toBe("HANDOFF_COMPLETED");
+    expect(retried.handoffState).toBe('HANDOFF_COMPLETED');
     expect(calls).toBe(2);
     const confirmationCountAfter = await database
       .getPool()
-      .query(
-        "SELECT count(*)::int AS count FROM lite_prepared_action_confirmations",
-      );
-    expect(
-      (confirmationCountAfter.rows[0] as { count?: number } | undefined)?.count,
-    ).toBe(1);
+      .query('SELECT count(*)::int AS count FROM lite_prepared_action_confirmations');
+    expect((confirmationCountAfter.rows[0] as { count?: number } | undefined)?.count).toBe(1);
   });
 
-  it("fails stale fingerprints closed and keeps Workspace reads isolated", async () => {
+  it('fails stale fingerprints closed and keeps Workspace reads isolated', async () => {
     const { rec, store, journey } = await prepare();
     await expect(
       preparedStore().prepare({
         workspaceId,
         recommendation: { id: rec.todayRecommendationId, version: rec.version },
-        expectedRecommendationFingerprintSha256: "f".repeat(64),
-        plan: {
-          kind: "PREPARE_CONTENT",
-          title: rec.title,
-          rationale: rec.explanation,
-        },
-        idempotencyKey: "wp05-stale",
-      }),
-    ).rejects.toMatchObject({ code: "SOURCE_FINGERPRINT_MISMATCH" });
+        expectedRecommendationFingerprintSha256: 'f'.repeat(64),
+        plan: { kind: 'PREPARE_CONTENT', title: rec.title, rationale: rec.explanation },
+        idempotencyKey: 'wp05-stale'
+      })
+    ).rejects.toMatchObject({ code: 'SOURCE_FINGERPRINT_MISMATCH' });
     expect(
-      await store.findJourney(
-        otherWorkspaceId,
-        journey.preparedAction.preparedActionId,
-      ),
+      await store.findJourney(otherWorkspaceId, journey.preparedAction.preparedActionId)
     ).toBeUndefined();
     const today = await store.listToday(workspaceId);
     expect(today).toMatchObject({ workspaceId, partial: false });
     expect(today.items).toHaveLength(1);
-    expect(
-      today.items[0]?.preparedActions[0]?.preparedAction.preparedActionId,
-    ).toBe(journey.preparedAction.preparedActionId);
+    expect(today.items[0]?.preparedActions[0]?.preparedAction.preparedActionId).toBe(
+      journey.preparedAction.preparedActionId
+    );
   });
 
-  it("rejects acknowledgement drift and a spoofed consequence result", async () => {
+  it('rejects acknowledgement drift and a spoofed consequence result', async () => {
     const { store, journey } = await prepare();
     await expect(
       store.confirm({
         workspaceId,
-        preparedAction: {
-          id: journey.preparedAction.preparedActionId,
-          version: 1,
-        },
+        preparedAction: { id: journey.preparedAction.preparedActionId, version: 1 },
         expectedPreparedActionFingerprintSha256:
           journey.preparedAction.preparedActionFingerprintSha256,
         confirmedByPrincipalId: principalId,
-        acknowledgedEffect: "I did not review the actual effect.",
-        idempotencyKey: "wp05-bad-ack",
-      }),
-    ).rejects.toMatchObject({ code: "CONFIRMATION_REQUIRED" });
+        acknowledgedEffect: 'I did not review the actual effect.',
+        idempotencyKey: 'wp05-bad-ack'
+      })
+    ).rejects.toMatchObject({ code: 'CONFIRMATION_REQUIRED' });
 
     const confirmed = await store.confirm({
       workspaceId,
-      preparedAction: {
-        id: journey.preparedAction.preparedActionId,
-        version: 1,
-      },
+      preparedAction: { id: journey.preparedAction.preparedActionId, version: 1 },
       expectedPreparedActionFingerprintSha256:
         journey.preparedAction.preparedActionFingerprintSha256,
       confirmedByPrincipalId: principalId,
       acknowledgedEffect: journey.preparedAction.confirmationEffect,
-      idempotencyKey: "wp05-good-ack",
+      idempotencyKey: 'wp05-good-ack'
     });
-    expect(confirmed.handoffState).toBe("HANDOFF_PENDING");
+    expect(confirmed.handoffState).toBe('HANDOFF_PENDING');
     await expect(
       store.recordHandoff({
         workspaceId,
-        preparedAction: {
-          id: journey.preparedAction.preparedActionId,
-          version: 1,
-        },
+        preparedAction: { id: journey.preparedAction.preparedActionId, version: 1 },
         result: {
           ...handoffResult({
             preparedAction: journey.preparedAction,
-            owner: "LITE",
-            ownerRecord: { id: "content-opportunity_spoof", version: 1 },
-            completedAt: "2026-08-11T10:20:00.000Z",
+            owner: 'LITE',
+            ownerRecord: { id: 'content-opportunity_spoof', version: 1 },
+            completedAt: '2026-08-11T10:20:00.000Z'
           }),
           consequences: {
             ...handoffResult({
               preparedAction: journey.preparedAction,
-              owner: "LITE",
-              ownerRecord: { id: "content-opportunity_spoof", version: 1 },
-              completedAt: "2026-08-11T10:20:00.000Z",
+              owner: 'LITE',
+              ownerRecord: { id: 'content-opportunity_spoof', version: 1 },
+              completedAt: '2026-08-11T10:20:00.000Z'
             }).consequences,
-            filingSubmitted: true,
-          },
+            filingSubmitted: true
+          }
         } as never,
-        idempotencyKey: "wp05-spoof-result",
-      }),
+        idempotencyKey: 'wp05-spoof-result'
+      })
     ).rejects.toBeInstanceOf(PreparedActionJourneyError);
   });
 });
-
-[executed on device: MarkOrbit (710fa508-4ac4-4899-bf0a-594e530d3e21)]
