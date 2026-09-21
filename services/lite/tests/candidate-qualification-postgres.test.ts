@@ -445,9 +445,6 @@ suite('PostgreSQL Lite Opportunity Candidate qualification', () => {
           title: created.title,
           status: 'OPEN',
           executionAuthorized: false,
-          explanation: expect.stringMatching(
-            /not customer instruction.*separate explicit Prepared Action confirmation/u
-          ),
           sources: [
             {
               owner: 'LITE',
@@ -459,6 +456,12 @@ suite('PostgreSQL Lite Opportunity Candidate qualification', () => {
             }
           ]
         });
+        const explanation = recommendations.rows[0]?.document_json.explanation;
+        expect(typeof explanation).toBe('string');
+        if (typeof explanation !== 'string') throw new Error('Expected recommendation explanation.');
+        expect(explanation).toMatch(
+          /not customer instruction.*separate explicit Prepared Action confirmation/u
+        );
       } else {
         expect(recommendations.rows).toHaveLength(0);
       }
