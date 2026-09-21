@@ -183,11 +183,14 @@ test.describe('TASK 025 real durable Document Package path', () => {
     ).toBeVisible();
     await expect(page.getByText(/does not authorize filing/)).toBeVisible();
     await expect(page.getByRole('button', { name: 'Save Draft' })).toHaveCount(0);
+    const returnFocusKey = `markorbit:document-package-return-focus:${reviewId}`;
+    expect(await page.evaluate((key) => sessionStorage.getItem(key), returnFocusKey)).toBe('1');
     await page.goBack();
     await expect(page).toHaveURL(completedReviewUrl);
     await expect(
       page.getByRole('link', { name: 'Start or resume Document Package' })
     ).toBeFocused();
+    expect(await page.evaluate((key) => sessionStorage.getItem(key), returnFocusKey)).toBeNull();
     await expect(page).not.toHaveURL(/documentPackageId=/);
     await page.goto(packageUrl);
     await expect(page.getByText(packageId, { exact: true })).toBeVisible();
