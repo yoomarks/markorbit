@@ -208,8 +208,7 @@ function candidate(value: unknown, field: string): SeedArchetypeCandidateV1 {
   if (
     input.archetype === 'TRADEMARK_INVESTOR_CANDIDATE' &&
     !indicators.some(
-      (item) =>
-        item.direction === 'SUPPORTS' && investorBehaviorIndicatorCodesV1.has(item.code)
+      (item) => item.direction === 'SUPPORTS' && investorBehaviorIndicatorCodesV1.has(item.code)
     )
   )
     throw new SeedArchetypeValidationError(
