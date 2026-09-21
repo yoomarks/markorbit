@@ -1,3 +1,5 @@
+import { useEffect, useState } from 'react';
+import { relationshipModels, type RelationshipModel } from '@markorbit/contracts';
 import type {
   PreparedActionJourney,
   ProductLoopFeedbackOutcome,
@@ -5,8 +7,22 @@ import type {
   PublishPackage,
   TodayRecommendation
 } from '@markorbit/contracts/product-loop';
-import { Alert, Badge, Button, Card, EmptyState } from '@markorbit/ui';
-import type { TodayProductLoopSnapshot } from '../../api/product-loop.js';
+import {
+  Alert,
+  Badge,
+  Button,
+  Card,
+  EmptyState,
+  KeyValueList,
+  LoadingState,
+  Select
+} from '@markorbit/ui';
+import {
+  TodayHttpError,
+  type QualifiedOpportunityReviewEvidence,
+  type TodayClient,
+  type TodayProductLoopSnapshot
+} from '../../api/product-loop.js';
 import { buildLiteHref } from '../../routing/workspace-navigation.js';
 import type { TodayBusyState } from './today-types.js';
 
@@ -21,6 +37,138 @@ function actionStatus(journey: PreparedActionJourney) {
   if (journey.handoffState === 'HANDOFF_COMPLETED') return 'Completed';
   if (journey.handoffState === 'HANDOFF_PENDING') return 'Handoff pending';
   return 'Confirmation required';
+}
+
+function OpportunityReviewCard({
+  recommendation,
+  client,
+  busy,
+  onPrepare
+}: {
+  recommendation: Readonly<TodayRecommendation>;
+  client: TodayClient;
+  busy: TodayBusyState;
+  onPrepare: (
+    recommendation: Readonly<TodayRecommendation>,
+    evidence: Readonly<QualifiedOpportunityReviewEvidence>,
+    relationshipModel: RelationshipModel
+  ) => void;
+}) {
+  const [evidence, setEvidence] = useState<QualifiedOpportunityReviewEvidence>();
+  const [evidenceError, setEvidenceError] = useState<TodayHttpError>();
+  const [loading, setLoading] = useState(true);
+  const [relationshipModel, setRelationshipModel] = useState<RelationshipModel | ''>('');
+
+  const load = () => {
+    setLoading(true);
+    setEvidence(undefined);
+    setEvidenceError(undefined);
+    void client.loadQualifiedOpportunityReview(recommendation).then(
+      (value) => {
+        setEvidence(value);
+        setLoading(false);
+      },
+      (cause: unknown) => {
+        setEvidenceError(
+          cause instanceof TodayHttpError
+            ? cause
+            : new TodayHttpError(
+                503,
+                'OPPORTUNITY_REVIEW_UNAVAILABLE',
+                'Qualified Opportunity evidence is temporarily unavailable.'
+              )
+        );
+        setLoading(false);
+      }
+    );
+  };
+
+  useEffect(load, [
+    client,
+    recommendation.todayRecommendationId,
+    recommendation.version,
+    recommendation.recommendationFingerprintSha256
+  ]);
+
+  return (
+    <Card>
+      <div className="daily-card-heading">
+        <div>
+          <p className="daily-kicker">Review</p>
+          <h3>{recommendation.title}</h3>
+        </div>
+        <Badge>{recommendation.status}</Badge>
+      </div>
+      <p>{recommendation.explanation}</p>
+      {loading ? (
+        <LoadingState label="Loading exact Candidate and Qualification evidence" />
+      ) : evidenceError ? (
+        <>
+          <Alert tone="warning" title="Qualified evidence is unavailable">
+            {evidenceError.message}
+          </Alert>
+          {evidenceError.status !== 401 && evidenceError.status !== 403 ? (
+            <Button variant="secondary" onClick={load}>
+              Retry exact evidence
+            </Button>
+          ) : null}
+        </>
+      ) : evidence ? (
+        <>
+          <Alert title="Candidate boundary">
+            Human Qualification is not customer instruction. The relationship model below is an
+            explicit service-handling choice; it does not verify a Customer Relationship, legal
+            identity, or filing authority.
+          </Alert>
+          <KeyValueList
+            items={[
+              {
+                key: 'Candidate',
+                value: `${evidence.candidate.opportunityCandidateId} · current v${evidence.candidate.version}`
+              },
+              {
+                key: 'Reviewed Candidate',
+                value: `v${evidence.qualificationDecision.candidate.version} · ${evidence.qualificationDecision.expectedCandidateFingerprintSha256}`
+              },
+              {
+                key: 'Qualification',
+                value: `${evidence.qualificationDecision.outcome} · ${evidence.qualificationDecision.opportunityQualificationDecisionId}`
+              },
+              { key: 'Human rationale', value: evidence.qualificationDecision.rationale }
+            ]}
+          />
+          <Select
+            label="Relationship model"
+            value={relationshipModel}
+            onChange={(event) =>
+              setRelationshipModel(event.currentTarget.value as RelationshipModel | '')
+            }
+            hint="Choose explicitly. MarkOrbit will not infer this from Seed representation, Directory entries or applicant identity."
+          >
+            <option value="">Choose relationship model</option>
+            {relationshipModels.map((value) => (
+              <option key={value} value={value}>
+                {value.replaceAll('_', ' ')}
+              </option>
+            ))}
+          </Select>
+          <Alert tone="warning" title="What Prepare will do">
+            Create a reviewable action for one MarkReg Formal Trademark Service Opportunity from
+            this exact qualified Candidate. Nothing is created in MarkReg until you separately
+            confirm that action.
+          </Alert>
+          <Button
+            disabled={busy !== '' || relationshipModel === ''}
+            onClick={() => {
+              if (relationshipModel) onPrepare(recommendation, evidence, relationshipModel);
+            }}
+          >
+            {busy === 'prepare' ? 'Preparing…' : 'Prepare Formal Opportunity action'}
+          </Button>
+        </>
+      ) : null}
+    </Card>
+  );
 }
 
 function PreparedActionCard({
@@ -206,7 +354,10 @@ export function TodayMoveSection({
   selectedJourney,
   busy,
   feedbackBusyPackageId,
+  client,
+  onSelectRecommendation,
   onPrepare,
+  onPrepareOpportunity,
   onConfirm,
   onRecordFeedback
 }: {
@@ -216,7 +367,14 @@ export function TodayMoveSection({
   selectedJourney?: Readonly<PreparedActionJourney>;
   busy: TodayBusyState;
   feedbackBusyPackageId: string;
+  client: TodayClient;
+  onSelectRecommendation: (recommendation: Readonly<TodayRecommendation>) => void;
   onPrepare: (recommendation: Readonly<TodayRecommendation>) => void;
+  onPrepareOpportunity: (
+    recommendation: Readonly<TodayRecommendation>,
+    evidence: Readonly<QualifiedOpportunityReviewEvidence>,
+    relationshipModel: RelationshipModel
+  ) => void;
   onConfirm: (journey: Readonly<PreparedActionJourney>) => void;
   onRecordFeedback: (
     publishPackage: Readonly<PublishPackage>,
@@ -240,6 +398,39 @@ export function TodayMoveSection({
               recommendation.todayRecommendationId === selectionRecommendationId
                 ? selectedJourney
                 : preparedActions[0];
+            if (
+              !journey &&
+              recommendation.kind === 'OPPORTUNITY_REVIEW' &&
+              recommendation.todayRecommendationId === selectionRecommendationId
+            )
+              return (
+                <OpportunityReviewCard
+                  key={recommendation.todayRecommendationId}
+                  recommendation={recommendation}
+                  client={client}
+                  busy={busy}
+                  onPrepare={onPrepareOpportunity}
+                />
+              );
+            if (!journey && recommendation.kind === 'OPPORTUNITY_REVIEW')
+              return (
+                <Card key={recommendation.todayRecommendationId}>
+                  <div className="daily-card-heading">
+                    <div>
+                      <p className="daily-kicker">Review</p>
+                      <h3>{recommendation.title}</h3>
+                    </div>
+                    <Badge>{recommendation.status}</Badge>
+                  </div>
+                  <p>{recommendation.explanation}</p>
+                  <Button
+                    variant="secondary"
+                    onClick={() => onSelectRecommendation(recommendation)}
+                  >
+                    Review qualified Candidate
+                  </Button>
+                </Card>
+              );
             return (
               <PreparedActionCard
                 key={recommendation.todayRecommendationId}

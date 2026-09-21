@@ -1,5 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react';
 import type {
+  OpportunityCandidate,
+  OpportunityQualificationDecision,
   PreparedActionJourney,
   ProductLoopUseFeedback,
   PublishPackage,
@@ -97,6 +99,85 @@ const completed: PreparedActionJourney = {
     }
   }
 };
+const opportunitySource = {
+  schemaVersion: 1 as const,
+  owner: 'LITE' as const,
+  kind: 'OPPORTUNITY_CANDIDATE' as const,
+  sourceId: 'opportunity-candidate_story' as const,
+  sourceVersion: 1,
+  sourceFingerprintSha256: 'f'.repeat(64),
+  observedAt: '2026-08-11T08:20:00.000Z'
+};
+const opportunityRecommendation: TodayRecommendation = {
+  schemaVersion: 1,
+  todayRecommendationId: 'today-recommendation_opportunity-story',
+  workspaceId,
+  version: 1,
+  kind: 'OPPORTUNITY_REVIEW',
+  title: 'Review qualified Canada filing service need',
+  explanation:
+    'A human Qualification Decision marked this exact Candidate QUALIFIED_FOR_MARKREG. This is not customer instruction.',
+  sources: [opportunitySource],
+  status: 'OPEN',
+  recommendationFingerprintSha256: '1'.repeat(64),
+  executionAuthorized: false,
+  createdAt: '2026-08-11T08:21:00.000Z',
+  updatedAt: '2026-08-11T08:21:00.000Z'
+};
+const opportunityCandidate: OpportunityCandidate = {
+  schemaVersion: 1,
+  opportunityCandidateId: opportunitySource.sourceId,
+  workspaceId,
+  version: 2,
+  kind: 'TRADEMARK_SERVICE',
+  title: 'Canada filing service need',
+  serviceNeedSummary: 'A reviewed Candidate may warrant a bounded MarkReg service opportunity.',
+  sources: [source],
+  status: 'DISPOSITIONED',
+  opportunityCandidateFingerprintSha256: '2'.repeat(64),
+  formalOpportunityCreated: false,
+  customerContacted: false,
+  createdAt: '2026-08-11T08:00:00.000Z',
+  updatedAt: '2026-08-11T08:22:00.000Z'
+};
+const opportunityQualification: OpportunityQualificationDecision = {
+  schemaVersion: 1,
+  opportunityQualificationDecisionId: 'opportunity-qualification_story',
+  workspaceId,
+  version: 1,
+  candidate: { id: opportunitySource.sourceId, version: 1 },
+  expectedCandidateFingerprintSha256: opportunitySource.sourceFingerprintSha256,
+  outcome: 'QUALIFIED_FOR_MARKREG',
+  decidedByPrincipalId: 'principal_story-reviewer',
+  rationale: 'A human reviewer confirmed this exact Candidate is suitable for MarkReg review.',
+  decidedAt: '2026-08-11T08:22:00.000Z',
+  formalOpportunityCreated: false,
+  customerContacted: false
+};
+const opportunityPrepared: PreparedActionJourney = {
+  schemaVersion: 1,
+  preparedAction: {
+    schemaVersion: 1,
+    preparedActionId: 'prepared-action_opportunity-story',
+    workspaceId,
+    version: 1,
+    recommendation: { id: opportunityRecommendation.todayRecommendationId, version: 1 },
+    recommendationFingerprintSha256: opportunityRecommendation.recommendationFingerprintSha256,
+    kind: 'CREATE_FORMAL_TRADEMARK_SERVICE_OPPORTUNITY',
+    summary: 'Prepare one exact qualified Candidate for explicit MarkReg opportunity creation.',
+    confirmationEffect:
+      'Create one MarkReg Formal Trademark Service Opportunity from this exact qualified Candidate using the selected relationship model. No Intake, Order, Matter, payment, filing or customer contact will occur.',
+    handoffTarget: 'MARKREG_FORMAL_TRADEMARK_SERVICE_OPPORTUNITY',
+    sources: opportunityRecommendation.sources,
+    preparedActionFingerprintSha256: '3'.repeat(64),
+    confirmationRequired: true,
+    executionAuthorized: false,
+    createdAt: '2026-08-11T08:23:00.000Z',
+    updatedAt: '2026-08-11T08:23:00.000Z'
+  },
+  handoffState: 'AWAITING_CONFIRMATION'
+};
+
 const publishPackage: PublishPackage = {
   schemaVersion: 1,
   publishPackageId: 'publish-package_story',
@@ -144,11 +225,33 @@ function snapshot(
   };
 }
 
-function clientFor(value: TodayProductLoopSnapshot): TodayClient {
+function opportunitySnapshot(actions: PreparedActionJourney[] = []): TodayProductLoopSnapshot {
+  return {
+    schemaVersion: 1,
+    workspaceId,
+    generatedAt: '2026-08-11T08:24:00.000Z',
+    items: [{ recommendation: opportunityRecommendation, preparedActions: actions }],
+    partial: false,
+    warnings: [],
+    recentFeedback: [],
+    feedbackPendingPackages: []
+  };
+}
+
+function clientFor(
+  value: TodayProductLoopSnapshot,
+  opportunityEvidence = {
+    source: opportunitySource,
+    candidate: opportunityCandidate,
+    qualificationDecision: opportunityQualification
+  }
+): TodayClient {
   return {
     loadToday: () => Promise.resolve(value),
     loadPreparedAction: () => Promise.resolve(prepared),
+    loadQualifiedOpportunityReview: () => Promise.resolve(opportunityEvidence),
     prepareContent: () => Promise.resolve(prepared),
+    prepareQualifiedOpportunity: () => Promise.resolve(opportunityPrepared),
     confirm: () => Promise.resolve(completed),
     recordUseFeedback: (_publishPackage, outcome) => Promise.resolve({ ...feedback, outcome })
   };
@@ -182,6 +285,38 @@ export const FeedbackNeeded: Story = {
 export const FeedbackReturnedToToday: Story = {
   args: { workspaceId, client: clientFor(snapshot([completed], false, [feedback])) }
 };
+export const QualifiedOpportunityReview: Story = {
+  args: { workspaceId, client: clientFor(opportunitySnapshot()) }
+};
+export const QualifiedOpportunityEvidenceUnavailable: Story = {
+  args: {
+    workspaceId,
+    client: {
+      ...clientFor(opportunitySnapshot()),
+      loadQualifiedOpportunityReview: () =>
+        Promise.reject(
+          new TodayHttpError(
+            409,
+            'STALE_OPPORTUNITY_REVIEW',
+            'The current Candidate or Qualification Decision no longer matches this Opportunity Review.'
+          )
+        )
+    }
+  }
+};
+export const QualifiedOpportunityPrepared: Story = {
+  args: { workspaceId, client: clientFor(opportunitySnapshot([opportunityPrepared])) }
+};
+export const QualifiedOpportunityMobile390: Story = {
+  args: { workspaceId, client: clientFor(opportunitySnapshot()) },
+  parameters: {
+    viewport: {
+      defaultViewport: 'mobile1',
+      viewports: { mobile1: { name: '390px mobile', styles: { width: '390px', height: '844px' } } }
+    }
+  }
+};
+
 export const PartialContext: Story = {
   args: { workspaceId, client: clientFor(snapshot([], true)) }
 };
