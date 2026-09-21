@@ -122,11 +122,7 @@ describe('Today qualified Opportunity Review client', () => {
         return Promise.resolve(jsonResponse(qualification));
       if (url.endsWith(`/api/lite/opportunity-candidates/${candidateId}`))
         return Promise.resolve(jsonResponse(candidate));
-      if (
-        url.endsWith(
-          `/api/lite/today/${recommendation.todayRecommendationId}/prepared-actions`
-        )
-      )
+      if (url.endsWith(`/api/lite/today/${recommendation.todayRecommendationId}/prepared-actions`))
         return Promise.resolve(jsonResponse(prepared, 201));
       throw new Error(`Unexpected request: ${url}`);
     });
@@ -140,17 +136,21 @@ describe('Today qualified Opportunity Review client', () => {
       'WHITE_LABEL'
     );
 
-    expect(evidence).toEqual({ source: recommendation.sources[0], candidate, qualificationDecision: qualification });
+    expect(evidence).toEqual({
+      source: recommendation.sources[0],
+      candidate,
+      qualificationDecision: qualification
+    });
     expect(result).toEqual(prepared);
     expect(requests.slice(0, 2).map((request) => request.url)).toEqual(
       expect.arrayContaining([
         expect.stringContaining(`/api/lite/opportunity-candidates/${candidateId}`),
-        expect.stringContaining(
-          `/api/lite/opportunity-candidates/${candidateId}/qualification`
-        )
+        expect.stringContaining(`/api/lite/opportunity-candidates/${candidateId}/qualification`)
       ])
     );
-    const mutation = requests.find((request) => request.method === 'POST' && request.url.includes('/prepared-actions'));
+    const mutation = requests.find(
+      (request) => request.method === 'POST' && request.url.includes('/prepared-actions')
+    );
     expect(mutation?.body).toEqual({
       workspaceId,
       recommendationVersion: 1,
