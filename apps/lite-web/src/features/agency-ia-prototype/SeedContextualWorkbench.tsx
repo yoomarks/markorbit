@@ -13,17 +13,10 @@ import {
 import './seed-contextual-workbench.css';
 
 export type SeedWorkbenchTask =
-  | 'SEED_CUSTOMER_REVIEW'
-  | 'OPPORTUNITY_REVIEW'
-  | 'CLIENT_ACTION_DRAFT';
+  'SEED_CUSTOMER_REVIEW' | 'OPPORTUNITY_REVIEW' | 'CLIENT_ACTION_DRAFT';
 
 export type SeedWorkbenchSurfaceState =
-  | 'loading'
-  | 'ready'
-  | 'empty'
-  | 'error'
-  | 'permission'
-  | 'partial';
+  'loading' | 'ready' | 'empty' | 'error' | 'permission' | 'partial';
 
 export interface SeedWorkbenchContextBrief {
   readonly contextId: string;
