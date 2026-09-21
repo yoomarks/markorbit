@@ -1,5 +1,10 @@
 import { createHash } from 'node:crypto';
-import type { EducationCommunityJourneyV1 } from '@markorbit/contracts/education-community';
+import type {
+  EducationCommunityJourneyIdV1,
+  EducationCommunityJourneyV1,
+  EducationCommunityProductActionReferenceV1
+} from '@markorbit/contracts/education-community';
+import type { LiteWorkItemId } from '@markorbit/contracts/lite-work-item';
 import {
   parseSeedWorkspacePackageV1,
   type SeedWorkspacePackageIdV1,
@@ -34,7 +39,7 @@ export interface SeedWorkspaceClaimV1 {
   schemaVersion: 1;
   seedWorkspacePackageId: SeedWorkspacePackageIdV1;
   packageFingerprintSha256: string;
-  educationCommunityJourneyId: string;
+  educationCommunityJourneyId: EducationCommunityJourneyIdV1;
   journeyVersion: number;
   journeyFingerprintSha256: string;
   activatedWorkspaceId: string;
@@ -288,6 +293,20 @@ export class PostgresSeedWorkspacePackageStore {
     }
   }
 
+  async readClaimForWorkspace(
+    workspaceId: string,
+    packageId: SeedWorkspacePackageIdV1
+  ): Promise<Readonly<SeedWorkspaceClaimV1> | null> {
+    try {
+      const claim = await this.existingClaim(packageId);
+      if (!claim || claim.activatedWorkspaceId.toLowerCase() !== workspaceId.trim().toLowerCase())
+        return null;
+      return Object.freeze(claim);
+    } catch (error) {
+      return this.persistence(error);
+    }
+  }
+
   private async existingClaim(
     packageId: SeedWorkspacePackageIdV1
   ): Promise<SeedWorkspaceClaimV1 | null> {
@@ -308,7 +327,8 @@ export class PostgresSeedWorkspacePackageStore {
       schemaVersion: 1,
       seedWorkspacePackageId: row.seed_workspace_package_id as SeedWorkspacePackageIdV1,
       packageFingerprintSha256: row.package_fingerprint_sha256 as string,
-      educationCommunityJourneyId: row.education_community_journey_id as string,
+      educationCommunityJourneyId:
+        row.education_community_journey_id as EducationCommunityJourneyIdV1,
       journeyVersion: Number(row.journey_version),
       journeyFingerprintSha256: row.journey_fingerprint_sha256 as string,
       activatedWorkspaceId: row.activated_workspace_id as string,
@@ -441,5 +461,55 @@ export class SeedWorkspaceClaimService {
       actorPrincipalId: command.actorPrincipalId
     });
     return { package: prepared, claim, journey };
+  }
+}
+
+export interface SeedFirstValueWorkItemReader {
+  reference(
+    workspaceId: string,
+    liteWorkItemId: LiteWorkItemId
+  ): Promise<EducationCommunityProductActionReferenceV1>;
+}
+
+export class SeedWorkspaceFirstValueService {
+  constructor(
+    private readonly packages: Pick<PostgresSeedWorkspacePackageStore, 'readClaimForWorkspace'>,
+    private readonly journeys: Pick<EducationCommunityService, 'recordFirstValue'>,
+    private readonly workItems: SeedFirstValueWorkItemReader
+  ) {}
+
+  async record(command: {
+    packageId: SeedWorkspacePackageIdV1;
+    workspaceId: string;
+    actorPrincipalId: string;
+    idempotencyKey: string;
+    workItemId: LiteWorkItemId;
+  }): Promise<
+    Readonly<{
+      workItem: EducationCommunityProductActionReferenceV1;
+      journey: EducationCommunityJourneyV1;
+    }>
+  > {
+    const claim = await this.packages.readClaimForWorkspace(command.workspaceId, command.packageId);
+    if (!claim)
+      throw new SeedWorkspacePackageOwnerError(
+        'SEED_PACKAGE_NOT_FOUND',
+        'Claimed Seed Workspace Package was not found in this Workspace.',
+        404
+      );
+    const workItem = await this.workItems.reference(command.workspaceId, command.workItemId);
+    const journey = await this.journeys.recordFirstValue({
+      workspaceId: command.workspaceId,
+      actorPrincipalId: command.actorPrincipalId,
+      idempotencyKey: command.idempotencyKey,
+      journeyId: claim.educationCommunityJourneyId,
+      expectedVersion: 3,
+      workItem: {
+        id: workItem.id as LiteWorkItemId,
+        version: workItem.version,
+        fingerprintSha256: workItem.fingerprintSha256
+      }
+    });
+    return Object.freeze({ workItem, journey });
   }
 }

@@ -211,36 +211,26 @@ function persistedJourney(value: unknown): EducationCommunityJourneyV1 {
 export class PostgresEducationCommunityWorkItemReader {
   constructor(private readonly query: QueryClient) {}
 
-  async resolve(
+  async reference(
     workspaceIdValue: string,
-    reference: Readonly<{ id: LiteWorkItemId; version: number; fingerprintSha256: string }>
+    liteWorkItemId: LiteWorkItemId
   ): Promise<EducationCommunityProductActionReferenceV1> {
     const workspaceId = workspace(workspaceIdValue);
     try {
       const result = await this.query.query(
         'SELECT document_json FROM lite_work_items WHERE workspace_id=$1 AND lite_work_item_id=$2',
-        [workspaceId, text(reference.id, 'workItem.id')]
+        [workspaceId, text(liteWorkItemId, 'workItem.id')]
       );
       const row = result.rows[0] as Row | undefined;
       if (!row)
         throw new EducationCommunityError('NOT_FOUND', 'Exact Lite Work Item was not found.', 404);
       const item = parseLiteWorkItemV1(row.document_json, workspaceId);
-      const fingerprint = hash(item);
-      if (
-        item.version !== version(reference.version, 'workItem.version') ||
-        fingerprint !== sha(reference.fingerprintSha256, 'workItem.fingerprintSha256')
-      )
-        throw new EducationCommunityError(
-          'LINEAGE_MISMATCH',
-          'Lite Work Item exact reference no longer matches.',
-          409
-        );
       return {
         owner: 'LITE',
         kind: 'LITE_WORK_ITEM',
         id: item.liteWorkItemId,
         version: item.version,
-        fingerprintSha256: fingerprint,
+        fingerprintSha256: hash(item),
         observedAt: item.createdAt
       };
     } catch (error) {
@@ -253,6 +243,23 @@ export class PostgresEducationCommunityWorkItemReader {
         { cause: error instanceof Error ? error : undefined }
       );
     }
+  }
+
+  async resolve(
+    workspaceIdValue: string,
+    reference: Readonly<{ id: LiteWorkItemId; version: number; fingerprintSha256: string }>
+  ): Promise<EducationCommunityProductActionReferenceV1> {
+    const resolved = await this.reference(workspaceIdValue, reference.id);
+    if (
+      resolved.version !== version(reference.version, 'workItem.version') ||
+      resolved.fingerprintSha256 !== sha(reference.fingerprintSha256, 'workItem.fingerprintSha256')
+    )
+      throw new EducationCommunityError(
+        'LINEAGE_MISMATCH',
+        'Lite Work Item exact reference no longer matches.',
+        409
+      );
+    return resolved;
   }
 }
 

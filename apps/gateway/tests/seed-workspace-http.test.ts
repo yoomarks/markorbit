@@ -161,6 +161,52 @@ describe('Gateway Seed Workspace browser boundary', () => {
     expect(forwardedBody).not.toHaveProperty('actorPrincipalId');
   });
 
+  it('records first value only after authenticated Workspace authority and exact Work Item id', async () => {
+    const fetchImpl = vi.fn((input: string | URL | Request, init?: RequestInit) => {
+      void input;
+      void init;
+      return Promise.resolve(
+        new Response(JSON.stringify({ journey: { stage: 'FIRST_VALUE_RECORDED' } }), {
+          status: 200,
+          headers: { 'content-type': 'application/json' }
+        })
+      );
+    });
+    const routes = createGatewaySeedWorkspaceRoutes({
+      liteUrl: 'http://lite.test',
+      authenticationClient: auth(),
+      internalServiceSecret: internalSecret,
+      csrfSecret,
+      allowedOrigins: [origin],
+      fetchImpl
+    });
+    const firstValue = route(routes, '/api/lite/seed-workspace-packages/:packageId/first-value');
+    const response = await firstValue.handle({
+      ...request(
+        '/api/lite/seed-workspace-packages/seed-workspace-package_agency-001/first-value',
+        { workItemId: 'lite-work-item_first-value' },
+        {
+          cookie: 'mo_session=opaque-session',
+          'x-markorbit-workspace-id': workspaceId,
+          'x-markorbit-csrf-token': csrfToken(principal.sessionId, csrfSecret),
+          'idempotency-key': 'seed-first-value-browser-001'
+        }
+      ),
+      params: { packageId: 'seed-workspace-package_agency-001' }
+    });
+
+    expect(response).toEqual({
+      status: 200,
+      body: { journey: { stage: 'FIRST_VALUE_RECORDED' } }
+    });
+    const [url, init] = fetchImpl.mock.calls[0]!;
+    expect(url).toBe(
+      'http://lite.test/v1/seed-workspace-packages/seed-workspace-package_agency-001/first-value'
+    );
+    expect(new Headers(init?.headers).get('idempotency-key')).toBe('seed-first-value-browser-001');
+    expect(init?.body).toBe(JSON.stringify({ workItemId: 'lite-work-item_first-value' }));
+  });
+
   it('fails closed for untrusted preview origins and claim actor spoof fields', async () => {
     const fetchImpl = vi.fn();
     const routes = createGatewaySeedWorkspaceRoutes({

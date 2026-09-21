@@ -105,7 +105,8 @@ import {
 } from './education-community.js';
 import {
   PostgresSeedWorkspacePackageStore,
-  SeedWorkspaceClaimService
+  SeedWorkspaceClaimService,
+  SeedWorkspaceFirstValueService
 } from './seed-workspace-package.js';
 import { createCommunicationLinkRoutes } from './communication-link-http.js';
 import { CommunicationLinkService, PostgresCommunicationLinkStore } from './communication-link.js';
@@ -290,11 +291,12 @@ const emailCampaignDeliveryCurrentness = createEmailCampaignDeliveryCurrentnessR
   internalServiceSecret
 });
 const businessAttributionStore = new PostgresBusinessAttributionStore(database, pool);
+const educationCommunityWorkItemReader = new PostgresEducationCommunityWorkItemReader(pool);
 const educationCommunityService = new EducationCommunityService(
   database,
   pool,
   outboundContactPolicyStore,
-  new PostgresEducationCommunityWorkItemReader(pool),
+  educationCommunityWorkItemReader,
   new HttpCoreEducationCommunityWorkspaceReader(coreUrl, internalServiceSecret),
   businessAttributionStore
 );
@@ -302,6 +304,11 @@ const seedWorkspacePackageStore = new PostgresSeedWorkspacePackageStore(pool);
 const seedWorkspaceClaimService = new SeedWorkspaceClaimService(
   seedWorkspacePackageStore,
   educationCommunityService
+);
+const seedWorkspaceFirstValueService = new SeedWorkspaceFirstValueService(
+  seedWorkspacePackageStore,
+  educationCommunityService,
+  educationCommunityWorkItemReader
 );
 const partnerReferralStore = new PostgresPartnerReferralStore(database, pool);
 const partnerReferralService = new PartnerReferralService(
@@ -782,7 +789,8 @@ const runtime = createServiceRuntime(serviceManifest, {
     ...createSeedWorkspacePackageRoutes({
       internalServiceSecret,
       store: seedWorkspacePackageStore,
-      claims: seedWorkspaceClaimService
+      claims: seedWorkspaceClaimService,
+      firstValue: seedWorkspaceFirstValueService
     }),
     ...createAgencyLineageRoutes({ internalServiceSecret, service: agencyLineage }),
     ...createDiscoveredTrademarkAdmissionRoutes({

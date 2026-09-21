@@ -18,7 +18,7 @@ import {
 } from './auth.js';
 import { createDataEngineClient } from './data-engine-http.js';
 import { createApplicantDiscoveryClientV1 } from './data-engine-applicant-discovery-http.js';
-import { runDataEngineQuery } from './data-engine-route-support.js';
+import { dataEngineRequestContext, runDataEngineQuery } from './data-engine-route-support.js';
 import {
   mapDataEngineTrademarkAssetFacts,
   resolveTrademarkAssetDataEngineLookup
@@ -338,6 +338,63 @@ export function createGatewayProductLoopRoutes(
     );
   };
 
+  const cnSeedRead = async (
+    request: JsonRequest,
+    kind: 'AGENT_EXACT' | 'ENTITY_PORTFOLIO' | 'RELATIONSHIPS'
+  ): Promise<ReturnType<typeof json>> => {
+    await authenticate(request, 'READ', ['workspace:read']);
+    if (!dataEngineUrl || !dataEngineApiKey)
+      throw new HttpError(
+        503,
+        'DATA_ENGINE_CONFIGURATION_UNAVAILABLE',
+        'Data Engine protected query configuration is unavailable.',
+        true
+      );
+
+    const allowed =
+      kind === 'ENTITY_PORTFOLIO'
+        ? ['role', 'scope', 'page_size', 'cursor']
+        : kind === 'RELATIONSHIPS'
+          ? ['scope']
+          : [];
+    if (Object.keys(request.query).some((field) => !allowed.includes(field)))
+      throw new HttpError(400, 'INVALID_REQUEST', 'Unsupported CN Seed read query parameter.');
+
+    const key =
+      kind === 'AGENT_EXACT'
+        ? request.params.agentCode
+        : kind === 'ENTITY_PORTFOLIO'
+          ? request.params.entityId
+          : request.params.applicationNumber;
+    if (!key?.trim() || key.trim().length > 512)
+      throw new HttpError(400, 'INVALID_REQUEST', 'CN Seed read identifier is invalid.');
+
+    const query = new URLSearchParams();
+    for (const field of allowed) {
+      const value = request.query[field];
+      if (value !== undefined) query.set(field, value);
+    }
+    const suffix = query.toString();
+    const path =
+      kind === 'AGENT_EXACT'
+        ? `/api/v1/cn/agents/${encodeURIComponent(key.trim())}`
+        : kind === 'ENTITY_PORTFOLIO'
+          ? `/api/v1/cn/entities/${encodeURIComponent(key.trim())}/trademarks`
+          : `/api/v1/cn/cases/${encodeURIComponent(key.trim())}/relationships`;
+
+    return runDataEngineQuery(
+      {
+        dataEngineUrl,
+        dataEngineApiKey,
+        ...(dataEngineTimeoutMs === undefined ? {} : { timeoutMs: dataEngineTimeoutMs }),
+        ...(options.dataEngineFetchImpl ? { fetchImpl: options.dataEngineFetchImpl } : {})
+      },
+      request,
+      (client) =>
+        client.rawGet(`${path}${suffix ? `?${suffix}` : ''}`, dataEngineRequestContext(request))
+    );
+  };
+
   const trademarkAssetDetail = async (request: JsonRequest): Promise<ReturnType<typeof json>> => {
     const principal = await authenticate(request, 'READ', ['workspace:read']);
     const base = await liteCall(request, principal);
@@ -420,6 +477,24 @@ export function createGatewayProductLoopRoutes(
       path: '/api/data-engine/applicants/portfolio',
       handle: (request) => applicantQuery(request, 'PORTFOLIO')
     },
+    {
+      method: 'GET',
+      path: '/api/data-engine/cn/agents/:agentCode',
+      handle: (request) => cnSeedRead(request, 'AGENT_EXACT')
+    },
+    {
+      method: 'GET',
+      path: '/api/data-engine/cn/entities/:entityId/trademarks',
+      handle: (request) => cnSeedRead(request, 'ENTITY_PORTFOLIO')
+    },
+    {
+      method: 'GET',
+      path: '/api/data-engine/cn/cases/:applicationNumber/relationships',
+      handle: (request) => cnSeedRead(request, 'RELATIONSHIPS')
+    },
+    route('GET', '/api/lite/seed-workspace-packages/:packageId', ['workspace:read'], 'READ'),
+    route('POST', '/api/lite/workspace-directory-entries', ['matter:manage']),
+    route('POST', '/api/lite/work-items', ['matter:manage']),
     route('GET', '/api/lite/today', ['workspace:read'], 'READ'),
     route('GET', '/api/lite/daily-orbit', ['workspace:read'], 'READ'),
     route('GET', '/api/lite/daily-workspace', ['workspace:read'], 'READ'),
