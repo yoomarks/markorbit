@@ -6,11 +6,7 @@ import type {
 } from '@markorbit/contracts/workspace-directory';
 
 export type SmsEndpointResolutionState =
-  | 'CURRENT'
-  | 'STALE'
-  | 'NOT_FOUND'
-  | 'UNKNOWN'
-  | 'UNAVAILABLE';
+  'CURRENT' | 'STALE' | 'NOT_FOUND' | 'UNKNOWN' | 'UNAVAILABLE';
 
 export interface SmsEndpointResolutionV1 {
   state: SmsEndpointResolutionState;
@@ -70,7 +66,7 @@ export class WorkspaceDirectorySmsEndpointResolverV1 {
       if (latest.version !== targetRef.version || latest.status !== 'ACTIVE')
         return { state: 'STALE' };
       const phones = exact.contactPoints.filter((point) => point.kind === 'PHONE');
-      if (phones.length === 0) return { state: 'NOT_FOUND' };
+      if (phones.length === 0) return { state: 'UNKNOWN' };
       if (phones.length !== 1) return { state: 'UNKNOWN' };
       const endpoint = canonicalSmsEndpointV1(phones[0]!.value);
       if (!endpoint) return { state: 'UNKNOWN' };

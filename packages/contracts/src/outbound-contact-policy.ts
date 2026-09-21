@@ -206,9 +206,7 @@ function assertChannelScope(
 ): void {
   const allowed =
     scope === 'ALL_OUTBOUND' ||
-    (channel === 'EMAIL'
-      ? scope !== 'WORKSPACE_NOTIFICATION'
-      : scope === 'WORKSPACE_NOTIFICATION');
+    (channel === 'EMAIL' ? scope !== 'WORKSPACE_NOTIFICATION' : scope === 'WORKSPACE_NOTIFICATION');
   if (!allowed)
     throw new OutboundContactPolicyValidationError(
       'channel and suppression scope are not a supported V1 combination.'

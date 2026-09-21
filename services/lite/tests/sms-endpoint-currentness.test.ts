@@ -22,8 +22,8 @@ const entry = (value: string, version = 2, status = 'ACTIVE') => ({
       value,
       provenance: {
         sourceKind: 'WORKSPACE_USER' as const,
-        sourceRef: 'fixture',
-        observedAt: '2026-09-20T00:00:00.000Z'
+        sourceReference: 'fixture',
+        capturedAt: '2026-09-20T00:00:00.000Z'
       }
     }
   ]
@@ -35,8 +35,8 @@ describe('Workspace Directory SMS endpoint currentness', () => {
     expect(canonicalSmsEndpointV1('4155550123')).toBeUndefined();
     expect(canonicalSmsEndpointV1('+0123456789')).toBeUndefined();
     const resolver = new WorkspaceDirectorySmsEndpointResolverV1({
-      getExact: async () => entry('+14155550123'),
-      getLatest: async () => entry('+14155550123')
+      getExact: () => Promise.resolve(entry('+14155550123')),
+      getLatest: () => Promise.resolve(entry('+14155550123'))
     });
     const result = await resolver.resolve('11111111-1111-4111-8111-111111111111', target);
     expect(result).toEqual({
@@ -53,7 +53,7 @@ describe('Workspace Directory SMS endpoint currentness', () => {
     const base = entry('+14155550123');
     const cases = [
       { exact: base, latest: entry('+14155550123', 3), state: 'STALE' },
-      { exact: { ...base, contactPoints: [] }, latest: base, state: 'NOT_FOUND' },
+      { exact: { ...base, contactPoints: [] }, latest: base, state: 'UNKNOWN' },
       {
         exact: { ...base, contactPoints: [...base.contactPoints, ...base.contactPoints] },
         latest: base,
@@ -63,8 +63,8 @@ describe('Workspace Directory SMS endpoint currentness', () => {
     ] as const;
     for (const item of cases) {
       const resolver = new WorkspaceDirectorySmsEndpointResolverV1({
-        getExact: async () => item.exact,
-        getLatest: async () => item.latest
+        getExact: () => Promise.resolve(item.exact),
+        getLatest: () => Promise.resolve(item.latest)
       });
       await expect(
         resolver.resolve('11111111-1111-4111-8111-111111111111', target)
@@ -75,10 +75,9 @@ describe('Workspace Directory SMS endpoint currentness', () => {
   it('returns UNAVAILABLE for owner outage and never reads non-Directory targets', async () => {
     const base = entry('+14155550123');
     const unavailable = new WorkspaceDirectorySmsEndpointResolverV1({
-      getExact: async () => {
-        throw Object.assign(new Error('db'), { code: 'PERSISTENCE_UNAVAILABLE' });
-      },
-      getLatest: async () => base
+      getExact: () =>
+        Promise.reject(Object.assign(new Error('db'), { code: 'PERSISTENCE_UNAVAILABLE' })),
+      getLatest: () => Promise.resolve(base)
     });
     await expect(
       unavailable.resolve('11111111-1111-4111-8111-111111111111', target)
@@ -86,13 +85,13 @@ describe('Workspace Directory SMS endpoint currentness', () => {
 
     let reads = 0;
     const guarded = new WorkspaceDirectorySmsEndpointResolverV1({
-      getExact: async () => {
+      getExact: () => {
         reads += 1;
-        return base;
+        return Promise.resolve(base);
       },
-      getLatest: async () => {
+      getLatest: () => {
         reads += 1;
-        return base;
+        return Promise.resolve(base);
       }
     });
     await expect(

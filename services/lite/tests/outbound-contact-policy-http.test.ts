@@ -120,6 +120,7 @@ describe('Outbound contact policy HTTP boundary', () => {
     );
     expect(store.assertBasis).toHaveBeenCalledWith({
       ...body,
+      channel: 'EMAIL',
       workspaceId: principal.workspaceId,
       actorPrincipalId: principal.userId,
       idempotencyKey: 'idem-1'
@@ -158,8 +159,36 @@ describe('Outbound contact policy HTTP boundary', () => {
     );
     expect(store.evaluate).toHaveBeenCalledWith({
       ...readiness,
+      channel: 'EMAIL',
       workspaceId: principal.workspaceId,
       actorPrincipalId: principal.userId
+    });
+  });
+
+  it('forwards an explicit SMS notification channel without granting authority', async () => {
+    const { store, routes } = fixture();
+    const body = {
+      targetRef: {
+        owner: 'LITE',
+        kind: 'WORKSPACE_DIRECTORY_ENTRY',
+        id: 'workspace-directory-entry_contact1',
+        version: 2
+      },
+      channel: 'SMS',
+      endpointFingerprintSha256: 'd'.repeat(64),
+      purpose: 'WORKSPACE_NOTIFICATION',
+      policyRef: { policyId: 'workspace-notification-policy', version: 1 },
+      basisState: 'ASSERTED_ALLOWED',
+      evidenceRefs: ['review:sms:1']
+    };
+    await route(routes, '/v1/outbound-contact-policy/basis-assertions').handle(
+      req('/v1/outbound-contact-policy/basis-assertions', body)
+    );
+    expect(store.assertBasis).toHaveBeenCalledWith({
+      ...body,
+      workspaceId: principal.workspaceId,
+      actorPrincipalId: principal.userId,
+      idempotencyKey: 'idem-1'
     });
   });
 });

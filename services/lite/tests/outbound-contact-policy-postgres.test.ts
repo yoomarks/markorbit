@@ -262,6 +262,39 @@ suite('PostgreSQL outbound contact policy owner', () => {
       }
     });
 
+    const notificationSuppression = await s.setSuppression({
+      workspaceId,
+      actorPrincipalId: 'user_admin',
+      idempotencyKey: 'sms-notification-scope',
+      endpointFingerprintSha256: endpoint,
+      channel: 'SMS',
+      scope: 'WORKSPACE_NOTIFICATION',
+      reasonCode: 'RECIPIENT_OPT_OUT',
+      sourceClass: 'WORKSPACE_USER',
+      evidenceRefs: ['review:sms-notification']
+    });
+    expect(
+      await store().evaluate({
+        workspaceId,
+        actorPrincipalId: 'reader',
+        targetRef: target,
+        endpointFingerprintSha256: endpoint,
+        channel: 'SMS',
+        purpose: 'WORKSPACE_NOTIFICATION',
+        policyRef,
+        reviewedSendFingerprintSha256: send
+      })
+    ).toMatchObject({ outcome: 'BLOCKED', reason: 'ACTIVE_SUPPRESSION' });
+    await s.clearSuppression({
+      workspaceId,
+      actorPrincipalId: 'user_admin',
+      idempotencyKey: 'clear-sms-notification-scope',
+      suppressionId: notificationSuppression.suppressionId,
+      expectedVersion: notificationSuppression.version,
+      sourceClass: 'WORKSPACE_USER',
+      evidenceRefs: ['review:clear-sms-notification']
+    });
+
     await s.setSuppression({
       workspaceId,
       actorPrincipalId: 'user_admin',
@@ -316,5 +349,4 @@ suite('PostgreSQL outbound contact policy owner', () => {
     expect(await store().assertBasis({ ...legacy, channel: 'EMAIL' })).toEqual(created);
     expect(created.channel).toBe('EMAIL');
   });
-
 });

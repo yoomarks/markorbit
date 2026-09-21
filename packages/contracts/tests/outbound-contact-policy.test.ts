@@ -129,5 +129,4 @@ describe('Outbound Contact Policy V1', () => {
       parseOutboundContactSuppressionV1({ ...suppression, scope: 'PARTNER_OUTREACH' })
     ).toThrow(/channel and suppression scope/u);
   });
-
 });
