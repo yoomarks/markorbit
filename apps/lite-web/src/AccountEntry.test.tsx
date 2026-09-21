@@ -101,6 +101,32 @@ describe('Lite account entry', () => {
     );
   });
 
+  it('preserves navigation history state while restoring the requested Workspace', async () => {
+    sessionStorage.clear();
+    window.history.replaceState(
+      { restoreFocus: 'document-package-trigger' },
+      '',
+      `/?workspaceId=${workspace.workspace.workspaceId}#professional-review`
+    );
+    const api: LiteAccountApi = {
+      session: () => Promise.resolve(access),
+      register: () => Promise.resolve(access),
+      login: () => Promise.resolve(access),
+      workspaces: () => Promise.resolve([workspace]),
+      createWorkspace: () => Promise.resolve(workspace),
+      previewSeedInvitation: vi.fn() as never,
+      claimSeedWorkspace: vi.fn() as never
+    };
+
+    render(<LiteAccountEntry api={api} renderProduct={() => <div>Professional Lite ready</div>} />);
+
+    expect(await screen.findByText('Professional Lite ready')).toBeTruthy();
+    expect(window.history.state).toEqual({ restoreFocus: 'document-package-trigger' });
+    expect(new URLSearchParams(window.location.search).get('workspaceId')).toBe(
+      workspace.workspace.workspaceId
+    );
+  });
+
   it('shows a prepared Seed preview before account access and requires an explicit claim', async () => {
     sessionStorage.clear();
     window.history.replaceState(
