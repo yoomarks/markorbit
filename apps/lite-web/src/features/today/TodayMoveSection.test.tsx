@@ -139,9 +139,7 @@ describe('Today Opportunity Review preparation', () => {
       />
     );
 
-    expect(
-      await screen.findByText(/Human reviewer qualified this exact Candidate/)
-    ).toBeVisible();
+    expect(await screen.findByText(/Human reviewer qualified this exact Candidate/)).toBeVisible();
     expect(load).toHaveBeenCalledTimes(1);
     expect(load).toHaveBeenCalledWith(selectedRecommendation);
     expect(screen.getByText(/does not verify a Customer Relationship/)).toBeVisible();
