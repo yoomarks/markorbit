@@ -107,3 +107,5 @@ The PR must provide:
 - repository lint, typecheck, tests, build and affected hosted CI.
 
 No production route is added by this prototype.
+
+Final merge requires hosted CI success on the current exact PR head.
