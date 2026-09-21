@@ -219,7 +219,6 @@ test('Today qualified Opportunity Review requires explicit relationship model be
     `prepare-opportunity:${recommendationId}:1:${qualification.opportunityQualificationDecisionId}:1:WHITE_LABEL`
   );
   expect(prepareRequest?.body).toEqual({
-    workspaceId,
     recommendationVersion: 1,
     expectedRecommendationFingerprintSha256: recommendation.recommendationFingerprintSha256,
     plan: {
@@ -234,7 +233,7 @@ test('Today qualified Opportunity Review requires explicit relationship model be
     }
   });
   expect(JSON.stringify(prepareRequest?.body)).not.toMatch(
-    /customerId|principalId|actorId|proposedCustomerIntent/
+    /workspaceId|customerId|principalId|actorId|proposedCustomerIntent/
   );
 
   await page.getByRole('button', { name: 'Confirm and hand off' }).click();

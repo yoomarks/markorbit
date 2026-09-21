@@ -77,7 +77,8 @@ async function request<T>(
   workspaceId: string,
   method: 'GET' | 'POST' = 'GET',
   body?: unknown,
-  idempotencyKey?: string
+  idempotencyKey?: string,
+  includeWorkspaceIdInBody = true
 ): Promise<T> {
   const csrf = method === 'GET' ? '' : await csrfToken();
   let response: Response;
@@ -93,7 +94,12 @@ async function request<T>(
       },
       ...(method === 'GET'
         ? {}
-        : { body: JSON.stringify({ workspaceId, ...(body as Record<string, unknown>) }) })
+        : {
+            body: JSON.stringify({
+              ...(includeWorkspaceIdInBody ? { workspaceId } : {}),
+              ...(body as Record<string, unknown>)
+            })
+          })
     });
   } catch (cause) {
     throw new TodayHttpError(
@@ -278,7 +284,8 @@ export function createTodayClient(workspaceId: string): TodayClient {
             relationshipModel
           }
         },
-        `prepare-opportunity:${recommendation.todayRecommendationId}:${recommendation.version}:${currentEvidence.qualificationDecision.opportunityQualificationDecisionId}:${currentEvidence.qualificationDecision.version}:${relationshipModel}`
+        `prepare-opportunity:${recommendation.todayRecommendationId}:${recommendation.version}:${currentEvidence.qualificationDecision.opportunityQualificationDecisionId}:${currentEvidence.qualificationDecision.version}:${relationshipModel}`,
+        false
       );
     },
     confirm: (journey) =>
