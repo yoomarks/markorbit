@@ -289,7 +289,7 @@ describe('SeedReviewWorkspace', () => {
 
     render(<SeedReviewWorkspace workspaceId={workspaceId} packageId={packageId} api={client} />);
 
-    expect(await screen.findByText('Current source match:')).toBeTruthy();
+    expect(await screen.findByText(/Current source match:/)).toBeTruthy();
     expect(mocks.loadCnAgent).toHaveBeenCalledWith('A001');
     expect(mocks.createDirectory).not.toHaveBeenCalled();
     expect(mocks.admitManagedTrademark).not.toHaveBeenCalled();
