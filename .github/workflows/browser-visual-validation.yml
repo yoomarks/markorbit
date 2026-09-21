@@ -122,6 +122,11 @@ jobs:
         run: pnpm -w build
       - name: Run browser and visual validation
         run: pnpm test:e2e
+      - name: Run focused Seed contextual workbench desktop and mobile acceptance
+        run: >-
+          pnpm --filter @markorbit/lite-web exec playwright test
+          --config playwright.agency-ia-prototype.config.ts
+          --grep "contextual workbench keeps conversation separate"
       - name: Run focused Formal Matter desktop and mobile acceptance
         run: pnpm test:formal-matter:browser
       - name: Run real authenticated Lite Matter desktop/mobile acceptance
