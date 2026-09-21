@@ -102,10 +102,23 @@ function setup() {
     }
   };
   const claims = { claim: vi.fn().mockResolvedValue(claimResult) };
+  const firstValueResult = {
+    workItem: {
+      owner: 'LITE' as const,
+      kind: 'LITE_WORK_ITEM' as const,
+      id: 'lite-work-item_seed-first-value',
+      version: 1,
+      fingerprintSha256: '4'.repeat(64),
+      observedAt: '2026-09-21T01:05:00.000Z'
+    },
+    journey: { stage: 'FIRST_VALUE_RECORDED', version: 4 }
+  };
+  const firstValue = { record: vi.fn().mockResolvedValue(firstValueResult) };
   const routes = createSeedWorkspacePackageRoutes({
     internalServiceSecret: secret,
     store,
-    claims
+    claims,
+    firstValue
   });
   const route = (method: Method, path: string) => {
     const found = routes.find(
@@ -114,7 +127,17 @@ function setup() {
     if (!found) throw new Error(`Missing ${method} ${path}`);
     return found;
   };
-  return { item, preview, store, claims, routes, route, claimResult };
+  return {
+    item,
+    preview,
+    store,
+    claims,
+    firstValue,
+    firstValueResult,
+    routes,
+    route,
+    claimResult
+  };
 }
 
 function request(input: {
@@ -140,13 +163,14 @@ function request(input: {
 }
 
 describe('Seed Workspace Package HTTP owner boundary', () => {
-  it('exposes only preview, prepare, scoped read and exact claim routes', () => {
+  it('exposes only preview, prepare, scoped read, claim and first-value routes', () => {
     const { routes } = setup();
     expect(routes.map(({ method, path }) => `${method} ${path}`)).toEqual([
       'POST /v1/seed-workspace-invitations/preview',
       'POST /v1/seed-workspace-packages',
       'GET /v1/seed-workspace-packages/:packageId',
-      'POST /v1/seed-workspace-claims'
+      'POST /v1/seed-workspace-claims',
+      'POST /v1/seed-workspace-packages/:packageId/first-value'
     ]);
     expect(
       routes.some(({ path }) => /send|customer|managed|opportunity|publish|filing/i.test(path))
@@ -238,6 +262,28 @@ describe('Seed Workspace Package HTTP owner boundary', () => {
       actorPrincipalId: principal.userId,
       idempotencyKey: 'seed-claim-http-001',
       invitationClaimToken: 'opaque-invitation-token'
+    });
+  });
+
+  it('records first value only through exact authenticated Workspace lineage', async () => {
+    const { route, item, firstValue, firstValueResult } = setup();
+    expect(
+      await route('POST', '/v1/seed-workspace-packages/:packageId/first-value').handle(
+        request({
+          method: 'POST',
+          path: `/v1/seed-workspace-packages/${item.seedWorkspacePackageId}/first-value`,
+          params: { packageId: item.seedWorkspacePackageId },
+          headers: { 'idempotency-key': 'seed-first-value-http-001' },
+          body: { workItemId: 'lite-work-item_seed-first-value' }
+        })
+      )
+    ).toEqual({ status: 200, body: firstValueResult });
+    expect(firstValue.record).toHaveBeenCalledWith({
+      packageId: item.seedWorkspacePackageId,
+      workspaceId,
+      actorPrincipalId: principal.userId,
+      idempotencyKey: 'seed-first-value-http-001',
+      workItemId: 'lite-work-item_seed-first-value'
     });
   });
 

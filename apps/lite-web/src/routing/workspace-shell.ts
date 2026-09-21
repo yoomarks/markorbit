@@ -11,7 +11,8 @@ export type LiteSurface =
   | 'opportunities'
   | 'opportunities-provider'
   | 'professional-review'
-  | 'execution-release';
+  | 'execution-release'
+  | 'seed-review';
 
 export type LitePrimaryDestination = 'today' | 'matters' | 'create' | 'portfolio' | 'work';
 
@@ -27,6 +28,12 @@ export const LITE_SURFACES: Readonly<Record<LiteSurface, LiteSurfaceDefinition>>
   today: {
     surface: 'today',
     hash: '#today',
+    primary: 'today',
+    requiresWorkspace: true
+  },
+  'seed-review': {
+    surface: 'seed-review',
+    hash: '#seed-review',
     primary: 'today',
     requiresWorkspace: true
   },

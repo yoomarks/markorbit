@@ -194,6 +194,25 @@ export function createGatewaySeedWorkspaceRoutes(
           }
         });
       }
+    },
+    {
+      method: 'POST',
+      path: '/api/lite/seed-workspace-packages/:packageId/first-value',
+      handle: async (request) => {
+        const value = body(request);
+        exact(value, ['workItemId']);
+        const idempotencyKey = request.headers['idempotency-key']?.trim();
+        if (!idempotencyKey)
+          throw new HttpError(400, 'INVALID_REQUEST', 'Idempotency-Key header is required.');
+        const principal = await browserPrincipal(request, options);
+        const packageId = required(request.params.packageId, 'packageId', 300);
+        return downstream(request, options, {
+          path: `/v1/seed-workspace-packages/${encodeURIComponent(packageId)}/first-value`,
+          principal,
+          idempotencyKey,
+          body: { workItemId: required(value.workItemId, 'workItemId', 300) }
+        });
+      }
     }
   ];
 }

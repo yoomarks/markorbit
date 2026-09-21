@@ -180,6 +180,13 @@ export function LiteAccountEntry({ api = liteAccountApi, renderProduct }: LiteAc
     }
   };
 
+  const continueSeedReview = () => {
+    const url = new URL(window.location.href);
+    url.hash = '#seed-review';
+    window.history.replaceState({}, '', url);
+    setView('ready');
+  };
+
   const claimSeedWorkspace = async () => {
     if (!invitation || !seedPreview || !selectedWorkspace) return;
     setBusy(true);
@@ -412,8 +419,8 @@ export function LiteAccountEntry({ api = liteAccountApi, renderProduct }: LiteAc
               a customer, marked any trademark as managed, qualified an opportunity or authorized an
               external action.
             </p>
-            <Button type="button" onClick={() => setView('ready')}>
-              Continue to Lite
+            <Button type="button" onClick={continueSeedReview}>
+              Review what MO found
             </Button>
           </>
         )}

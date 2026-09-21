@@ -195,7 +195,8 @@ describe('Lite account entry', () => {
     expect(window.location.search).toContain('seedPackageId=seed-workspace-package_agency-001');
     expect(window.location.search).not.toContain('claimToken=');
 
-    await user.click(screen.getByRole('button', { name: 'Continue to Lite' }));
+    await user.click(screen.getByRole('button', { name: 'Review what MO found' }));
+    expect(window.location.hash).toBe('#seed-review');
     expect(await screen.findByText('Prepared Lite ready')).toBeTruthy();
   });
 });

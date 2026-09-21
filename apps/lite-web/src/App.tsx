@@ -17,6 +17,7 @@ import { ExecutionReleaseView } from './features/execution-release/ExecutionRele
 import { WorkHub } from './features/work/WorkHub.js';
 import { MatterWorkspace } from './features/matters/MatterWorkspace.js';
 import { TodayWorkspace } from './features/today/TodayWorkspace.js';
+import { SeedReviewWorkspace } from './features/seed-review/SeedReviewWorkspace.js';
 import { CapabilityCenter } from './features/capability/CapabilityCenter.js';
 import { TrademarkAssetPortfolio } from './features/trademark-assets/TrademarkAssetPortfolio.js';
 import { ContentStudio } from './features/content-studio/ContentStudio.js';
@@ -208,6 +209,7 @@ export function LiteApp({
   const isWorkHub = surface === 'work';
   const workContext = primary === 'work';
   const currentQuery = new URLSearchParams(window.location.search);
+  const seedPackageId = currentQuery.get('seedPackageId') ?? undefined;
   const contentOpportunityId =
     initialContentOpportunityId ?? currentQuery.get('contentOpportunityId') ?? undefined;
   const professionalReviewCaseId =
@@ -283,6 +285,19 @@ export function LiteApp({
             workspaceRequired(
               'A valid Workspace context is required to load durable Today Recommendations.'
             )
+          )
+        ) : surface === 'seed-review' ? (
+          activeWorkspaceId && seedPackageId ? (
+            <SeedReviewWorkspace
+              key={`${activeWorkspaceId}:${seedPackageId}`}
+              workspaceId={activeWorkspaceId}
+              packageId={seedPackageId}
+            />
+          ) : (
+            <ErrorState
+              title="Prepared review unavailable"
+              description="A claimed Seed Package and Workspace are required to open this prepared review."
+            />
           )
         ) : surface === 'matters' ? (
           activeWorkspaceId ? (

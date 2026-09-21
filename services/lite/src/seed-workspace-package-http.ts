@@ -4,6 +4,7 @@ import {
   type Permission,
   type WorkspacePrincipal
 } from '@markorbit/contracts';
+import type { LiteWorkItemId } from '@markorbit/contracts/lite-work-item';
 import {
   parseSeedWorkspacePackageV1,
   type SeedWorkspacePackageIdV1
@@ -12,7 +13,8 @@ import { HttpError, json, type JsonRequest, type JsonRoute } from '@markorbit/se
 import {
   SeedWorkspacePackageOwnerError,
   type PostgresSeedWorkspacePackageStore,
-  type SeedWorkspaceClaimService
+  type SeedWorkspaceClaimService,
+  type SeedWorkspaceFirstValueService
 } from './seed-workspace-package.js';
 
 type Body = Record<string, unknown>;
@@ -93,6 +95,7 @@ export function createSeedWorkspacePackageRoutes(options: {
     'savePrepared' | 'readForWorkspace' | 'previewInvitation'
   >;
   claims: Pick<SeedWorkspaceClaimService, 'claim'>;
+  firstValue: Pick<SeedWorkspaceFirstValueService, 'record'>;
 }): readonly JsonRoute[] {
   return [
     {
@@ -182,6 +185,29 @@ export function createSeedWorkspacePackageRoutes(options: {
               actorPrincipalId: principal.userId,
               idempotencyKey: key(request),
               invitationClaimToken: value(body.invitationClaimToken, 'invitationClaimToken')
+            })
+          );
+        } catch (error) {
+          return map(error);
+        }
+      }
+    },
+    {
+      method: 'POST',
+      path: '/v1/seed-workspace-packages/:packageId/first-value',
+      handle: async (request) => {
+        const principal = principalOf(request, options.internalServiceSecret, 'workspace:manage');
+        const body = bodyOf(request);
+        exact(body, ['workItemId']);
+        try {
+          return json(
+            200,
+            await options.firstValue.record({
+              packageId: value(request.params.packageId, 'packageId') as SeedWorkspacePackageIdV1,
+              workspaceId: principal.workspaceId,
+              actorPrincipalId: principal.userId,
+              idempotencyKey: key(request),
+              workItemId: value(body.workItemId, 'workItemId') as LiteWorkItemId
             })
           );
         } catch (error) {

@@ -296,6 +296,13 @@ suite('PostgreSQL Seed Workspace Package owner', () => {
       claimedByPrincipalId: 'workspace-admin-001'
     });
 
+    await expect(
+      store.readClaimForWorkspace(activatedWorkspaceId, value.seedWorkspacePackageId)
+    ).resolves.toEqual(result.claim);
+    await expect(
+      store.readClaimForWorkspace(otherWorkspaceId, value.seedWorkspacePackageId)
+    ).resolves.toBeNull();
+
     await expect(new SeedWorkspaceClaimService(store, education()).claim(command)).resolves.toEqual(
       result
     );
