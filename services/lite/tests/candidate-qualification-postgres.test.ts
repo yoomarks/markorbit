@@ -445,7 +445,9 @@ suite('PostgreSQL Lite Opportunity Candidate qualification', () => {
           title: created.title,
           status: 'OPEN',
           executionAuthorized: false,
-          explanation: expect.stringMatching(/not customer instruction.*separate explicit Prepared Action confirmation/u),
+          explanation: expect.stringMatching(
+            /not customer instruction.*separate explicit Prepared Action confirmation/u
+          ),
           sources: [
             {
               owner: 'LITE',
