@@ -1,4 +1,5 @@
 import path from 'node:path';
+import { createHash } from 'node:crypto';
 import { spawn, type ChildProcess } from 'node:child_process';
 import { once } from 'node:events';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
@@ -44,6 +45,10 @@ const principal: WorkspacePrincipal = {
 function sequence<T extends string>(prefix: string) {
   let value = 0;
   return () => `${prefix}_${++value}` as T;
+}
+
+function opportunityReviewRecommendationId(decisionId: string): string {
+  return `today-recommendation_${createHash('sha256').update(decisionId).digest('hex')}`;
 }
 
 suite('PostgreSQL Lite Opportunity Candidate qualification', () => {
@@ -430,11 +435,14 @@ suite('PostgreSQL Lite Opportunity Candidate qualification', () => {
       expect(disposition.decision.expectedCandidateFingerprintSha256).not.toBe(
         disposition.currentCandidate.opportunityCandidateFingerprintSha256
       );
+      const expectedRecommendationId = opportunityReviewRecommendationId(
+        disposition.decision.opportunityQualificationDecisionId
+      );
       const recommendations = await database
         .getPool()
         .query<{ document_json: Record<string, unknown> }>(
-          'SELECT document_json FROM lite_today_recommendations WHERE workspace_id=$1 ORDER BY today_recommendation_id',
-          [workspaceId]
+          'SELECT document_json FROM lite_today_recommendations WHERE workspace_id=$1 AND today_recommendation_id=$2',
+          [workspaceId, expectedRecommendationId]
         );
       if (outcome === 'QUALIFIED_FOR_MARKREG') {
         expect(recommendations.rows).toHaveLength(1);
@@ -563,12 +571,15 @@ suite('PostgreSQL Lite Opportunity Candidate qualification', () => {
         idempotencyKey: 'qualification-restart'
       })
     ).toEqual(disposition);
+    const expectedRecommendationId = opportunityReviewRecommendationId(
+      disposition.decision.opportunityQualificationDecisionId
+    );
     expect(
       await database
         .getPool()
         .query<{ count: number }>(
-          'SELECT count(*)::int AS count FROM lite_today_recommendations WHERE workspace_id=$1',
-          [workspaceId]
+          'SELECT count(*)::int AS count FROM lite_today_recommendations WHERE workspace_id=$1 AND today_recommendation_id=$2',
+          [workspaceId, expectedRecommendationId]
         )
         .then((result) => result.rows[0]?.count)
     ).toBe(1);
