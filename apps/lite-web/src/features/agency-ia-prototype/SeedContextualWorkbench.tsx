@@ -104,7 +104,12 @@ function resultReference(journey: Readonly<PreparedActionJourney>): string | nul
   return journey.handoffResult?.ownerRecord.id ?? null;
 }
 
-export function SeedContextualWorkbench({
+export function SeedContextualWorkbench(props: SeedContextualWorkbenchProps) {
+  const sessionKey = `${props.task}:${props.context.contextId}`;
+  return <SeedContextualWorkbenchSession key={sessionKey} {...props} />;
+}
+
+function SeedContextualWorkbenchSession({
   task,
   context,
   state = 'ready',
@@ -129,8 +134,10 @@ export function SeedContextualWorkbench({
 
   const recordAnswer = (answer: string) => {
     const value = answer.trim();
-    if (!value) return;
+    if (!value || busy) return;
     setProposal(value);
+    setJourney(undefined);
+    setError(null);
     setTurns((current) => [
       ...current,
       { role: 'YOU', text: value },
@@ -261,6 +268,7 @@ export function SeedContextualWorkbench({
                   type="button"
                   variant="secondary"
                   onClick={() => recordAnswer(suggestion)}
+                  disabled={busy !== ''}
                 >
                   {suggestion}
                 </Button>
@@ -275,8 +283,9 @@ export function SeedContextualWorkbench({
                 onChange={(event) => setFreeText(event.currentTarget.value)}
                 placeholder="Add a bounded instruction or clarification"
                 rows={3}
+                disabled={busy !== ''}
               />
-              <Button type="submit" variant="secondary" disabled={!freeText.trim()}>
+              <Button type="submit" variant="secondary" disabled={!freeText.trim() || busy !== ''}>
                 Add to working context
               </Button>
             </form>
