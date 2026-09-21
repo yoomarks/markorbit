@@ -383,6 +383,7 @@ describe('PLC-WP-01 Product loop contract', () => {
     expect(preparedActionHandoffOwners).not.toContain('EXTERNAL_ACTION');
     expect(productLoopSourceOwners).toContain('KNOWLEDGE');
     expect(productLoopSourceKinds).toContain('KNOWLEDGE_READY_PACKAGE');
+    expect(productLoopSourceKinds).toContain('OPPORTUNITY_CANDIDATE');
 
     const vocabulary = [
       ...todayRecommendationStatuses,
