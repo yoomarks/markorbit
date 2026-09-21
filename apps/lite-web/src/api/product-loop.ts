@@ -158,8 +158,7 @@ function assertQualifiedOpportunityReview(
     qualificationDecision.outcome !== 'QUALIFIED_FOR_MARKREG' ||
     qualificationDecision.candidate.id !== source.sourceId ||
     qualificationDecision.candidate.version !== reviewedVersion ||
-    qualificationDecision.expectedCandidateFingerprintSha256 !==
-      source.sourceFingerprintSha256
+    qualificationDecision.expectedCandidateFingerprintSha256 !== source.sourceFingerprintSha256
   )
     throw new TodayHttpError(
       409,
