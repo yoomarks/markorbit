@@ -122,6 +122,24 @@ describe('Cross-source maintenance opportunity V1', () => {
     expect(result.suggestedReviewKinds).toContain('CUSTOMER_RELATIONSHIP_REVIEW');
   });
 
+  it('fails closed when runtime signal values fall outside the bounded V1 vocabulary', () => {
+    const value = input();
+    const invalid = {
+      ...value,
+      workspaceRelationship: {
+        ...value.workspaceRelationship,
+        value: 'CURRENTISH'
+      }
+    } as unknown as MaintenanceOpportunityInputV1;
+
+    expect(() =>
+      evaluateMaintenanceOpportunityV1(
+        invalid,
+        'cross-source-opportunity_maintenance-invalid-signal'
+      )
+    ).toThrow(/workspaceRelationship\.value is invalid/u);
+  });
+
   it('fails closed when an evidence signal has no provenance', () => {
     const value = input();
     expect(() =>
