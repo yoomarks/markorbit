@@ -95,7 +95,8 @@ const completed = {
   confirmation: {
     schemaVersion: 1,
     preparedAction: { id: preparedActionId, version: 1 },
-    expectedPreparedActionFingerprintSha256: prepared.preparedAction.preparedActionFingerprintSha256,
+    expectedPreparedActionFingerprintSha256:
+      prepared.preparedAction.preparedActionFingerprintSha256,
     confirmedByPrincipalId: 'principal_today-e2e',
     confirmedAt: '2026-09-21T10:04:00.000Z',
     acknowledgedEffect: prepared.preparedAction.confirmationEffect,
@@ -154,11 +155,9 @@ test('Today qualified Opportunity Review requires explicit relationship model be
 }, testInfo) => {
   let stage: 0 | 1 | 2 = 0;
   let prepareRequest:
-    | { headers: Record<string, string>; body: Record<string, unknown> }
-    | undefined;
+    { headers: Record<string, string>; body: Record<string, unknown> } | undefined;
   let confirmRequest:
-    | { headers: Record<string, string>; body: Record<string, unknown> }
-    | undefined;
+    { headers: Record<string, string>; body: Record<string, unknown> } | undefined;
 
   await page.route('**/api/auth/session', (route) =>
     route.fulfill({ json: { csrfToken: 'csrf-today-opportunity' } })
@@ -245,7 +244,8 @@ test('Today qualified Opportunity Review requires explicit relationship model be
   expect(confirmRequest?.body).toMatchObject({
     workspaceId,
     preparedActionVersion: 1,
-    expectedPreparedActionFingerprintSha256: prepared.preparedAction.preparedActionFingerprintSha256,
+    expectedPreparedActionFingerprintSha256:
+      prepared.preparedAction.preparedActionFingerprintSha256,
     acknowledgedEffect: prepared.preparedAction.confirmationEffect
   });
 
