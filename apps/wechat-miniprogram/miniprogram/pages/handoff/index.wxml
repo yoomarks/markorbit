@@ -1,4 +1,0 @@
-<web-view wx:if="{{url}}" src="{{url}}"></web-view>
-<view wx:else class="handoff-error" aria-role="alert">
-  The governed intake link is unavailable. Return and try again.
-</view>
