@@ -9,7 +9,8 @@ import {
   type OpportunityQualificationDecision,
   type OpportunityQualificationDecisionId,
   type OpportunityQualificationOutcome,
-  type ProductLoopSourceReference
+  type ProductLoopSourceReference,
+  type TodayRecommendation
 } from '@markorbit/contracts/product-loop';
 import type { QueryClient } from '@markorbit/persistence';
 import type {
@@ -188,6 +189,40 @@ function candidateWithFingerprint(
   value: Omit<OpportunityCandidate, 'opportunityCandidateFingerprintSha256'>
 ): OpportunityCandidate {
   return { ...value, opportunityCandidateFingerprintSha256: fingerprint(value) };
+}
+
+function opportunityReviewRecommendation(
+  candidate: Readonly<OpportunityCandidate>,
+  decision: Readonly<OpportunityQualificationDecision>
+): TodayRecommendation {
+  const base: Omit<TodayRecommendation, 'recommendationFingerprintSha256'> = {
+    schemaVersion: 1,
+    todayRecommendationId: `today-recommendation_${createHash('sha256')
+      .update(decision.opportunityQualificationDecisionId)
+      .digest('hex')}`,
+    workspaceId: candidate.workspaceId,
+    version: 1,
+    kind: 'OPPORTUNITY_REVIEW',
+    title: candidate.title,
+    explanation:
+      'A human Qualification Decision marked this exact Candidate QUALIFIED_FOR_MARKREG. This is not customer instruction. Creating a Formal Opportunity still requires a separate explicit Prepared Action confirmation after reviewing the relationship model and exact owner effect.',
+    sources: [
+      {
+        schemaVersion: 1,
+        owner: 'LITE',
+        kind: 'OPPORTUNITY_CANDIDATE',
+        sourceId: candidate.opportunityCandidateId,
+        sourceVersion: candidate.version,
+        sourceFingerprintSha256: candidate.opportunityCandidateFingerprintSha256,
+        observedAt: candidate.updatedAt
+      }
+    ],
+    status: 'OPEN',
+    executionAuthorized: false,
+    createdAt: decision.decidedAt,
+    updatedAt: decision.decidedAt
+  };
+  return { ...base, recommendationFingerprintSha256: fingerprint(base) };
 }
 
 function normalizeSource(
@@ -471,6 +506,10 @@ export class PostgresLiteCandidateQualificationStore {
           createdAt: candidate.createdAt,
           updatedAt: decidedAt
         });
+        const recommendation =
+          decision.outcome === 'QUALIFIED_FOR_MARKREG'
+            ? opportunityReviewRecommendation(candidate, decision)
+            : undefined;
 
         await client.query(
           'INSERT INTO lite_opportunity_qualification_decisions (workspace_id,opportunity_qualification_decision_id,version,opportunity_candidate_id,opportunity_candidate_version,outcome,decided_by_principal_id,expected_candidate_fingerprint_sha256,document_json,decided_at) VALUES ($1,$2,1,$3,$4,$5,$6,$7,$8::jsonb,$9)',
@@ -486,6 +525,17 @@ export class PostgresLiteCandidateQualificationStore {
             decidedAt
           ]
         );
+        if (recommendation)
+          await client.query(
+            'INSERT INTO lite_today_recommendations (workspace_id,today_recommendation_id,version,recommendation_fingerprint_sha256,document_json,created_at,updated_at) VALUES ($1,$2,1,$3,$4::jsonb,$5,$5)',
+            [
+              workspaceId,
+              recommendation.todayRecommendationId,
+              recommendation.recommendationFingerprintSha256,
+              JSON.stringify(recommendation),
+              recommendation.createdAt
+            ]
+          );
         await this.insertCandidate(client, currentCandidate);
         return { decision, currentCandidate };
       }

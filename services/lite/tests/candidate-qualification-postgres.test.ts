@@ -1,4 +1,5 @@
 import path from 'node:path';
+import { createHash } from 'node:crypto';
 import { spawn, type ChildProcess } from 'node:child_process';
 import { once } from 'node:events';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
@@ -44,6 +45,10 @@ const principal: WorkspacePrincipal = {
 function sequence<T extends string>(prefix: string) {
   let value = 0;
   return () => `${prefix}_${++value}` as T;
+}
+
+function opportunityReviewRecommendationId(decisionId: string): string {
+  return `today-recommendation_${createHash('sha256').update(decisionId).digest('hex')}`;
 }
 
 suite('PostgreSQL Lite Opportunity Candidate qualification', () => {
@@ -185,7 +190,7 @@ suite('PostgreSQL Lite Opportunity Candidate qualification', () => {
     await database
       .getPool()
       .query(
-        'TRUNCATE lite_candidate_qualification_commands,lite_opportunity_qualification_decisions,lite_opportunity_candidates CASCADE'
+        'TRUNCATE lite_candidate_qualification_commands,lite_opportunity_qualification_decisions,lite_opportunity_candidates,lite_today_recommendations CASCADE'
       );
   });
 
@@ -406,6 +411,11 @@ suite('PostgreSQL Lite Opportunity Candidate qualification', () => {
             .getPool()
             .query<Record<string, unknown>>(
               'SELECT * FROM lite_prepared_actions ORDER BY workspace_id,prepared_action_id'
+            ),
+          database
+            .getPool()
+            .query<Record<string, unknown>>(
+              'SELECT * FROM lite_today_recommendations ORDER BY workspace_id,today_recommendation_id'
             )
         ]).then((results) => results.map((result) => result.rows));
       const before = await snapshot();
@@ -425,6 +435,45 @@ suite('PostgreSQL Lite Opportunity Candidate qualification', () => {
       expect(disposition.decision.expectedCandidateFingerprintSha256).not.toBe(
         disposition.currentCandidate.opportunityCandidateFingerprintSha256
       );
+      const expectedRecommendationId = opportunityReviewRecommendationId(
+        disposition.decision.opportunityQualificationDecisionId
+      );
+      const recommendations = await database
+        .getPool()
+        .query<{ document_json: Record<string, unknown> }>(
+          'SELECT document_json FROM lite_today_recommendations WHERE workspace_id=$1 AND today_recommendation_id=$2',
+          [workspaceId, expectedRecommendationId]
+        );
+      if (outcome === 'QUALIFIED_FOR_MARKREG') {
+        expect(recommendations.rows).toHaveLength(1);
+        expect(recommendations.rows[0]?.document_json).toMatchObject({
+          workspaceId,
+          version: 1,
+          kind: 'OPPORTUNITY_REVIEW',
+          title: created.title,
+          status: 'OPEN',
+          executionAuthorized: false,
+          sources: [
+            {
+              owner: 'LITE',
+              kind: 'OPPORTUNITY_CANDIDATE',
+              sourceId: created.opportunityCandidateId,
+              sourceVersion: created.version,
+              sourceFingerprintSha256: created.opportunityCandidateFingerprintSha256,
+              observedAt: created.updatedAt
+            }
+          ]
+        });
+        const explanation = recommendations.rows[0]?.document_json.explanation;
+        expect(typeof explanation).toBe('string');
+        if (typeof explanation !== 'string')
+          throw new Error('Expected recommendation explanation.');
+        expect(explanation).toMatch(
+          /not customer instruction.*separate explicit Prepared Action confirmation/u
+        );
+      } else {
+        expect(recommendations.rows).toHaveLength(0);
+      }
       expect(await read()).toEqual({
         status: 200,
         body: { items: [disposition.currentCandidate], nextCursor: null }
@@ -522,6 +571,18 @@ suite('PostgreSQL Lite Opportunity Candidate qualification', () => {
         idempotencyKey: 'qualification-restart'
       })
     ).toEqual(disposition);
+    const expectedRecommendationId = opportunityReviewRecommendationId(
+      disposition.decision.opportunityQualificationDecisionId
+    );
+    expect(
+      await database
+        .getPool()
+        .query<{ count: number }>(
+          'SELECT count(*)::int AS count FROM lite_today_recommendations WHERE workspace_id=$1 AND today_recommendation_id=$2',
+          [workspaceId, expectedRecommendationId]
+        )
+        .then((result) => result.rows[0]?.count)
+    ).toBe(1);
     expect(
       await afterRestart.findLatestCandidate(otherWorkspaceId, created.opportunityCandidateId)
     ).toBeUndefined();

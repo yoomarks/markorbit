@@ -781,6 +781,7 @@ export class PostgresPreparedActionStore {
       const exactCandidate = recommendation.sources.some(
         (source) =>
           source.owner === 'LITE' &&
+          source.kind === 'OPPORTUNITY_CANDIDATE' &&
           source.sourceId === plan.candidate.id &&
           Number(source.sourceVersion) === plan.candidate.version &&
           source.sourceFingerprintSha256 === plan.expectedCandidateFingerprintSha256
