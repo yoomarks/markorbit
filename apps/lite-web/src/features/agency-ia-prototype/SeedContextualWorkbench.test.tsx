@@ -82,34 +82,31 @@ const completed = {
 } as unknown as PreparedActionJourney;
 
 describe('SeedContextualWorkbench', () => {
-  it(
-    'keeps Seed customer review as a working proposal until the structured review owns the change',
-    async () => {
-      const onPrepare = vi.fn();
-      const onConfirm = vi.fn();
-      render(
-        <SeedContextualWorkbench
-          task="SEED_CUSTOMER_REVIEW"
-          context={context}
-          structuredReviewHref="/seed-review?packageId=test"
-          onPrepare={onPrepare}
-          onConfirm={onConfirm}
-        />
-      );
+  it('keeps Seed customer review as a working proposal until the structured review owns the change', async () => {
+    const onPrepare = vi.fn();
+    const onConfirm = vi.fn();
+    render(
+      <SeedContextualWorkbench
+        task="SEED_CUSTOMER_REVIEW"
+        context={context}
+        structuredReviewHref="/seed-review?packageId=test"
+        onPrepare={onPrepare}
+        onConfirm={onConfirm}
+      />
+    );
 
-      await userEvent.setup().click(screen.getByRole('button', { name: 'Current client' }));
+    await userEvent.setup().click(screen.getByRole('button', { name: 'Current client' }));
 
-      expect(screen.getByRole('heading', { name: 'Working proposal' })).toBeVisible();
-      expect(screen.getAllByText('Current client').length).toBeGreaterThan(0);
-      expect(screen.getByText(/not committed here/i)).toBeVisible();
-      expect(
-        screen.getByRole('link', { name: 'Continue in structured customer review' })
-      ).toHaveAttribute('href', '/seed-review?packageId=test');
-      expect(onPrepare).not.toHaveBeenCalled();
-      expect(onConfirm).not.toHaveBeenCalled();
-      expect(screen.queryByRole('button', { name: 'Confirm this action' })).not.toBeInTheDocument();
-    }
-  );
+    expect(screen.getByRole('heading', { name: 'Working proposal' })).toBeVisible();
+    expect(screen.getAllByText('Current client').length).toBeGreaterThan(0);
+    expect(screen.getByText(/not committed here/i)).toBeVisible();
+    expect(
+      screen.getByRole('link', { name: 'Continue in structured customer review' })
+    ).toHaveAttribute('href', '/seed-review?packageId=test');
+    expect(onPrepare).not.toHaveBeenCalled();
+    expect(onConfirm).not.toHaveBeenCalled();
+    expect(screen.queryByRole('button', { name: 'Confirm this action' })).not.toBeInTheDocument();
+  });
 
   it('delegates preparation and confirmation to the existing structured journey seam', async () => {
     const onPrepare = vi.fn().mockResolvedValue(prepared);
@@ -128,9 +125,7 @@ describe('SeedContextualWorkbench', () => {
     await user.click(screen.getByRole('button', { name: 'Review service need' }));
     expect(onPrepare).not.toHaveBeenCalled();
 
-    await user.click(
-      screen.getByRole('button', { name: 'Prepare reviewable opportunity action' })
-    );
+    await user.click(screen.getByRole('button', { name: 'Prepare reviewable opportunity action' }));
     expect(onPrepare).toHaveBeenCalledWith({
       task: 'OPPORTUNITY_REVIEW',
       contextId: context.contextId,
@@ -150,44 +145,31 @@ describe('SeedContextualWorkbench', () => {
     );
   });
 
-  it(
-    'retains free text as working context without mutating until Prepare is explicit',
-    async () => {
-      const onPrepare = vi.fn().mockResolvedValue(prepared);
-      render(
-        <SeedContextualWorkbench
-          task="CLIENT_ACTION_DRAFT"
-          context={context}
-          onPrepare={onPrepare}
-        />
-      );
+  it('retains free text as working context without mutating until Prepare is explicit', async () => {
+    const onPrepare = vi.fn().mockResolvedValue(prepared);
+    render(
+      <SeedContextualWorkbench task="CLIENT_ACTION_DRAFT" context={context} onPrepare={onPrepare} />
+    );
 
-      const user = userEvent.setup();
-      await user.type(
-        screen.getByLabelText('Add context in your own words'),
-        'Mention the upcoming deadline and ask for confirmation.'
-      );
-      await user.click(screen.getByRole('button', { name: 'Add to working context' }));
+    const user = userEvent.setup();
+    await user.type(
+      screen.getByLabelText('Add context in your own words'),
+      'Mention the upcoming deadline and ask for confirmation.'
+    );
+    await user.click(screen.getByRole('button', { name: 'Add to working context' }));
 
-      expect(
-        screen.getAllByText('Mention the upcoming deadline and ask for confirmation.').length
-      ).toBeGreaterThan(0);
-      expect(onPrepare).not.toHaveBeenCalled();
+    expect(
+      screen.getAllByText('Mention the upcoming deadline and ask for confirmation.').length
+    ).toBeGreaterThan(0);
+    expect(onPrepare).not.toHaveBeenCalled();
 
-      await user.click(
-        screen.getByRole('button', { name: 'Prepare reviewable client action' })
-      );
-      expect(onPrepare).toHaveBeenCalledTimes(1);
-    }
-  );
+    await user.click(screen.getByRole('button', { name: 'Prepare reviewable client action' }));
+    expect(onPrepare).toHaveBeenCalledTimes(1);
+  });
 
   it('does not expose work actions when permission is unavailable', () => {
     render(
-      <SeedContextualWorkbench
-        task="OPPORTUNITY_REVIEW"
-        context={context}
-        state="permission"
-      />
+      <SeedContextualWorkbench task="OPPORTUNITY_REVIEW" context={context} state="permission" />
     );
 
     expect(screen.getByText('You do not have access to this context')).toBeVisible();
