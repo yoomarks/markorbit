@@ -11,6 +11,7 @@ import {
   type ContentOpportunityId,
   type PreparedActionId,
   type ProductLoopSourceReference,
+  type TodayRecommendation,
   type TodayRecommendationId
 } from '@markorbit/contracts/product-loop';
 import {
@@ -202,6 +203,95 @@ suite('PostgreSQL Lite Today Prepared Action journey', () => {
     });
     return { rec, store, journey };
   }
+
+  it('requires the exact Opportunity Candidate source kind before formal-opportunity preparation', async () => {
+    const recommendationId =
+      'today-recommendation_candidate-source-kind' as TodayRecommendationId;
+    const candidateId = 'opportunity-candidate_candidate-source-kind' as const;
+    const qualificationId = 'opportunity-qualification_candidate-source-kind' as const;
+    const candidateFingerprintSha256 = 'b'.repeat(64);
+    const timestamp = '2026-08-11T10:04:00.000Z';
+    const recommendation = (kind: ProductLoopSourceReference['kind']): TodayRecommendation => {
+      const base: Omit<TodayRecommendation, 'recommendationFingerprintSha256'> = {
+        schemaVersion: 1,
+        todayRecommendationId: recommendationId,
+        workspaceId,
+        version: 1,
+        kind: 'OPPORTUNITY_REVIEW',
+        title: 'Review the qualified Candidate',
+        explanation: 'Human qualification is ready for an explicit owner handoff review.',
+        sources: [
+          {
+            schemaVersion: 1,
+            owner: 'LITE',
+            kind,
+            sourceId: candidateId,
+            sourceVersion: 1,
+            sourceFingerprintSha256: candidateFingerprintSha256,
+            observedAt: timestamp
+          }
+        ],
+        status: 'OPEN',
+        executionAuthorized: false,
+        createdAt: timestamp,
+        updatedAt: timestamp
+      };
+      return {
+        ...base,
+        recommendationFingerprintSha256: createHash('sha256')
+          .update(JSON.stringify(base))
+          .digest('hex')
+      };
+    };
+    const plan = {
+      kind: 'CREATE_FORMAL_TRADEMARK_SERVICE_OPPORTUNITY' as const,
+      candidate: { id: candidateId, version: 1 },
+      expectedCandidateFingerprintSha256: candidateFingerprintSha256,
+      qualificationDecision: { id: qualificationId, version: 1 },
+      relationshipModel: 'DIRECT' as const
+    };
+    const insert = async (value: TodayRecommendation) =>
+      database.getPool().query(
+        'INSERT INTO lite_today_recommendations (workspace_id,today_recommendation_id,version,recommendation_fingerprint_sha256,document_json,created_at,updated_at) VALUES ($1,$2,1,$3,$4::jsonb,$5,$5) ON CONFLICT (workspace_id,today_recommendation_id,version) DO UPDATE SET recommendation_fingerprint_sha256=EXCLUDED.recommendation_fingerprint_sha256,document_json=EXCLUDED.document_json,updated_at=EXCLUDED.updated_at',
+        [
+          workspaceId,
+          value.todayRecommendationId,
+          value.recommendationFingerprintSha256,
+          JSON.stringify(value),
+          timestamp
+        ]
+      );
+
+    const wrong = recommendation('CONTENT_USE_FEEDBACK');
+    await insert(wrong);
+    await expect(
+      preparedStore().prepare({
+        workspaceId,
+        recommendation: { id: recommendationId, version: 1 },
+        expectedRecommendationFingerprintSha256: wrong.recommendationFingerprintSha256,
+        plan,
+        idempotencyKey: 'candidate-source-kind-wrong'
+      })
+    ).rejects.toMatchObject({ code: 'STALE_SOURCE' });
+
+    const exact = recommendation('OPPORTUNITY_CANDIDATE');
+    await insert(exact);
+    await expect(
+      preparedStore().prepare({
+        workspaceId,
+        recommendation: { id: recommendationId, version: 1 },
+        expectedRecommendationFingerprintSha256: exact.recommendationFingerprintSha256,
+        plan,
+        idempotencyKey: 'candidate-source-kind-exact'
+      })
+    ).resolves.toMatchObject({
+      handoffState: 'AWAITING_CONFIRMATION',
+      preparedAction: {
+        kind: 'CREATE_FORMAL_TRADEMARK_SERVICE_OPPORTUNITY',
+        handoffTarget: 'MARKREG_FORMAL_TRADEMARK_SERVICE_OPPORTUNITY'
+      }
+    });
+  });
 
   function notificationPlan(): ClientNotificationHandoffPlanV1 {
     const subject = 'Please confirm the reviewed trademark details';
