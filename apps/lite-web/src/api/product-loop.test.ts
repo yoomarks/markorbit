@@ -142,17 +142,22 @@ describe('Today qualified Opportunity Review client', () => {
       qualificationDecision: qualification
     });
     expect(result).toEqual(prepared);
-    expect(requests.slice(0, 2).map((request) => request.url)).toEqual(
-      expect.arrayContaining([
-        expect.stringContaining(`/api/lite/opportunity-candidates/${candidateId}`),
-        expect.stringContaining(`/api/lite/opportunity-candidates/${candidateId}/qualification`)
-      ])
-    );
+    expect(
+      requests.filter((request) =>
+        request.url.endsWith(`/api/lite/opportunity-candidates/${candidateId}`)
+      )
+    ).toHaveLength(2);
+    expect(
+      requests.filter((request) =>
+        request.url.endsWith(
+          `/api/lite/opportunity-candidates/${candidateId}/qualification`
+        )
+      )
+    ).toHaveLength(2);
     const mutation = requests.find(
       (request) => request.method === 'POST' && request.url.includes('/prepared-actions')
     );
     expect(mutation?.body).toEqual({
-      workspaceId,
       recommendationVersion: 1,
       expectedRecommendationFingerprintSha256: recommendation.recommendationFingerprintSha256,
       plan: {
@@ -173,28 +178,39 @@ describe('Today qualified Opportunity Review client', () => {
       `prepare-opportunity:${recommendation.todayRecommendationId}:1`
     );
     expect(JSON.stringify(mutation?.body)).not.toMatch(
-      /customerId|principalId|actorId|confirmedByPrincipalId|proposedCustomerIntent/
+      /workspaceId|customerId|principalId|actorId|confirmedByPrincipalId|proposedCustomerIntent/
     );
   });
 
-  it('fails closed when Qualification no longer matches the exact reviewed Candidate source', async () => {
+  it('fails closed when owner evidence changes after display but before prepare', async () => {
     const stale = { ...qualification, expectedCandidateFingerprintSha256: 'd'.repeat(64) };
+    let qualificationReads = 0;
     const fetchMock = vi.fn((input: string | URL | Request) => {
       const url = requestUrl(input);
-      if (url.endsWith(`/api/lite/opportunity-candidates/${candidateId}/qualification`))
-        return Promise.resolve(jsonResponse(stale));
+      if (url.endsWith(`/api/lite/opportunity-candidates/${candidateId}/qualification`)) {
+        qualificationReads += 1;
+        return Promise.resolve(
+          jsonResponse(qualificationReads === 1 ? qualification : stale)
+        );
+      }
       if (url.endsWith(`/api/lite/opportunity-candidates/${candidateId}`))
         return Promise.resolve(jsonResponse(candidate));
       throw new Error(`Unexpected request: ${url}`);
     });
     vi.stubGlobal('fetch', fetchMock);
 
+    const client = createTodayClient(workspaceId);
+    const displayedEvidence = await client.loadQualifiedOpportunityReview(recommendation);
     await expect(
-      createTodayClient(workspaceId).loadQualifiedOpportunityReview(recommendation)
+      client.prepareQualifiedOpportunity(recommendation, displayedEvidence, 'DIRECT')
     ).rejects.toMatchObject({
       status: 409,
       code: 'STALE_OPPORTUNITY_REVIEW'
     });
+    expect(qualificationReads).toBe(2);
+    expect(
+      fetchMock.mock.calls.some(([input]) => requestUrl(input).includes('/api/auth/session'))
+    ).toBe(false);
     expect(
       fetchMock.mock.calls.some(([input]) => requestUrl(input).includes('/prepared-actions'))
     ).toBe(false);
