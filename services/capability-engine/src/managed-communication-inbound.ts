@@ -5,6 +5,10 @@ import {
 } from '@markorbit/contracts/managed-communication';
 import type { ManagedCommunicationExactEvidenceStoreV1 } from './managed-communication-exact-evidence.js';
 import {
+  managedCommunicationInboundEvidenceMetadataV1,
+  type ManagedCommunicationInboundCorrelationResolverV1
+} from './managed-communication-inbound-correlation.js';
+import {
   ManagedCommunicationFoundationError,
   type ManagedCommunicationFoundationStoreV1
 } from './managed-communication-foundation.js';
@@ -46,6 +50,7 @@ export interface ManagedCommunicationInboundAdmissionV1 {
 export interface ManagedCommunicationInboundIngestorOptionsV1 {
   foundation: Readonly<ManagedCommunicationFoundationStoreV1>;
   exactEvidence: Readonly<ManagedCommunicationExactEvidenceStoreV1>;
+  correlation?: Readonly<ManagedCommunicationInboundCorrelationResolverV1>;
   now?: () => string;
 }
 
@@ -87,6 +92,25 @@ export class ManagedCommunicationInboundIngestorV1 {
       message,
       now
     });
+    const existingEvidence = await this.options.exactEvidence.resolveExactEvidence({
+      workspaceId: input.workspaceId,
+      accountRef: observation.message.accountRef,
+      messageId: observation.message.messageId
+    });
+    const inboundCorrelation =
+      existingEvidence || !this.options.correlation
+        ? undefined
+        : await this.options.correlation.correlate({
+            workspaceId: input.workspaceId,
+            message: observation.message
+          });
+    const metadata = managedCommunicationInboundEvidenceMetadataV1({
+      ...(input.exactEvidence.metadata === undefined
+        ? {}
+        : { providerMetadata: input.exactEvidence.metadata }),
+      ...(existingEvidence === undefined ? {} : { existingMetadata: existingEvidence.metadata }),
+      ...(inboundCorrelation === undefined ? {} : { correlation: inboundCorrelation })
+    });
     const exactEvidence = await this.options.exactEvidence.admitExactEvidence({
       workspaceId: input.workspaceId,
       accountRef: observation.message.accountRef,
@@ -97,9 +121,7 @@ export class ManagedCommunicationInboundIngestorV1 {
       mediaType: input.exactEvidence.mediaType,
       observedAt: observation.message.providerObservation.observedAt,
       headers: input.exactEvidence.headers,
-      ...(input.exactEvidence.metadata === undefined
-        ? {}
-        : { metadata: input.exactEvidence.metadata }),
+      metadata,
       now
     });
 

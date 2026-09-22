@@ -16,6 +16,10 @@ import type {
   ManagedCommunicationSendRequestV1
 } from './managed-communication-exchange.js';
 import type { ManagedCommunicationExactEvidenceStoreV1 } from './managed-communication-exact-evidence.js';
+import {
+  managedCommunicationInboundEvidenceMetadataV1,
+  type ManagedCommunicationInboundCorrelationResolverV1
+} from './managed-communication-inbound-correlation.js';
 
 export const GMAIL_MANAGED_COMMUNICATION_PROVIDER = 'GMAIL';
 
@@ -519,6 +523,7 @@ export class GmailManagedCommunicationInboundV1 {
       client: GmailManagedCommunicationClientV1;
       foundation: ManagedCommunicationFoundationStoreV1;
       exactEvidence: ManagedCommunicationExactEvidenceStoreV1;
+      correlation?: ManagedCommunicationInboundCorrelationResolverV1;
       workspaceId: string;
       accountRef: string;
       now?: () => string;
@@ -676,12 +681,28 @@ export class GmailManagedCommunicationInboundV1 {
         observedAt
       }
     };
+    const inboundCorrelation =
+      existingEvidence || !this.options.correlation
+        ? undefined
+        : await this.options.correlation.correlate({
+            workspaceId: this.options.workspaceId,
+            message
+          });
     const normalized = await this.options.foundation.admitObservation({
       workspaceId: this.options.workspaceId,
       accountRef: this.options.accountRef,
       idempotencyKey: `gmail:${providerMessageId}`,
       message,
       now: observedAt
+    });
+    const metadata = managedCommunicationInboundEvidenceMetadataV1({
+      providerMetadata: {
+        gmailMessageId: providerMessageId,
+        gmailThreadId: providerThreadId,
+        ...(full.historyId ? { gmailHistoryId: full.historyId } : {})
+      },
+      ...(existingEvidence === undefined ? {} : { existingMetadata: existingEvidence.metadata }),
+      ...(inboundCorrelation === undefined ? {} : { correlation: inboundCorrelation })
     });
     await this.options.exactEvidence.admitExactEvidence({
       workspaceId: this.options.workspaceId,
@@ -693,11 +714,7 @@ export class GmailManagedCommunicationInboundV1 {
       mediaType: 'message/rfc822',
       observedAt,
       headers: admittedHeaders(payload.headers),
-      metadata: {
-        gmailMessageId: providerMessageId,
-        gmailThreadId: providerThreadId,
-        ...(full.historyId ? { gmailHistoryId: full.historyId } : {})
-      },
+      metadata,
       now: observedAt
     });
     return normalized.disposition === 'ADMITTED' ? 1 : 0;

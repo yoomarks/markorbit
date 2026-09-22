@@ -14,6 +14,7 @@ import {
   type ManagedCommunicationFoundationTransactionHostV1
 } from './managed-communication-foundation.js';
 import { ManagedCommunicationInboundIngestorV1 } from './managed-communication-inbound.js';
+import { ManagedCommunicationInboundCorrelatorV1 } from './managed-communication-inbound-correlation.js';
 import { ManagedCommunicationPublicReferenceReaderV1 } from './managed-communication-public-reference.js';
 
 export const MANAGED_COMMUNICATION_RUNTIME_ENABLED_ENV =
@@ -202,14 +203,18 @@ export async function createManagedCommunicationRuntimeBindingsV1(
   const managedCommunicationExactEvidence = new PostgresManagedCommunicationExactEvidenceStoreV1(
     options.query
   );
-  const managedCommunicationInbound = new ManagedCommunicationInboundIngestorV1({
-    foundation,
-    exactEvidence: managedCommunicationExactEvidence,
-    now
-  });
   const managedCommunicationPublicReference = new ManagedCommunicationPublicReferenceReaderV1(
     claims
   );
+  const managedCommunicationInboundCorrelation = new ManagedCommunicationInboundCorrelatorV1(
+    managedCommunicationPublicReference
+  );
+  const managedCommunicationInbound = new ManagedCommunicationInboundIngestorV1({
+    foundation,
+    exactEvidence: managedCommunicationExactEvidence,
+    correlation: managedCommunicationInboundCorrelation,
+    now
+  });
 
   const managedCommunicationExchange = options.sender
     ? new ManagedCommunicationExchangeV1({

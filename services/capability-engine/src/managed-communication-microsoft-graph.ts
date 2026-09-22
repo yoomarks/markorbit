@@ -20,6 +20,10 @@ import type {
   ManagedCommunicationEvidenceHeaderV1,
   ManagedCommunicationExactEvidenceStoreV1
 } from './managed-communication-exact-evidence.js';
+import {
+  managedCommunicationInboundEvidenceMetadataV1,
+  type ManagedCommunicationInboundCorrelationResolverV1
+} from './managed-communication-inbound-correlation.js';
 
 export const MICROSOFT_GRAPH_MANAGED_COMMUNICATION_PROVIDER = 'MICROSOFT_GRAPH';
 
@@ -731,6 +735,7 @@ export class MicrosoftGraphManagedCommunicationInboundV1 {
       client: MicrosoftGraphManagedCommunicationClientV1;
       foundation: ManagedCommunicationFoundationStoreV1;
       exactEvidence: ManagedCommunicationExactEvidenceStoreV1;
+      correlation?: ManagedCommunicationInboundCorrelationResolverV1;
       workspaceId: string;
       accountRef: string;
       now?: () => string;
@@ -904,6 +909,13 @@ export class MicrosoftGraphManagedCommunicationInboundV1 {
         observedAt
       }
     };
+    const inboundCorrelation =
+      existingEvidence || !this.options.correlation
+        ? undefined
+        : await this.options.correlation.correlate({
+            workspaceId: this.options.workspaceId,
+            message
+          });
     const normalized = await this.options.foundation.admitObservation({
       workspaceId: this.options.workspaceId,
       accountRef: this.options.accountRef,
@@ -912,6 +924,15 @@ export class MicrosoftGraphManagedCommunicationInboundV1 {
       now: observedAt
     });
     const internetMessageId = full.internetMessageId?.trim();
+    const metadata = managedCommunicationInboundEvidenceMetadataV1({
+      providerMetadata: {
+        graphMessageId: exactProviderMessageId,
+        graphConversationId: providerThreadId,
+        ...(internetMessageId ? { graphInternetMessageId: internetMessageId } : {})
+      },
+      ...(existingEvidence === undefined ? {} : { existingMetadata: existingEvidence.metadata }),
+      ...(inboundCorrelation === undefined ? {} : { correlation: inboundCorrelation })
+    });
     await this.options.exactEvidence.admitExactEvidence({
       workspaceId: this.options.workspaceId,
       accountRef: this.options.accountRef,
@@ -922,11 +943,7 @@ export class MicrosoftGraphManagedCommunicationInboundV1 {
       mediaType: 'message/rfc822',
       observedAt,
       headers: admittedHeaders(full.internetMessageHeaders),
-      metadata: {
-        graphMessageId: exactProviderMessageId,
-        graphConversationId: providerThreadId,
-        ...(internetMessageId ? { graphInternetMessageId: internetMessageId } : {})
-      },
+      metadata,
       now: observedAt
     });
     return normalized.disposition === 'ADMITTED' ? 1 : 0;
