@@ -298,6 +298,19 @@ integration('Managed Communication production bootstrap on PostgreSQL', () => {
     await expect(reconstructed!.managedCommunicationExchange!.send(input)).resolves.toEqual(
       receipt
     );
+    expect(receipt.publicMailRef).toMatch(/^MO-[0-9A-HJKMNP-TV-Z]{26}$/u);
+    await expect(
+      reconstructed!.managedCommunicationPublicReference.resolve({
+        workspaceId,
+        publicMailRef: receipt.publicMailRef!
+      })
+    ).resolves.toMatchObject({
+      sendId: receipt.sendId,
+      messageId: receipt.messageId,
+      threadRef: receipt.threadRef,
+      publicMailRef: receipt.publicMailRef,
+      authority: { externalMessageSent: false }
+    });
     expect(successfulCalls).toBe(1);
 
     let uncertainCalls = 0;
@@ -347,6 +360,7 @@ integration('Managed Communication production bootstrap on PostgreSQL', () => {
     });
     expect(bindings).not.toBeNull();
     expect(bindings?.managedCommunicationExchange).toBeUndefined();
+    expect(bindings?.managedCommunicationPublicReference).toBeDefined();
 
     const persisted = new PostgresManagedCommunicationFoundationV1(database, database.getPool());
     await expect(persisted.resolveAccount(workspaceId, accountRef)).resolves.toMatchObject({

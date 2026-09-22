@@ -5,6 +5,7 @@ import {
   type ManagedCommunicationMessageV1,
   type ManagedCommunicationParticipantV1
 } from '@markorbit/contracts/managed-communication';
+import { managedCommunicationPublicMailRefFromSendIdV1 } from '@markorbit/contracts/managed-communication-public-reference';
 import type { QueryClient } from '@markorbit/persistence';
 import {
   ManagedCommunicationFoundationError,
@@ -52,6 +53,7 @@ export interface ManagedCommunicationSendReceiptV1 {
   idempotencyKeySha256: string;
   requestFingerprintSha256: string;
   state: 'SENT';
+  publicMailRef?: string;
   messageId: string;
   threadRef: string;
   provider: string;
@@ -121,6 +123,13 @@ export interface ManagedCommunicationSendClaimStoreV1 {
   markReconciliationRequired(
     command: Readonly<ManagedCommunicationSendReconciliationV1>
   ): Promise<void>;
+}
+
+export interface ManagedCommunicationSendReceiptReaderV1 {
+  resolveSentBySendId(
+    workspaceId: string,
+    sendId: string
+  ): Promise<Readonly<ManagedCommunicationSendReceiptV1> | undefined>;
 }
 
 export interface ManagedCommunicationProviderSendContextV1 {
@@ -306,6 +315,37 @@ function validateRequest(
   };
 }
 
+function withPublicMailRef(
+  request: Readonly<ManagedCommunicationSendRequestV1>,
+  publicMailRef: string
+): ManagedCommunicationSendRequestV1 {
+  const textFooter = `MO Reference: [${publicMailRef}]`;
+  const htmlFooter = `<p>MO Reference: [${publicMailRef}]</p>`;
+  const textBody =
+    request.textBody === undefined ? undefined : `${request.textBody}\n\n${textFooter}`;
+  let htmlBody: string | undefined;
+  if (request.htmlBody !== undefined) {
+    const closingBody = request.htmlBody.search(/<\/body\s*>/iu);
+    const closingHtml = request.htmlBody.search(/<\/html\s*>/iu);
+    const insertion = closingBody >= 0 ? closingBody : closingHtml;
+    htmlBody =
+      insertion >= 0
+        ? `${request.htmlBody.slice(0, insertion)}${htmlFooter}${request.htmlBody.slice(insertion)}`
+        : `${request.htmlBody}${htmlFooter}`;
+  }
+  if ((textBody?.length ?? 0) > 2_000_000 || (htmlBody?.length ?? 0) > 4_000_000) {
+    throw new ManagedCommunicationExchangeError(
+      'INVALID_SEND_REQUEST',
+      'Outbound body must leave room for the required MO public mail reference.'
+    );
+  }
+  return {
+    ...request,
+    ...(textBody === undefined ? {} : { textBody }),
+    ...(htmlBody === undefined ? {} : { htmlBody })
+  };
+}
+
 function cloneReceipt(
   receipt: Readonly<ManagedCommunicationSendReceiptV1>
 ): ManagedCommunicationSendReceiptV1 {
@@ -431,6 +471,18 @@ export class InMemoryManagedCommunicationSendClaimStoreV1 implements ManagedComm
     return Promise.resolve();
   }
 
+  resolveSentBySendId(
+    workspaceId: string,
+    sendId: string
+  ): Promise<Readonly<ManagedCommunicationSendReceiptV1> | undefined> {
+    for (const row of this.rows.values()) {
+      if (row.workspaceId !== workspaceId || row.sendId !== sendId || row.state !== 'SENT')
+        continue;
+      return Promise.resolve(row.receipt ? Object.freeze(cloneReceipt(row.receipt)) : undefined);
+    }
+    return Promise.resolve(undefined);
+  }
+
   private requireOwned(
     command: Readonly<ManagedCommunicationSendIdentityV1>,
     state: ManagedCommunicationSendStateV1
@@ -492,6 +544,14 @@ function persistedReceipt(value: unknown): ManagedCommunicationSendReceiptV1 {
     throw new ManagedCommunicationExchangeError(
       'PERSISTENCE_UNAVAILABLE',
       'Persisted communication send receipt violates schema version 1.'
+    );
+  if (
+    receipt.publicMailRef !== undefined &&
+    receipt.publicMailRef !== managedCommunicationPublicMailRefFromSendIdV1(receipt.sendId)
+  )
+    throw new ManagedCommunicationExchangeError(
+      'PERSISTENCE_UNAVAILABLE',
+      'Persisted communication public mail reference does not match its send identity.'
     );
   return structuredClone(receipt);
 }
@@ -659,6 +719,30 @@ export class PostgresManagedCommunicationSendClaimStoreV1 implements ManagedComm
     }
   }
 
+  async resolveSentBySendId(
+    workspaceId: string,
+    sendId: string
+  ): Promise<Readonly<ManagedCommunicationSendReceiptV1> | undefined> {
+    try {
+      const result = await this.query.query(
+        `SELECT receipt_json
+           FROM capability_communication_send_claims
+          WHERE workspace_id=$1 AND send_id=$2 AND state='SENT'`,
+        [clean(workspaceId, 'workspaceId', 500), clean(sendId, 'sendId', 80)]
+      );
+      const row = result.rows[0] as { receipt_json?: unknown } | undefined;
+      return row ? Object.freeze(persistedReceipt(row.receipt_json)) : undefined;
+    } catch (error) {
+      if (error instanceof ManagedCommunicationExchangeError) throw error;
+      throw new ManagedCommunicationExchangeError(
+        'PERSISTENCE_UNAVAILABLE',
+        'Managed Communication send receipt resolution is unavailable.',
+        true,
+        { cause: error instanceof Error ? error : undefined }
+      );
+    }
+  }
+
   async markReconciliationRequired(
     command: Readonly<ManagedCommunicationSendReconciliationV1>
   ): Promise<void> {
@@ -797,6 +881,8 @@ export class ManagedCommunicationExchangeV1 {
     const idempotencyKeySha256 = sha256(idempotencyKey);
     const requestFingerprintSha256 = fingerprint({ workspaceId, correlationId, request });
     const sendId = `commsend_${sha256(`${workspaceId}\n${request.accountRef}\n${idempotencyKey}`).slice(0, 32)}`;
+    const publicMailRef = managedCommunicationPublicMailRefFromSendIdV1(sendId);
+    const providerRequest = withPublicMailRef(request, publicMailRef);
     const ownerToken = this.ownerTokenFactory();
     const claimedAt = this.now();
     const leaseExpiresAt = new Date(Date.parse(claimedAt) + this.claimLeaseMs).toISOString();
@@ -849,7 +935,7 @@ export class ManagedCommunicationExchangeV1 {
 
     if (this.options.sender.prepare) {
       try {
-        const prepared = await this.options.sender.prepare(request, providerContext);
+        const prepared = await this.options.sender.prepare(providerRequest, providerContext);
         if (!prepared || typeof prepared.dispatch !== 'function') {
           throw new Error('Provider preparation returned an invalid dispatch boundary.');
         }
@@ -887,7 +973,7 @@ export class ManagedCommunicationExchangeV1 {
     try {
       providerResult = preparedProviderSend
         ? await preparedProviderSend.dispatch()
-        : await this.options.sender.send(request, providerContext);
+        : await this.options.sender.send(providerRequest, providerContext);
     } catch (error) {
       await this.reconcile(identity, 'PROVIDER_THROW_AFTER_DISPATCH_MARK');
       throw new ManagedCommunicationExchangeError(
@@ -933,13 +1019,13 @@ export class ManagedCommunicationExchangeV1 {
       messageId: ids.messageId,
       accountRef: request.accountRef,
       threadRef: ids.threadRef,
-      channel: request.channel,
+      channel: providerRequest.channel,
       direction: 'OUTBOUND',
-      participants: request.participants,
-      ...(request.subject === undefined ? {} : { subject: request.subject }),
-      ...(request.textBody === undefined ? {} : { textBody: request.textBody }),
-      ...(request.htmlBody === undefined ? {} : { htmlBody: request.htmlBody }),
-      attachments: request.attachments,
+      participants: providerRequest.participants,
+      ...(providerRequest.subject === undefined ? {} : { subject: providerRequest.subject }),
+      ...(providerRequest.textBody === undefined ? {} : { textBody: providerRequest.textBody }),
+      ...(providerRequest.htmlBody === undefined ? {} : { htmlBody: providerRequest.htmlBody }),
+      attachments: providerRequest.attachments,
       occurredAt: acceptedAt,
       providerObservation: {
         provider: account.provider,
@@ -975,6 +1061,7 @@ export class ManagedCommunicationExchangeV1 {
       idempotencyKeySha256,
       requestFingerprintSha256,
       state: 'SENT',
+      publicMailRef,
       messageId: ids.messageId,
       threadRef: ids.threadRef,
       provider: account.provider,

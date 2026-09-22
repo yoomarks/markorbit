@@ -14,6 +14,7 @@ import {
   type ManagedCommunicationFoundationTransactionHostV1
 } from './managed-communication-foundation.js';
 import { ManagedCommunicationInboundIngestorV1 } from './managed-communication-inbound.js';
+import { ManagedCommunicationPublicReferenceReaderV1 } from './managed-communication-public-reference.js';
 
 export const MANAGED_COMMUNICATION_RUNTIME_ENABLED_ENV =
   'MO_MANAGED_COMMUNICATION_RUNTIME_ENABLED' as const;
@@ -39,6 +40,7 @@ export interface ManagedCommunicationRuntimeBindingsV1 {
   managedCommunicationInbound: ManagedCommunicationInboundIngestorV1;
   managedCommunicationThreadReader: PostgresManagedCommunicationThreadEvidenceReaderV1;
   managedCommunicationExactEvidence: PostgresManagedCommunicationExactEvidenceStoreV1;
+  managedCommunicationPublicReference: ManagedCommunicationPublicReferenceReaderV1;
   managedCommunicationExchange?: ManagedCommunicationExchangeV1;
 }
 
@@ -205,6 +207,9 @@ export async function createManagedCommunicationRuntimeBindingsV1(
     exactEvidence: managedCommunicationExactEvidence,
     now
   });
+  const managedCommunicationPublicReference = new ManagedCommunicationPublicReferenceReaderV1(
+    claims
+  );
 
   const managedCommunicationExchange = options.sender
     ? new ManagedCommunicationExchangeV1({
@@ -219,6 +224,7 @@ export async function createManagedCommunicationRuntimeBindingsV1(
     managedCommunicationInbound,
     managedCommunicationThreadReader,
     managedCommunicationExactEvidence,
+    managedCommunicationPublicReference,
     ...(managedCommunicationExchange === undefined ? {} : { managedCommunicationExchange })
   });
 }
