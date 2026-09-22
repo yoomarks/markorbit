@@ -3,6 +3,7 @@ import {
   type ManagedCommunicationFoundationStoreV1
 } from './managed-communication-foundation.js';
 import type { ManagedCommunicationExactEvidenceStoreV1 } from './managed-communication-exact-evidence.js';
+import type { ManagedCommunicationInboundCorrelationResolverV1 } from './managed-communication-inbound-correlation.js';
 import {
   GmailManagedCommunicationInboundV1,
   GMAIL_MANAGED_COMMUNICATION_PROVIDER,
@@ -14,6 +15,7 @@ export interface GmailManagedCommunicationMessageReconciliationOptionsV1 {
   client: GmailManagedCommunicationClientV1;
   foundation: ManagedCommunicationFoundationStoreV1;
   exactEvidence: ManagedCommunicationExactEvidenceStoreV1;
+  correlation?: ManagedCommunicationInboundCorrelationResolverV1;
   workspaceId: string;
   accountRef: string;
   providerMessageId: string;
@@ -155,6 +157,7 @@ export async function reconcileGmailManagedCommunicationProviderMessageV1(
     client: syntheticClient,
     foundation: checkpointPreservingFoundation,
     exactEvidence: options.exactEvidence,
+    ...(options.correlation ? { correlation: options.correlation } : {}),
     workspaceId,
     accountRef,
     ...(options.now ? { now: options.now } : {})

@@ -1,6 +1,9 @@
 import type { QueryClient } from '@markorbit/persistence';
 import { resolveManagedCommunicationRuntimeConfigV1 } from './managed-communication-bootstrap.js';
 import { PostgresManagedCommunicationExactEvidenceStoreV1 } from './managed-communication-exact-evidence.js';
+import { PostgresManagedCommunicationSendClaimStoreV1 } from './managed-communication-exchange.js';
+import { ManagedCommunicationInboundCorrelatorV1 } from './managed-communication-inbound-correlation.js';
+import { ManagedCommunicationPublicReferenceReaderV1 } from './managed-communication-public-reference.js';
 import {
   PostgresManagedCommunicationFoundationV1,
   type ManagedCommunicationFoundationTransactionHostV1
@@ -106,10 +109,14 @@ export function createMicrosoftGraphManagedCommunicationProviderRuntimeFromEnvir
   const client = new MicrosoftGraphManagedCommunicationClientV1(tokenProvider, fetchImpl);
   const foundation = new PostgresManagedCommunicationFoundationV1(options.database, options.query);
   const exactEvidence = new PostgresManagedCommunicationExactEvidenceStoreV1(options.query);
+  const claims = new PostgresManagedCommunicationSendClaimStoreV1(options.database, options.query);
+  const publicReferences = new ManagedCommunicationPublicReferenceReaderV1(claims);
+  const correlation = new ManagedCommunicationInboundCorrelatorV1(publicReferences);
   const inbound = new MicrosoftGraphManagedCommunicationInboundV1({
     client,
     foundation,
     exactEvidence,
+    correlation,
     workspaceId: runtime.workspaceId,
     accountRef: runtime.accountRef,
     ...(options.now ? { now: options.now } : {})

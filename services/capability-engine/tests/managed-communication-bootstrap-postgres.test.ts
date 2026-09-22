@@ -311,6 +311,51 @@ integration('Managed Communication production bootstrap on PostgreSQL', () => {
       publicMailRef: receipt.publicMailRef,
       authority: { externalMessageSent: false }
     });
+
+    const correlatedMessage = {
+      ...inboundMessage(),
+      textBody: `Provider assigned a different thread, but the reply preserved [${receipt.publicMailRef!}].`
+    };
+    const correlatedAdmission = await reconstructed!.managedCommunicationInbound.ingest({
+      workspaceId,
+      idempotencyKey: 'bootstrap-inbound-correlated',
+      message: correlatedMessage,
+      exactEvidence: {
+        rawPayload: Uint8Array.from(
+          Buffer.from(`Subject: correlated\r\n\r\n[${receipt.publicMailRef!}]`, 'utf8')
+        ),
+        mediaType: 'message/rfc822',
+        headers: [{ name: 'message-id', value: '<provider-message-bootstrap-in>' }],
+        metadata: { mailbox: 'inbox' }
+      }
+    });
+    expect(correlatedMessage.threadRef).not.toBe(receipt.threadRef);
+    expect(correlatedAdmission.exactEvidence.metadata).toMatchObject({
+      mailbox: 'inbox',
+      moCorrelationMethod: 'PUBLIC_MAIL_REF',
+      moCorrelationDisposition: 'RESOLVED',
+      moCorrelationConfidence: 'EXACT',
+      moCorrelationOutboundThreadRef: receipt.threadRef,
+      moCorrelationAuthority: 'NO_AUTHORITY'
+    });
+    expect(correlatedAdmission.exactEvidence.metadata.moCorrelationPublicMailRefs).toBe(
+      JSON.stringify([receipt.publicMailRef])
+    );
+
+    const correlationReconstructed = await createManagedCommunicationRuntimeBindingsV1({
+      environment: environment(),
+      database,
+      query: database.getPool(),
+      now: () => '2026-09-01T12:21:30.000Z'
+    });
+    await expect(
+      correlationReconstructed!.managedCommunicationExactEvidence.resolveExactEvidence({
+        workspaceId,
+        accountRef,
+        messageId: correlatedMessage.messageId
+      })
+    ).resolves.toEqual(correlatedAdmission.exactEvidence);
+
     expect(successfulCalls).toBe(1);
 
     let uncertainCalls = 0;

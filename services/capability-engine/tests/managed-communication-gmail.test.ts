@@ -49,6 +49,28 @@ function sha256(bytes: Uint8Array): string {
   return createHash('sha256').update(bytes).digest('hex');
 }
 
+function exactInboundCorrelation() {
+  return Object.freeze({
+    schemaVersion: 1 as const,
+    method: 'PUBLIC_MAIL_REF' as const,
+    disposition: 'RESOLVED' as const,
+    confidence: 'EXACT' as const,
+    publicMailRefs: Object.freeze(['MO-00000000000000000000000001']),
+    sendIds: Object.freeze(['commsend_00000000000000000000000000000001']),
+    outboundMessageIds: Object.freeze(['message-outbound-1']),
+    outboundThreadRefs: Object.freeze(['thread-outbound-1']),
+    sourceFields: Object.freeze(['TEXT_BODY' as const]),
+    outboundThreadRef: 'thread-outbound-1',
+    authority: Object.freeze({
+      customerTruthMutated: false as const,
+      matterTruthMutated: false as const,
+      legalTruthCreated: false as const,
+      knowledgeApproved: false as const,
+      professionalDecisionCreated: false as const
+    })
+  });
+}
+
 class RecordingExactEvidenceStore implements ManagedCommunicationExactEvidenceStoreV1 {
   readonly admissions: ManagedCommunicationExactEvidenceAdmissionV1[] = [];
   private readonly rows = new Map<string, ManagedCommunicationExactEvidenceRefV1>();
@@ -386,10 +408,12 @@ describe('Gmail Managed Communication provider adapter', () => {
       '2026-09-01T14:22:00.000Z',
       '2026-09-01T14:23:00.000Z'
     ];
+    const correlate = vi.fn(() => Promise.resolve(exactInboundCorrelation()));
     const inbound = new GmailManagedCommunicationInboundV1({
       client,
       foundation,
       exactEvidence,
+      correlation: { correlate },
       workspaceId,
       accountRef,
       now: () => timestamps[timestampIndex++] ?? '2026-09-01T14:24:00.000Z'
@@ -411,6 +435,7 @@ describe('Gmail Managed Communication provider adapter', () => {
       providerCursor: '101'
     });
     expect(historyStarts).toEqual(['100', '101']);
+    expect(correlate).toHaveBeenCalledTimes(1);
 
     const ids = managedCommunicationNormalizedIdsV1({
       workspaceId,
@@ -434,10 +459,16 @@ describe('Gmail Managed Communication provider adapter', () => {
     expect(exactEvidence.admissions).toHaveLength(2);
     const firstEvidence = exactEvidence.admissions[0]!;
     expect(Buffer.from(firstEvidence.rawPayload).toString('utf8')).toBe(rawMessage);
-    expect(firstEvidence.metadata).toEqual({
+    expect(firstEvidence.metadata).toMatchObject({
       gmailMessageId: 'gmail-inbound-1',
       gmailThreadId: 'gmail-thread-inbound-1',
-      gmailHistoryId: '101'
+      gmailHistoryId: '101',
+      moCorrelationSchemaVersion: '1',
+      moCorrelationMethod: 'PUBLIC_MAIL_REF',
+      moCorrelationDisposition: 'RESOLVED',
+      moCorrelationConfidence: 'EXACT',
+      moCorrelationOutboundThreadRef: 'thread-outbound-1',
+      moCorrelationAuthority: 'NO_AUTHORITY'
     });
     expect(firstEvidence.headers).toEqual(
       expect.arrayContaining([

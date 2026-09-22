@@ -50,6 +50,28 @@ function sha256(value: Uint8Array): string {
   return createHash('sha256').update(value).digest('hex');
 }
 
+function exactInboundCorrelation() {
+  return Object.freeze({
+    schemaVersion: 1 as const,
+    method: 'PUBLIC_MAIL_REF' as const,
+    disposition: 'RESOLVED' as const,
+    confidence: 'EXACT' as const,
+    publicMailRefs: Object.freeze(['MO-00000000000000000000000001']),
+    sendIds: Object.freeze(['commsend_00000000000000000000000000000001']),
+    outboundMessageIds: Object.freeze(['message-outbound-1']),
+    outboundThreadRefs: Object.freeze(['thread-outbound-1']),
+    sourceFields: Object.freeze(['HTML_BODY' as const]),
+    outboundThreadRef: 'thread-outbound-1',
+    authority: Object.freeze({
+      customerTruthMutated: false as const,
+      matterTruthMutated: false as const,
+      legalTruthCreated: false as const,
+      knowledgeApproved: false as const,
+      professionalDecisionCreated: false as const
+    })
+  });
+}
+
 class RecordingExactEvidenceStore implements ManagedCommunicationExactEvidenceStoreV1 {
   readonly admissions: ManagedCommunicationExactEvidenceAdmissionV1[] = [];
   private readonly rows = new Map<string, ManagedCommunicationExactEvidenceRefV1>();
@@ -368,10 +390,12 @@ describe('Microsoft Graph Managed Communication provider adapter', () => {
       '2026-09-10T01:00:02.000Z',
       '2026-09-10T01:00:03.000Z'
     ];
+    const correlate = vi.fn(() => Promise.resolve(exactInboundCorrelation()));
     const inbound = new MicrosoftGraphManagedCommunicationInboundV1({
       client: new MicrosoftGraphManagedCommunicationClientV1(tokenProvider(), fetchImpl),
       foundation,
       exactEvidence,
+      correlation: { correlate },
       workspaceId,
       accountRef,
       now: () => times[nowIndex++] ?? '2026-09-10T01:00:04.000Z'
@@ -415,7 +439,18 @@ describe('Microsoft Graph Managed Communication provider adapter', () => {
       'REPLY_TO'
     ]);
     expect(exactEvidence.admissions).toHaveLength(1);
+    expect(correlate).toHaveBeenCalledTimes(1);
     expect(Buffer.from(exactEvidence.admissions[0]!.rawPayload).toString('utf8')).toBe(rawMime);
+    expect(exactEvidence.admissions[0]!.metadata).toMatchObject({
+      graphMessageId: 'graph-message-1',
+      graphConversationId: 'graph-conversation-1',
+      moCorrelationSchemaVersion: '1',
+      moCorrelationMethod: 'PUBLIC_MAIL_REF',
+      moCorrelationDisposition: 'RESOLVED',
+      moCorrelationConfidence: 'EXACT',
+      moCorrelationOutboundThreadRef: 'thread-outbound-1',
+      moCorrelationAuthority: 'NO_AUTHORITY'
+    });
     expect(exactEvidence.admissions[0]!.headers).toEqual([
       { name: 'X-Trace-Id', value: 'trace-safe-1' }
     ]);

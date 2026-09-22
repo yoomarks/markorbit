@@ -2,6 +2,9 @@
 import { ManagedDatabase, parseDatabaseConfig } from '@markorbit/persistence';
 import { resolveManagedCommunicationRuntimeConfigV1 } from '../src/managed-communication-bootstrap.js';
 import { PostgresManagedCommunicationExactEvidenceStoreV1 } from '../src/managed-communication-exact-evidence.js';
+import { PostgresManagedCommunicationSendClaimStoreV1 } from '../src/managed-communication-exchange.js';
+import { ManagedCommunicationInboundCorrelatorV1 } from '../src/managed-communication-inbound-correlation.js';
+import { ManagedCommunicationPublicReferenceReaderV1 } from '../src/managed-communication-public-reference.js';
 import { PostgresManagedCommunicationFoundationV1 } from '../src/managed-communication-foundation.js';
 import { syncGmailManagedCommunicationInboundFromAnchorV1 } from '../src/managed-communication-gmail-anchor.js';
 import { reconcileGmailManagedCommunicationProviderMessageV1 } from '../src/managed-communication-gmail-reconciliation.js';
@@ -63,6 +66,9 @@ try {
   const pool = database.getPool();
   const foundation = new PostgresManagedCommunicationFoundationV1(database, pool);
   const exactEvidence = new PostgresManagedCommunicationExactEvidenceStoreV1(pool);
+  const claims = new PostgresManagedCommunicationSendClaimStoreV1(database, pool);
+  const publicReferences = new ManagedCommunicationPublicReferenceReaderV1(claims);
+  const correlation = new ManagedCommunicationInboundCorrelatorV1(publicReferences);
   const client = new GmailManagedCommunicationClientV1({
     clientId: requiredEnvironment(GMAIL_CLIENT_ID_ENV, 10_000),
     clientSecret: requiredEnvironment(GMAIL_CLIENT_SECRET_ENV, 20_000),
@@ -73,6 +79,7 @@ try {
     client,
     foundation,
     exactEvidence,
+    correlation,
     workspaceId: runtime.workspaceId,
     accountRef: runtime.accountRef
   });
@@ -84,6 +91,7 @@ try {
           client,
           foundation,
           exactEvidence,
+          correlation,
           workspaceId: runtime.workspaceId,
           accountRef: runtime.accountRef,
           providerMessageId: providerMessageId!
