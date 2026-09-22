@@ -50,6 +50,18 @@ function headerValues(
     .map((header) => header.value);
 }
 
+export function managedCommunicationRfcReplyMessageIdsV1(
+  headers: readonly Readonly<{ name: string; value: string }>[]
+): Readonly<{
+  inReplyToMessageIds: readonly string[];
+  referenceMessageIds: readonly string[];
+}> {
+  return Object.freeze({
+    inReplyToMessageIds: messageIds(headerValues(headers, 'in-reply-to'), 20, 'In-Reply-To'),
+    referenceMessageIds: messageIds(headerValues(headers, 'references'), 50, 'References')
+  });
+}
+
 export class ManagedCommunicationReplyReferenceReaderV1 {
   constructor(
     private readonly foundation: Pick<
@@ -95,15 +107,8 @@ export class ManagedCommunicationReplyReferenceReaderV1 {
         'Managed Communication reply-reference lineage does not match the admitted account/message/evidence.'
       );
 
-    const inReplyToMessageIds = messageIds(
-      headerValues(evidence.headers, 'in-reply-to'),
-      20,
-      'In-Reply-To'
-    );
-    const referenceMessageIds = messageIds(
-      headerValues(evidence.headers, 'references'),
-      50,
-      'References'
+    const { inReplyToMessageIds, referenceMessageIds } = managedCommunicationRfcReplyMessageIdsV1(
+      evidence.headers
     );
 
     return parseManagedCommunicationReplyReferenceEvidenceV1({

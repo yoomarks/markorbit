@@ -497,10 +497,30 @@ export class GmailManagedCommunicationSenderV1 implements ManagedCommunicationPr
 
         const providerMessageId = required(result.id, 'gmail.send.id', 500);
         const returnedThreadId = required(result.threadId, 'gmail.send.threadId', 500);
+        let rfcMessageId: string | undefined;
+        let sent: GmailMessage | undefined;
+        try {
+          sent =
+            header(result.payload?.headers, 'Message-ID') === undefined
+              ? await this.client.message(providerMessageId, 'full')
+              : result;
+        } catch {
+          sent = undefined;
+        }
+        if (sent) {
+          if (sent.id?.trim() && sent.id.trim() !== providerMessageId) {
+            throw new Error('Gmail sent-message identity changed during RFC evidence lookup.');
+          }
+          if (sent.threadId?.trim() && sent.threadId.trim() !== returnedThreadId) {
+            throw new Error('Gmail sent-message thread changed during RFC evidence lookup.');
+          }
+          rfcMessageId = header(sent.payload?.headers, 'Message-ID')?.trim() || undefined;
+        }
 
         return Object.freeze({
           providerMessageId,
           providerThreadId: returnedThreadId,
+          ...(rfcMessageId === undefined ? {} : { rfcMessageId }),
           providerReceiptRef: `gmail://users/me/messages/${providerMessageId}`,
           acceptedAt: this.now()
         });
@@ -681,12 +701,14 @@ export class GmailManagedCommunicationInboundV1 {
         observedAt
       }
     };
+    const evidenceHeaders = admittedHeaders(payload.headers);
     const inboundCorrelation =
       existingEvidence || !this.options.correlation
         ? undefined
         : await this.options.correlation.correlate({
             workspaceId: this.options.workspaceId,
-            message
+            message,
+            headers: evidenceHeaders
           });
     const normalized = await this.options.foundation.admitObservation({
       workspaceId: this.options.workspaceId,
@@ -713,7 +735,7 @@ export class GmailManagedCommunicationInboundV1 {
       rawPayload,
       mediaType: 'message/rfc822',
       observedAt,
-      headers: admittedHeaders(payload.headers),
+      headers: evidenceHeaders,
       metadata,
       now: observedAt
     });

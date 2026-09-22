@@ -11,6 +11,15 @@ import {
   ManagedCommunicationPublicReferenceError,
   type ManagedCommunicationPublicReferenceReaderV1
 } from './managed-communication-public-reference.js';
+import {
+  managedCommunicationCanonicalRfcMessageIdV1,
+  type ManagedCommunicationRfcSendReceiptReaderV1,
+  type ManagedCommunicationSendReceiptV1
+} from './managed-communication-exchange.js';
+import {
+  ManagedCommunicationReplyReferenceError,
+  managedCommunicationRfcReplyMessageIdsV1
+} from './managed-communication-reply-reference.js';
 
 const MAX_PUBLIC_REFS = 20;
 const PUBLIC_REF_LIKE = /(?:^|[^A-Z0-9])(MO-[0-9A-Z]{26})(?=$|[^A-Z0-9])/giu;
@@ -27,17 +36,19 @@ export const managedCommunicationInboundCorrelationNoAuthorityV1 = Object.freeze
 export type ManagedCommunicationInboundCorrelationSourceV1 = 'SUBJECT' | 'TEXT_BODY' | 'HTML_BODY';
 
 export type ManagedCommunicationInboundCorrelationReviewReasonV1 =
-  'TOO_MANY_PUBLIC_MAIL_REFS' | 'CONFLICTING_OUTBOUND_THREADS';
+  'TOO_MANY_PUBLIC_MAIL_REFS' | 'TOO_MANY_RFC_MESSAGE_IDS' | 'CONFLICTING_OUTBOUND_THREADS';
 export type ManagedCommunicationInboundCorrelationV1 = Readonly<{
   schemaVersion: 1;
-  method: 'PUBLIC_MAIL_REF';
+  method: 'RFC_MESSAGE_ID' | 'PUBLIC_MAIL_REF';
   disposition: 'RESOLVED' | 'REVIEW_REQUIRED';
   confidence: 'EXACT';
+  rfcMessageIds: readonly string[];
   publicMailRefs: readonly string[];
   sendIds: readonly string[];
   outboundMessageIds: readonly string[];
   outboundThreadRefs: readonly string[];
   sourceFields: readonly ManagedCommunicationInboundCorrelationSourceV1[];
+  rfcSource?: 'IN_REPLY_TO' | 'REFERENCES';
   outboundThreadRef?: string;
   reviewReason?: ManagedCommunicationInboundCorrelationReviewReasonV1;
   authority: Readonly<typeof managedCommunicationInboundCorrelationNoAuthorityV1>;
@@ -47,6 +58,7 @@ export interface ManagedCommunicationInboundCorrelationResolverV1 {
   correlate(input: {
     workspaceId: string;
     message: Readonly<ManagedCommunicationMessageV1>;
+    headers?: readonly Readonly<{ name: string; value: string }>[];
   }): Promise<Readonly<ManagedCommunicationInboundCorrelationV1> | undefined>;
 }
 
@@ -116,20 +128,124 @@ function correlation(
 }
 export class ManagedCommunicationInboundCorrelatorV1 implements ManagedCommunicationInboundCorrelationResolverV1 {
   constructor(
-    private readonly publicReferences: Pick<ManagedCommunicationPublicReferenceReaderV1, 'resolve'>
+    private readonly publicReferences: Pick<ManagedCommunicationPublicReferenceReaderV1, 'resolve'>,
+    private readonly rfcReceipts?: Pick<
+      ManagedCommunicationRfcSendReceiptReaderV1,
+      'resolveSentByRfcMessageId'
+    >
   ) {}
 
   async correlate(input: {
     workspaceId: string;
     message: Readonly<ManagedCommunicationMessageV1>;
+    headers?: readonly Readonly<{ name: string; value: string }>[];
   }): Promise<Readonly<ManagedCommunicationInboundCorrelationV1> | undefined> {
     const message = parseManagedCommunicationMessageV1(input.message);
     if (message.channel !== 'EMAIL' || message.direction !== 'INBOUND') {
-      throw new TypeError(
-        'Managed Communication public-reference correlation requires INBOUND EMAIL.'
-      );
+      throw new TypeError('Managed Communication inbound correlation requires INBOUND EMAIL.');
     }
 
+    const rfcCorrelation = await this.correlateRfc(
+      input.workspaceId,
+      input.headers ?? Object.freeze([])
+    );
+    if (rfcCorrelation) return rfcCorrelation;
+    return this.correlatePublicReference(input.workspaceId, message);
+  }
+
+  private async correlateRfc(
+    workspaceId: string,
+    headers: readonly Readonly<{ name: string; value: string }>[]
+  ): Promise<Readonly<ManagedCommunicationInboundCorrelationV1> | undefined> {
+    if (!this.rfcReceipts || headers.length === 0) return undefined;
+
+    let parsed: Readonly<{
+      inReplyToMessageIds: readonly string[];
+      referenceMessageIds: readonly string[];
+    }>;
+    try {
+      parsed = managedCommunicationRfcReplyMessageIdsV1(headers);
+    } catch (error) {
+      if (
+        error instanceof ManagedCommunicationReplyReferenceError &&
+        error.code === 'TOO_MANY_REFERENCES'
+      ) {
+        return correlation({
+          method: 'RFC_MESSAGE_ID',
+          disposition: 'REVIEW_REQUIRED',
+          confidence: 'EXACT',
+          rfcMessageIds: Object.freeze([]),
+          publicMailRefs: Object.freeze([]),
+          sendIds: Object.freeze([]),
+          outboundMessageIds: Object.freeze([]),
+          outboundThreadRefs: Object.freeze([]),
+          sourceFields: Object.freeze([]),
+          reviewReason: 'TOO_MANY_RFC_MESSAGE_IDS'
+        });
+      }
+      throw error;
+    }
+
+    const sources = [
+      ['IN_REPLY_TO', parsed.inReplyToMessageIds],
+      ['REFERENCES', parsed.referenceMessageIds]
+    ] as const;
+    for (const [rfcSource, messageIds] of sources) {
+      const receipts: ManagedCommunicationSendReceiptV1[] = [];
+      const resolvedIds: string[] = [];
+      for (const messageId of messageIds) {
+        let canonical: string;
+        try {
+          canonical = managedCommunicationCanonicalRfcMessageIdV1(messageId);
+        } catch {
+          continue;
+        }
+        const receipt = await this.rfcReceipts.resolveSentByRfcMessageId(workspaceId, canonical);
+        if (!receipt) continue;
+        receipts.push(receipt);
+        resolvedIds.push(canonical);
+      }
+      if (receipts.length === 0) continue;
+      return this.rfcCorrelation(receipts, resolvedIds, rfcSource);
+    }
+    return undefined;
+  }
+
+  private rfcCorrelation(
+    receipts: readonly Readonly<ManagedCommunicationSendReceiptV1>[],
+    rfcMessageIds: readonly string[],
+    rfcSource: 'IN_REPLY_TO' | 'REFERENCES'
+  ): Readonly<ManagedCommunicationInboundCorrelationV1> {
+    const outboundThreadRefs = unique(receipts.map((item) => item.threadRef));
+    const common = {
+      method: 'RFC_MESSAGE_ID' as const,
+      confidence: 'EXACT' as const,
+      rfcMessageIds: unique(rfcMessageIds),
+      publicMailRefs: Object.freeze([]),
+      sendIds: unique(receipts.map((item) => item.sendId)),
+      outboundMessageIds: unique(receipts.map((item) => item.messageId)),
+      outboundThreadRefs,
+      sourceFields: Object.freeze([]),
+      rfcSource
+    };
+    if (outboundThreadRefs.length !== 1) {
+      return correlation({
+        ...common,
+        disposition: 'REVIEW_REQUIRED',
+        reviewReason: 'CONFLICTING_OUTBOUND_THREADS'
+      });
+    }
+    return correlation({
+      ...common,
+      disposition: 'RESOLVED',
+      outboundThreadRef: outboundThreadRefs[0]!
+    });
+  }
+
+  private async correlatePublicReference(
+    workspaceId: string,
+    message: Readonly<ManagedCommunicationMessageV1>
+  ): Promise<Readonly<ManagedCommunicationInboundCorrelationV1> | undefined> {
     const found = candidates(message);
     if (found.length === 0) return undefined;
     if (found.length > MAX_PUBLIC_REFS) {
@@ -137,6 +253,7 @@ export class ManagedCommunicationInboundCorrelatorV1 implements ManagedCommunica
         method: 'PUBLIC_MAIL_REF',
         disposition: 'REVIEW_REQUIRED',
         confidence: 'EXACT',
+        rfcMessageIds: Object.freeze([]),
         publicMailRefs: Object.freeze(
           found.slice(0, MAX_PUBLIC_REFS).map((item) => item.publicMailRef)
         ),
@@ -153,7 +270,7 @@ export class ManagedCommunicationInboundCorrelatorV1 implements ManagedCommunica
       try {
         resolutions.push(
           await this.publicReferences.resolve({
-            workspaceId: input.workspaceId,
+            workspaceId,
             publicMailRef: candidate.publicMailRef
           })
         );
@@ -173,6 +290,7 @@ export class ManagedCommunicationInboundCorrelatorV1 implements ManagedCommunica
     const common = {
       method: 'PUBLIC_MAIL_REF' as const,
       confidence: 'EXACT' as const,
+      rfcMessageIds: Object.freeze([]),
       publicMailRefs: Object.freeze(resolutions.map((item) => item.publicMailRef)),
       sendIds: unique(resolutions.map((item) => item.sendId)),
       outboundMessageIds: unique(resolutions.map((item) => item.messageId)),
@@ -205,6 +323,7 @@ function correlationMetadata(
     moCorrelationMethod: value.method,
     moCorrelationDisposition: value.disposition,
     moCorrelationConfidence: value.confidence,
+    moCorrelationRfcMessageIds: JSON.stringify(value.rfcMessageIds),
     moCorrelationPublicMailRefs: JSON.stringify(value.publicMailRefs),
     moCorrelationSendIds: JSON.stringify(value.sendIds),
     moCorrelationOutboundMessageIds: JSON.stringify(value.outboundMessageIds),
@@ -212,6 +331,7 @@ function correlationMetadata(
     moCorrelationSourceFields: JSON.stringify(value.sourceFields),
     moCorrelationAuthority: 'NO_AUTHORITY'
   };
+  if (value.rfcSource) metadata.moCorrelationRfcSource = value.rfcSource;
   if (value.outboundThreadRef) metadata.moCorrelationOutboundThreadRef = value.outboundThreadRef;
   if (value.reviewReason) metadata.moCorrelationReviewReason = value.reviewReason;
   return Object.freeze(metadata);

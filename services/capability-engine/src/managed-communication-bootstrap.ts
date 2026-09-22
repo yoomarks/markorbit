@@ -207,7 +207,8 @@ export async function createManagedCommunicationRuntimeBindingsV1(
     claims
   );
   const managedCommunicationInboundCorrelation = new ManagedCommunicationInboundCorrelatorV1(
-    managedCommunicationPublicReference
+    managedCommunicationPublicReference,
+    claims
   );
   const managedCommunicationInbound = new ManagedCommunicationInboundIngestorV1({
     foundation,

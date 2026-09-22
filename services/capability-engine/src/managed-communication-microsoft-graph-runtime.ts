@@ -111,7 +111,7 @@ export function createMicrosoftGraphManagedCommunicationProviderRuntimeFromEnvir
   const exactEvidence = new PostgresManagedCommunicationExactEvidenceStoreV1(options.query);
   const claims = new PostgresManagedCommunicationSendClaimStoreV1(options.database, options.query);
   const publicReferences = new ManagedCommunicationPublicReferenceReaderV1(claims);
-  const correlation = new ManagedCommunicationInboundCorrelatorV1(publicReferences);
+  const correlation = new ManagedCommunicationInboundCorrelatorV1(publicReferences, claims);
   const inbound = new MicrosoftGraphManagedCommunicationInboundV1({
     client,
     foundation,

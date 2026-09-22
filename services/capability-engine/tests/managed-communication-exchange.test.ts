@@ -7,6 +7,7 @@ import {
 import {
   InMemoryManagedCommunicationSendClaimStoreV1,
   ManagedCommunicationExchangeV1,
+  managedCommunicationCanonicalRfcMessageIdV1,
   type ManagedCommunicationProviderSenderV1,
   type ManagedCommunicationSendRequestV1
 } from '../src/managed-communication-exchange.js';
@@ -53,27 +54,29 @@ async function setup(sender: ManagedCommunicationProviderSenderV1) {
     providerAccountRef: 'provider-account-expert',
     now: '2026-08-27T04:00:00.000Z'
   });
+  const claims = new InMemoryManagedCommunicationSendClaimStoreV1();
   const exchange = new ManagedCommunicationExchangeV1({
     foundation,
-    claims: new InMemoryManagedCommunicationSendClaimStoreV1(),
+    claims,
     sender,
     now: () => '2026-08-27T04:01:00.000Z',
     ownerTokenFactory: () => 'owner-token-fixed'
   });
-  return { exchange, foundation };
+  return { exchange, foundation, claims };
 }
 
 describe('Shared Communication outbound exchange', () => {
   it('sends exactly once, durabilizes outbound evidence, and replays the receipt', async () => {
     let calls = 0;
     let providerRequest: Readonly<ManagedCommunicationSendRequestV1> | undefined;
-    const { exchange, foundation } = await setup({
+    const { exchange, foundation, claims } = await setup({
       send: (request) => {
         calls += 1;
         providerRequest = request;
         return Promise.resolve({
           providerMessageId: 'provider-message-1',
           providerThreadId: 'provider-thread-1',
+          rfcMessageId: '<provider-message-1@example.test>',
           providerReceiptRef: 'provider-receipt-1',
           acceptedAt: '2026-08-27T04:01:01.000Z'
         });
@@ -96,11 +99,21 @@ describe('Shared Communication outbound exchange', () => {
       provider,
       providerMessageId: 'provider-message-1',
       providerThreadId: 'provider-thread-1',
+      rfcMessageId: 'provider-message-1@example.test',
       providerReceiptRef: 'provider-receipt-1',
       authority: { externalMessageSent: true }
     });
     expect(first.publicMailRef).toMatch(/^MO-[0-9A-HJKMNP-TV-Z]{26}$/u);
     expect(providerRequest?.textBody).toContain(`MO Reference: [${first.publicMailRef}]`);
+    await expect(
+      claims.resolveSentByRfcMessageId(workspaceId, '<provider-message-1@example.test>')
+    ).resolves.toEqual(first);
+    await expect(
+      claims.resolveSentByRfcMessageId('workspace-other', 'provider-message-1@example.test')
+    ).resolves.toBeUndefined();
+    expect(managedCommunicationCanonicalRfcMessageIdV1('<provider-message-1@example.test>')).toBe(
+      'provider-message-1@example.test'
+    );
     const persisted = await foundation.resolveMessage(workspaceId, accountRef, first.messageId);
     expect(persisted.direction).toBe('OUTBOUND');
     expect(persisted.threadRef).toBe(first.threadRef);
@@ -220,6 +233,33 @@ describe('Shared Communication outbound exchange', () => {
       })
     ).rejects.toMatchObject({ code: 'RECONCILIATION_REQUIRED' });
     expect(calls).toBe(1);
+  });
+
+  it('treats malformed provider RFC Message-ID as optional evidence after acceptance', async () => {
+    const { exchange, claims } = await setup({
+      send: () =>
+        Promise.resolve({
+          providerMessageId: 'provider-message-malformed-rfc',
+          providerThreadId: 'provider-thread-malformed-rfc',
+          rfcMessageId: '<not-an-rfc-message-id>',
+          providerReceiptRef: 'provider-receipt-malformed-rfc',
+          acceptedAt: '2026-08-27T04:01:01.000Z'
+        })
+    });
+
+    const receipt = await exchange.send({
+      workspaceId,
+      idempotencyKey: 'expert-task-malformed-rfc',
+      correlationId: 'expert-task-malformed-rfc',
+      request: request()
+    });
+
+    expect(receipt.state).toBe('SENT');
+    expect(receipt.providerMessageId).toBe('provider-message-malformed-rfc');
+    expect(receipt).not.toHaveProperty('rfcMessageId');
+    await expect(
+      claims.resolveSentByRfcMessageId(workspaceId, 'missing@example.test')
+    ).resolves.toBeUndefined();
   });
 
   it('rejects attachment references without immutable checksums before dispatch', async () => {
