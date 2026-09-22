@@ -5,6 +5,7 @@ import {
   type ManagedCommunicationPublicMailReferenceResolutionV1
 } from '@markorbit/contracts/managed-communication-public-reference';
 import type { ManagedCommunicationMessageV1 } from '@markorbit/contracts/managed-communication';
+import type { ManagedCommunicationSendReceiptV1 } from '../src/managed-communication-exchange.js';
 import {
   ManagedCommunicationInboundCorrelatorV1,
   managedCommunicationInboundEvidenceMetadataV1
@@ -39,6 +40,35 @@ function resolution(
     providerThreadId: `provider-thread-${index}`,
     acceptedAt: '2026-09-22T00:00:00.000Z',
     authority: managedCommunicationPublicMailReferenceAuthorityV1
+  };
+}
+
+function rfcReceipt(index: number, threadRef = 'thread-rfc'): ManagedCommunicationSendReceiptV1 {
+  return {
+    schemaVersion: 1,
+    sendId: sendId(index),
+    workspaceId,
+    accountRef: 'account-outbound',
+    idempotencyKeySha256: 'a'.repeat(64),
+    requestFingerprintSha256: 'b'.repeat(64),
+    state: 'SENT',
+    publicMailRef: publicRef(index),
+    messageId: `message-outbound-${index}`,
+    threadRef,
+    provider: 'MICROSOFT_GRAPH',
+    providerMessageId: `provider-message-${index}`,
+    providerThreadId: `provider-thread-${index}`,
+    rfcMessageId: `outbound-${index}@example.test`,
+    providerReceiptRef: `msgraph://me/messages/provider-message-${index}`,
+    acceptedAt: '2026-09-22T00:00:00.000Z',
+    authority: {
+      externalMessageSent: true,
+      customerTruthMutated: false,
+      matterTruthMutated: false,
+      legalTruthCreated: false,
+      knowledgeApproved: false,
+      professionalDecisionCreated: false
+    }
   };
 }
 
@@ -225,6 +255,232 @@ describe('Managed Communication inbound public-reference correlation V1', () => 
       })
     ).rejects.toThrow('send receipt database unavailable');
   });
+
+  it('prefers a proven In-Reply-To RFC Message-ID over a conflicting public reference', async () => {
+    const resolvePublic = vi.fn(() => Promise.resolve(resolution(99, 'thread-public')));
+    const resolveRfc = vi.fn((_workspaceId: string, rfcMessageId: string) =>
+      Promise.resolve(
+        rfcMessageId === 'outbound-10@example.test'
+          ? rfcReceipt(10, 'thread-rfc-direct')
+          : undefined
+      )
+    );
+    const correlator = new ManagedCommunicationInboundCorrelatorV1(
+      { resolve: resolvePublic },
+      { resolveSentByRfcMessageId: resolveRfc }
+    );
+
+    const result = await correlator.correlate({
+      workspaceId,
+      message: inbound({ textBody: `Quoted fallback ${publicRef(99)}` }),
+      headers: [{ name: 'In-Reply-To', value: '<outbound-10@example.test>' }]
+    });
+
+    expect(resolvePublic).not.toHaveBeenCalled();
+    expect(result).toMatchObject({
+      method: 'RFC_MESSAGE_ID',
+      disposition: 'RESOLVED',
+      confidence: 'EXACT',
+      rfcMessageIds: ['outbound-10@example.test'],
+      publicMailRefs: [],
+      rfcSource: 'IN_REPLY_TO',
+      outboundThreadRef: 'thread-rfc-direct'
+    });
+  });
+
+  it('uses References only when no In-Reply-To identifier resolves to proven outbound evidence', async () => {
+    const resolvePublic = vi.fn(() => Promise.resolve(resolution(11, 'thread-public')));
+    const resolveRfc = vi.fn((_workspaceId: string, rfcMessageId: string) =>
+      Promise.resolve(
+        rfcMessageId === 'outbound-11@example.test' ? rfcReceipt(11, 'thread-reference') : undefined
+      )
+    );
+    const correlator = new ManagedCommunicationInboundCorrelatorV1(
+      { resolve: resolvePublic },
+      { resolveSentByRfcMessageId: resolveRfc }
+    );
+
+    const result = await correlator.correlate({
+      workspaceId,
+      message: inbound({ textBody: publicRef(11) }),
+      headers: [
+        { name: 'In-Reply-To', value: '<unknown-direct@example.test>' },
+        { name: 'References', value: '<older@example.test> <outbound-11@example.test>' }
+      ]
+    });
+
+    expect(resolvePublic).not.toHaveBeenCalled();
+    expect(result).toMatchObject({
+      method: 'RFC_MESSAGE_ID',
+      disposition: 'RESOLVED',
+      rfcMessageIds: ['outbound-11@example.test'],
+      rfcSource: 'REFERENCES',
+      outboundThreadRef: 'thread-reference'
+    });
+  });
+
+  it('resolves multiple proven RFC references only when they converge on one outbound thread', async () => {
+    const resolveRfc = vi.fn((_workspaceId: string, rfcMessageId: string) => {
+      if (rfcMessageId === 'outbound-12@example.test')
+        return Promise.resolve(rfcReceipt(12, 'thread-rfc-shared'));
+      if (rfcMessageId === 'outbound-13@example.test')
+        return Promise.resolve(rfcReceipt(13, 'thread-rfc-shared'));
+      return Promise.resolve(undefined);
+    });
+    const correlator = new ManagedCommunicationInboundCorrelatorV1(
+      { resolve: () => Promise.resolve(resolution(12)) },
+      { resolveSentByRfcMessageId: resolveRfc }
+    );
+
+    const result = await correlator.correlate({
+      workspaceId,
+      message: inbound(),
+      headers: [
+        {
+          name: 'References',
+          value: '<outbound-12@example.test> <outbound-13@example.test>'
+        }
+      ]
+    });
+
+    expect(result).toMatchObject({
+      method: 'RFC_MESSAGE_ID',
+      disposition: 'RESOLVED',
+      rfcSource: 'REFERENCES',
+      rfcMessageIds: ['outbound-12@example.test', 'outbound-13@example.test'],
+      outboundThreadRefs: ['thread-rfc-shared'],
+      outboundThreadRef: 'thread-rfc-shared'
+    });
+  });
+
+  it('requires review when proven RFC references point to different outbound threads', async () => {
+    const resolveRfc = vi.fn((_workspaceId: string, rfcMessageId: string) => {
+      if (rfcMessageId === 'outbound-14@example.test')
+        return Promise.resolve(rfcReceipt(14, 'thread-rfc-a'));
+      if (rfcMessageId === 'outbound-15@example.test')
+        return Promise.resolve(rfcReceipt(15, 'thread-rfc-b'));
+      return Promise.resolve(undefined);
+    });
+    const correlator = new ManagedCommunicationInboundCorrelatorV1(
+      { resolve: () => Promise.resolve(resolution(14)) },
+      { resolveSentByRfcMessageId: resolveRfc }
+    );
+
+    const result = await correlator.correlate({
+      workspaceId,
+      message: inbound(),
+      headers: [
+        {
+          name: 'References',
+          value: '<outbound-14@example.test> <outbound-15@example.test>'
+        }
+      ]
+    });
+
+    expect(result).toMatchObject({
+      method: 'RFC_MESSAGE_ID',
+      disposition: 'REVIEW_REQUIRED',
+      reviewReason: 'CONFLICTING_OUTBOUND_THREADS',
+      outboundThreadRefs: ['thread-rfc-a', 'thread-rfc-b']
+    });
+    expect(result).not.toHaveProperty('outboundThreadRef');
+  });
+
+  it('falls back to a proven public reference only when all RFC identifiers are unproven', async () => {
+    const resolvePublic = vi.fn(() => Promise.resolve(resolution(16, 'thread-public-fallback')));
+    const resolveRfc = vi.fn(() => Promise.resolve(undefined));
+    const correlator = new ManagedCommunicationInboundCorrelatorV1(
+      { resolve: resolvePublic },
+      { resolveSentByRfcMessageId: resolveRfc }
+    );
+
+    const result = await correlator.correlate({
+      workspaceId,
+      message: inbound({ textBody: publicRef(16) }),
+      headers: [
+        { name: 'In-Reply-To', value: '<unknown-direct@example.test>' },
+        { name: 'References', value: '<unknown-reference@example.test>' }
+      ]
+    });
+
+    expect(resolvePublic).toHaveBeenCalledTimes(1);
+    expect(result).toMatchObject({
+      method: 'PUBLIC_MAIL_REF',
+      disposition: 'RESOLVED',
+      rfcMessageIds: [],
+      publicMailRefs: [publicRef(16)],
+      outboundThreadRef: 'thread-public-fallback'
+    });
+  });
+
+  it('ignores malformed RFC identifiers and still permits exact public-reference fallback', async () => {
+    const resolvePublic = vi.fn(() => Promise.resolve(resolution(17, 'thread-public-malformed')));
+    const resolveRfc = vi.fn(() => Promise.resolve(undefined));
+    const correlator = new ManagedCommunicationInboundCorrelatorV1(
+      { resolve: resolvePublic },
+      { resolveSentByRfcMessageId: resolveRfc }
+    );
+
+    const result = await correlator.correlate({
+      workspaceId,
+      message: inbound({ textBody: publicRef(17) }),
+      headers: [{ name: 'In-Reply-To', value: '<not-an-rfc-message-id>' }]
+    });
+
+    expect(resolveRfc).not.toHaveBeenCalled();
+    expect(resolvePublic).toHaveBeenCalledTimes(1);
+    expect(result).toMatchObject({
+      method: 'PUBLIC_MAIL_REF',
+      outboundThreadRef: 'thread-public-malformed'
+    });
+  });
+
+  it('propagates RFC receipt-owner failures instead of silently falling through to public refs', async () => {
+    const resolvePublic = vi.fn(() => Promise.resolve(resolution(18)));
+    const correlator = new ManagedCommunicationInboundCorrelatorV1(
+      { resolve: resolvePublic },
+      {
+        resolveSentByRfcMessageId: () =>
+          Promise.reject(new Error('RFC send receipt owner unavailable'))
+      }
+    );
+
+    await expect(
+      correlator.correlate({
+        workspaceId,
+        message: inbound({ textBody: publicRef(18) }),
+        headers: [{ name: 'In-Reply-To', value: '<outbound-18@example.test>' }]
+      })
+    ).rejects.toThrow('RFC send receipt owner unavailable');
+    expect(resolvePublic).not.toHaveBeenCalled();
+  });
+
+  it('requires review for excessive RFC References instead of falling through to public refs', async () => {
+    const resolvePublic = vi.fn(() => Promise.resolve(resolution(19)));
+    const resolveRfc = vi.fn(() => Promise.resolve(undefined));
+    const correlator = new ManagedCommunicationInboundCorrelatorV1(
+      { resolve: resolvePublic },
+      { resolveSentByRfcMessageId: resolveRfc }
+    );
+    const references = Array.from(
+      { length: 51 },
+      (_, index) => `<bounded-${index}@example.test>`
+    ).join(' ');
+
+    const result = await correlator.correlate({
+      workspaceId,
+      message: inbound({ textBody: publicRef(19) }),
+      headers: [{ name: 'References', value: references }]
+    });
+
+    expect(result).toMatchObject({
+      method: 'RFC_MESSAGE_ID',
+      disposition: 'REVIEW_REQUIRED',
+      reviewReason: 'TOO_MANY_RFC_MESSAGE_IDS'
+    });
+    expect(resolveRfc).not.toHaveBeenCalled();
+    expect(resolvePublic).not.toHaveBeenCalled();
+  });
 });
 describe('Managed Communication inbound correlation evidence metadata', () => {
   it('projects exact no-authority correlation into reserved metadata keys', async () => {
@@ -248,6 +504,41 @@ describe('Managed Communication inbound correlation evidence metadata', () => {
       moCorrelationDisposition: 'RESOLVED',
       moCorrelationConfidence: 'EXACT',
       moCorrelationOutboundThreadRef: 'thread-outbound',
+      moCorrelationAuthority: 'NO_AUTHORITY'
+    });
+  });
+
+  it('projects RFC exact lineage and source into reserved metadata keys', async () => {
+    const correlator = new ManagedCommunicationInboundCorrelatorV1(
+      { resolve: () => Promise.resolve(resolution(20)) },
+      {
+        resolveSentByRfcMessageId: (_workspaceId, rfcMessageId) =>
+          Promise.resolve(
+            rfcMessageId === 'outbound-20@example.test'
+              ? rfcReceipt(20, 'thread-rfc-metadata')
+              : undefined
+          )
+      }
+    );
+    const correlation = await correlator.correlate({
+      workspaceId,
+      message: inbound(),
+      headers: [{ name: 'In-Reply-To', value: '<outbound-20@example.test>' }]
+    });
+
+    const metadata = managedCommunicationInboundEvidenceMetadataV1({
+      providerMetadata: { graphMessageId: 'graph-inbound-20' },
+      correlation: correlation!
+    });
+
+    expect(metadata).toMatchObject({
+      graphMessageId: 'graph-inbound-20',
+      moCorrelationMethod: 'RFC_MESSAGE_ID',
+      moCorrelationDisposition: 'RESOLVED',
+      moCorrelationRfcMessageIds: JSON.stringify(['outbound-20@example.test']),
+      moCorrelationRfcSource: 'IN_REPLY_TO',
+      moCorrelationPublicMailRefs: '[]',
+      moCorrelationOutboundThreadRef: 'thread-rfc-metadata',
       moCorrelationAuthority: 'NO_AUTHORITY'
     });
   });

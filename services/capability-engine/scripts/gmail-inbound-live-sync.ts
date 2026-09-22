@@ -68,7 +68,7 @@ try {
   const exactEvidence = new PostgresManagedCommunicationExactEvidenceStoreV1(pool);
   const claims = new PostgresManagedCommunicationSendClaimStoreV1(database, pool);
   const publicReferences = new ManagedCommunicationPublicReferenceReaderV1(claims);
-  const correlation = new ManagedCommunicationInboundCorrelatorV1(publicReferences);
+  const correlation = new ManagedCommunicationInboundCorrelatorV1(publicReferences, claims);
   const client = new GmailManagedCommunicationClientV1({
     clientId: requiredEnvironment(GMAIL_CLIENT_ID_ENV, 10_000),
     clientSecret: requiredEnvironment(GMAIL_CLIENT_SECRET_ENV, 20_000),

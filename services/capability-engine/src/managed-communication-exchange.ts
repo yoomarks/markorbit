@@ -32,6 +32,7 @@ export interface ManagedCommunicationSendRequestV1 {
 export interface ManagedCommunicationProviderSendResultV1 {
   providerMessageId: string;
   providerThreadId?: string;
+  rfcMessageId?: string;
   providerReceiptRef: string;
   acceptedAt: string;
 }
@@ -59,6 +60,7 @@ export interface ManagedCommunicationSendReceiptV1 {
   provider: string;
   providerMessageId: string;
   providerThreadId?: string;
+  rfcMessageId?: string;
   providerReceiptRef: string;
   acceptedAt: string;
   authority: Readonly<ManagedCommunicationSendAuthorityV1>;
@@ -129,6 +131,13 @@ export interface ManagedCommunicationSendReceiptReaderV1 {
   resolveSentBySendId(
     workspaceId: string,
     sendId: string
+  ): Promise<Readonly<ManagedCommunicationSendReceiptV1> | undefined>;
+}
+
+export interface ManagedCommunicationRfcSendReceiptReaderV1 {
+  resolveSentByRfcMessageId(
+    workspaceId: string,
+    rfcMessageId: string
   ): Promise<Readonly<ManagedCommunicationSendReceiptV1> | undefined>;
 }
 
@@ -208,6 +217,34 @@ function clean(value: string, field: string, maxLength = 1_000): string {
       `${field} must contain 1 to ${maxLength} characters.`
     );
   return normalized;
+}
+
+export function managedCommunicationCanonicalRfcMessageIdV1(value: string): string {
+  const normalized = value.trim();
+  const token =
+    normalized.startsWith('<') && normalized.endsWith('>')
+      ? normalized.slice(1, -1).trim()
+      : normalized;
+  const at = token.indexOf('@');
+  const hasControlCharacter = [...token].some((character) => {
+    const codePoint = character.codePointAt(0)!;
+    return codePoint <= 0x1f || codePoint === 0x7f;
+  });
+  if (
+    !token ||
+    token.length > 998 ||
+    at <= 0 ||
+    at !== token.lastIndexOf('@') ||
+    at === token.length - 1 ||
+    /[<>\s]/u.test(token) ||
+    hasControlCharacter
+  ) {
+    throw new ManagedCommunicationExchangeError(
+      'PROVIDER_RESULT_INVALID',
+      'RFC Message-ID must be one canonical addr-spec token, optionally wrapped in angle brackets.'
+    );
+  }
+  return token;
 }
 
 function canonicalTimestamp(value: string, field: string): string {
@@ -483,6 +520,29 @@ export class InMemoryManagedCommunicationSendClaimStoreV1 implements ManagedComm
     return Promise.resolve(undefined);
   }
 
+  resolveSentByRfcMessageId(
+    workspaceId: string,
+    rfcMessageId: string
+  ): Promise<Readonly<ManagedCommunicationSendReceiptV1> | undefined> {
+    const canonical = managedCommunicationCanonicalRfcMessageIdV1(rfcMessageId);
+    const matches = [...this.rows.values()].filter(
+      (row) =>
+        row.workspaceId === workspaceId &&
+        row.state === 'SENT' &&
+        row.receipt?.rfcMessageId === canonical
+    );
+    if (matches.length > 1) {
+      return Promise.reject(
+        new ManagedCommunicationExchangeError(
+          'PERSISTENCE_UNAVAILABLE',
+          'RFC Message-ID resolves to multiple Managed Communication send receipts.'
+        )
+      );
+    }
+    const receipt = matches[0]?.receipt;
+    return Promise.resolve(receipt ? Object.freeze(cloneReceipt(receipt)) : undefined);
+  }
+
   private requireOwned(
     command: Readonly<ManagedCommunicationSendIdentityV1>,
     state: ManagedCommunicationSendStateV1
@@ -553,6 +613,22 @@ function persistedReceipt(value: unknown): ManagedCommunicationSendReceiptV1 {
       'PERSISTENCE_UNAVAILABLE',
       'Persisted communication public mail reference does not match its send identity.'
     );
+  if (receipt.rfcMessageId !== undefined) {
+    try {
+      if (
+        receipt.rfcMessageId !== managedCommunicationCanonicalRfcMessageIdV1(receipt.rfcMessageId)
+      ) {
+        throw new Error('RFC Message-ID is not canonical.');
+      }
+    } catch (error) {
+      throw new ManagedCommunicationExchangeError(
+        'PERSISTENCE_UNAVAILABLE',
+        'Persisted communication RFC Message-ID is invalid.',
+        false,
+        { cause: error instanceof Error ? error : undefined }
+      );
+    }
+  }
   return structuredClone(receipt);
 }
 
@@ -737,6 +813,40 @@ export class PostgresManagedCommunicationSendClaimStoreV1 implements ManagedComm
       throw new ManagedCommunicationExchangeError(
         'PERSISTENCE_UNAVAILABLE',
         'Managed Communication send receipt resolution is unavailable.',
+        true,
+        { cause: error instanceof Error ? error : undefined }
+      );
+    }
+  }
+
+  async resolveSentByRfcMessageId(
+    workspaceId: string,
+    rfcMessageId: string
+  ): Promise<Readonly<ManagedCommunicationSendReceiptV1> | undefined> {
+    try {
+      const result = await this.query.query(
+        `SELECT receipt_json
+           FROM capability_communication_send_claims
+          WHERE workspace_id=$1 AND state='SENT'
+            AND receipt_json->>'rfcMessageId'=$2
+          LIMIT 2`,
+        [
+          clean(workspaceId, 'workspaceId', 500),
+          managedCommunicationCanonicalRfcMessageIdV1(rfcMessageId)
+        ]
+      );
+      if (result.rows.length > 1)
+        throw new ManagedCommunicationExchangeError(
+          'PERSISTENCE_UNAVAILABLE',
+          'RFC Message-ID resolves to multiple Managed Communication send receipts.'
+        );
+      const row = result.rows[0] as { receipt_json?: unknown } | undefined;
+      return row ? Object.freeze(persistedReceipt(row.receipt_json)) : undefined;
+    } catch (error) {
+      if (error instanceof ManagedCommunicationExchangeError) throw error;
+      throw new ManagedCommunicationExchangeError(
+        'PERSISTENCE_UNAVAILABLE',
+        'Managed Communication RFC send receipt resolution is unavailable.',
         true,
         { cause: error instanceof Error ? error : undefined }
       );
@@ -987,6 +1097,7 @@ export class ManagedCommunicationExchangeV1 {
     let acceptedAt: string;
     let providerMessageId: string;
     let providerThreadId: string | undefined;
+    let rfcMessageId: string | undefined;
     let providerReceiptRef: string;
     try {
       acceptedAt = canonicalTimestamp(providerResult.acceptedAt, 'providerResult.acceptedAt');
@@ -994,6 +1105,14 @@ export class ManagedCommunicationExchangeV1 {
       providerThreadId = providerResult.providerThreadId
         ? clean(providerResult.providerThreadId, 'providerThreadId', 500)
         : undefined;
+      rfcMessageId = undefined;
+      if (providerResult.rfcMessageId) {
+        try {
+          rfcMessageId = managedCommunicationCanonicalRfcMessageIdV1(providerResult.rfcMessageId);
+        } catch {
+          rfcMessageId = undefined;
+        }
+      }
       providerReceiptRef = clean(providerResult.providerReceiptRef, 'providerReceiptRef', 2_000);
     } catch (error) {
       await this.reconcile(identity, 'INVALID_PROVIDER_RECEIPT_AFTER_DISPATCH');
@@ -1067,6 +1186,7 @@ export class ManagedCommunicationExchangeV1 {
       provider: account.provider,
       providerMessageId,
       ...(providerThreadId === undefined ? {} : { providerThreadId }),
+      ...(rfcMessageId === undefined ? {} : { rfcMessageId }),
       providerReceiptRef,
       acceptedAt,
       authority: {

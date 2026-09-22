@@ -710,9 +710,32 @@ export class MicrosoftGraphManagedCommunicationSenderV1 implements ManagedCommun
           500
         );
         await this.client.sendDraft(providerMessageId);
+        let rfcMessageId: string | undefined;
+        let sent: GraphMessage | undefined;
+        try {
+          sent = await this.client.message(providerMessageId);
+        } catch {
+          sent = undefined;
+        }
+        if (sent) {
+          const sentMessageId = required(sent.id, 'microsoftGraph.send.sent.id', 500);
+          const sentThreadId = required(
+            sent.conversationId,
+            'microsoftGraph.send.sent.conversationId',
+            500
+          );
+          if (sentMessageId !== providerMessageId || sentThreadId !== providerThreadId) {
+            throw new MicrosoftGraphManagedCommunicationError(
+              'INVALID_RESPONSE',
+              'Microsoft Graph sent-message identity changed despite ImmutableId semantics.'
+            );
+          }
+          rfcMessageId = sent.internetMessageId?.trim() || undefined;
+        }
         return Object.freeze({
           providerMessageId,
           providerThreadId,
+          ...(rfcMessageId === undefined ? {} : { rfcMessageId }),
           providerReceiptRef: `msgraph://me/messages/${providerMessageId}`,
           acceptedAt: canonicalTimestamp(this.now(), 'microsoftGraph.send.acceptedAt')
         });
@@ -909,12 +932,14 @@ export class MicrosoftGraphManagedCommunicationInboundV1 {
         observedAt
       }
     };
+    const evidenceHeaders = admittedHeaders(full.internetMessageHeaders);
     const inboundCorrelation =
       existingEvidence || !this.options.correlation
         ? undefined
         : await this.options.correlation.correlate({
             workspaceId: this.options.workspaceId,
-            message
+            message,
+            headers: evidenceHeaders
           });
     const normalized = await this.options.foundation.admitObservation({
       workspaceId: this.options.workspaceId,
@@ -942,7 +967,7 @@ export class MicrosoftGraphManagedCommunicationInboundV1 {
       rawPayload,
       mediaType: 'message/rfc822',
       observedAt,
-      headers: admittedHeaders(full.internetMessageHeaders),
+      headers: evidenceHeaders,
       metadata,
       now: observedAt
     });

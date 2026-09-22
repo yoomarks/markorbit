@@ -102,7 +102,8 @@ export class ManagedCommunicationInboundIngestorV1 {
         ? undefined
         : await this.options.correlation.correlate({
             workspaceId: input.workspaceId,
-            message: observation.message
+            message: observation.message,
+            headers: input.exactEvidence.headers
           });
     const metadata = managedCommunicationInboundEvidenceMetadataV1({
       ...(input.exactEvidence.metadata === undefined

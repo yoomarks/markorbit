@@ -55,6 +55,7 @@ function exactInboundCorrelation() {
     method: 'PUBLIC_MAIL_REF' as const,
     disposition: 'RESOLVED' as const,
     confidence: 'EXACT' as const,
+    rfcMessageIds: Object.freeze([]),
     publicMailRefs: Object.freeze(['MO-00000000000000000000000001']),
     sendIds: Object.freeze(['commsend_00000000000000000000000000000001']),
     outboundMessageIds: Object.freeze(['message-outbound-1']),
@@ -234,6 +235,15 @@ describe('Gmail Managed Communication provider adapter', () => {
       if (url.endsWith('/users/me/messages/send')) {
         return resolvedJson({ id: 'gmail-message-out-1', threadId: 'gmail-thread-1' });
       }
+      if (url.endsWith('/users/me/messages/gmail-message-out-1?format=full')) {
+        return resolvedJson({
+          id: 'gmail-message-out-1',
+          threadId: 'gmail-thread-1',
+          payload: {
+            headers: [{ name: 'Message-ID', value: '<gmail-out-1@example.test>' }]
+          }
+        });
+      }
       return Promise.reject(new Error(`Unexpected provider request: ${url}`));
     }) as typeof fetch;
     const client = new GmailManagedCommunicationClientV1(config, fetchImpl, () => 20_000);
@@ -256,6 +266,7 @@ describe('Gmail Managed Communication provider adapter', () => {
     expect(receipt).toEqual({
       providerMessageId: 'gmail-message-out-1',
       providerThreadId: 'gmail-thread-1',
+      rfcMessageId: '<gmail-out-1@example.test>',
       providerReceiptRef: 'gmail://users/me/messages/gmail-message-out-1',
       acceptedAt: '2026-09-01T14:10:00.000Z'
     });
@@ -273,6 +284,77 @@ describe('Gmail Managed Communication provider adapter', () => {
     expect(raw).toContain('Please reply to this test message.');
     expect(raw).not.toContain(config.clientSecret);
     expect(raw).not.toContain(config.refreshToken);
+  });
+
+  it('preserves an accepted Gmail send when RFC Message-ID enrichment is unavailable', async () => {
+    const fetchImpl = vi.fn((input: RequestInfo | URL) => {
+      const url = requestUrl(input);
+      if (url === 'https://oauth2.googleapis.com/token') {
+        return resolvedJson({ access_token: 'access-token-test-only', expires_in: 3600 });
+      }
+      if (url.endsWith('/users/me/messages/send')) {
+        return resolvedJson({ id: 'gmail-message-no-rfc', threadId: 'gmail-thread-no-rfc' });
+      }
+      if (url.endsWith('/users/me/messages/gmail-message-no-rfc?format=full')) {
+        return resolvedJson({ error: 'temporary metadata failure' }, 503);
+      }
+      return Promise.reject(new Error(`Unexpected provider request: ${url}`));
+    }) as typeof fetch;
+    const sender = new GmailManagedCommunicationSenderV1(
+      new GmailManagedCommunicationClientV1(config, fetchImpl, () => 21_000),
+      undefined,
+      () => '2026-09-01T14:11:00.000Z'
+    );
+
+    await expect(
+      sender.send(sendRequest(), {
+        sendId: 'commsend_no_rfc_gmail',
+        workspaceId,
+        account: gmailAccount(),
+        correlationId: 'gmail-no-rfc'
+      })
+    ).resolves.toEqual({
+      providerMessageId: 'gmail-message-no-rfc',
+      providerThreadId: 'gmail-thread-no-rfc',
+      providerReceiptRef: 'gmail://users/me/messages/gmail-message-no-rfc',
+      acceptedAt: '2026-09-01T14:11:00.000Z'
+    });
+  });
+
+  it('fails closed when Gmail RFC enrichment returns a different sent-message identity', async () => {
+    const fetchImpl = vi.fn((input: RequestInfo | URL) => {
+      const url = requestUrl(input);
+      if (url === 'https://oauth2.googleapis.com/token') {
+        return resolvedJson({ access_token: 'access-token-test-only', expires_in: 3600 });
+      }
+      if (url.endsWith('/users/me/messages/send')) {
+        return resolvedJson({ id: 'gmail-message-stable', threadId: 'gmail-thread-stable' });
+      }
+      if (url.endsWith('/users/me/messages/gmail-message-stable?format=full')) {
+        return resolvedJson({
+          id: 'gmail-message-drifted',
+          threadId: 'gmail-thread-stable',
+          payload: {
+            headers: [{ name: 'Message-ID', value: '<gmail-stable@example.test>' }]
+          }
+        });
+      }
+      return Promise.reject(new Error(`Unexpected provider request: ${url}`));
+    }) as typeof fetch;
+    const sender = new GmailManagedCommunicationSenderV1(
+      new GmailManagedCommunicationClientV1(config, fetchImpl, () => 21_500),
+      undefined,
+      () => '2026-09-01T14:11:30.000Z'
+    );
+
+    await expect(
+      sender.send(sendRequest(), {
+        sendId: 'commsend_gmail_identity_drift',
+        workspaceId,
+        account: gmailAccount(),
+        correlationId: 'gmail-identity-drift'
+      })
+    ).rejects.toThrow('Gmail sent-message identity changed during RFC evidence lookup.');
   });
 
   it('fails closed on header injection and unsupported outbound attachments', () => {

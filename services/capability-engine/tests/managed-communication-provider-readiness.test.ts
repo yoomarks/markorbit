@@ -204,6 +204,15 @@ describe('Managed Communication provider readiness boundary', () => {
           threadId: 'provider-thread-original'
         });
       }
+      if (value.endsWith('/gmail/v1/users/me/messages/provider-message-reply?format=full')) {
+        return Response.json({
+          id: 'provider-message-reply',
+          threadId: 'provider-thread-original',
+          payload: {
+            headers: [{ name: 'Message-ID', value: '<reply@example.test>' }]
+          }
+        });
+      }
       throw new Error(`Unexpected provider request: ${value}`);
     }) as typeof fetch;
     const sender = new GmailManagedCommunicationSenderV1(
@@ -231,6 +240,7 @@ describe('Managed Communication provider readiness boundary', () => {
     const receipt = await exchange.send(replyRequest);
     expect(receipt.providerMessageId).toBe('provider-message-reply');
     expect(receipt.providerThreadId).toBe('provider-thread-original');
+    expect(receipt.rfcMessageId).toBe('reply@example.test');
     expect(
       providerRequests.filter((value) => value === 'https://oauth2.googleapis.com/token')
     ).toHaveLength(1);

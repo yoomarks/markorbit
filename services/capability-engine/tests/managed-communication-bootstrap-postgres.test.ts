@@ -251,6 +251,7 @@ integration('Managed Communication production bootstrap on PostgreSQL', () => {
         return Promise.resolve({
           providerMessageId: 'provider-message-bootstrap-out',
           providerThreadId: 'provider-thread-bootstrap-out',
+          rfcMessageId: '<bootstrap-outbound@example.test>',
           providerReceiptRef: 'provider-receipt-bootstrap-out',
           acceptedAt: '2026-09-01T12:20:01.000Z'
         });
@@ -299,6 +300,7 @@ integration('Managed Communication production bootstrap on PostgreSQL', () => {
       receipt
     );
     expect(receipt.publicMailRef).toMatch(/^MO-[0-9A-HJKMNP-TV-Z]{26}$/u);
+    expect(receipt.rfcMessageId).toBe('bootstrap-outbound@example.test');
     await expect(
       reconstructed!.managedCommunicationPublicReference.resolve({
         workspaceId,
@@ -325,22 +327,27 @@ integration('Managed Communication production bootstrap on PostgreSQL', () => {
           Buffer.from(`Subject: correlated\r\n\r\n[${receipt.publicMailRef!}]`, 'utf8')
         ),
         mediaType: 'message/rfc822',
-        headers: [{ name: 'message-id', value: '<provider-message-bootstrap-in>' }],
+        headers: [
+          { name: 'message-id', value: '<provider-message-bootstrap-in>' },
+          { name: 'in-reply-to', value: '<bootstrap-outbound@example.test>' }
+        ],
         metadata: { mailbox: 'inbox' }
       }
     });
     expect(correlatedMessage.threadRef).not.toBe(receipt.threadRef);
     expect(correlatedAdmission.exactEvidence.metadata).toMatchObject({
       mailbox: 'inbox',
-      moCorrelationMethod: 'PUBLIC_MAIL_REF',
+      moCorrelationMethod: 'RFC_MESSAGE_ID',
       moCorrelationDisposition: 'RESOLVED',
       moCorrelationConfidence: 'EXACT',
+      moCorrelationRfcSource: 'IN_REPLY_TO',
       moCorrelationOutboundThreadRef: receipt.threadRef,
       moCorrelationAuthority: 'NO_AUTHORITY'
     });
-    expect(correlatedAdmission.exactEvidence.metadata.moCorrelationPublicMailRefs).toBe(
-      JSON.stringify([receipt.publicMailRef])
+    expect(correlatedAdmission.exactEvidence.metadata.moCorrelationRfcMessageIds).toBe(
+      JSON.stringify(['bootstrap-outbound@example.test'])
     );
+    expect(correlatedAdmission.exactEvidence.metadata.moCorrelationPublicMailRefs).toBe('[]');
 
     const correlationReconstructed = await createManagedCommunicationRuntimeBindingsV1({
       environment: environment(),

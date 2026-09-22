@@ -56,6 +56,7 @@ function exactInboundCorrelation() {
     method: 'PUBLIC_MAIL_REF' as const,
     disposition: 'RESOLVED' as const,
     confidence: 'EXACT' as const,
+    rfcMessageIds: Object.freeze([]),
     publicMailRefs: Object.freeze(['MO-00000000000000000000000001']),
     sendIds: Object.freeze(['commsend_00000000000000000000000000000001']),
     outboundMessageIds: Object.freeze(['message-outbound-1']),
@@ -250,6 +251,15 @@ describe('Microsoft Graph Managed Communication provider adapter', () => {
       if (url.endsWith('/v1.0/me/messages/immutable-draft-1/send')) {
         return Promise.resolve(empty());
       }
+      if (url.includes('/v1.0/me/messages/immutable-draft-1?$select=')) {
+        return Promise.resolve(
+          json({
+            id: 'immutable-draft-1',
+            conversationId: 'graph-conversation-out-1',
+            internetMessageId: '<graph-out-1@example.test>'
+          })
+        );
+      }
       return Promise.reject(new Error(`Unexpected Graph request: ${url}`));
     }) as typeof fetch;
     const client = new MicrosoftGraphManagedCommunicationClientV1(tokens, fetchImpl);
@@ -271,10 +281,95 @@ describe('Microsoft Graph Managed Communication provider adapter', () => {
     await expect(prepared.dispatch()).resolves.toEqual({
       providerMessageId: 'immutable-draft-1',
       providerThreadId: 'graph-conversation-out-1',
+      rfcMessageId: '<graph-out-1@example.test>',
       providerReceiptRef: 'msgraph://me/messages/immutable-draft-1',
       acceptedAt: '2026-09-10T01:02:00.000Z'
     });
-    expect(calls).toHaveLength(3);
+    expect(calls).toHaveLength(4);
+  });
+
+  it('preserves an accepted Graph send when RFC Message-ID enrichment is unavailable', async () => {
+    const fetchImpl = vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
+      const url = requestUrl(input);
+      const headers = new Headers(init?.headers);
+      expect(headers.get('prefer')).toBe('IdType="ImmutableId"');
+      if (url.includes('/v1.0/me?$select=')) return Promise.resolve(json(graphProfile()));
+      if (url.endsWith('/v1.0/me/messages')) {
+        return Promise.resolve(
+          json({ id: 'immutable-no-rfc', conversationId: 'conversation-no-rfc' }, 201)
+        );
+      }
+      if (url.endsWith('/v1.0/me/messages/immutable-no-rfc/send')) {
+        return Promise.resolve(empty());
+      }
+      if (url.includes('/v1.0/me/messages/immutable-no-rfc?$select=')) {
+        return Promise.resolve(json({ error: 'temporary metadata failure' }, 503));
+      }
+      return Promise.reject(new Error(`Unexpected Graph request: ${url}`));
+    }) as typeof fetch;
+    const sender = new MicrosoftGraphManagedCommunicationSenderV1(
+      new MicrosoftGraphManagedCommunicationClientV1(tokenProvider(), fetchImpl),
+      undefined,
+      () => '2026-09-10T01:02:30.000Z'
+    );
+
+    await expect(
+      sender.send(sendRequest(), {
+        sendId: 'commsend_graph_no_rfc',
+        workspaceId,
+        account: account(),
+        correlationId: 'graph-no-rfc'
+      })
+    ).resolves.toEqual({
+      providerMessageId: 'immutable-no-rfc',
+      providerThreadId: 'conversation-no-rfc',
+      providerReceiptRef: 'msgraph://me/messages/immutable-no-rfc',
+      acceptedAt: '2026-09-10T01:02:30.000Z'
+    });
+  });
+
+  it('fails closed when Graph RFC enrichment returns a different ImmutableId identity', async () => {
+    const fetchImpl = vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
+      const url = requestUrl(input);
+      const headers = new Headers(init?.headers);
+      expect(headers.get('prefer')).toBe('IdType="ImmutableId"');
+      if (url.includes('/v1.0/me?$select=')) return Promise.resolve(json(graphProfile()));
+      if (url.endsWith('/v1.0/me/messages')) {
+        return Promise.resolve(
+          json({ id: 'immutable-stable', conversationId: 'conversation-stable' }, 201)
+        );
+      }
+      if (url.endsWith('/v1.0/me/messages/immutable-stable/send')) {
+        return Promise.resolve(empty());
+      }
+      if (url.includes('/v1.0/me/messages/immutable-stable?$select=')) {
+        return Promise.resolve(
+          json({
+            id: 'immutable-drifted',
+            conversationId: 'conversation-stable',
+            internetMessageId: '<graph-stable@example.test>'
+          })
+        );
+      }
+      return Promise.reject(new Error(`Unexpected Graph request: ${url}`));
+    }) as typeof fetch;
+    const sender = new MicrosoftGraphManagedCommunicationSenderV1(
+      new MicrosoftGraphManagedCommunicationClientV1(tokenProvider(), fetchImpl),
+      undefined,
+      () => '2026-09-10T01:02:45.000Z'
+    );
+
+    await expect(
+      sender.send(sendRequest(), {
+        sendId: 'commsend_graph_identity_drift',
+        workspaceId,
+        account: account(),
+        correlationId: 'graph-identity-drift'
+      })
+    ).rejects.toMatchObject({
+      code: 'INVALID_RESPONSE',
+      message: 'Microsoft Graph sent-message identity changed despite ImmutableId semantics.'
+    });
   });
 
   it('uses exact provider message resolution for replies and fails closed when it is unavailable', async () => {
@@ -310,6 +405,15 @@ describe('Microsoft Graph Managed Communication provider adapter', () => {
         return Promise.resolve(json({ id: 'reply-draft-1', conversationId: 'conversation-1' }));
       }
       if (url.endsWith('/messages/reply-draft-1/send')) return Promise.resolve(empty());
+      if (url.includes('/messages/reply-draft-1?$select=')) {
+        return Promise.resolve(
+          json({
+            id: 'reply-draft-1',
+            conversationId: 'conversation-1',
+            internetMessageId: '<graph-reply-1@example.test>'
+          })
+        );
+      }
       return Promise.reject(new Error(`Unexpected Graph request: ${url}`));
     }) as typeof fetch;
     const sender = new MicrosoftGraphManagedCommunicationSenderV1(
@@ -330,7 +434,8 @@ describe('Microsoft Graph Managed Communication provider adapter', () => {
       })
     ).resolves.toMatchObject({
       providerMessageId: 'reply-draft-1',
-      providerThreadId: 'conversation-1'
+      providerThreadId: 'conversation-1',
+      rfcMessageId: '<graph-reply-1@example.test>'
     });
     expect(calls.some((url) => url.endsWith('/messages/source-message-1/createReply'))).toBe(true);
   });
