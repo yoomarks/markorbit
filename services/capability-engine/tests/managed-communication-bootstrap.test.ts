@@ -206,6 +206,62 @@ describe('Managed Communication production bootstrap gates', () => {
     });
   });
 
+  it('exposes a trusted provider-neutral conversation read without adding authority', async () => {
+    const read = vi.fn().mockResolvedValue({
+      schemaVersion: 1,
+      workspaceId: 'workspace_bootstrap',
+      anchor: {
+        accountRef: 'communication-account_bootstrap',
+        messageId: 'commmsg_inbound',
+        threadRef: 'commthread_provider_current'
+      },
+      disposition: 'CORRELATED',
+      confidence: 'EXACT',
+      segments: [
+        {
+          accountRef: 'communication-account_bootstrap',
+          threadRef: 'commthread_provider_current',
+          roles: ['ANCHOR_PROVIDER_THREAD'],
+          messages: []
+        },
+        {
+          accountRef: 'communication-account_original',
+          threadRef: 'commthread_original',
+          roles: ['CORRELATED_OUTBOUND_THREAD'],
+          messages: []
+        }
+      ],
+      authority: {
+        externalMessageSent: false,
+        customerTruthMutated: false,
+        matterTruthMutated: false,
+        legalTruthCreated: false,
+        knowledgeApproved: false,
+        professionalDecisionCreated: false
+      }
+    });
+    const routes = createManagedCommunicationRoutesV1({
+      internalServiceSecret: secret,
+      conversationReader: { read }
+    });
+    expect(routes.map((route) => route.path)).toEqual([
+      '/internal/v1/managed-communication/conversation-resolutions'
+    ]);
+
+    const response = await routes[0]!.handle(
+      request({
+        accountRef: 'communication-account_bootstrap',
+        messageId: 'commmsg_inbound'
+      })
+    );
+    expect(response.status).toBe(200);
+    expect(read).toHaveBeenCalledWith({
+      workspaceId: 'workspace_bootstrap',
+      accountRef: 'communication-account_bootstrap',
+      messageId: 'commmsg_inbound'
+    });
+  });
+
   it('rejects non-canonical exact evidence transport before invoking inbound authority', async () => {
     const ingest = vi.fn();
     const routes = createManagedCommunicationRoutesV1({

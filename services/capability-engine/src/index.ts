@@ -18,6 +18,7 @@ import type {
   ManagedCommunicationExchangeV1,
   ManagedCommunicationThreadEvidenceReaderV1
 } from './managed-communication-exchange.js';
+import type { ManagedCommunicationConversationReadServiceV1 } from './managed-communication-conversation-read.js';
 import type { ManagedCommunicationExactEvidenceStoreV1 } from './managed-communication-exact-evidence.js';
 import { createManagedCommunicationRoutesV1 } from './managed-communication-http.js';
 import type { ManagedCommunicationInboundIngestorV1 } from './managed-communication-inbound.js';
@@ -90,6 +91,7 @@ export * from './managed-ai-execution-claim.js';
 export * from './managed-ai-exact-output.js';
 export * from './managed-ai-http.js';
 export * from './managed-communication-bootstrap.js';
+export * from './managed-communication-conversation-read.js';
 export * from './managed-communication-exchange.js';
 export * from './managed-communication-exact-evidence.js';
 export * from './managed-communication-foundation.js';
@@ -164,6 +166,10 @@ export interface CapabilityEngineOptions {
   managedCommunicationPublicReference?: Pick<
     ManagedCommunicationPublicReferenceReaderV1,
     'resolve'
+  >;
+  managedCommunicationConversationReader?: Pick<
+    ManagedCommunicationConversationReadServiceV1,
+    'read'
   >;
   productionSourceEvidenceReader?: Pick<CapabilityProductionSourceEvidenceReadServiceV1, 'read'>;
   productionSourceEvidenceReplayStore?: Pick<CapabilityRuntimeReplayStoreV1, 'inspect'>;
@@ -274,7 +280,8 @@ export function createRuntime(options: CapabilityEngineOptions = {}) {
     options.managedCommunicationInbound ||
     options.managedCommunicationThreadReader ||
     options.managedCommunicationExactEvidence ||
-    options.managedCommunicationPublicReference
+    options.managedCommunicationPublicReference ||
+    options.managedCommunicationConversationReader
   );
   if (managedCommunicationConfigured && !options.internalServiceSecret) {
     throw new Error('Managed Communication routes require internalServiceSecret.');
@@ -451,7 +458,10 @@ export function createRuntime(options: CapabilityEngineOptions = {}) {
             : { exactEvidence: options.managedCommunicationExactEvidence }),
           ...(options.managedCommunicationPublicReference === undefined
             ? {}
-            : { publicReference: options.managedCommunicationPublicReference })
+            : { publicReference: options.managedCommunicationPublicReference }),
+          ...(options.managedCommunicationConversationReader === undefined
+            ? {}
+            : { conversationReader: options.managedCommunicationConversationReader })
         })
       : [];
 

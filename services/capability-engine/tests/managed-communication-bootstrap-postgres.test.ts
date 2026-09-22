@@ -404,6 +404,165 @@ integration('Managed Communication production bootstrap on PostgreSQL', () => {
     expect(uncertainCalls).toBe(1);
   });
 
+  it('reconstructs one provider-neutral conversation across Outlook and Gmail account threads', async () => {
+    const originalAccountRef = 'communication-account_outlook_original';
+    const replyAccountRef = 'communication-account_gmail_reply';
+    const originalEnvironment: NodeJS.ProcessEnv = {
+      [MANAGED_COMMUNICATION_RUNTIME_ENABLED_ENV]: '1',
+      [MANAGED_COMMUNICATION_WORKSPACE_ID_ENV]: workspaceId,
+      [MANAGED_COMMUNICATION_ACCOUNT_REF_ENV]: originalAccountRef,
+      [MANAGED_COMMUNICATION_PROVIDER_ENV]: 'MICROSOFT_GRAPH',
+      [MANAGED_COMMUNICATION_PROVIDER_ACCOUNT_REF_ENV]: 'operator-outlook@example.test',
+      [MANAGED_COMMUNICATION_PROVIDER_DISPATCH_AUTHORIZED_ENV]: '1'
+    };
+    const replyEnvironment: NodeJS.ProcessEnv = {
+      [MANAGED_COMMUNICATION_RUNTIME_ENABLED_ENV]: '1',
+      [MANAGED_COMMUNICATION_WORKSPACE_ID_ENV]: workspaceId,
+      [MANAGED_COMMUNICATION_ACCOUNT_REF_ENV]: replyAccountRef,
+      [MANAGED_COMMUNICATION_PROVIDER_ENV]: 'GMAIL',
+      [MANAGED_COMMUNICATION_PROVIDER_ACCOUNT_REF_ENV]: 'operator-gmail@example.test'
+    };
+    const sender: ManagedCommunicationProviderSenderV1 = {
+      send: () =>
+        Promise.resolve({
+          providerMessageId: 'graph-provider-outbound-cross-provider',
+          providerThreadId: 'graph-thread-original',
+          rfcMessageId: '<cross-provider-outbound@example.test>',
+          providerReceiptRef: 'msgraph://message/cross-provider',
+          acceptedAt: '2026-09-01T13:00:01.000Z'
+        })
+    };
+    const original = await createManagedCommunicationRuntimeBindingsV1({
+      environment: originalEnvironment,
+      database,
+      query: database.getPool(),
+      sender,
+      now: () => '2026-09-01T13:00:00.000Z'
+    });
+    const outboundReceipt = await original!.managedCommunicationExchange!.send({
+      workspaceId,
+      idempotencyKey: 'cross-provider-outbound',
+      correlationId: 'cross-provider-outbound',
+      request: {
+        schemaVersion: 1,
+        accountRef: originalAccountRef,
+        channel: 'EMAIL',
+        participants: [
+          { role: 'SENDER', address: 'operator-outlook@example.test' },
+          { role: 'TO', address: 'expert@example.test' }
+        ],
+        subject: 'Cross-provider question',
+        textBody: 'Please reply to this message.',
+        attachments: []
+      }
+    });
+
+    const providerMessageId = 'gmail-provider-inbound-cross-provider';
+    const providerThreadId = 'gmail-thread-current';
+    const ids = managedCommunicationNormalizedIdsV1({
+      workspaceId,
+      accountRef: replyAccountRef,
+      provider: 'GMAIL',
+      providerMessageId,
+      providerThreadId
+    });
+    const reply = await createManagedCommunicationRuntimeBindingsV1({
+      environment: replyEnvironment,
+      database,
+      query: database.getPool(),
+      now: () => '2026-09-01T13:10:00.000Z'
+    });
+    const admission = await reply!.managedCommunicationInbound.ingest({
+      workspaceId,
+      idempotencyKey: 'cross-provider-inbound',
+      message: {
+        schemaVersion: 1,
+        messageId: ids.messageId,
+        accountRef: replyAccountRef,
+        threadRef: ids.threadRef,
+        channel: 'EMAIL',
+        direction: 'INBOUND',
+        participants: [
+          { role: 'SENDER', address: 'expert@example.test' },
+          { role: 'TO', address: 'operator-gmail@example.test' }
+        ],
+        subject: 'Re: Cross-provider question',
+        textBody: `I changed mail providers. [${outboundReceipt.publicMailRef!}]`,
+        attachments: [],
+        occurredAt: '2026-09-01T13:10:00.000Z',
+        providerObservation: {
+          provider: 'GMAIL',
+          providerMessageId,
+          providerThreadId,
+          observedAt: '2026-09-01T13:10:00.000Z'
+        }
+      },
+      exactEvidence: {
+        rawPayload: Uint8Array.from(
+          Buffer.from(
+            `Subject: Re: Cross-provider question\r\n\r\n[${outboundReceipt.publicMailRef!}]`,
+            'utf8'
+          )
+        ),
+        mediaType: 'message/rfc822',
+        headers: [{ name: 'message-id', value: '<gmail-inbound@example.test>' }],
+        metadata: {
+          gmailMessageId: providerMessageId,
+          gmailThreadId: providerThreadId
+        }
+      }
+    });
+    expect(admission.exactEvidence.metadata).toMatchObject({
+      moCorrelationMethod: 'PUBLIC_MAIL_REF',
+      moCorrelationDisposition: 'RESOLVED',
+      moCorrelationOutboundThreadRef: outboundReceipt.threadRef
+    });
+    expect(ids.threadRef).not.toBe(outboundReceipt.threadRef);
+
+    const reconstructed = await createManagedCommunicationRuntimeBindingsV1({
+      environment: replyEnvironment,
+      database,
+      query: database.getPool(),
+      now: () => '2026-09-01T13:20:00.000Z'
+    });
+    const conversation = await reconstructed!.managedCommunicationConversationReader.read({
+      workspaceId,
+      accountRef: replyAccountRef,
+      messageId: ids.messageId
+    });
+    expect(conversation).toMatchObject({
+      disposition: 'CORRELATED',
+      confidence: 'EXACT',
+      authority: {
+        customerTruthMutated: false,
+        matterTruthMutated: false,
+        legalTruthCreated: false,
+        knowledgeApproved: false
+      }
+    });
+    expect(
+      conversation.segments.map((segment) => ({
+        accountRef: segment.accountRef,
+        threadRef: segment.threadRef,
+        roles: segment.roles,
+        providers: segment.messages.map((item) => item.message.providerObservation.provider)
+      }))
+    ).toEqual([
+      {
+        accountRef: replyAccountRef,
+        threadRef: ids.threadRef,
+        roles: ['ANCHOR_PROVIDER_THREAD'],
+        providers: ['GMAIL']
+      },
+      {
+        accountRef: originalAccountRef,
+        threadRef: outboundReceipt.threadRef,
+        roles: ['CORRELATED_OUTBOUND_THREAD'],
+        providers: ['MICROSOFT_GRAPH']
+      }
+    ]);
+  });
+
   it('does not require provider dispatch or credentials merely to activate durable inbound/read runtime', async () => {
     const bindings = await createManagedCommunicationRuntimeBindingsV1({
       environment: environment(),
