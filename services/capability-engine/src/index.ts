@@ -21,6 +21,7 @@ import type {
 import type { ManagedCommunicationExactEvidenceStoreV1 } from './managed-communication-exact-evidence.js';
 import { createManagedCommunicationRoutesV1 } from './managed-communication-http.js';
 import type { ManagedCommunicationInboundIngestorV1 } from './managed-communication-inbound.js';
+import type { ManagedCommunicationPublicReferenceReaderV1 } from './managed-communication-public-reference.js';
 import {
   createMilestoneCapabilityRequestFixtureRoute,
   type InMemoryCapabilityRequestRepository
@@ -92,6 +93,7 @@ export * from './managed-communication-bootstrap.js';
 export * from './managed-communication-exchange.js';
 export * from './managed-communication-exact-evidence.js';
 export * from './managed-communication-foundation.js';
+export * from './managed-communication-public-reference.js';
 export * from './managed-communication-gmail.js';
 export * from './managed-communication-http.js';
 export * from './managed-communication-inbound.js';
@@ -158,6 +160,10 @@ export interface CapabilityEngineOptions {
   managedCommunicationExactEvidence?: Pick<
     ManagedCommunicationExactEvidenceStoreV1,
     'resolveExactEvidence'
+  >;
+  managedCommunicationPublicReference?: Pick<
+    ManagedCommunicationPublicReferenceReaderV1,
+    'resolve'
   >;
   productionSourceEvidenceReader?: Pick<CapabilityProductionSourceEvidenceReadServiceV1, 'read'>;
   productionSourceEvidenceReplayStore?: Pick<CapabilityRuntimeReplayStoreV1, 'inspect'>;
@@ -267,7 +273,8 @@ export function createRuntime(options: CapabilityEngineOptions = {}) {
     options.managedCommunicationExchange ||
     options.managedCommunicationInbound ||
     options.managedCommunicationThreadReader ||
-    options.managedCommunicationExactEvidence
+    options.managedCommunicationExactEvidence ||
+    options.managedCommunicationPublicReference
   );
   if (managedCommunicationConfigured && !options.internalServiceSecret) {
     throw new Error('Managed Communication routes require internalServiceSecret.');
@@ -441,7 +448,10 @@ export function createRuntime(options: CapabilityEngineOptions = {}) {
             : { threadReader: options.managedCommunicationThreadReader }),
           ...(options.managedCommunicationExactEvidence === undefined
             ? {}
-            : { exactEvidence: options.managedCommunicationExactEvidence })
+            : { exactEvidence: options.managedCommunicationExactEvidence }),
+          ...(options.managedCommunicationPublicReference === undefined
+            ? {}
+            : { publicReference: options.managedCommunicationPublicReference })
         })
       : [];
 

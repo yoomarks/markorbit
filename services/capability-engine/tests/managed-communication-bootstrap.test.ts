@@ -1,5 +1,9 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { ManagedCommunicationMessageV1 } from '@markorbit/contracts/managed-communication';
+import {
+  managedCommunicationPublicMailRefFromSendIdV1,
+  managedCommunicationPublicMailReferenceAuthorityV1
+} from '@markorbit/contracts/managed-communication-public-reference';
 import type { JsonRequest } from '@markorbit/service-kit';
 import {
   MANAGED_COMMUNICATION_ACCOUNT_REF_ENV,
@@ -168,6 +172,38 @@ describe('Managed Communication production bootstrap gates', () => {
       exactEvidence: { mediaType: 'message/rfc822' }
     });
     expect(Buffer.from(captured!.exactEvidence.rawPayload)).toEqual(raw);
+  });
+
+  it('exposes a trusted internal public-reference resolution without adding authority', async () => {
+    const sendId = 'commsend_0123456789abcdef0123456789abcdef';
+    const publicMailRef = managedCommunicationPublicMailRefFromSendIdV1(sendId);
+    const resolve = vi.fn().mockResolvedValue({
+      schemaVersion: 1,
+      workspaceId: 'workspace_bootstrap',
+      publicMailRef,
+      sendId,
+      accountRef: 'communication-account_bootstrap',
+      messageId: 'commmsg_original',
+      threadRef: 'commthread_original',
+      provider: 'provider-bootstrap',
+      providerMessageId: 'provider-message-original',
+      acceptedAt: '2026-09-01T12:00:01.000Z',
+      authority: managedCommunicationPublicMailReferenceAuthorityV1
+    });
+    const routes = createManagedCommunicationRoutesV1({
+      internalServiceSecret: secret,
+      publicReference: { resolve }
+    });
+    expect(routes.map((route) => route.path)).toEqual([
+      '/internal/v1/managed-communication/public-reference-resolutions'
+    ]);
+
+    const response = await routes[0]!.handle(request({ publicMailRef }));
+    expect(response.status).toBe(200);
+    expect(resolve).toHaveBeenCalledWith({
+      workspaceId: 'workspace_bootstrap',
+      publicMailRef
+    });
   });
 
   it('rejects non-canonical exact evidence transport before invoking inbound authority', async () => {

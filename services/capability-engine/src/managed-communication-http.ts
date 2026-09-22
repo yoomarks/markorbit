@@ -17,6 +17,10 @@ import {
 } from './managed-communication-exact-evidence.js';
 import { ManagedCommunicationFoundationError } from './managed-communication-foundation.js';
 import type { ManagedCommunicationInboundIngestorV1 } from './managed-communication-inbound.js';
+import {
+  ManagedCommunicationPublicReferenceError,
+  type ManagedCommunicationPublicReferenceReaderV1
+} from './managed-communication-public-reference.js';
 
 export const MANAGED_COMMUNICATION_INBOUND_MAX_RAW_BYTES = 32 * 1024 * 1024;
 const BASE64 = /^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/u;
@@ -27,6 +31,7 @@ export interface ManagedCommunicationRoutesOptionsV1 {
   inbound?: Pick<ManagedCommunicationInboundIngestorV1, 'ingest'>;
   threadReader?: ManagedCommunicationThreadEvidenceReaderV1;
   exactEvidence?: Pick<ManagedCommunicationExactEvidenceStoreV1, 'resolveExactEvidence'>;
+  publicReference?: Pick<ManagedCommunicationPublicReferenceReaderV1, 'resolve'>;
 }
 
 function trusted(configured: string, supplied: string | undefined): boolean {
@@ -95,6 +100,21 @@ function threadRequest(body: unknown): { accountRef: string; threadRef: string }
       'Thread resolution must contain only accountRef and threadRef strings.'
     );
   return { accountRef: value.accountRef, threadRef: value.threadRef };
+}
+
+function publicReferenceRequest(body: unknown): { publicMailRef: string } {
+  const value = record(body, 'communication public reference resolution');
+  if (
+    Object.keys(value).some((key) => key !== 'publicMailRef') ||
+    typeof value.publicMailRef !== 'string'
+  ) {
+    throw new HttpError(
+      400,
+      'INVALID_PUBLIC_MAIL_REF',
+      'Public reference resolution must contain only publicMailRef.'
+    );
+  }
+  return { publicMailRef: value.publicMailRef };
 }
 
 function rawPayload(value: unknown): Uint8Array {
@@ -201,6 +221,12 @@ function inboundRequest(body: unknown): Readonly<{
 }
 
 function communicationError(error: unknown): never {
+  if (error instanceof ManagedCommunicationPublicReferenceError) {
+    if (error.code === 'INVALID_PUBLIC_MAIL_REF') {
+      throw new HttpError(400, error.code, error.message, false);
+    }
+    throw new HttpError(404, error.code, error.message, false);
+  }
   if (error instanceof ManagedCommunicationContractError) {
     throw new HttpError(400, 'INVALID_COMMUNICATION_REQUEST', error.message, false);
   }
@@ -326,6 +352,31 @@ export function createManagedCommunicationRoutesV1(
             exactEvidence: input.exactEvidence
           });
           return json(200, admission);
+        } catch (error) {
+          return communicationError(error);
+        }
+      }
+    });
+  }
+
+  if (options.publicReference) {
+    routes.push({
+      method: 'POST',
+      path: '/internal/v1/managed-communication/public-reference-resolutions',
+      handle: async (request) => {
+        authorize(request, options.internalServiceSecret);
+        const workspaceId = requiredHeader(
+          request,
+          'x-markorbit-workspace-id',
+          'WORKSPACE_ID_REQUIRED',
+          500
+        );
+        try {
+          const resolution = await options.publicReference!.resolve({
+            workspaceId,
+            ...publicReferenceRequest(request.body)
+          });
+          return json(200, resolution);
         } catch (error) {
           return communicationError(error);
         }

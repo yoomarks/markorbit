@@ -66,9 +66,11 @@ async function setup(sender: ManagedCommunicationProviderSenderV1) {
 describe('Shared Communication outbound exchange', () => {
   it('sends exactly once, durabilizes outbound evidence, and replays the receipt', async () => {
     let calls = 0;
+    let providerRequest: Readonly<ManagedCommunicationSendRequestV1> | undefined;
     const { exchange, foundation } = await setup({
-      send: () => {
+      send: (request) => {
         calls += 1;
+        providerRequest = request;
         return Promise.resolve({
           providerMessageId: 'provider-message-1',
           providerThreadId: 'provider-thread-1',
@@ -97,10 +99,40 @@ describe('Shared Communication outbound exchange', () => {
       providerReceiptRef: 'provider-receipt-1',
       authority: { externalMessageSent: true }
     });
+    expect(first.publicMailRef).toMatch(/^MO-[0-9A-HJKMNP-TV-Z]{26}$/u);
+    expect(providerRequest?.textBody).toContain(`MO Reference: [${first.publicMailRef}]`);
     const persisted = await foundation.resolveMessage(workspaceId, accountRef, first.messageId);
     expect(persisted.direction).toBe('OUTBOUND');
     expect(persisted.threadRef).toBe(first.threadRef);
+    expect(persisted.textBody).toContain(`MO Reference: [${first.publicMailRef}]`);
     expect(persisted.attachments[0]?.sha256).toBe(sha('question'));
+  });
+
+  it('keeps the public reference inside a complete HTML document body', async () => {
+    let providerRequest: Readonly<ManagedCommunicationSendRequestV1> | undefined;
+    const { exchange } = await setup({
+      send: (sent) => {
+        providerRequest = sent;
+        return Promise.resolve({
+          providerMessageId: 'provider-message-html',
+          providerThreadId: 'provider-thread-html',
+          providerReceiptRef: 'provider-receipt-html',
+          acceptedAt: '2026-08-27T04:01:01.000Z'
+        });
+      }
+    });
+    const htmlRequest = request({ htmlBody: '<html><body><p>Hello</p></body></html>' });
+    delete htmlRequest.textBody;
+    const receipt = await exchange.send({
+      workspaceId,
+      idempotencyKey: 'expert-task-html',
+      correlationId: 'expert-task-html',
+      request: htmlRequest
+    });
+
+    expect(providerRequest?.htmlBody).toBe(
+      `<html><body><p>Hello</p><p>MO Reference: [${receipt.publicMailRef}]</p></body></html>`
+    );
   });
 
   it('rejects idempotency reuse with changed content without a second provider call', async () => {
