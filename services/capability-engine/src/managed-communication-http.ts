@@ -16,6 +16,10 @@ import {
   type ManagedCommunicationExactEvidenceStoreV1
 } from './managed-communication-exact-evidence.js';
 import { ManagedCommunicationFoundationError } from './managed-communication-foundation.js';
+import {
+  ManagedCommunicationConversationReadError,
+  type ManagedCommunicationConversationReadServiceV1
+} from './managed-communication-conversation-read.js';
 import type { ManagedCommunicationInboundIngestorV1 } from './managed-communication-inbound.js';
 import {
   ManagedCommunicationPublicReferenceError,
@@ -32,6 +36,7 @@ export interface ManagedCommunicationRoutesOptionsV1 {
   threadReader?: ManagedCommunicationThreadEvidenceReaderV1;
   exactEvidence?: Pick<ManagedCommunicationExactEvidenceStoreV1, 'resolveExactEvidence'>;
   publicReference?: Pick<ManagedCommunicationPublicReferenceReaderV1, 'resolve'>;
+  conversationReader?: Pick<ManagedCommunicationConversationReadServiceV1, 'read'>;
 }
 
 function trusted(configured: string, supplied: string | undefined): boolean {
@@ -100,6 +105,22 @@ function threadRequest(body: unknown): { accountRef: string; threadRef: string }
       'Thread resolution must contain only accountRef and threadRef strings.'
     );
   return { accountRef: value.accountRef, threadRef: value.threadRef };
+}
+
+function conversationRequest(body: unknown): { accountRef: string; messageId: string } {
+  const value = record(body, 'communication conversation resolution');
+  if (
+    Object.keys(value).some((key) => key !== 'accountRef' && key !== 'messageId') ||
+    typeof value.accountRef !== 'string' ||
+    typeof value.messageId !== 'string'
+  ) {
+    throw new HttpError(
+      400,
+      'INVALID_COMMUNICATION_CONVERSATION_REQUEST',
+      'Conversation resolution must contain only accountRef and messageId strings.'
+    );
+  }
+  return { accountRef: value.accountRef, messageId: value.messageId };
 }
 
 function publicReferenceRequest(body: unknown): { publicMailRef: string } {
@@ -221,6 +242,9 @@ function inboundRequest(body: unknown): Readonly<{
 }
 
 function communicationError(error: unknown): never {
+  if (error instanceof ManagedCommunicationConversationReadError) {
+    throw new HttpError(409, error.code, error.message, false);
+  }
   if (error instanceof ManagedCommunicationPublicReferenceError) {
     if (error.code === 'INVALID_PUBLIC_MAIL_REF') {
       throw new HttpError(400, error.code, error.message, false);
@@ -375,6 +399,31 @@ export function createManagedCommunicationRoutesV1(
           const resolution = await options.publicReference!.resolve({
             workspaceId,
             ...publicReferenceRequest(request.body)
+          });
+          return json(200, resolution);
+        } catch (error) {
+          return communicationError(error);
+        }
+      }
+    });
+  }
+
+  if (options.conversationReader) {
+    routes.push({
+      method: 'POST',
+      path: '/internal/v1/managed-communication/conversation-resolutions',
+      handle: async (request) => {
+        authorize(request, options.internalServiceSecret);
+        const workspaceId = requiredHeader(
+          request,
+          'x-markorbit-workspace-id',
+          'WORKSPACE_ID_REQUIRED',
+          500
+        );
+        try {
+          const resolution = await options.conversationReader!.read({
+            workspaceId,
+            ...conversationRequest(request.body)
           });
           return json(200, resolution);
         } catch (error) {

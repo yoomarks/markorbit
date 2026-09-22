@@ -13,6 +13,7 @@ import {
   type ManagedCommunicationAccountBindingV1,
   type ManagedCommunicationFoundationTransactionHostV1
 } from './managed-communication-foundation.js';
+import { ManagedCommunicationConversationReadServiceV1 } from './managed-communication-conversation-read.js';
 import { ManagedCommunicationInboundIngestorV1 } from './managed-communication-inbound.js';
 import { ManagedCommunicationInboundCorrelatorV1 } from './managed-communication-inbound-correlation.js';
 import { ManagedCommunicationPublicReferenceReaderV1 } from './managed-communication-public-reference.js';
@@ -42,6 +43,7 @@ export interface ManagedCommunicationRuntimeBindingsV1 {
   managedCommunicationThreadReader: PostgresManagedCommunicationThreadEvidenceReaderV1;
   managedCommunicationExactEvidence: PostgresManagedCommunicationExactEvidenceStoreV1;
   managedCommunicationPublicReference: ManagedCommunicationPublicReferenceReaderV1;
+  managedCommunicationConversationReader: ManagedCommunicationConversationReadServiceV1;
   managedCommunicationExchange?: ManagedCommunicationExchangeV1;
 }
 
@@ -216,6 +218,12 @@ export async function createManagedCommunicationRuntimeBindingsV1(
     correlation: managedCommunicationInboundCorrelation,
     now
   });
+  const managedCommunicationConversationReader = new ManagedCommunicationConversationReadServiceV1(
+    foundation,
+    managedCommunicationThreadReader,
+    managedCommunicationExactEvidence,
+    claims
+  );
 
   const managedCommunicationExchange = options.sender
     ? new ManagedCommunicationExchangeV1({
@@ -231,6 +239,7 @@ export async function createManagedCommunicationRuntimeBindingsV1(
     managedCommunicationThreadReader,
     managedCommunicationExactEvidence,
     managedCommunicationPublicReference,
+    managedCommunicationConversationReader,
     ...(managedCommunicationExchange === undefined ? {} : { managedCommunicationExchange })
   });
 }
