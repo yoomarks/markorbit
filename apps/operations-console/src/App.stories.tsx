@@ -63,6 +63,14 @@ export const SuperAdminV2CapabilityLineage = () => (
   <SuperAdminV2 initialPath="/super-admin-v2/capabilities/versions" useBrowserHistory={false} />
 );
 
+export const SuperAdminV2PaymentOwnerRecord = () => (
+  <SuperAdminV2 initialPath="/super-admin-v2/billing/payments" useBrowserHistory={false} />
+);
+
+export const SuperAdminV2ProtectedRiskOperation = () => (
+  <SuperAdminV2 initialPath="/super-admin-v2/governance/risk" useBrowserHistory={false} />
+);
+
 export const SuperAdminV2Permission = () => (
   <SuperAdminV2
     initialPath="/super-admin-v2/governance/risk"

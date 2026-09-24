@@ -2310,6 +2310,269 @@
   }
 }
 
+/* V2.2 batch D: commercial owner records and protected governance operations */
+.sa2-trust-chart {
+  display: grid;
+  grid-template-columns: 45px repeat(3, minmax(0, 1fr));
+  align-items: end;
+  min-height: 220px;
+  background: linear-gradient(180deg, #fff 0, #f7f9fc 100%);
+}
+.sa2-trust-chart .axis {
+  align-self: stretch;
+  display: flex;
+  align-items: stretch;
+  justify-content: space-between;
+  flex-direction: column;
+  color: #8b98a8;
+  font-size: 9px;
+  line-height: 1;
+}
+.sa2-trust-chart button {
+  display: grid;
+  align-content: end;
+  justify-items: center;
+  gap: 7px;
+  min-height: 180px;
+  border: 0;
+  background: transparent;
+  color: #304b6d;
+}
+.sa2-trust-chart button i {
+  width: min(64px, 60%);
+  min-height: 28px;
+  border-radius: 8px 8px 2px 2px;
+  background: linear-gradient(180deg, var(--module-accent), #a9c1eb);
+}
+.sa2-trust-chart button small {
+  color: #7e8c9e;
+}
+.sa2-trust-ledger,
+.sa2-trust-timeline,
+.sa2-trust-policy {
+  display: grid;
+  gap: 3px;
+}
+.sa2-trust-ledger button,
+.sa2-trust-timeline button {
+  display: grid;
+  grid-template-columns: 95px minmax(180px, 1fr) 150px 90px;
+  align-items: center;
+  gap: 12px;
+  padding: 13px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: #f8fafc;
+  color: #3b526f;
+  text-align: left;
+}
+.sa2-trust-ledger button.is-active,
+.sa2-trust-ledger button:hover,
+.sa2-trust-timeline button:hover {
+  border-color: color-mix(in srgb, var(--module-accent), white 55%);
+  background: color-mix(in srgb, var(--module-accent), white 94%);
+}
+.sa2-trust-ledger button span,
+.sa2-trust-timeline button span {
+  display: grid;
+  gap: 2px;
+}
+.sa2-trust-ledger small,
+.sa2-trust-timeline small {
+  color: #8693a4;
+}
+.sa2-trust-ledger u,
+.sa2-trust-timeline u,
+.sa2-trust-plans u,
+.sa2-trust-risk u,
+.sa2-trust-compliance u,
+.sa2-trust-policy u {
+  color: #315f57;
+  font-size: 9px;
+  text-align: right;
+  text-decoration: none;
+}
+.sa2-trust-plans,
+.sa2-trust-risk {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 11px;
+}
+.sa2-trust-plans > button,
+.sa2-trust-risk > button {
+  display: grid;
+  gap: 9px;
+  min-height: 150px;
+  padding: 17px;
+  border: 1px solid #dce5ef;
+  border-radius: 11px;
+  background: #fff;
+  color: #304b6d;
+  text-align: left;
+}
+.sa2-trust-plans > button strong {
+  font-size: 21px;
+}
+.sa2-trust-plans > button small,
+.sa2-trust-risk p {
+  color: #78879a;
+}
+.sa2-trust-risk > button {
+  border-left: 4px solid #d75d65;
+  background: linear-gradient(135deg, #fff 45%, #fff4f4);
+}
+.sa2-trust-risk header {
+  display: grid;
+  grid-template-columns: 28px 1fr auto;
+  gap: 8px;
+  align-items: center;
+}
+.sa2-trust-risk header > span {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: #fee8e9;
+  color: #b53e49;
+  font-weight: 900;
+}
+.sa2-trust-risk header div {
+  display: grid;
+}
+.sa2-trust-risk code {
+  color: #7d4050;
+  font-size: 9px;
+}
+.sa2-trust-timeline button {
+  grid-template-columns: 55px 12px minmax(200px, 1fr) 85px;
+}
+.sa2-trust-timeline button > i {
+  width: 9px;
+  height: 9px;
+  border: 2px solid #fff;
+  border-radius: 50%;
+  background: var(--module-accent);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--module-accent), white 55%);
+}
+.sa2-trust-compliance {
+  display: grid;
+  gap: 8px;
+}
+.sa2-trust-compliance button {
+  display: grid;
+  grid-template-columns: minmax(180px, 1fr) minmax(120px, 1fr) 80px 90px;
+  gap: 13px;
+  align-items: center;
+  padding: 14px;
+  border: 1px solid #dde6ef;
+  border-radius: 9px;
+  background: #fff;
+  color: #38516e;
+  text-align: left;
+}
+.sa2-trust-compliance button > div {
+  display: grid;
+}
+.sa2-trust-compliance button > i {
+  height: 7px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #e8edf3;
+}
+.sa2-trust-compliance button > i em {
+  display: block;
+  height: 100%;
+  background: #42a47d;
+}
+.sa2-trust-policy button {
+  display: grid;
+  grid-template-columns: minmax(180px, 1.2fr) repeat(4, minmax(100px, 1fr)) 80px;
+  gap: 9px;
+  align-items: center;
+  padding: 12px;
+  border: 1px solid #e0e7ef;
+  border-radius: 8px;
+  background: #fff;
+  color: #38516e;
+  text-align: left;
+}
+.sa2-trust-policy button > span,
+.sa2-trust-policy button > i {
+  display: grid;
+  gap: 2px;
+  font-style: normal;
+}
+.sa2-trust-policy button > i b {
+  color: #8693a3;
+  font-size: 8px;
+}
+.sa2-impact-box {
+  display: grid;
+  grid-template-columns: 70px 1fr;
+  gap: 8px 12px;
+  margin-top: 12px;
+  padding: 12px;
+  border: 1px solid #f0d8d9;
+  border-radius: 8px;
+  background: #fff8f7;
+}
+.sa2-impact-box span {
+  color: #8c7580;
+  font-size: 9px;
+  font-weight: 800;
+}
+.sa2-impact-box strong,
+.sa2-impact-box code {
+  color: #663f4c;
+  font-size: 10px;
+}
+
+@media (max-width: 920px) {
+  .sa2-trust-plans,
+  .sa2-trust-risk {
+    grid-template-columns: 1fr;
+  }
+  .sa2-trust-policy button {
+    grid-template-columns: 1fr 1fr 1fr;
+  }
+  .sa2-trust-policy button > span,
+  .sa2-trust-policy button > u {
+    grid-column: span 2;
+  }
+}
+
+@media (max-width: 760px) {
+  .sa2-trust-chart {
+    grid-template-columns: 32px repeat(3, minmax(80px, 1fr));
+    overflow-x: auto;
+  }
+  .sa2-trust-ledger button,
+  .sa2-trust-timeline button {
+    grid-template-columns: 65px minmax(150px, 1fr) 70px;
+  }
+  .sa2-trust-ledger button > b,
+  .sa2-trust-timeline button > i {
+    display: none;
+  }
+  .sa2-trust-compliance button {
+    grid-template-columns: 1fr 80px;
+  }
+  .sa2-trust-compliance button > i {
+    grid-column: 1 / -1;
+  }
+  .sa2-trust-policy button {
+    grid-template-columns: 1fr 1fr;
+  }
+  .sa2-trust-policy button > span,
+  .sa2-trust-policy button > u {
+    grid-column: 1 / -1;
+  }
+  .sa2-impact-box {
+    grid-template-columns: 1fr;
+  }
+}
+
 /* V2.2 batch C: Brain runtime and Capability canon remain distinct */
 .sa2-intel-flow,
 .sa2-cap-tree {

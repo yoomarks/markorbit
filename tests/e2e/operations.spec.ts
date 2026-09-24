@@ -576,6 +576,37 @@ test('Super Admin V2 batch C links Brain execution to governed Capability eviden
   assertHealthy();
 });
 
+test('Super Admin V2 batch D preserves financial owners and protects risky actions', async ({
+  page
+}) => {
+  const assertHealthy = watchPage(page);
+  await page.goto(`${urls.operations}/super-admin-v2/billing/payments`);
+  await page
+    .getByRole('button', { name: /Acme annual payment/ })
+    .first()
+    .click();
+  const payment = page.getByTestId('billing-payments-detail');
+  await expect(payment).toContainText('Payment');
+  await expect(payment).toContainText('payment.record:read');
+  await expect(payment).toContainText('Payment 不是履约、权威、接受或完成');
+
+  await page.goto(`${urls.operations}/super-admin-v2/governance/risk`);
+  await page
+    .getByRole('button', { name: /Billing role escalation/ })
+    .first()
+    .click();
+  const risk = page.getByTestId('governance-risk-detail');
+  await expect(risk).toContainText('Would grant invoice management to 1 user');
+  await expect(risk).toContainText('governance.risk:approve');
+  await page.getByRole('button', { name: '预演主要操作' }).click();
+  await expect(page.getByRole('dialog', { name: /审阅风险操作/ })).toContainText(
+    '不会写入任何服务或数据库'
+  );
+  await page.getByRole('button', { name: '取消' }).click();
+  await expectNoHorizontalOverflow(page);
+  assertHealthy();
+});
+
 test('every Super Admin V2 first and second-level route is directly reviewable', async ({
   page
 }, testInfo) => {
@@ -606,7 +637,9 @@ test('every Super Admin V2 first and second-level route is directly reviewable',
         module.id === 'users' ||
         module.id === 'products' ||
         module.id === 'brain' ||
-        module.id === 'capabilities'
+        module.id === 'capabilities' ||
+        module.id === 'billing' ||
+        module.id === 'governance'
       ) {
         await expect(page.getByTestId(`${module.id}-page-${secondaryPage.id}`)).toBeVisible();
         await capture(page, `super-admin-v2-${module.id}-${secondaryPage.id}-desktop`);

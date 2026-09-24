@@ -12,6 +12,7 @@ import { KnowledgePages } from './KnowledgePages.js';
 import { ControlPlanePages } from './ControlPlanePages.js';
 import { OrganizationPages } from './OrganizationPages.js';
 import { IntelligencePages } from './IntelligencePages.js';
+import { TrustPages } from './TrustPages.js';
 import './styles.css';
 
 const GLYPHS: Record<string, string> = {
@@ -293,7 +294,9 @@ export function SuperAdminV2({
               'users',
               'products',
               'brain',
-              'capabilities'
+              'capabilities',
+              'billing',
+              'governance'
             ].includes(route.module.id) && (
               <MetricStrip module={route.module} pageId={route.page.id} />
             )}
@@ -540,6 +543,17 @@ interface WorkbenchProps {
 }
 
 function ModuleWorkbench(props: WorkbenchProps) {
+  if (props.module.id === 'billing' || props.module.id === 'governance') {
+    return (
+      <TrustPages
+        moduleId={props.module.id}
+        pageId={props.pageId}
+        query={props.query}
+        setQuery={props.setQuery}
+        onAction={props.onAction}
+      />
+    );
+  }
   if (props.module.id === 'brain' || props.module.id === 'capabilities') {
     return (
       <IntelligencePages
@@ -588,7 +602,7 @@ function ModuleWorkbench(props: WorkbenchProps) {
     return <KnowledgePages {...props} />;
   }
   return (
-    <div className={`sa2-workbench sa2-workbench--${props.module.id}`}>
+    <div className="sa2-workbench">
       <ModuleVisual
         module={props.module}
         records={props.records}
