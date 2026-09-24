@@ -7,6 +7,8 @@ import {
   type ReviewState
 } from './catalog.js';
 import { DEMO_FIXTURE_NOTICE, demoRecords, moduleMetrics, type DemoRecord } from './fixtures.js';
+import { DataEnginePages } from './DataEnginePages.js';
+import { KnowledgePages } from './KnowledgePages.js';
 import './styles.css';
 
 const GLYPHS: Record<string, string> = {
@@ -274,9 +276,10 @@ export function SuperAdminV2({
                 <span>演示：一个 owner projection 已过期；其余数据保持可见并带来源。</span>
               </div>
             )}
-            <MetricStrip module={route.module} />
+            <MetricStrip module={route.module} pageId={route.page.id} />
             <ModuleWorkbench
               module={route.module}
+              pageId={route.page.id}
               pageLabel={route.page.label}
               records={records}
               query={query}
@@ -363,10 +366,128 @@ function StateBoundary({
   );
 }
 
-function MetricStrip({ module }: { module: AdminModule }) {
+const pageMetrics: Record<string, readonly (readonly [string, string, string])[]> = {
+  'data:overview': [
+    ['已连接辖区', '38', '3 个需关注'],
+    ['今日批次', '156', '12 个运行中'],
+    ['记录通过率', '99.2%', 'Owner 校验'],
+    ['待审批计划', '2', '尚未执行']
+  ],
+  'data:coverage': [
+    ['覆盖辖区', '38', '4 个核心域'],
+    ['对象类型', '24', '矩阵维度'],
+    ['覆盖缺口', '7', '未折叠为空'],
+    ['最旧来源', '2h', 'WIPO']
+  ],
+  'data:sources': [
+    ['连接配置', '48', 'Owner 管理'],
+    ['健康连接', '44', '最近握手'],
+    ['凭证将到期', '1', '仅显示状态'],
+    ['暂停来源', '3', '不参与采集']
+  ],
+  'data:packages': [
+    ['数据包', '1,286', 'Manifest 可追溯'],
+    ['Ready', '1,248', '不等于 Official Truth'],
+    ['质量问题', '28', '待 owner 处理'],
+    ['可恢复阶段', '6', '有检查点']
+  ],
+  'data:jobs': [
+    ['运行中', '12', '持有有效 lease'],
+    ['等待审批', '2', '冻结计划'],
+    ['失败隔离', '3', '未自动重试'],
+    ['检查点', '84', '可恢复']
+  ],
+  'data:query': [
+    ['可查辖区', '4', 'CN / US / EU / WO'],
+    ['查询字段', '18', 'Owner source-fact'],
+    ['P95 延迟', '186ms', '演示快照'],
+    ['写操作', '0', '严格只读']
+  ],
+  'data:storage': [
+    ['Operational', '412 GB', 'PostgreSQL'],
+    ['Analytics', '8.9 TB', 'ClickHouse'],
+    ['Raw inventory', '24.6 TB', '不可变对象'],
+    ['容量预警', '1', '不执行删除']
+  ],
+  'data:settings': [
+    ['组件', '12', '4 个核心服务'],
+    ['版本偏差', '1', 'Package builder'],
+    ['待变更申请', '2', 'Owner 审批'],
+    ['直接保存', '0', '治理锁定']
+  ],
+  'knowledge:overview': [
+    ['来源', '48', '4 个待关注'],
+    ['原始文件', '12,842', '不可变库存'],
+    ['待审核证据', '18', '未正式批准'],
+    ['Ready Packages', '326', '4 个待交付']
+  ],
+  'knowledge:sources': [
+    ['来源', '48', '跨 4 个辖区'],
+    ['已批准', '42', '有批准记录'],
+    ['待审核', '4', '不参与供应'],
+    ['已归档', '2', '保留谱系']
+  ],
+  'knowledge:plans': [
+    ['启用计划', '24', 'Owner 调度'],
+    ['本周运行', '168', '按策略派发'],
+    ['暂停', '3', '显式状态'],
+    ['计划冲突', '1', '待审核']
+  ],
+  'knowledge:runs': [
+    ['运行中', '8', '有 Worker lease'],
+    ['今日完成', '136', '有 receipt'],
+    ['失败隔离', '3', '按阶段重试'],
+    ['P95 时长', '8m 42s', '过去 24h']
+  ],
+  'knowledge:workers': [
+    ['Workers', '12', '3 类能力'],
+    ['健康', '10', '心跳有效'],
+    ['繁忙', '1', '并发已满'],
+    ['失联', '1', '不接收任务']
+  ],
+  'knowledge:raw-files': [
+    ['原始文件', '12,842', '不可变'],
+    ['可转换', '8,421', '通过资格检查'],
+    ['重复项', '326', '保留关系'],
+    ['缺 locator', '18', '不可进入审核']
+  ],
+  'knowledge:transforms': [
+    ['等待转换', '36', '兼容 profile'],
+    ['处理中', '12', '有效 lease'],
+    ['待审核', '18', '有 locator'],
+    ['失败隔离', '3', '无自动批准']
+  ],
+  'knowledge:evidence': [
+    ['待审核', '18', '逐条决策'],
+    ['高风险', '3', '需要资深审核'],
+    ['今日批准', '42', '有审计记录'],
+    ['Canon mutation', '0', '明确禁止']
+  ],
+  'knowledge:search': [
+    ['可检索文档', '1,284,532', '带版本'],
+    ['来源', '48', '精确 locator'],
+    ['当前性', '96%', '过期单列'],
+    ['P95', '142ms', '带引用检索']
+  ],
+  'knowledge:packages': [
+    ['Preparing', '8', 'Manifest 未冻结'],
+    ['Ready', '18', '等待交付'],
+    ['Delivering', '3', '等待 receipt'],
+    ['Reconciled', '297', '已对账']
+  ],
+  'knowledge:supply-health': [
+    ['SLA 内', '92%', '不含未建模'],
+    ['异常来源', '3', '失败隔离'],
+    ['未建模', '2', '不计为零'],
+    ['最旧来源', '2d', 'WIPO']
+  ]
+};
+
+function MetricStrip({ module, pageId }: { module: AdminModule; pageId: string }) {
+  const metrics = pageMetrics[`${module.id}:${pageId}`] ?? moduleMetrics[module.id];
   return (
     <section className="sa2-metrics" aria-label={`${module.label} 摘要`}>
-      {moduleMetrics[module.id].map(([label, value, note], index) => (
+      {metrics.map(([label, value, note], index) => (
         <article key={label}>
           <div>
             <span>{label}</span>
@@ -382,6 +503,7 @@ function MetricStrip({ module }: { module: AdminModule }) {
 
 interface WorkbenchProps {
   module: AdminModule;
+  pageId: string;
   pageLabel: string;
   records: readonly DemoRecord[];
   query: string;
@@ -393,6 +515,12 @@ interface WorkbenchProps {
 }
 
 function ModuleWorkbench(props: WorkbenchProps) {
+  if (props.module.id === 'data') {
+    return <DataEnginePages {...props} />;
+  }
+  if (props.module.id === 'knowledge') {
+    return <KnowledgePages {...props} />;
+  }
   return (
     <div className={`sa2-workbench sa2-workbench--${props.module.id}`}>
       <ModuleVisual

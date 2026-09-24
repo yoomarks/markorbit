@@ -23,6 +23,14 @@ export const SuperAdminV2DataPartial = () => (
   />
 );
 
+export const SuperAdminV2DataJobs = () => (
+  <SuperAdminV2 initialPath="/super-admin-v2/data/jobs" useBrowserHistory={false} />
+);
+
+export const SuperAdminV2KnowledgeEvidence = () => (
+  <SuperAdminV2 initialPath="/super-admin-v2/knowledge/evidence" useBrowserHistory={false} />
+);
+
 export const SuperAdminV2Permission = () => (
   <SuperAdminV2
     initialPath="/super-admin-v2/governance/risk"

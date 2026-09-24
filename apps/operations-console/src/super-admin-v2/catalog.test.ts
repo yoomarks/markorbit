@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { adminModules, DEFAULT_ROUTE, resolveRoute, routeFor } from './catalog.js';
 import { DEMO_FIXTURE_NOTICE, demoRecords, moduleMetrics } from './fixtures.js';
+import { DATA_ENGINE_PAGE_IDS } from './DataEnginePages.js';
+import { KNOWLEDGE_PAGE_IDS } from './KnowledgePages.js';
 
 describe('Super Admin V2 navigation catalog', () => {
   it('freezes twelve unique first-level modules with addressable secondary pages', () => {
@@ -31,5 +33,14 @@ describe('Super Admin V2 navigation catalog', () => {
       expect(demoRecords(module.id).length).toBeGreaterThanOrEqual(3);
       expect(demoRecords(module.id).every((record) => record.owner.length > 0)).toBe(true);
     }
+  });
+
+  it('has a dedicated V2.1 workspace renderer for every Data Engine and Knowledge page', () => {
+    expect(DATA_ENGINE_PAGE_IDS).toEqual(
+      adminModules.find((module) => module.id === 'data')?.pages.map((page) => page.id)
+    );
+    expect(KNOWLEDGE_PAGE_IDS).toEqual(
+      adminModules.find((module) => module.id === 'knowledge')?.pages.map((page) => page.id)
+    );
   });
 });
