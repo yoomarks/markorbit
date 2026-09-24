@@ -84,6 +84,21 @@ export const SuperAdminV221MobileEvidenceReview = () => (
 );
 SuperAdminV221MobileEvidenceReview.parameters = { viewport: { defaultViewport: 'mobile1' } };
 
+export const SuperAdminV222RawArtifactSelection = () => (
+  <SuperAdminV2 initialPath="/super-admin-v2/knowledge/raw-files" useBrowserHistory={false} />
+);
+
+export const SuperAdminV222AddressableTransform = () => (
+  <SuperAdminV2
+    initialPath="/super-admin-v2/knowledge/transforms?focus=CONV-9813&alert=ALT-7718&return=%2Fsuper-admin-v2%2Foverview%2Falerts"
+    useBrowserHistory={false}
+  />
+);
+
+export const SuperAdminV222UnknownRoute = () => (
+  <SuperAdminV2 initialPath="/super-admin-v2/nonexisting/module" useBrowserHistory={false} />
+);
+
 export const SuperAdminV2Permission = () => (
   <SuperAdminV2
     initialPath="/super-admin-v2/governance/risk"

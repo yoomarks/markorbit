@@ -52,9 +52,10 @@ interface DeepLinkContext {
   targetObjectId: string;
 }
 
-function contextFromLocation(): DeepLinkContext | null {
-  if (typeof window === 'undefined') return null;
-  const params = new URLSearchParams(window.location.search);
+function contextFromAddress(address: string | undefined): DeepLinkContext | null {
+  if (!address) return null;
+  const url = new URL(address, 'http://super-admin.local');
+  const params = url.searchParams;
   const sourceId = params.get('alert');
   const targetObjectId = params.get('focus');
   const sourcePath = params.get('return');
@@ -62,7 +63,7 @@ function contextFromLocation(): DeepLinkContext | null {
   return {
     sourcePath,
     sourceId,
-    targetPath: `${window.location.pathname}${window.location.search}`,
+    targetPath: `${url.pathname}${url.search}`,
     targetObjectId
   };
 }
@@ -88,7 +89,7 @@ export function SuperAdminV2({
   const [mobileNav, setMobileNav] = useState(false);
   const [reviewToolsOpen, setReviewToolsOpen] = useState(false);
   const [deepLinkContext, setDeepLinkContext] = useState<DeepLinkContext | null>(() =>
-    contextFromLocation()
+    contextFromAddress(initialPath ?? browserPath)
   );
   const dialogReturnFocus = useRef<HTMLElement | null>(null);
   const inspectorReturnFocus = useRef<HTMLElement | null>(null);
@@ -102,7 +103,8 @@ export function SuperAdminV2({
       setPath(nextPath);
       setDeepLinkContext(
         (current) =>
-          contextFromLocation() ?? (current && nextPath === current.sourcePath ? current : null)
+          contextFromAddress(nextPath) ??
+          (current && nextPath === current.sourcePath ? current : null)
       );
     };
     window.addEventListener('popstate', onPopState);
