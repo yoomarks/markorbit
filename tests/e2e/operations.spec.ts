@@ -512,6 +512,43 @@ test('Super Admin V2 batch A links incidents, recovery evidence and integration 
   assertHealthy();
 });
 
+test('Super Admin V2 batch B keeps Workspace, identity and product truths separate', async ({
+  page
+}) => {
+  const assertHealthy = watchPage(page);
+  await page.goto(`${urls.operations}/super-admin-v2/workspaces/directory`);
+  await page
+    .getByRole('button', { name: /Global Brand LLC/ })
+    .first()
+    .click();
+  await expect(page.getByTestId('workspaces-directory-detail')).toContainText(
+    'Subscription SUB-GB'
+  );
+
+  await page.goto(`${urls.operations}/super-admin-v2/users/relationships`);
+  await expect(page.getByTestId('users-page-relationships')).toBeVisible();
+  await page
+    .getByRole('button', { name: /Sarah Chen → MO Labs/ })
+    .first()
+    .click();
+  await expect(page.getByTestId('users-relationships-detail')).toContainText('MEM-LABS-SC');
+
+  await page.goto(`${urls.operations}/super-admin-v2/products/entitlements`);
+  await expect(page.getByTestId('products-page-entitlements')).toBeVisible();
+  await page
+    .getByRole('button', { name: /Starter → Brain/ })
+    .first()
+    .click();
+  await expect(page.getByTestId('products-page-entitlements')).toContainText(
+    '实际启用仍由 Workspace 配置决定'
+  );
+  await expect(page.getByTestId('products-entitlements-detail')).toContainText(
+    'Alternative FS-LITE-AI'
+  );
+  await expectNoHorizontalOverflow(page);
+  assertHealthy();
+});
+
 test('every Super Admin V2 first and second-level route is directly reviewable', async ({
   page
 }, testInfo) => {
@@ -537,7 +574,10 @@ test('every Super Admin V2 first and second-level route is directly reviewable',
         module.id === 'knowledge' ||
         module.id === 'overview' ||
         module.id === 'operations' ||
-        module.id === 'integrations'
+        module.id === 'integrations' ||
+        module.id === 'workspaces' ||
+        module.id === 'users' ||
+        module.id === 'products'
       ) {
         await expect(page.getByTestId(`${module.id}-page-${secondaryPage.id}`)).toBeVisible();
         await capture(page, `super-admin-v2-${module.id}-${secondaryPage.id}-desktop`);

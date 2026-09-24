@@ -43,6 +43,18 @@ export const SuperAdminV2IntegrationLayers = () => (
   <SuperAdminV2 initialPath="/super-admin-v2/integrations/switches" useBrowserHistory={false} />
 );
 
+export const SuperAdminV2WorkspaceDirectory = () => (
+  <SuperAdminV2 initialPath="/super-admin-v2/workspaces/directory" useBrowserHistory={false} />
+);
+
+export const SuperAdminV2IdentityRelationships = () => (
+  <SuperAdminV2 initialPath="/super-admin-v2/users/relationships" useBrowserHistory={false} />
+);
+
+export const SuperAdminV2ProductEntitlements = () => (
+  <SuperAdminV2 initialPath="/super-admin-v2/products/entitlements" useBrowserHistory={false} />
+);
+
 export const SuperAdminV2Permission = () => (
   <SuperAdminV2
     initialPath="/super-admin-v2/governance/risk"

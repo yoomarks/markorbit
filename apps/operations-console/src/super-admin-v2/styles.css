@@ -2310,6 +2310,329 @@
   }
 }
 
+/* V2.2 batch B: organization, identity and product truth */
+.sa2-org-directory > button {
+  position: relative;
+  display: grid;
+  grid-template-columns: 42px minmax(160px, 1fr) 150px 70px;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 12px 8px 15px;
+  overflow: hidden;
+  border: 0;
+  border-bottom: 1px solid #edf1f5;
+  background: transparent;
+  text-align: left;
+}
+.sa2-org-directory > button.is-active {
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--module-accent), white 92%);
+}
+.sa2-org-directory > button > span {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--module-accent), white 84%);
+  color: var(--module-accent);
+  font-weight: 800;
+}
+.sa2-org-directory > button > div {
+  display: grid;
+  gap: 2px;
+}
+.sa2-org-directory small,
+.sa2-org-directory > button > b {
+  color: #77879b;
+  font-size: 9px;
+}
+.sa2-org-directory u {
+  color: #385572;
+  font-size: 9px;
+  text-decoration: none;
+}
+.sa2-org-directory > button > i {
+  position: absolute;
+  left: 60px;
+  bottom: 6px;
+  height: 3px;
+  border-radius: 4px;
+  background: var(--module-accent);
+}
+.sa2-org-cards,
+.sa2-org-showcase {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 11px;
+}
+.sa2-org-cards > button,
+.sa2-org-showcase > button {
+  display: grid;
+  gap: 8px;
+  padding: 14px;
+  border: 1px solid #dbe4ef;
+  border-radius: 11px;
+  background: #fff;
+  color: #405773;
+  text-align: left;
+}
+.sa2-org-cards > button.is-active {
+  border-color: var(--module-accent);
+  box-shadow: 0 7px 18px color-mix(in srgb, var(--module-accent), transparent 86%);
+}
+.sa2-org-cards header {
+  display: flex;
+  justify-content: space-between;
+  color: #7a899b;
+  font-size: 9px;
+}
+.sa2-org-cards u,
+.sa2-org-showcase u,
+.sa2-org-timeline u,
+.sa2-org-invites u {
+  color: #4b6480;
+  font-size: 9px;
+  text-decoration: none;
+}
+.sa2-org-cards small,
+.sa2-org-showcase small {
+  color: #7f8fa3;
+}
+.sa2-org-cards dl {
+  display: grid;
+  gap: 7px;
+  margin: 4px 0 0;
+}
+.sa2-org-cards dl div {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  padding-top: 6px;
+  border-top: 1px solid #edf1f5;
+}
+.sa2-org-cards dt {
+  color: #8b97a6;
+  font-size: 8px;
+}
+.sa2-org-cards dd {
+  margin: 0;
+  font-size: 9px;
+}
+.sa2-org-meter button {
+  display: grid;
+  grid-template-columns: minmax(180px, 1fr) 2fr 70px;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 13px 7px;
+  border: 0;
+  border-bottom: 1px solid #edf1f5;
+  background: transparent;
+  text-align: left;
+}
+.sa2-org-meter button span {
+  display: grid;
+}
+.sa2-org-meter small {
+  color: #8492a3;
+}
+.sa2-org-meter button > i {
+  height: 9px;
+  overflow: hidden;
+  border-radius: 8px;
+  background: #e8edf3;
+}
+.sa2-org-meter em {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--module-accent);
+}
+.sa2-org-matrix {
+  overflow-x: auto;
+}
+.sa2-org-matrix > header,
+.sa2-org-matrix > button {
+  display: grid;
+  grid-template-columns: minmax(180px, 1.2fr) repeat(4, minmax(120px, 1fr));
+  align-items: center;
+  min-width: 760px;
+  gap: 6px;
+  width: 100%;
+}
+.sa2-org-matrix > header b {
+  padding: 8px;
+  background: #f3f6fa;
+  color: #748398;
+  font-size: 8px;
+}
+.sa2-org-matrix > button {
+  padding: 8px 0;
+  border: 0;
+  border-bottom: 1px solid #edf1f5;
+  background: transparent;
+  text-align: left;
+}
+.sa2-org-matrix > button > strong,
+.sa2-org-matrix > button > span {
+  padding: 9px;
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--module-accent), white 92%);
+  color: #3e5672;
+  font-size: 9px;
+}
+.sa2-org-timeline > button {
+  display: grid;
+  grid-template-columns: 55px 10px 1fr 80px;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 12px 7px;
+  border: 0;
+  border-bottom: 1px solid #edf1f5;
+  background: transparent;
+  text-align: left;
+}
+.sa2-org-timeline > button.is-active {
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--module-accent), white 92%);
+}
+.sa2-org-timeline time,
+.sa2-org-timeline small {
+  color: #8391a3;
+  font-size: 9px;
+}
+.sa2-org-timeline button > i {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--module-accent);
+}
+.sa2-org-timeline button > span {
+  display: grid;
+}
+.sa2-org-graph {
+  display: grid;
+  gap: 8px;
+}
+.sa2-org-graph > button {
+  display: flex;
+  align-items: stretch;
+  gap: 6px;
+  width: 100%;
+  padding: 10px;
+  overflow-x: auto;
+  border: 1px solid #e4eaf1;
+  border-radius: 8px;
+  background: #fafbfd;
+}
+.sa2-org-graph > button > span {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: 7px;
+  min-width: 125px;
+  padding: 9px;
+  border-radius: 7px;
+  background: #fff;
+  color: #405875;
+  font-size: 9px;
+}
+.sa2-org-graph span i {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--module-accent), white 84%);
+  color: var(--module-accent);
+  font-style: normal;
+}
+.sa2-org-graph span em {
+  margin-left: auto;
+  color: #9aa7b6;
+  font-style: normal;
+}
+.sa2-org-showcase .visual {
+  min-height: 86px;
+  display: grid;
+  place-items: center;
+  border-radius: 8px;
+  background: linear-gradient(145deg, color-mix(in srgb, var(--module-accent), white 82%), #f8fafc);
+}
+.sa2-org-showcase .visual span {
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  border-radius: 12px;
+  background: #fff;
+  color: var(--module-accent);
+  font-weight: 800;
+  box-shadow: 0 8px 20px #193d7020;
+}
+.sa2-org-invites > button {
+  display: grid;
+  grid-template-columns: 34px 1fr 120px 70px;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 12px 7px;
+  border: 0;
+  border-bottom: 1px solid #edf1f5;
+  background: transparent;
+  text-align: left;
+}
+.sa2-org-invites > button > span {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--module-accent), white 86%);
+  color: var(--module-accent);
+}
+.sa2-org-invites button > div {
+  display: grid;
+}
+.sa2-org-invites small,
+.sa2-org-invites time {
+  color: #8190a2;
+  font-size: 9px;
+}
+@media (max-width: 920px) {
+  .sa2-org-cards,
+  .sa2-org-showcase {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+@media (max-width: 760px) {
+  .sa2-org-directory > button {
+    grid-template-columns: 42px 1fr 70px;
+  }
+  .sa2-org-directory > button > b {
+    display: none;
+  }
+  .sa2-org-cards,
+  .sa2-org-showcase {
+    grid-template-columns: 1fr;
+  }
+  .sa2-org-meter button {
+    grid-template-columns: 1fr 60px;
+  }
+  .sa2-org-meter button > i {
+    grid-column: 1 / -1;
+  }
+  .sa2-org-invites > button {
+    grid-template-columns: 34px 1fr 70px;
+  }
+  .sa2-org-invites time {
+    display: none;
+  }
+}
+
 /* V2.2 batch A: cross-owner command, execution and integration workspaces */
 .sa2-page-facts {
   display: grid;
