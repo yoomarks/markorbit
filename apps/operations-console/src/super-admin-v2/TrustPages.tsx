@@ -771,7 +771,7 @@ export function TrustPages({ moduleId, pageId, query, setQuery, onAction }: Trus
       <header className="sa2-depth-head">
         <div>
           <span>{page.eyebrow}</span>
-          <h3>{page.title}</h3>
+          <h1>{page.title}</h1>
           <p>{page.description}</p>
         </div>
         <button
@@ -790,18 +790,12 @@ export function TrustPages({ moduleId, pageId, query, setQuery, onAction }: Trus
           </article>
         ))}
       </div>
-      <TrustCanvas
-        variant={page.variant}
-        objects={page.objects}
-        selectedId={selected?.id}
-        onSelect={setSelectedId}
-      />
       <div className="sa2-operator-workspace">
         <article className="sa2-depth-card sa2-object-browser">
           <header>
             <div>
               <span>{page.objectLabel.toUpperCase()}</span>
-              <h4>{page.objectLabel}列表</h4>
+              <h2>{page.objectLabel}列表</h2>
             </div>
             <b>{visible.length} DEMO</b>
           </header>
@@ -849,7 +843,7 @@ export function TrustPages({ moduleId, pageId, query, setQuery, onAction }: Trus
             <header>
               <div>
                 <span>SELECTED {page.objectLabel.toUpperCase()}</span>
-                <h4>{selected.name}</h4>
+                <h2>{selected.name}</h2>
               </div>
               <b>{selected.status}</b>
             </header>
@@ -871,7 +865,7 @@ export function TrustPages({ moduleId, pageId, query, setQuery, onAction }: Trus
               <span>执行权限</span>
               <code>{selected.permission}</code>
             </div>
-            <h5>{moduleId === 'billing' ? 'Owner lifecycle' : '调查时间线'}</h5>
+            <h3>{moduleId === 'billing' ? 'Owner lifecycle' : '调查时间线'}</h3>
             <ol>
               {selected.trail.map((step, index) => (
                 <li key={step}>
@@ -908,11 +902,17 @@ export function TrustPages({ moduleId, pageId, query, setQuery, onAction }: Trus
           </article>
         ) : (
           <article className="sa2-depth-card sa2-inline-empty">
-            <h4>没有匹配的演示对象</h4>
+            <h2>没有匹配的演示对象</h2>
             <p>当前筛选返回 0 条结果；详情和对象操作已清空。</p>
           </article>
         )}
       </div>
+      <TrustCanvas
+        variant={page.variant}
+        objects={page.objects}
+        selectedId={selected?.id}
+        onSelect={setSelectedId}
+      />
     </section>
   );
 }

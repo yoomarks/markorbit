@@ -973,7 +973,7 @@ export function ControlPlanePages({
       <header className="sa2-depth-head">
         <div>
           <span>{definition.eyebrow}</span>
-          <h3>{definition.title}</h3>
+          <h1>{definition.title}</h1>
           <p>{definition.description}</p>
         </div>
         <button
@@ -992,18 +992,12 @@ export function ControlPlanePages({
           </article>
         ))}
       </div>
-      <VariantCanvas
-        variant={definition.variant}
-        objects={definition.objects}
-        selectedId={selected?.id}
-        onSelect={setSelectedId}
-      />
       <div className="sa2-operator-workspace">
         <article className="sa2-depth-card sa2-object-browser">
           <header>
             <div>
               <span>{definition.objectLabel.toUpperCase()}</span>
-              <h4>{definition.objectLabel}列表</h4>
+              <h2>{definition.objectLabel}列表</h2>
             </div>
             <b>{visible.length} DEMO</b>
           </header>
@@ -1051,7 +1045,7 @@ export function ControlPlanePages({
             <header>
               <div>
                 <span>SELECTED {definition.objectLabel.toUpperCase()}</span>
-                <h4>{selected.name}</h4>
+                <h2>{selected.name}</h2>
               </div>
               <b>{selected.status}</b>
             </header>
@@ -1073,7 +1067,7 @@ export function ControlPlanePages({
                 <dd>Demo fixture · 不代表实时 owner truth</dd>
               </div>
             </dl>
-            <h5>关联链路</h5>
+            <h3>关联链路</h3>
             <ol>
               {selected.chain.map((step, index) => (
                 <li key={step}>
@@ -1112,11 +1106,17 @@ export function ControlPlanePages({
           </article>
         ) : (
           <article className="sa2-depth-card sa2-inline-empty">
-            <h4>没有匹配的演示对象</h4>
+            <h2>没有匹配的演示对象</h2>
             <p>调整搜索词查看其他 fixture。</p>
           </article>
         )}
       </div>
+      <VariantCanvas
+        variant={definition.variant}
+        objects={definition.objects}
+        selectedId={selected?.id}
+        onSelect={setSelectedId}
+      />
     </section>
   );
 }

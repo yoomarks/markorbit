@@ -404,7 +404,8 @@ test('Super Admin V2 preview is complete, refresh-safe and truthfully interactiv
   const assertHealthy = watchPage(page);
   await page.goto(`${urls.operations}/super-admin-v2/overview/platform`);
 
-  await expect(page.getByRole('heading', { name: '总览', exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { level: 1 })).toHaveCount(1);
+  await expect(page.locator('.sa2-module-name')).toHaveText('总览');
   await expect(page.getByText('演示数据 · 仅供产品评审')).toBeVisible();
   await expect(page.getByText('DEMO REVIEW', { exact: true })).toBeVisible();
 
@@ -867,6 +868,82 @@ test('V2.2.2 prioritizes the 390px evidence workspace and keeps approval text re
   await expectNoHorizontalOverflow(page);
 });
 
+test('V2.2.3 representative pages expose one useful H1 and move work into the desktop fold', async ({
+  page
+}, testInfo) => {
+  test.skip(testInfo.project.name.startsWith('mobile'), 'Desktop hierarchy evidence.');
+  await page.setViewportSize({ width: 1440, height: 900 });
+  const cases = [
+    [
+      '/super-admin-v2/overview/usage',
+      '跨产品使用情况',
+      '.sa2-operator-workspace',
+      620,
+      'overview-usage'
+    ],
+    ['/super-admin-v2/data/jobs', '任务与调度中心', '.sa2-jobs-toolbar', 520, 'data-jobs'],
+    [
+      '/super-admin-v2/knowledge/evidence',
+      '证据审核',
+      '.sa2-evidence-workspace',
+      520,
+      'knowledge-evidence'
+    ]
+  ] as const;
+  for (const [path, title, workspace, maxY, screenshotName] of cases) {
+    await page.goto(`${urls.operations}${path}`);
+    await expect(page.getByRole('heading', { level: 1 })).toHaveCount(1);
+    await expect(page.getByRole('heading', { level: 1, name: title })).toBeVisible();
+    const y = await page
+      .locator(workspace)
+      .evaluate((element) => element.getBoundingClientRect().top);
+    expect(y).toBeLessThan(maxY);
+    await capture(page, `super-admin-v223-after-${screenshotName}-desktop`);
+  }
+});
+
+test('V2.2.3 representative mobile workspaces start before repeated chrome consumes the fold', async ({
+  page
+}, testInfo) => {
+  test.skip(testInfo.project.name.startsWith('desktop'), 'Mobile hierarchy evidence.');
+  await page.setViewportSize({ width: 390, height: 844 });
+  const cases = [
+    ['/super-admin-v2/overview/usage', '.sa2-operator-workspace', 800, 'overview-usage'],
+    ['/super-admin-v2/data/jobs', '.sa2-jobs-toolbar', 560, 'data-jobs'],
+    ['/super-admin-v2/knowledge/evidence', '.sa2-evidence-workspace', 500, 'knowledge-evidence']
+  ] as const;
+  for (const [path, workspace, maxY, screenshotName] of cases) {
+    await page.goto(`${urls.operations}${path}`);
+    const y = await page
+      .locator(workspace)
+      .evaluate((element) => element.getBoundingClientRect().top);
+    expect(y).toBeLessThan(maxY);
+    await expectNoHorizontalOverflow(page);
+    await capture(page, `super-admin-v223-after-${screenshotName}-mobile`);
+  }
+});
+
+test('V2.2.3 representative workspaces remain primary at common laptop size', async ({
+  page
+}, testInfo) => {
+  test.skip(testInfo.project.name.startsWith('mobile'), 'Laptop hierarchy evidence.');
+  await page.setViewportSize({ width: 1366, height: 768 });
+  const cases = [
+    ['/super-admin-v2/overview/usage', '.sa2-operator-workspace', 'overview-usage'],
+    ['/super-admin-v2/data/jobs', '.sa2-jobs-toolbar', 'data-jobs'],
+    ['/super-admin-v2/knowledge/evidence', '.sa2-evidence-workspace', 'knowledge-evidence']
+  ] as const;
+  for (const [path, workspace, screenshotName] of cases) {
+    await page.goto(`${urls.operations}${path}`);
+    await expect(page.locator(workspace)).toBeVisible();
+    expect(
+      await page.locator(workspace).evaluate((element) => element.getBoundingClientRect().top)
+    ).toBeLessThan(620);
+    await expectNoHorizontalOverflow(page);
+    await capture(page, `super-admin-v223-after-${screenshotName}-laptop`);
+  }
+});
+
 test('V2.2.1 Copy ID writes the selected object ID locally and labels the effect', async ({
   page,
   context
@@ -1039,8 +1116,26 @@ test('every Super Admin V2 first and second-level route is directly reviewable',
   for (const module of adminModules) {
     for (const secondaryPage of module.pages) {
       await page.goto(`${urls.operations}${routeFor(module, secondaryPage)}`);
-      await expect(page.getByRole('heading', { name: module.label, exact: true })).toBeVisible();
-      await expect(page.locator('.sa2-page-intro h2')).toHaveText(secondaryPage.label);
+      await expect(page.locator('.sa2-module-name')).toHaveText(module.label);
+      await expect(page.getByRole('heading', { level: 1 })).toHaveCount(1);
+      const headings = await page
+        .locator('main h1, main h2, main h3, main h4, main h5, main h6')
+        .evaluateAll((elements) =>
+          elements
+            .filter((element) => {
+              const style = getComputedStyle(element);
+              return style.display !== 'none' && style.visibility !== 'hidden';
+            })
+            .map((element) => ({
+              level: Number(element.tagName.slice(1)),
+              text: element.textContent?.replace(/\s+/g, ' ').trim() ?? ''
+            }))
+        );
+      expect(headings[0]?.level).toBe(1);
+      for (let index = 1; index < headings.length; index += 1) {
+        expect(headings[index].level - headings[index - 1].level).toBeLessThanOrEqual(1);
+        expect(headings[index].text).not.toBe(headings[index - 1].text);
+      }
       await expect(
         page
           .getByRole('navigation', { name: `${module.label} 二级导航` })

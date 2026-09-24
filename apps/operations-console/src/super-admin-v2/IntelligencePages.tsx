@@ -793,7 +793,7 @@ export function IntelligencePages({
       <header className="sa2-depth-head">
         <div>
           <span>{page.eyebrow}</span>
-          <h3>{page.title}</h3>
+          <h1>{page.title}</h1>
           <p>{page.description}</p>
         </div>
         <button className="sa2-button" onClick={() => onAction(page.action, page.protected)}>
@@ -809,18 +809,12 @@ export function IntelligencePages({
           </article>
         ))}
       </div>
-      <IntelCanvas
-        variant={page.variant}
-        objects={page.objects}
-        selectedId={selected?.id}
-        onSelect={setSelectedId}
-      />
       <div className="sa2-operator-workspace">
         <article className="sa2-depth-card sa2-object-browser">
           <header>
             <div>
               <span>{page.objectLabel.toUpperCase()}</span>
-              <h4>{page.objectLabel}列表</h4>
+              <h2>{page.objectLabel}列表</h2>
             </div>
             <b>{visible.length} DEMO</b>
           </header>
@@ -868,7 +862,7 @@ export function IntelligencePages({
             <header>
               <div>
                 <span>SELECTED {page.objectLabel.toUpperCase()}</span>
-                <h4>{selected.name}</h4>
+                <h2>{selected.name}</h2>
               </div>
               <b>{selected.status}</b>
             </header>
@@ -884,7 +878,7 @@ export function IntelligencePages({
                 </div>
               ))}
             </dl>
-            <h5>{moduleId === 'brain' ? '执行 / 路由链' : '实现谱系'}</h5>
+            <h3>{moduleId === 'brain' ? '执行 / 路由链' : '实现谱系'}</h3>
             <ol>
               {selected.chain.map((step, index) => (
                 <li key={step}>
@@ -894,7 +888,7 @@ export function IntelligencePages({
                 </li>
               ))}
             </ol>
-            <h5>证据与相关调用</h5>
+            <h3>证据与相关调用</h3>
             <div className="sa2-evidence-chips">
               {selected.evidence.map((item) => (
                 <button key={item} onClick={() => onAction(`打开 Demo 证据 ${item}`)}>
@@ -927,11 +921,17 @@ export function IntelligencePages({
           </article>
         ) : (
           <article className="sa2-depth-card sa2-inline-empty">
-            <h4>没有匹配的演示对象</h4>
+            <h2>没有匹配的演示对象</h2>
             <p>当前筛选返回 0 条结果；详情和对象操作已清空。</p>
           </article>
         )}
       </div>
+      <IntelCanvas
+        variant={page.variant}
+        objects={page.objects}
+        selectedId={selected?.id}
+        onSelect={setSelectedId}
+      />
     </section>
   );
 }

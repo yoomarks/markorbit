@@ -95,6 +95,10 @@ export function SuperAdminV2({
   const inspectorReturnFocus = useRef<HTMLElement | null>(null);
   const hadDialog = useRef(false);
   const route = resolveRoute(path);
+  const isModuleOverview = route.page.id === route.module.pages[0]?.id;
+  const showMetricStrip =
+    (route.module.id === 'data' && ['overview', 'coverage', 'storage'].includes(route.page.id)) ||
+    (route.module.id === 'knowledge' && ['overview', 'supply-health'].includes(route.page.id));
 
   useEffect(() => {
     if (!useBrowserHistory || typeof window === 'undefined') return undefined;
@@ -204,7 +208,7 @@ export function SuperAdminV2({
 
   return (
     <div
-      className={`sa2 sa2--${route.module.id}-${route.page.id}`}
+      className={`sa2 sa2--${route.module.id}-${route.page.id}${isModuleOverview ? ' sa2--module-overview' : ''}`}
       style={{ '--module-accent': route.module.accent } as CSSProperties}
     >
       <a className="sa2-skip" href="#sa2-main">
@@ -318,7 +322,7 @@ export function SuperAdminV2({
             </span>
             <div>
               <p>{route.module.number} · PLATFORM CONTROL</p>
-              <h1>{route.module.label}</h1>
+              <strong className="sa2-module-name">{route.module.label}</strong>
               <span>{route.module.description}</span>
             </div>
           </div>
@@ -347,10 +351,9 @@ export function SuperAdminV2({
         </nav>
 
         <aside className="sa2-review-tools" aria-label="Demo 评审工具">
-          <div>
-            <span>DEMO REVIEW TOOLS</span>
-            <strong>界面状态模拟</strong>
-            <small>仅切换 fixture 展示状态，不代表 owner 的真实运行状态。</small>
+          <div className="sa2-review-tools-summary">
+            <strong>Demo 评审工具</strong>
+            <small>状态模拟不代表 owner 的真实运行状态</small>
           </div>
           <button
             className="sa2-review-tools-toggle"
@@ -394,37 +397,18 @@ export function SuperAdminV2({
               <button onClick={() => setDeepLinkContext(null)}>结束上下文</button>
             </aside>
           )}
-          <div className="sa2-page-intro">
-            <div>
-              <p className="sa2-kicker">
-                {route.module.shortLabel} / {route.page.id}
-              </p>
-              <h2>{route.page.label}</h2>
-              <p>当前为可交互设计评审页。对象状态、来源和受保护边界均显式展示。</p>
-            </div>
-          </div>
-
-          <StateBoundary state={reviewState} onRetry={() => setReviewState('success')}>
+          <StateBoundary
+            state={reviewState}
+            pageTitle={route.page.label}
+            onRetry={() => setReviewState('success')}
+          >
             {reviewState === 'partial' && (
               <div className="sa2-partial" role="status">
                 <strong>部分数据不可用</strong>
                 <span>演示：一个 owner projection 已过期；其余数据保持可见并带来源。</span>
               </div>
             )}
-            {![
-              'overview',
-              'operations',
-              'integrations',
-              'workspaces',
-              'users',
-              'products',
-              'brain',
-              'capabilities',
-              'billing',
-              'governance'
-            ].includes(route.module.id) && (
-              <MetricStrip module={route.module} pageId={route.page.id} />
-            )}
+            {showMetricStrip && <MetricStrip module={route.module} pageId={route.page.id} />}
             <ModuleWorkbench
               module={route.module}
               pageId={route.page.id}
@@ -491,10 +475,12 @@ export function SuperAdminV2({
 
 function StateBoundary({
   state,
+  pageTitle,
   onRetry,
   children
 }: {
   state: ReviewState;
+  pageTitle: string;
   onRetry: () => void;
   children: ReactNode;
 }) {
@@ -506,7 +492,8 @@ function StateBoundary({
         <div className="sa2-skeleton wide" />
         <div className="sa2-skeleton" />
         <div className="sa2-skeleton cards" />
-        <h3>{title}</h3>
+        <h1>{pageTitle}</h1>
+        <h2>{title}</h2>
         <p>{description}</p>
       </div>
     );
@@ -516,7 +503,8 @@ function StateBoundary({
       role={state === 'error' ? 'alert' : 'status'}
     >
       <span aria-hidden="true">{state === 'permission' ? '⌾' : state === 'error' ? '!' : '○'}</span>
-      <h3>{title}</h3>
+      <h1>{pageTitle}</h1>
+      <h2>{title}</h2>
       <p>{description}</p>
       {state === 'error' && (
         <button className="sa2-button" onClick={onRetry}>

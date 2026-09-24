@@ -78,7 +78,7 @@ function PageShell({
       <header className="sa2-depth-head">
         <div>
           <span>{eyebrow}</span>
-          <h3>{title}</h3>
+          <h1>{title}</h1>
           <p>{description}</p>
         </div>
         {action}
@@ -357,7 +357,7 @@ function PackagesPage({ query, setQuery, onAction }: DataEnginePagesProps) {
                 <dd>CP-{selected[0].slice(-4)}1</dd>
               </div>
             </dl>
-            <h4>内部文件</h4>
+            <h2>内部文件</h2>
             {[
               'manifest.json · 12 KB',
               'applications.parquet · 12.8 GB',
@@ -392,7 +392,7 @@ function PackagesPage({ query, setQuery, onAction }: DataEnginePagesProps) {
           </article>
         ) : (
           <article className="sa2-depth-card sa2-inline-empty">
-            <h4>没有匹配的数据包</h4>
+            <h2>没有匹配的数据包</h2>
             <p>详情与对象操作已清空。</p>
           </article>
         )}
@@ -491,7 +491,7 @@ function JobsPage({
               <b>{selected[1]}</b>
             </div>
             <div className="sa2-checkpoints">
-              <h4>阶段与检查点</h4>
+              <h2>阶段与检查点</h2>
               {['Fetch', 'Normalize', 'Validate', 'Publish'].map((step, index) => (
                 <div key={step}>
                   <span>{index + 1}</span>
@@ -535,7 +535,7 @@ function JobsPage({
           </article>
         ) : (
           <article className="sa2-depth-card sa2-inline-empty" data-testid="data-jobs-empty">
-            <h4>没有匹配的运行</h4>
+            <h2>没有匹配的运行</h2>
             <p>当前筛选返回 0 条 Demo 任务；详情和对象操作已清空。</p>
           </article>
         )}
@@ -643,7 +643,7 @@ function QueryPage({ onAction }: DataEnginePagesProps) {
                   title={`案件 ${result.id}`}
                   badge="Source fact"
                 />
-                <h4>{result.mark}</h4>
+                <h2>{result.mark}</h2>
                 <p>{result.jurisdiction} · source fact</p>
                 <dl>
                   <div>
@@ -667,7 +667,7 @@ function QueryPage({ onAction }: DataEnginePagesProps) {
             ))
           ) : (
             <div className="sa2-inline-empty" data-testid="data-query-empty">
-              <h4>没有匹配的演示案件</h4>
+              <h2>没有匹配的演示案件</h2>
               <p>输入、辖区和查询字段已执行；0 条结果不会回退到预置对象。</p>
             </div>
           )}
@@ -697,7 +697,7 @@ function StoragePage({ onAction }: DataEnginePagesProps) {
         ].map((item) => (
           <article className="sa2-depth-card" key={item[0]}>
             <span className="sa2-storage-icon">▱</span>
-            <h3>{item[0]}</h3>
+            <h2>{item[0]}</h2>
             <p>{item[1]}</p>
             <div className="sa2-capacity">
               <i>
@@ -800,7 +800,7 @@ function CardTitle({ label, title, badge }: { label: string; title: string; badg
     <header className="sa2-card-title">
       <div>
         <span>{label}</span>
-        <h4>{title}</h4>
+        <h2>{title}</h2>
       </div>
       {badge && <b>{badge}</b>}
     </header>

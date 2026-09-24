@@ -1236,7 +1236,7 @@ export function OrganizationPages({
       <header className="sa2-depth-head">
         <div>
           <span>{page.eyebrow}</span>
-          <h3>{page.title}</h3>
+          <h1>{page.title}</h1>
           <p>{page.description}</p>
         </div>
         <button className="sa2-button" onClick={() => onAction(page.action, page.protected)}>
@@ -1252,18 +1252,12 @@ export function OrganizationPages({
           </article>
         ))}
       </div>
-      <OrgCanvas
-        variant={page.variant}
-        objects={page.objects}
-        selectedId={selected?.id}
-        onSelect={setSelectedId}
-      />
       <div className="sa2-operator-workspace">
         <article className="sa2-depth-card sa2-object-browser">
           <header>
             <div>
               <span>{page.objectLabel.toUpperCase()}</span>
-              <h4>{page.objectLabel}列表</h4>
+              <h2>{page.objectLabel}列表</h2>
             </div>
             <b>{visible.length} DEMO</b>
           </header>
@@ -1311,7 +1305,7 @@ export function OrganizationPages({
             <header>
               <div>
                 <span>SELECTED {page.objectLabel.toUpperCase()}</span>
-                <h4>{selected.name}</h4>
+                <h2>{selected.name}</h2>
               </div>
               <b>{selected.status}</b>
             </header>
@@ -1327,7 +1321,7 @@ export function OrganizationPages({
                 </div>
               ))}
             </dl>
-            <h5>真实关系与来源</h5>
+            <h3>真实关系与来源</h3>
             <ol>
               {selected.related.map((relation, index) => (
                 <li key={relation}>
@@ -1360,11 +1354,17 @@ export function OrganizationPages({
           </article>
         ) : (
           <article className="sa2-depth-card sa2-inline-empty">
-            <h4>没有匹配的演示对象</h4>
+            <h2>没有匹配的演示对象</h2>
             <p>当前筛选返回 0 条结果；详情和对象操作已清空。</p>
           </article>
         )}
       </div>
+      <OrgCanvas
+        variant={page.variant}
+        objects={page.objects}
+        selectedId={selected?.id}
+        onSelect={setSelectedId}
+      />
     </section>
   );
 }

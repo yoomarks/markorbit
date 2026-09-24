@@ -99,6 +99,18 @@ export const SuperAdminV222UnknownRoute = () => (
   <SuperAdminV2 initialPath="/super-admin-v2/nonexisting/module" useBrowserHistory={false} />
 );
 
+export const SuperAdminV223UsageHierarchy = () => (
+  <SuperAdminV2 initialPath="/super-admin-v2/overview/usage" useBrowserHistory={false} />
+);
+
+export const SuperAdminV223TaskHierarchy = () => (
+  <SuperAdminV2 initialPath="/super-admin-v2/data/jobs" useBrowserHistory={false} />
+);
+
+export const SuperAdminV223EvidenceHierarchy = () => (
+  <SuperAdminV2 initialPath="/super-admin-v2/knowledge/evidence" useBrowserHistory={false} />
+);
+
 export const SuperAdminV2Permission = () => (
   <SuperAdminV2
     initialPath="/super-admin-v2/governance/risk"

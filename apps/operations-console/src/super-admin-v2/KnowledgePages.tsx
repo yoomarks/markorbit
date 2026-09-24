@@ -208,7 +208,7 @@ function Shell({
       <header className="sa2-depth-head">
         <div>
           <span>{eyebrow}</span>
-          <h3>{title}</h3>
+          <h1>{title}</h1>
           <p>{description}</p>
         </div>
         {action}
@@ -223,7 +223,7 @@ function Head({ label, title, badge }: { label: string; title: string; badge?: s
     <header className="sa2-card-title">
       <div>
         <span>{label}</span>
-        <h4>{title}</h4>
+        <h2>{title}</h2>
       </div>
       {badge && <b>{badge}</b>}
     </header>
@@ -249,7 +249,7 @@ function Overview({ records, onSelect }: KnowledgePagesProps) {
         {stages.map((stage, index) => (
           <article key={stage[0]}>
             <span>{index + 1}</span>
-            <h4>{stage[0]}</h4>
+            <h2>{stage[0]}</h2>
             <strong>{stage[1]}</strong>
             <small>{stage[2]}</small>
             {index < stages.length - 1 && <b>→</b>}
@@ -370,7 +370,7 @@ function Sources({ query, setQuery, onAction }: KnowledgePagesProps) {
                 <dd>2026.09 · 4 小时前验证</dd>
               </div>
             </dl>
-            <h4>来源关系</h4>
+            <h2>来源关系</h2>
             <div className="sa2-source-graph">
               <span>Publisher</span>
               <b>EUIPO</b>
@@ -996,7 +996,7 @@ function Search({ query, setQuery, onAction }: KnowledgePagesProps) {
             <article className="sa2-depth-card sa2-search-hit" key={row.id}>
               <span>{index + 1}</span>
               <div>
-                <h4>{row.title}</h4>
+                <h2>{row.title}</h2>
                 <p>{row.summary}</p>
                 <button onClick={() => onAction(`在本地打开 Demo 来源 ${row.locator}`)}>
                   {row.locator}
@@ -1010,7 +1010,7 @@ function Search({ query, setQuery, onAction }: KnowledgePagesProps) {
               className="sa2-depth-card sa2-inline-empty"
               data-testid="knowledge-search-empty"
             >
-              <h4>没有匹配的演示知识</h4>
+              <h2>没有匹配的演示知识</h2>
               <p>查询词和来源筛选已执行；0 条结果不会显示预置命中。</p>
             </article>
           )}
