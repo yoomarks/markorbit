@@ -62,7 +62,7 @@ interface ControlPlanePagesProps {
   query: string;
   setQuery: (value: string) => void;
   onAction: (label: string, protectedAction?: boolean) => void;
-  onDeepLink?: (targetPath: string, sourceId: string) => void;
+  onDeepLink?: (targetPath: string, sourceId: string, targetObjectId: string) => void;
   focusObjectId?: string | undefined;
 }
 
@@ -1087,7 +1087,9 @@ export function ControlPlanePages({
               {moduleId === 'overview' && pageId === 'alerts' && selected.id === 'ALT-7718' && (
                 <button
                   className="sa2-button"
-                  onClick={() => onDeepLink?.('/super-admin-v2/knowledge/transforms', selected.id)}
+                  onClick={() =>
+                    onDeepLink?.('/super-admin-v2/knowledge/transforms', selected.id, 'CONV-9813')
+                  }
                 >
                   打开关联处理页面
                 </button>

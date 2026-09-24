@@ -24,9 +24,10 @@ describe('Super Admin V2 navigation catalog', () => {
     }
   });
 
-  it('falls back safely for unknown paths and never invents a module', () => {
+  it('marks unknown paths invalid while retaining a safe navigation fallback', () => {
+    expect(resolveRoute('/not-super-admin').isValid).toBe(false);
+    expect(resolveRoute('/super-admin-v2/missing/page').isValid).toBe(false);
     expect(routeFor(resolveRoute('/not-super-admin').module)).toBe(DEFAULT_ROUTE);
-    expect(routeFor(resolveRoute('/super-admin-v2/missing/page').module)).toBe(DEFAULT_ROUTE);
   });
 
   it('provides explicitly labelled fixtures and module-specific review evidence', () => {

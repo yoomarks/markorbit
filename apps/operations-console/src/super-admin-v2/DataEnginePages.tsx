@@ -138,7 +138,7 @@ function OverviewPage({ records, onSelect }: DataEnginePagesProps) {
   );
 }
 
-function CoveragePage({ records, onSelect }: DataEnginePagesProps) {
+function CoveragePage({ records, onSelect, onAction }: DataEnginePagesProps) {
   const columns = ['案件', '事件', '权利人', '图样', '分类'];
   return (
     <PageShell
@@ -151,7 +151,7 @@ function CoveragePage({ records, onSelect }: DataEnginePagesProps) {
         <div className="sa2-matrix-toolbar">
           <b>4 个司法辖区</b>
           <span>时间范围：2012–至今</span>
-          <button>导出缺口清单</button>
+          <button onClick={() => onAction('生成本地 Demo 缺口清单')}>生成本地 Demo 缺口清单</button>
         </div>
         <div className="sa2-coverage-matrix" role="table" aria-label="数据覆盖矩阵">
           <div className="head">辖区</div>
@@ -186,6 +186,18 @@ function CoveragePage({ records, onSelect }: DataEnginePagesProps) {
 }
 
 function SourcesPage({ records, onSelect, onAction }: DataEnginePagesProps) {
+  const [connectionType, setConnectionType] = useState('全部类型');
+  const [jurisdiction, setJurisdiction] = useState('全球');
+  const visible = records
+    .map((record, index) => ({ record, index }))
+    .filter(({ index }) => {
+      const type = index % 2 ? 'API' : '文件投递';
+      const country = ['CN', 'US', 'EU', 'WO'][index] ?? 'WO';
+      return (
+        (connectionType === '全部类型' || connectionType === type) &&
+        (jurisdiction === '全球' || jurisdiction === country)
+      );
+    });
   return (
     <PageShell
       pageId="sources"
@@ -202,7 +214,10 @@ function SourcesPage({ records, onSelect, onAction }: DataEnginePagesProps) {
         <div className="sa2-source-rail">
           <label>
             连接类型
-            <select>
+            <select
+              value={connectionType}
+              onChange={(event) => setConnectionType(event.target.value)}
+            >
               <option>全部类型</option>
               <option>API</option>
               <option>文件投递</option>
@@ -210,7 +225,7 @@ function SourcesPage({ records, onSelect, onAction }: DataEnginePagesProps) {
           </label>
           <label>
             司法辖区
-            <select>
+            <select value={jurisdiction} onChange={(event) => setJurisdiction(event.target.value)}>
               <option>全球</option>
               <option>CN</option>
               <option>US</option>
@@ -223,7 +238,7 @@ function SourcesPage({ records, onSelect, onAction }: DataEnginePagesProps) {
           </div>
         </div>
         <div className="sa2-connection-list">
-          {records.map((record, index) => (
+          {visible.map(({ record, index }) => (
             <article key={record.id}>
               <button className="sa2-connection-main" onClick={() => onSelect(record)}>
                 <span className="sa2-source-mark">{['CN', 'US', 'EU', 'WO'][index]}</span>
@@ -249,6 +264,7 @@ function SourcesPage({ records, onSelect, onAction }: DataEnginePagesProps) {
               <button onClick={() => onAction(`${record.name} 连接测试`)}>测试连接</button>
             </article>
           ))}
+          {!visible.length && <p className="sa2-inline-empty">没有匹配的 Demo 数据源连接。</p>}
         </div>
       </div>
     </PageShell>
@@ -258,6 +274,7 @@ function SourcesPage({ records, onSelect, onAction }: DataEnginePagesProps) {
 function PackagesPage({ query, setQuery, onAction }: DataEnginePagesProps) {
   const [selectedId, setSelectedId] = useState<string>(packages[0][0]);
   const [qualityFilter, setQualityFilter] = useState('全部质量状态');
+  const [metadataFile, setMetadataFile] = useState<string | null>(null);
   const visible = packages.filter(
     (item) =>
       (qualityFilter === '全部质量状态' || item[4] === qualityFilter) &&
@@ -266,6 +283,7 @@ function PackagesPage({ query, setQuery, onAction }: DataEnginePagesProps) {
   const selected = visible.find((item) => item[0] === selectedId) ?? visible[0];
   useEffect(() => {
     if (selected && selected[0] !== selectedId) setSelectedId(selected[0]);
+    setMetadataFile(null);
   }, [selected, selectedId]);
   return (
     <PageShell
@@ -347,9 +365,26 @@ function PackagesPage({ query, setQuery, onAction }: DataEnginePagesProps) {
             ].map((file) => (
               <p className="sa2-file-row" key={file}>
                 {file}
-                <button>查看元数据</button>
+                <button
+                  aria-label={`查看 ${file.split(' · ')[0]} 元数据`}
+                  onClick={() => setMetadataFile(file)}
+                >
+                  查看元数据
+                </button>
               </p>
             ))}
+            {metadataFile && (
+              <section className="sa2-inline-detail" data-testid="data-package-file-metadata">
+                <CardTitle
+                  label="FILE METADATA · DEMO"
+                  title={metadataFile.split(' · ')[0] ?? metadataFile}
+                />
+                <p>
+                  Package <b>{selected[0]}</b> · {metadataFile.split(' · ')[1]}
+                </p>
+                <p>本地 fixture 元数据；未读取对象存储或 owner API。</p>
+              </section>
+            )}
             <div className="sa2-callout warning">
               <b>{selected[4] === 'Ready' ? '当前无阻断问题' : `${selected[4]} · 需 owner 审阅`}</b>
               <span>质量状态来自 Demo fixture；不在聚合后台直接改写。</span>
@@ -536,6 +571,7 @@ function QueryPage({ onAction }: DataEnginePagesProps) {
   const [jurisdiction, setJurisdiction] = useState('US · USPTO');
   const [field, setField] = useState('Application number');
   const [value, setValue] = useState('87342156');
+  const [eventTime, setEventTime] = useState('不限');
   const [submitted, setSubmitted] = useState({ jurisdiction, field, value });
   const results = useMemo(() => {
     const needle = submitted.value.trim().toLowerCase();
@@ -580,7 +616,7 @@ function QueryPage({ onAction }: DataEnginePagesProps) {
           </label>
           <label>
             事件时间
-            <select>
+            <select value={eventTime} onChange={(event) => setEventTime(event.target.value)}>
               <option>不限</option>
               <option>最近 12 个月</option>
             </select>
@@ -596,7 +632,9 @@ function QueryPage({ onAction }: DataEnginePagesProps) {
           </button>
         </article>
         <article className="sa2-depth-card sa2-query-result">
-          <p className="sa2-result-count">{results.length} 条演示结果 · 本地确定性 fixture</p>
+          <p className="sa2-result-count">
+            {results.length} 条演示结果 · {eventTime} · 本地确定性 fixture
+          </p>
           {results.length ? (
             results.map((result) => (
               <section key={result.id} className="sa2-query-record">
@@ -691,6 +729,13 @@ function StoragePage({ onAction }: DataEnginePagesProps) {
 }
 
 function SettingsPage({ onAction }: DataEnginePagesProps) {
+  const [section, setSection] = useState('组件版本');
+  const settingsCopy: Record<string, string> = {
+    组件版本: '组件与版本',
+    运行参数: '只读运行参数',
+    保留策略: '数据保留策略',
+    访问边界: '访问与 owner 边界'
+  };
   return (
     <PageShell
       pageId="settings"
@@ -708,13 +753,22 @@ function SettingsPage({ onAction }: DataEnginePagesProps) {
     >
       <div className="sa2-settings-layout">
         <nav className="sa2-settings-nav" aria-label="设置分组">
-          <button className="is-active">组件版本</button>
-          <button>运行参数</button>
-          <button>保留策略</button>
-          <button>访问边界</button>
+          {Object.keys(settingsCopy).map((item) => (
+            <button
+              className={item === section ? 'is-active' : ''}
+              key={item}
+              onClick={() => setSection(item)}
+            >
+              {item}
+            </button>
+          ))}
         </nav>
         <article className="sa2-depth-card sa2-config-list">
-          <CardTitle label="READ-ONLY SNAPSHOT" title="组件与版本" badge="Owner managed" />
+          <CardTitle
+            label="READ-ONLY SNAPSHOT"
+            title={settingsCopy[section] ?? section}
+            badge="Owner managed"
+          />
           {[
             ['ingestion-api', 'v2.14.3', 'Healthy'],
             ['normalizer-worker', 'v4.8.1', 'Healthy'],

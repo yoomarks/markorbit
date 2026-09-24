@@ -22,6 +22,7 @@ interface KnowledgePagesProps {
   setQuery: (value: string) => void;
   onSelect: (record: DemoRecord) => void;
   onAction: (label: string, protectedAction?: boolean) => void;
+  focusObjectId?: string | undefined;
 }
 
 const sourceRows = [
@@ -103,7 +104,38 @@ const knowledgeHits = [
     locator: 'USPTO TMEP · §1202.04',
     summary: '判断标志是否发挥来源识别功能并保留实际使用语境。',
     currentness: '当前'
+  },
+  {
+    id: 'KH-EU-ARCHIVE-1',
+    title: 'Distinctive character · 2025 archive',
+    source: 'EUIPO',
+    locator: 'EUIPO Guidelines 2025 · §4.1 · Page 79',
+    summary: '历史版本仅用于版本比较，不代表当前适用知识。',
+    currentness: '历史'
   }
+] as const;
+
+const rawArtifacts = [
+  ['RAW-88421', 'EUIPO', 'guidelines-2026-09.pdf', 'sha256: a83…91f', '可转换'],
+  ['RAW-88420', 'EUIPO', 'guidelines-2026-06.pdf', 'sha256: 88d…4a2', '历史版本'],
+  ['RAW-88419', 'EUIPO', 'annex-17.html', 'sha256: 1b7…002', '可转换'],
+  ['RAW-88418', 'EUIPO', 'decision-1142.pdf', 'sha256: 74a…21c', '重复'],
+  ['RAW-99214', 'CNIPA', 'gazette-2026-09-23.pdf', 'sha256: c42…18a', '可转换'],
+  ['RAW-99213', 'CNIPA', 'examination-guide-v4.pdf', 'sha256: d81…1c4', '可转换'],
+  ['RAW-77104', 'USPTO', 'tmep-2026-08.pdf', 'sha256: f18…02c', '可转换']
+] as const;
+
+const transformRows = [
+  ['RAW-88421', 'Eligible', 'RAW-88421', 'pdf-evidence-v3', '未分配', '等待派发'],
+  ['RAW-88420', 'Eligible', 'RAW-88420', 'pdf-evidence-v3', '未分配', '等待派发'],
+  ['CONV-9813', 'Queued', 'RAW-88413', 'html-clean-v2', 'worker-convert-02', 'REC-9813'],
+  ['CONV-9812', 'Queued', 'RAW-88412', 'pdf-evidence-v3', '等待 Worker', '尚未生成'],
+  ['CONV-9805', 'Converting', 'RAW-88405', 'pdf-evidence-v3', 'worker-convert-07', '等待 receipt'],
+  ['CONV-9804', 'Converting', 'RAW-88404', 'html-clean-v2', 'worker-convert-03', '等待 receipt'],
+  ['CONV-9797', 'Review', 'RAW-88397', 'pdf-evidence-v3', 'worker-convert-07', 'REC-9797'],
+  ['CONV-9796', 'Review', 'RAW-88396', 'html-clean-v2', 'worker-convert-03', 'REC-9796'],
+  ['CONV-9789', 'Failed', 'RAW-88389', 'pdf-evidence-v3', 'worker-convert-02', '隔离'],
+  ['CONV-9788', 'Failed', 'RAW-88388', 'html-clean-v2', 'worker-convert-03', '隔离']
 ] as const;
 
 const readyPackages = [
@@ -264,9 +296,14 @@ function Overview({ records, onSelect }: KnowledgePagesProps) {
 }
 
 function Sources({ query, setQuery, onAction }: KnowledgePagesProps) {
-  const rows = sourceRows.filter((row) =>
-    row.join(' ').toLowerCase().includes(query.toLowerCase())
+  const [selectedId, setSelectedId] = useState<string>(sourceRows[0][0]);
+  const [approvalFilter, setApprovalFilter] = useState('全部批准状态');
+  const rows = sourceRows.filter(
+    (row) =>
+      row.join(' ').toLowerCase().includes(query.toLowerCase()) &&
+      (approvalFilter === '全部批准状态' || row[3] === approvalFilter)
   );
+  const selected = rows.find((row) => row[0] === selectedId) ?? rows[0];
   return (
     <Shell
       pageId="sources"
@@ -288,15 +325,22 @@ function Sources({ query, setQuery, onAction }: KnowledgePagesProps) {
               onChange={(event) => setQuery(event.target.value)}
               placeholder="来源名、ID 或类型"
             />
-            <select>
+            <select
+              value={approvalFilter}
+              onChange={(event) => setApprovalFilter(event.target.value)}
+            >
               <option>全部批准状态</option>
               <option>已批准</option>
               <option>待审核</option>
             </select>
           </div>
           <div className="sa2-registry-list">
-            {rows.map((row, index) => (
-              <button className={index === 0 ? 'is-active' : ''} key={row[0]}>
+            {rows.map((row) => (
+              <button
+                className={row[0] === selected?.[0] ? 'is-active' : ''}
+                key={row[0]}
+                onClick={() => setSelectedId(row[0])}
+              >
                 <span>
                   <strong>{row[1]}</strong>
                   <small>
@@ -309,40 +353,46 @@ function Sources({ query, setQuery, onAction }: KnowledgePagesProps) {
             ))}
           </div>
         </article>
-        <article className="sa2-depth-card sa2-source-profile">
-          <Head label="SOURCE PROFILE" title="EUIPO Guidelines" badge="已批准" />
-          <dl>
-            <div>
-              <dt>Canonical URL</dt>
-              <dd>euipo.europa.eu/guidelines</dd>
+        {selected && (
+          <article className="sa2-depth-card sa2-source-profile">
+            <Head label="SOURCE PROFILE" title={selected[1]} badge={selected[3]} />
+            <dl>
+              <div>
+                <dt>Canonical URL</dt>
+                <dd>euipo.europa.eu/guidelines</dd>
+              </div>
+              <div>
+                <dt>覆盖</dt>
+                <dd>{selected[2]} · Demo source boundary</dd>
+              </div>
+              <div>
+                <dt>当前版本</dt>
+                <dd>2026.09 · 4 小时前验证</dd>
+              </div>
+            </dl>
+            <h4>来源关系</h4>
+            <div className="sa2-source-graph">
+              <span>Publisher</span>
+              <b>EUIPO</b>
+              <i>→</i>
+              <span>Collection plan</span>
+              <b>PLAN-EU-12</b>
+              <i>→</i>
+              <span>Evidence sets</span>
             </div>
-            <div>
-              <dt>覆盖</dt>
-              <dd>EU · 法规 / 审查实践</dd>
-            </div>
-            <div>
-              <dt>当前版本</dt>
-              <dd>2026.09 · 4 小时前验证</dd>
-            </div>
-          </dl>
-          <h4>来源关系</h4>
-          <div className="sa2-source-graph">
-            <span>Publisher</span>
-            <b>EUIPO</b>
-            <i>→</i>
-            <span>Collection plan</span>
-            <b>PLAN-EU-12</b>
-            <i>→</i>
-            <span>Evidence sets</span>
-          </div>
-          <button onClick={() => onAction('重新评估 EUIPO 来源')}>运行只读来源评估</button>
-        </article>
+            <button onClick={() => onAction(`重新评估 ${selected[0]} 来源`)}>
+              运行只读来源评估
+            </button>
+          </article>
+        )}
       </div>
     </Shell>
   );
 }
 
 function Plans({ onAction }: KnowledgePagesProps) {
+  const [strategy, setStrategy] = useState('diff');
+  const [output, setOutput] = useState('法规文档 + locator');
   return (
     <Shell
       pageId="plans"
@@ -381,7 +431,7 @@ function Plans({ onAction }: KnowledgePagesProps) {
           <Head label="PLAN DETAIL" title="PLAN-EU-12" badge="已启用" />
           <label>
             策略
-            <select defaultValue="diff">
+            <select value={strategy} onChange={(event) => setStrategy(event.target.value)}>
               <option value="diff">版本差异采集</option>
               <option>全量快照</option>
             </select>
@@ -392,7 +442,7 @@ function Plans({ onAction }: KnowledgePagesProps) {
           </label>
           <label>
             输出
-            <select>
+            <select value={output} onChange={(event) => setOutput(event.target.value)}>
               <option>法规文档 + locator</option>
             </select>
           </label>
@@ -400,7 +450,10 @@ function Plans({ onAction }: KnowledgePagesProps) {
             <b>演示编辑器</b>
             <span>更改只用于产品评审；保存会进入受保护确认。</span>
           </div>
-          <button className="sa2-button" onClick={() => onAction('保存采集计划变更', true)}>
+          <button
+            className="sa2-button"
+            onClick={() => onAction(`保存采集计划变更 · ${strategy} · ${output}`, true)}
+          >
             审阅计划变更
           </button>
         </article>
@@ -423,6 +476,14 @@ function Plans({ onAction }: KnowledgePagesProps) {
 }
 
 function Runs({ onAction }: KnowledgePagesProps) {
+  const runs = [
+    ['RUN-9821', '运行中'],
+    ['RUN-9818', '失败'],
+    ['RUN-9814', '已完成'],
+    ['RUN-9809', '已完成']
+  ] as const;
+  const [selectedId, setSelectedId] = useState<string>(runs[0][0]);
+  const selected = runs.find((row) => row[0] === selectedId) ?? runs[0];
   return (
     <Shell
       pageId="runs"
@@ -432,13 +493,12 @@ function Runs({ onAction }: KnowledgePagesProps) {
     >
       <div className="sa2-run-timeline">
         <aside>
-          {[
-            ['RUN-9821', '运行中'],
-            ['RUN-9818', '失败'],
-            ['RUN-9814', '已完成'],
-            ['RUN-9809', '已完成']
-          ].map((row, index) => (
-            <button className={index === 0 ? 'is-active' : ''} key={row[0]}>
+          {runs.map((row) => (
+            <button
+              className={row[0] === selected[0] ? 'is-active' : ''}
+              key={row[0]}
+              onClick={() => setSelectedId(row[0])}
+            >
               <i />
               <span>
                 <strong>{row[0]}</strong>
@@ -449,7 +509,11 @@ function Runs({ onAction }: KnowledgePagesProps) {
           ))}
         </aside>
         <article className="sa2-depth-card">
-          <Head label="RUN TIMELINE" title="RUN-9821 · EUIPO 指南监测" badge="运行中" />
+          <Head
+            label="RUN TIMELINE"
+            title={`${selected[0]} · EUIPO 指南监测`}
+            badge={selected[1]}
+          />
           {[
             ['09:42:08', 'CollectionRun 创建', 'receipt: rcpt-443'],
             ['09:42:11', 'Job snapshot 冻结', '18 URLs'],
@@ -541,6 +605,13 @@ function Workers({ onAction }: KnowledgePagesProps) {
 }
 
 function RawFiles({ onAction }: KnowledgePagesProps) {
+  const [source, setSource] = useState('EUIPO');
+  const [artifactFilter, setArtifactFilter] = useState('可转换');
+  const visible = rawArtifacts.filter(
+    (item) => item[1] === source && (artifactFilter === '全部' || item[4] === artifactFilter)
+  );
+  const [selectedId, setSelectedId] = useState<string>(rawArtifacts[0][0]);
+  const selected = visible.find((item) => item[0] === selectedId) ?? visible[0];
   return (
     <Shell
       pageId="raw-files"
@@ -557,52 +628,92 @@ function RawFiles({ onAction }: KnowledgePagesProps) {
         <aside className="sa2-depth-card">
           <Head label="FACETS" title="库存筛选" />
           <label>
-            <input type="checkbox" defaultChecked /> 可转换 <b>8,421</b>
+            <input
+              type="radio"
+              name="raw-artifact-filter"
+              checked={artifactFilter === '可转换'}
+              onChange={() => setArtifactFilter('可转换')}
+            />{' '}
+            可转换 <b>8,421</b>
           </label>
           <label>
-            <input type="checkbox" /> 重复项 <b>326</b>
+            <input
+              type="radio"
+              name="raw-artifact-filter"
+              checked={artifactFilter === '重复'}
+              onChange={() => setArtifactFilter('重复')}
+            />{' '}
+            重复项 <b>326</b>
           </label>
           <label>
-            <input type="checkbox" /> 缺少 locator <b>18</b>
+            <input
+              type="radio"
+              name="raw-artifact-filter"
+              checked={artifactFilter === '全部'}
+              onChange={() => setArtifactFilter('全部')}
+            />{' '}
+            全部状态 <b>12,842</b>
           </label>
           <hr />
-          <button className="is-active">
-            EUIPO <b>3,282</b>
-          </button>
-          <button>
-            CNIPA <b>5,921</b>
-          </button>
-          <button>
-            USPTO <b>2,884</b>
-          </button>
+          {(
+            [
+              ['EUIPO', '3,282'],
+              ['CNIPA', '5,921'],
+              ['USPTO', '2,884']
+            ] as const
+          ).map(([name, count]) => (
+            <button
+              className={source === name ? 'is-active' : ''}
+              key={name}
+              onClick={() => {
+                setSource(name);
+                setSelectedId(rawArtifacts.find((item) => item[1] === name)?.[0] ?? '');
+              }}
+            >
+              {name} <b>{count}</b>
+            </button>
+          ))}
         </aside>
         <article className="sa2-depth-card">
           <Head label="RAW ARTIFACTS" title="12,842 个文件" badge="Immutable" />
-          {[
-            ['RAW-88421', 'guidelines-2026-09.pdf', 'sha256: a83…91f', '可转换'],
-            ['RAW-88420', 'guidelines-2026-06.pdf', 'sha256: 88d…4a2', '历史版本'],
-            ['RAW-88419', 'annex-17.html', 'sha256: 1b7…002', '可转换'],
-            ['RAW-88418', 'decision-1142.pdf', 'sha256: 74a…21c', '重复']
-          ].map((row) => (
-            <button className="sa2-raw-row" key={row[0]}>
+          {visible.map((row) => (
+            <button
+              className={`sa2-raw-row ${row[0] === selected?.[0] ? 'is-active' : ''}`}
+              key={row[0]}
+              onClick={() => setSelectedId(row[0])}
+            >
               <span>▤</span>
               <span>
-                <strong>{row[1]}</strong>
+                <strong>{row[2]}</strong>
                 <small>
-                  {row[0]} · {row[2]}
+                  {row[0]} · {row[3]}
                 </small>
               </span>
-              <u>{row[3]}</u>
+              <u>{row[4]}</u>
               <b>›</b>
             </button>
           ))}
         </article>
       </div>
+      {selected && (
+        <article className="sa2-depth-card sa2-inline-detail" data-testid="knowledge-raw-detail">
+          <Head label={`RAW ARTIFACT · ${selected[1]}`} title={selected[2]} badge={selected[4]} />
+          <p>
+            {selected[0]} · {selected[3]}
+          </p>
+          <p>不可变 Demo 原件；选择不会替换或写入 owner 存储。</p>
+        </article>
+      )}
     </Shell>
   );
 }
 
-function Transforms({ onAction }: KnowledgePagesProps) {
+function Transforms({ onAction, focusObjectId }: KnowledgePagesProps) {
+  const initialId = transformRows.some((row) => row[0] === focusObjectId)
+    ? focusObjectId!
+    : transformRows[4][0];
+  const [selectedId, setSelectedId] = useState(initialId);
+  const selected = transformRows.find((row) => row[0] === selectedId) ?? transformRows[4];
   return (
     <Shell
       pageId="transforms"
@@ -629,32 +740,41 @@ function Transforms({ onAction }: KnowledgePagesProps) {
               <b>{lane[1]}</b>
             </header>
             <p>{lane[2]}</p>
-            {[0, 1].map((card) => (
-              <button key={card}>
-                <strong>{index === 0 ? 'RAW-88421' : `CONV-${9821 - index * 8 - card}`}</strong>
-                <small>{['PDF text v3', 'HTML clean v2'][card]}</small>
-                <i style={{ width: `${35 + index * 12 + card * 10}%` }} />
-              </button>
-            ))}
+            {transformRows
+              .filter((row) => row[1] === lane[0])
+              .map((row, card) => (
+                <button
+                  className={row[0] === selected[0] ? 'is-active' : ''}
+                  key={row[0]}
+                  onClick={() => setSelectedId(row[0])}
+                >
+                  <strong>{row[0]}</strong>
+                  <small>{row[3]}</small>
+                  <i style={{ width: `${35 + index * 12 + card * 10}%` }} />
+                </button>
+              ))}
           </article>
         ))}
       </div>
-      <article className="sa2-depth-card sa2-receipt-strip">
-        <Head label="OUTPUT RECEIPT" title="CONV-9821" badge="处理中" />
+      <article
+        className="sa2-depth-card sa2-receipt-strip"
+        data-testid="knowledge-transform-detail"
+      >
+        <Head label="OUTPUT RECEIPT" title={selected[0]} badge={selected[1]} />
         <span>
-          Input <b>RAW-88421</b>
+          Input <b>{selected[2]}</b>
         </span>
         <i>→</i>
         <span>
-          Profile <b>pdf-evidence-v3</b>
+          Profile <b>{selected[3]}</b>
         </span>
         <i>→</i>
         <span>
-          Worker <b>worker-convert-07</b>
+          Worker <b>{selected[4]}</b>
         </span>
         <i>→</i>
         <span>
-          Output <b>等待 receipt</b>
+          Output <b>{selected[5]}</b>
         </span>
       </article>
     </Shell>
@@ -794,17 +914,19 @@ function createEvidenceDraft(): EvidenceDraft {
 function Search({ query, setQuery, onAction }: KnowledgePagesProps) {
   const [submittedQuery, setSubmittedQuery] = useState('');
   const [sources, setSources] = useState(() => new Set(['EUIPO', 'CNIPA', 'USPTO', 'WIPO']));
+  const [versionScope, setVersionScope] = useState<'current' | 'all'>('current');
   const results = useMemo(() => {
     const needle = submittedQuery.trim().toLowerCase();
     return knowledgeHits.filter(
       (hit) =>
         sources.has(hit.source) &&
+        (versionScope === 'all' || hit.currentness !== '历史') &&
         (!needle ||
           `${hit.id} ${hit.title} ${hit.source} ${hit.locator} ${hit.summary}`
             .toLowerCase()
             .includes(needle))
     );
-  }, [sources, submittedQuery]);
+  }, [sources, submittedQuery, versionScope]);
   return (
     <Shell
       pageId="search"
@@ -832,11 +954,21 @@ function Search({ query, setQuery, onAction }: KnowledgePagesProps) {
           ))}
           <hr />
           <label>
-            <input type="checkbox" defaultChecked />
+            <input
+              type="radio"
+              name="knowledge-version-scope"
+              checked={versionScope === 'current'}
+              onChange={() => setVersionScope('current')}
+            />
             仅当前版本
           </label>
           <label>
-            <input type="checkbox" />
+            <input
+              type="radio"
+              name="knowledge-version-scope"
+              checked={versionScope === 'all'}
+              onChange={() => setVersionScope('all')}
+            />
             包括历史版本
           </label>
         </aside>
@@ -1004,7 +1136,11 @@ function SupplyHealth({ onAction }: KnowledgePagesProps) {
             ['CNIPA decisions', '缺少安全 API', '未建模'],
             ['EUIPO Gazette', '新鲜度 87%', '观察']
           ].map((row) => (
-            <button className="sa2-health-alert" key={row[0]}>
+            <button
+              className="sa2-health-alert"
+              key={row[0]}
+              onClick={() => onAction(`查看 ${row[0]} 的本地 Demo 供应异常详情`)}
+            >
               <i />
               <span>
                 <strong>{row[0]}</strong>

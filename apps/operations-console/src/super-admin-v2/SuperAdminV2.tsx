@@ -35,7 +35,7 @@ const stateCopy: Record<ReviewState, [string, string]> = {
   loading: ['正在请求 owner projection', '尚未得到结果，不推断为空或健康。'],
   empty: ['当前筛选没有对象', '请求已成功，调整筛选条件可查看其他对象。'],
   partial: ['部分来源不可用', '可用对象仍显示；缺失来源不会被折叠为空。'],
-  error: ['Owner projection 连接失败', '未显示缓存结果，请重试或查看对应 owner。'],
+  error: ['Owner projection 连接失败 fixture', '未显示缓存结果；可模拟恢复页面展示状态。'],
   permission: ['缺少精确读取权限', '当前主体不能查看该 owner 数据，页面未泄露对象详情。']
 };
 
@@ -49,6 +49,22 @@ interface DeepLinkContext {
   sourcePath: string;
   sourceId: string;
   targetPath: string;
+  targetObjectId: string;
+}
+
+function contextFromLocation(): DeepLinkContext | null {
+  if (typeof window === 'undefined') return null;
+  const params = new URLSearchParams(window.location.search);
+  const sourceId = params.get('alert');
+  const targetObjectId = params.get('focus');
+  const sourcePath = params.get('return');
+  if (!sourceId || !targetObjectId || !sourcePath) return null;
+  return {
+    sourcePath,
+    sourceId,
+    targetPath: `${window.location.pathname}${window.location.search}`,
+    targetObjectId
+  };
 }
 
 export function SuperAdminV2({
@@ -56,7 +72,10 @@ export function SuperAdminV2({
   initialState = 'success',
   useBrowserHistory = true
 }: SuperAdminV2Props) {
-  const browserPath = typeof window === 'undefined' ? undefined : window.location.pathname;
+  const browserPath =
+    typeof window === 'undefined'
+      ? undefined
+      : `${window.location.pathname}${window.location.search}`;
   const [path, setPath] = useState(
     initialPath ?? browserPath ?? '/super-admin-v2/overview/platform'
   );
@@ -67,7 +86,10 @@ export function SuperAdminV2({
   const [dialog, setDialog] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [mobileNav, setMobileNav] = useState(false);
-  const [deepLinkContext, setDeepLinkContext] = useState<DeepLinkContext | null>(null);
+  const [reviewToolsOpen, setReviewToolsOpen] = useState(false);
+  const [deepLinkContext, setDeepLinkContext] = useState<DeepLinkContext | null>(() =>
+    contextFromLocation()
+  );
   const dialogReturnFocus = useRef<HTMLElement | null>(null);
   const inspectorReturnFocus = useRef<HTMLElement | null>(null);
   const hadDialog = useRef(false);
@@ -75,7 +97,14 @@ export function SuperAdminV2({
 
   useEffect(() => {
     if (!useBrowserHistory || typeof window === 'undefined') return undefined;
-    const onPopState = () => setPath(window.location.pathname);
+    const onPopState = () => {
+      const nextPath = `${window.location.pathname}${window.location.search}`;
+      setPath(nextPath);
+      setDeepLinkContext(
+        (current) =>
+          contextFromLocation() ?? (current && nextPath === current.sourcePath ? current : null)
+      );
+    };
     window.addEventListener('popstate', onPopState);
     return () => window.removeEventListener('popstate', onPopState);
   }, [useBrowserHistory]);
@@ -85,8 +114,10 @@ export function SuperAdminV2({
     setQuery('');
     setStatusFilter('全部状态');
     setMobileNav(false);
-    document.title = `${route.page.label} · ${route.module.label} · Super Admin V2`;
-  }, [path, route.module.label, route.page.label]);
+    document.title = route.isValid
+      ? `${route.page.label} · ${route.module.label} · Super Admin V2`
+      : '页面不存在 · Super Admin V2';
+  }, [path, route.isValid, route.module.label, route.page.label]);
 
   useEffect(() => {
     if (dialog) {
@@ -130,9 +161,20 @@ export function SuperAdminV2({
     }
   };
 
-  const openDeepLink = (targetPath: string, sourceId: string) => {
-    setDeepLinkContext({ sourcePath: path, sourceId, targetPath });
-    navigate(targetPath);
+  const openDeepLink = (targetPath: string, sourceId: string, targetObjectId: string) => {
+    const params = new URLSearchParams({
+      focus: targetObjectId,
+      alert: sourceId,
+      return: path.split('?')[0] ?? path
+    });
+    const addressableTarget = `${targetPath}?${params.toString()}`;
+    setDeepLinkContext({
+      sourcePath: path,
+      sourceId,
+      targetPath: addressableTarget,
+      targetObjectId
+    });
+    navigate(addressableTarget);
   };
 
   const openInspector = (record: DemoRecord) => {
@@ -147,8 +189,22 @@ export function SuperAdminV2({
     window.setTimeout(() => returnTarget?.focus(), 0);
   };
 
+  if (!route.isValid) {
+    return (
+      <main className="sa2-not-found">
+        <span>404 · SUPER ADMIN V2</span>
+        <h1>页面不存在</h1>
+        <p>当前 URL 未匹配已登记的 Super Admin 模块或页面，未回退显示其他业务内容。</p>
+        <a href="/super-admin-v2/overview/platform">返回平台总览</a>
+      </main>
+    );
+  }
+
   return (
-    <div className="sa2" style={{ '--module-accent': route.module.accent } as CSSProperties}>
+    <div
+      className={`sa2 sa2--${route.module.id}-${route.page.id}`}
+      style={{ '--module-accent': route.module.accent } as CSSProperties}
+    >
       <a className="sa2-skip" href="#sa2-main">
         跳到主要内容
       </a>
@@ -157,7 +213,7 @@ export function SuperAdminV2({
           <span className="sa2-logo" aria-hidden="true">
             <i />M
           </span>
-          <div>
+          <div className="sa2-review-tools-copy">
             <strong>MarkOrbit</strong>
             <small>SUPER ADMIN · V2</small>
           </div>
@@ -294,19 +350,32 @@ export function SuperAdminV2({
             <strong>界面状态模拟</strong>
             <small>仅切换 fixture 展示状态，不代表 owner 的真实运行状态。</small>
           </div>
-          <label htmlFor="review-state">模拟页面状态</label>
-          <select
-            id="review-state"
-            value={reviewState}
-            onChange={(event) => setReviewState(event.target.value as ReviewState)}
+          <button
+            className="sa2-review-tools-toggle"
+            aria-expanded={reviewToolsOpen}
+            onClick={() => setReviewToolsOpen((current) => !current)}
           >
-            <option value="success">成功 fixture</option>
-            <option value="partial">部分可用 fixture</option>
-            <option value="loading">加载中 fixture</option>
-            <option value="empty">无数据 fixture</option>
-            <option value="error">连接失败 fixture</option>
-            <option value="permission">无权限 fixture</option>
-          </select>
+            {reviewToolsOpen ? '收起评审工具' : '展开评审工具'}
+          </button>
+          <div
+            className={
+              reviewToolsOpen ? 'sa2-review-tools-controls is-open' : 'sa2-review-tools-controls'
+            }
+          >
+            <label htmlFor="review-state">模拟页面状态</label>
+            <select
+              id="review-state"
+              value={reviewState}
+              onChange={(event) => setReviewState(event.target.value as ReviewState)}
+            >
+              <option value="success">成功 fixture</option>
+              <option value="partial">部分可用 fixture</option>
+              <option value="loading">加载中 fixture</option>
+              <option value="empty">无数据 fixture</option>
+              <option value="error">连接失败 fixture</option>
+              <option value="permission">无权限 fixture</option>
+            </select>
+          </div>
         </aside>
 
         <main id="sa2-main" tabIndex={-1}>
@@ -367,9 +436,11 @@ export function SuperAdminV2({
               onAction={action}
               onDeepLink={openDeepLink}
               focusObjectId={
-                deepLinkContext && path === deepLinkContext.sourcePath
-                  ? deepLinkContext.sourceId
-                  : undefined
+                deepLinkContext && path === deepLinkContext.targetPath
+                  ? deepLinkContext.targetObjectId
+                  : deepLinkContext && path === deepLinkContext.sourcePath
+                    ? deepLinkContext.sourceId
+                    : undefined
               }
             />
           </StateBoundary>
@@ -447,7 +518,7 @@ function StateBoundary({
       <p>{description}</p>
       {state === 'error' && (
         <button className="sa2-button" onClick={onRetry}>
-          重试连接
+          模拟恢复页面状态
         </button>
       )}
     </section>
@@ -600,7 +671,7 @@ interface WorkbenchProps {
   setStatusFilter: (value: string) => void;
   onSelect: (record: DemoRecord) => void;
   onAction: (label: string, protectedAction?: boolean) => void;
-  onDeepLink: (targetPath: string, sourceId: string) => void;
+  onDeepLink: (targetPath: string, sourceId: string, targetObjectId: string) => void;
   focusObjectId?: string | undefined;
 }
 

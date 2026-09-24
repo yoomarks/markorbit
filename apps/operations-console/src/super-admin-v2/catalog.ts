@@ -261,8 +261,13 @@ export const DEFAULT_ROUTE = '/super-admin-v2/overview/platform';
 const fallbackModule = adminModules[0] as AdminModule;
 const fallbackPage = fallbackModule.pages[0] as SecondaryPage;
 
-export function resolveRoute(pathname: string): { module: AdminModule; page: SecondaryPage } {
-  const [, root, moduleId, pageId] = pathname.split('/');
+export function resolveRoute(pathname: string): {
+  module: AdminModule;
+  page: SecondaryPage;
+  isValid: boolean;
+} {
+  const pathOnly = pathname.split('?')[0] ?? pathname;
+  const [, root, moduleId, pageId, extra] = pathOnly.split('/');
   const module =
     root === 'super-admin-v2'
       ? adminModules.find((candidate) => candidate.id === moduleId)
@@ -272,7 +277,12 @@ export function resolveRoute(pathname: string): { module: AdminModule; page: Sec
     resolvedModule.pages.find((candidate) => candidate.id === pageId) ??
     resolvedModule.pages[0] ??
     fallbackPage;
-  return { module: resolvedModule, page: resolvedPage };
+  const isValid =
+    root === 'super-admin-v2' &&
+    module !== undefined &&
+    resolvedModule.pages.some((candidate) => candidate.id === pageId) &&
+    extra === undefined;
+  return { module: resolvedModule, page: resolvedPage, isValid };
 }
 
 export function routeFor(module: AdminModule, page?: SecondaryPage) {

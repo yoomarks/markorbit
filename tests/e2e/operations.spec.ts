@@ -760,13 +760,101 @@ test('V2.2.1 overview alert deep-link returns with alert context restored', asyn
     .first()
     .click();
   await page.getByRole('button', { name: '打开关联处理页面' }).click();
-  await expect(page).toHaveURL(/\/super-admin-v2\/knowledge\/transforms$/);
+  await expect(page).toHaveURL(/\/super-admin-v2\/knowledge\/transforms\?/);
   await expect(page.getByText('来自告警 ALT-7718')).toBeVisible();
   await expect(page.getByRole('button', { name: '返回告警调查' })).toBeVisible();
   await page.goBack();
   await expect(page).toHaveURL(/\/super-admin-v2\/overview\/alerts$/);
   await expect(page.getByTestId('overview-alerts-detail')).toContainText('ALT-7718');
   await expect(page.getByText('已恢复告警 ALT-7718 的调查上下文')).toBeVisible();
+});
+
+test('V2.2.2 Data Package metadata controls open the selected file metadata', async ({ page }) => {
+  await page.goto(`${urls.operations}/super-admin-v2/data/packages`);
+  await page.getByRole('button', { name: /PKG-US-2409/ }).click();
+  await page.getByRole('button', { name: /查看 applications.parquet 元数据/ }).click();
+  const metadata = page.getByTestId('data-package-file-metadata');
+  await expect(metadata).toContainText('PKG-US-2409');
+  await expect(metadata).toContainText('applications.parquet');
+  await expect(metadata).toContainText('12.8 GB');
+});
+
+test('V2.2.2 Knowledge Raw Files and Transforms bind every selection to its own detail', async ({
+  page
+}) => {
+  await page.goto(`${urls.operations}/super-admin-v2/knowledge/raw-files`);
+  await page.getByRole('button', { name: /CNIPA/ }).click();
+  await expect(page.getByTestId('knowledge-raw-detail')).toContainText('CNIPA');
+  await page.getByRole('button', { name: /gazette-2026-09-23/ }).click();
+  await expect(page.getByTestId('knowledge-raw-detail')).toContainText('RAW-99214');
+  await expect(page.getByTestId('knowledge-raw-detail')).toContainText('gazette-2026-09-23');
+
+  await page.goto(`${urls.operations}/super-admin-v2/knowledge/transforms`);
+  await page.getByRole('button', { name: /CONV-9813/ }).click();
+  const transform = page.getByTestId('knowledge-transform-detail');
+  await expect(transform).toContainText('CONV-9813');
+  await expect(transform).toContainText('RAW-88413');
+  await expect(transform).toContainText('worker-convert-02');
+  await expect(transform).toContainText('REC-9813');
+});
+
+test('V2.2.2 Knowledge currentness filter is mutually exclusive and changes results', async ({
+  page
+}) => {
+  await page.goto(`${urls.operations}/super-admin-v2/knowledge/search`);
+  await expect(page.getByText('3 条演示结果')).toBeVisible();
+  await page.getByLabel('包括历史版本').check();
+  await expect(page.getByText('4 条演示结果')).toBeVisible();
+  await expect(
+    page.getByRole('heading', { name: 'Distinctive character · 2025 archive' })
+  ).toBeVisible();
+  await expect(page.getByLabel('仅当前版本')).not.toBeChecked();
+});
+
+test('V2.2.2 alert deep-link targets the exact owner object and survives refresh', async ({
+  page
+}) => {
+  await page.goto(`${urls.operations}/super-admin-v2/overview/alerts`);
+  await page
+    .getByRole('button', { name: /WIPO 转换连续失败/ })
+    .first()
+    .click();
+  await page.getByRole('button', { name: '打开关联处理页面' }).click();
+  await expect(page).toHaveURL(/knowledge\/transforms\?.*focus=CONV-9813.*alert=ALT-7718/);
+  await expect(page.getByTestId('knowledge-transform-detail')).toContainText('CONV-9813');
+  await page.reload();
+  await expect(page.getByText('来自告警 ALT-7718')).toBeVisible();
+  await expect(page.getByTestId('knowledge-transform-detail')).toContainText('CONV-9813');
+});
+
+test('V2.2.2 unknown Super Admin routes render an explicit not-found state', async ({ page }) => {
+  await page.goto(`${urls.operations}/super-admin-v2/nonexisting/module`);
+  await expect(page).toHaveURL(/\/super-admin-v2\/nonexisting\/module$/);
+  await expect(page.getByRole('heading', { name: '页面不存在' })).toBeVisible();
+  await expect(page.getByRole('link', { name: '返回平台总览' })).toHaveAttribute(
+    'href',
+    '/super-admin-v2/overview/platform'
+  );
+  await expect(page.getByText('平台总览', { exact: true })).toHaveCount(0);
+});
+
+test('V2.2.2 prioritizes the 390px evidence workspace and keeps approval text readable', async ({
+  page
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto(`${urls.operations}/super-admin-v2/knowledge/evidence`);
+  await expect(page.getByLabel('模拟页面状态')).toBeHidden();
+  const firstEvidence = page.getByRole('button', { name: /Absolute grounds/ });
+  const position = await firstEvidence.boundingBox();
+  expect(position?.y ?? Number.POSITIVE_INFINITY).toBeLessThan(720);
+  const historySize = await page
+    .locator('.sa2-review-history span')
+    .first()
+    .evaluate((element) => Number.parseFloat(getComputedStyle(element).fontSize));
+  expect(historySize).toBeGreaterThanOrEqual(13);
+  await page.getByRole('button', { name: '展开评审工具' }).click();
+  await expect(page.getByLabel('模拟页面状态')).toBeVisible();
+  await expectNoHorizontalOverflow(page);
 });
 
 test('V2.2.1 Copy ID writes the selected object ID locally and labels the effect', async ({

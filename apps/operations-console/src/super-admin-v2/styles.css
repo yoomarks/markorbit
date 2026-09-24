@@ -117,7 +117,7 @@
 }
 .sa2-brand small {
   color: #9fb4d8;
-  font-size: 9px;
+  font-size: 12px;
   letter-spacing: 0.16em;
   font-weight: 700;
 }
@@ -139,7 +139,7 @@
   border-radius: 999px;
   background: #31b99516;
   color: #88e4ce;
-  font-size: 9px;
+  font-size: 12px;
   letter-spacing: 0.12em;
   font-weight: 800;
 }
@@ -205,7 +205,7 @@
 }
 .sa2-primary-nav a small {
   color: #6d83a5;
-  font-size: 8px;
+  font-size: 12px;
   letter-spacing: 0.08em;
 }
 .sa2-operator {
@@ -226,7 +226,7 @@
   border-radius: 50%;
   background: linear-gradient(135deg, #ffd3b1, #d77956);
   color: #723a29;
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 800;
   border: 2px solid #ffffff30;
 }
@@ -235,11 +235,11 @@
   gap: 1px;
 }
 .sa2-operator strong {
-  font-size: 11px;
+  font-size: 12px;
 }
 .sa2-operator small {
   color: #8399b9;
-  font-size: 9px;
+  font-size: 12px;
 }
 .sa2-operator button {
   border: 0;
@@ -330,7 +330,7 @@
   border-radius: 8px;
   background: #f0faf6;
   color: #26745f;
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 700;
   white-space: nowrap;
 }
@@ -351,14 +351,14 @@
   background: #fff9e9;
   border-bottom: 1px solid #f3e2a8;
   color: #755d22;
-  font-size: 10px;
+  font-size: 12px;
 }
 .sa2-demo-banner span {
   padding: 3px 6px;
   border-radius: 4px;
   background: #e6aa27;
   color: #fff;
-  font-size: 8px;
+  font-size: 12px;
   font-weight: 800;
   letter-spacing: 0.1em;
 }
@@ -404,7 +404,7 @@
 }
 .sa2-title-row p {
   color: var(--module-accent);
-  font-size: 8px;
+  font-size: 12px;
   letter-spacing: 0.14em;
   font-weight: 800;
 }
@@ -414,7 +414,7 @@
 }
 .sa2-title-row div > span {
   color: var(--muted);
-  font-size: 11px;
+  font-size: 12px;
 }
 .sa2-secondary-nav {
   padding: 0 28px;
@@ -431,7 +431,7 @@
   padding: 10px 12px 13px;
   color: #697790;
   text-decoration: none;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
 }
 .sa2-secondary-nav a:hover {
@@ -470,11 +470,11 @@
 .sa2-page-intro p {
   margin: 0;
   color: var(--muted);
-  font-size: 11px;
+  font-size: 12px;
 }
 .sa2-kicker {
   color: var(--module-accent) !important;
-  font-size: 8px !important;
+  font-size: 12px !important;
   font-weight: 800;
   letter-spacing: 0.12em;
   text-transform: uppercase;
@@ -487,27 +487,27 @@
   border-bottom: 1px solid #dbe5f0;
   background: #f5f8fc;
 }
-.sa2-review-tools > div {
+.sa2-review-tools-copy {
   display: grid;
   grid-template-columns: auto auto;
   align-items: baseline;
   gap: 2px 9px;
   margin-right: auto;
 }
-.sa2-review-tools > div > span {
+.sa2-review-tools-copy > span {
   color: #547093;
-  font-size: 8px;
+  font-size: 12px;
   font-weight: 800;
   letter-spacing: 0.12em;
 }
-.sa2-review-tools > div > strong {
+.sa2-review-tools-copy > strong {
   color: #243c5f;
-  font-size: 10px;
+  font-size: 12px;
 }
-.sa2-review-tools > div > small {
+.sa2-review-tools-copy > small {
   grid-column: 1 / -1;
   color: #718096;
-  font-size: 9px;
+  font-size: 12px;
 }
 .sa2-review-tools {
   display: flex;
@@ -516,7 +516,22 @@
 }
 .sa2-review-tools label {
   color: var(--muted);
-  font-size: 10px;
+  font-size: 12px;
+  font-weight: 700;
+}
+.sa2-review-tools-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.sa2-review-tools-toggle {
+  display: none;
+  min-height: 38px;
+  padding: 0 12px;
+  border: 1px solid #cbd8e8;
+  border-radius: 8px;
+  background: #fff;
+  color: #29476f;
   font-weight: 700;
 }
 .sa2-review-tools select,
@@ -527,7 +542,7 @@
   border-radius: 8px;
   background: #fff;
   color: var(--ink);
-  font-size: 10px;
+  font-size: 12px;
 }
 .sa2-button {
   min-height: 34px;
@@ -536,7 +551,7 @@
   border-radius: 8px;
   background: var(--module-accent);
   color: #fff;
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 700;
   box-shadow: 0 5px 14px color-mix(in srgb, var(--module-accent), transparent 82%);
 }
@@ -576,10 +591,10 @@
   border-radius: 9px;
   background: #fff9e9;
   color: #72551d;
-  font-size: 10px;
+  font-size: 12px;
 }
 .sa2-partial strong {
-  font-size: 11px;
+  font-size: 12px;
 }
 .sa2-metrics {
   display: grid;
@@ -613,12 +628,12 @@
 }
 .sa2-metrics article div span {
   color: #5f6d82;
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 600;
 }
 .sa2-metrics article div small {
   color: #b3bdca;
-  font-size: 8px;
+  font-size: 12px;
   font-weight: 800;
 }
 .sa2-metrics article > strong {
@@ -631,7 +646,7 @@
 .sa2-metrics article > p {
   margin: 0;
   color: #7e8ba0;
-  font-size: 9px;
+  font-size: 12px;
 }
 .sa2-workbench {
   display: grid;
@@ -655,7 +670,7 @@
   display: block;
   margin-bottom: 3px;
   color: var(--module-accent);
-  font-size: 8px;
+  font-size: 12px;
   font-weight: 800;
   letter-spacing: 0.12em;
 }
@@ -670,7 +685,7 @@
   border-radius: 999px;
   background: color-mix(in srgb, var(--module-accent), white 91%);
   color: var(--module-accent) !important;
-  font-size: 8px !important;
+  font-size: 12px !important;
   letter-spacing: 0.04em !important;
 }
 .sa2-live i {
@@ -726,7 +741,7 @@
   color: #205aba;
 }
 .sa2-radar > span {
-  font-size: 9px;
+  font-size: 12px;
   color: #687997;
 }
 .sa2-radar > i {
@@ -764,7 +779,7 @@
   grid-template-columns: 95px 1fr 40px;
   align-items: center;
   gap: 8px;
-  font-size: 9px;
+  font-size: 12px;
 }
 .sa2-service-stack span {
   font-weight: 600;
@@ -812,11 +827,11 @@
   gap: 2px;
 }
 .sa2-attention-list strong {
-  font-size: 10px;
+  font-size: 12px;
 }
 .sa2-attention-list small {
   color: #7b899e;
-  font-size: 8px;
+  font-size: 12px;
 }
 .sa2-status {
   display: inline-flex !important;
@@ -825,7 +840,7 @@
   gap: 5px !important;
   padding: 4px 7px !important;
   border-radius: 999px;
-  font-size: 8px !important;
+  font-size: 12px !important;
   font-weight: 700 !important;
   white-space: nowrap;
   letter-spacing: 0 !important;
@@ -892,12 +907,12 @@
   gap: 2px;
 }
 .sa2-profile-grid strong {
-  font-size: 10px;
+  font-size: 12px;
 }
 .sa2-profile-grid small {
   overflow: hidden;
   color: #7b8799;
-  font-size: 8px;
+  font-size: 12px;
   text-overflow: ellipsis;
 }
 .sa2-profile-grid .sa2-status {
@@ -906,7 +921,7 @@
 .sa2-profile-grid em {
   align-self: center;
   color: #697890;
-  font-size: 8px;
+  font-size: 12px;
   font-style: normal;
   text-align: right;
 }
@@ -928,13 +943,13 @@
 }
 .sa2-product-grid h4 {
   margin: 0 0 2px;
-  font-size: 11px;
+  font-size: 12px;
 }
 .sa2-product-grid p {
   height: 28px;
   margin: 0;
   color: #7a879a;
-  font-size: 8px;
+  font-size: 12px;
 }
 .sa2-product-grid dl {
   margin: 8px 0;
@@ -945,7 +960,7 @@
   justify-content: space-between;
   align-items: center;
   border-top: 1px solid #edf0f5;
-  font-size: 8px;
+  font-size: 12px;
 }
 .sa2-product-grid dt {
   color: #768399;
@@ -981,7 +996,7 @@
   border: 0;
   background: none;
   color: var(--module-accent);
-  font-size: 8px;
+  font-size: 12px;
   font-weight: 700;
 }
 .sa2-data-layout {
@@ -1021,7 +1036,7 @@
   border-radius: 6px;
   background: #d9f1ec;
   color: #198070;
-  font-size: 8px;
+  font-size: 12px;
   font-weight: 800;
 }
 .sa2-country-grid .is-partial {
@@ -1040,7 +1055,7 @@
   align-items: center;
   gap: 5px;
   color: #62728b;
-  font-size: 8px;
+  font-size: 12px;
 }
 .sa2-map-legend i {
   width: 6px;
@@ -1072,7 +1087,7 @@
 }
 .sa2-pipeline button > span:first-child {
   color: #a9b4c3;
-  font-size: 8px;
+  font-size: 12px;
   font-weight: 800;
 }
 .sa2-pipeline button div {
@@ -1080,11 +1095,11 @@
   gap: 3px;
 }
 .sa2-pipeline strong {
-  font-size: 9px;
+  font-size: 12px;
 }
 .sa2-pipeline small {
   color: #7c899c;
-  font-size: 8px;
+  font-size: 12px;
 }
 .sa2-flow {
   display: grid;
@@ -1127,7 +1142,7 @@
   color: #ce701f;
 }
 .sa2-flow strong {
-  font-size: 9px;
+  font-size: 12px;
 }
 .sa2-flow small {
   color: #8390a3;
@@ -1169,7 +1184,7 @@
   gap: 2px;
 }
 .sa2-source-cards strong {
-  font-size: 9px;
+  font-size: 12px;
 }
 .sa2-source-cards small,
 .sa2-source-cards em {
@@ -1199,7 +1214,7 @@
   background: #fff;
   text-align: center;
   color: #5d46b6;
-  font-size: 9px;
+  font-size: 12px;
   font-weight: 800;
   box-shadow: 0 7px 16px #3e277112;
 }
@@ -1289,7 +1304,7 @@
   gap: 2px;
 }
 .sa2-model-list strong {
-  font-size: 9px;
+  font-size: 12px;
 }
 .sa2-model-list small {
   color: #8792a3;
@@ -1329,12 +1344,12 @@
 }
 .sa2-capability-grid h4 {
   margin: 0 0 4px;
-  font-size: 11px;
+  font-size: 12px;
 }
 .sa2-capability-grid p {
   margin: 0;
   color: #7d8999;
-  font-size: 8px;
+  font-size: 12px;
 }
 .sa2-cap-chain {
   margin: 11px 0;
@@ -1388,7 +1403,7 @@
   gap: 2px;
 }
 .sa2-integration-grid strong {
-  font-size: 9px;
+  font-size: 12px;
 }
 .sa2-integration-grid small,
 .sa2-integration-grid em {
@@ -1432,7 +1447,7 @@
   align-items: center;
 }
 .sa2-job-board > div > header strong {
-  font-size: 9px;
+  font-size: 12px;
 }
 .sa2-job-board > div > header span {
   padding: 3px 6px;
@@ -1456,11 +1471,11 @@
   font-size: 7px;
 }
 .sa2-job-board button > strong {
-  font-size: 9px;
+  font-size: 12px;
 }
 .sa2-job-board button > span {
   color: #77859a;
-  font-size: 8px;
+  font-size: 12px;
 }
 .sa2-job-board button > footer {
   display: flex;
@@ -1545,7 +1560,7 @@
   list-style: none;
   display: grid;
   gap: 7px;
-  font-size: 8px;
+  font-size: 12px;
 }
 .sa2-donut li {
   display: grid;
@@ -1593,14 +1608,14 @@
   color: #b83f65;
 }
 .sa2-shield-score div small {
-  font-size: 10px;
+  font-size: 12px;
 }
 .sa2-shield-score strong {
-  font-size: 10px;
+  font-size: 12px;
 }
 .sa2-shield-score span {
   color: #7f8b9b;
-  font-size: 8px;
+  font-size: 12px;
 }
 .sa2-timeline {
   margin: 0;
@@ -1636,14 +1651,14 @@
 }
 .sa2-timeline button > span {
   color: #7e8b9d;
-  font-size: 8px;
+  font-size: 12px;
 }
 .sa2-timeline strong {
-  font-size: 9px;
+  font-size: 12px;
 }
 .sa2-timeline small {
   color: #8490a2;
-  font-size: 8px;
+  font-size: 12px;
 }
 .sa2-records {
   padding-bottom: 12px;
@@ -1664,7 +1679,7 @@
 }
 .sa2-filters label > span {
   color: #6f7c90;
-  font-size: 8px;
+  font-size: 12px;
   font-weight: 700;
 }
 .sa2-filters input {
@@ -1673,7 +1688,7 @@
   border: 1px solid var(--line);
   border-radius: 8px;
   background: #fff;
-  font-size: 10px;
+  font-size: 12px;
 }
 .sa2-table-wrap {
   overflow-x: auto;
@@ -1698,7 +1713,7 @@
   padding: 9px 10px;
   border-top: 1px solid #ebeff4;
   color: #58667c;
-  font-size: 9px;
+  font-size: 12px;
 }
 .sa2-object-link {
   padding: 0;
@@ -1710,7 +1725,7 @@
 }
 .sa2-object-link strong {
   color: var(--ink);
-  font-size: 9px;
+  font-size: 12px;
 }
 .sa2-object-link small {
   color: #8994a5;
@@ -1734,12 +1749,12 @@
 }
 .sa2-inline-empty h4 {
   margin: 8px 0 3px;
-  font-size: 11px;
+  font-size: 12px;
 }
 .sa2-inline-empty p {
   margin: 0;
   color: #8390a2;
-  font-size: 9px;
+  font-size: 12px;
 }
 .sa2-state {
   min-height: 360px;
@@ -1770,7 +1785,7 @@
   max-width: 430px;
   margin: 0 0 15px;
   color: #748197;
-  font-size: 10px;
+  font-size: 12px;
 }
 .sa2-state--error > span {
   background: #ffebee;
@@ -1825,7 +1840,7 @@
 }
 .sa2-inspector header span {
   color: var(--module-accent);
-  font-size: 8px;
+  font-size: 12px;
   font-weight: 800;
   letter-spacing: 0.1em;
 }
@@ -1848,7 +1863,7 @@
 }
 .sa2-inspector-status > span {
   color: #718097;
-  font-size: 9px;
+  font-size: 12px;
 }
 .sa2-inspector section {
   padding: 15px;
@@ -1857,11 +1872,11 @@
 }
 .sa2-inspector h3 {
   margin: 0 0 8px;
-  font-size: 10px;
+  font-size: 12px;
 }
 .sa2-inspector p {
   color: #6c798e;
-  font-size: 9px;
+  font-size: 12px;
   line-height: 1.6;
 }
 .sa2-inspector dl {
@@ -1873,7 +1888,7 @@
   justify-content: space-between;
   gap: 14px;
   border-top: 1px solid #edf0f4;
-  font-size: 9px;
+  font-size: 12px;
 }
 .sa2-inspector dt {
   color: #7c899b;
@@ -1938,7 +1953,7 @@
 }
 .sa2-dialog header div > span {
   color: #b66a1f;
-  font-size: 8px;
+  font-size: 12px;
   font-weight: 800;
   letter-spacing: 0.1em;
 }
@@ -1954,18 +1969,18 @@
   background: #fff9ea;
 }
 .sa2-dialog-warning strong {
-  font-size: 10px;
+  font-size: 12px;
 }
 .sa2-dialog-warning p {
   margin: 4px 0 0;
   color: #765f31;
-  font-size: 9px;
+  font-size: 12px;
   line-height: 1.5;
 }
 .sa2-dialog label {
   display: grid;
   gap: 5px;
-  font-size: 9px;
+  font-size: 12px;
   font-weight: 700;
 }
 .sa2-dialog textarea {
@@ -1974,12 +1989,12 @@
   border: 1px solid var(--line);
   border-radius: 8px;
   resize: vertical;
-  font-size: 9px;
+  font-size: 12px;
 }
 .sa2-dialog ul {
   padding-left: 17px;
   color: #68768a;
-  font-size: 9px;
+  font-size: 12px;
   line-height: 1.8;
 }
 .sa2-dialog footer {
@@ -2003,7 +2018,7 @@
   background: #f0fcf7;
   color: #246954;
   box-shadow: 0 12px 35px #0c3e2c22;
-  font-size: 9px;
+  font-size: 12px;
   animation: sa2-toast 0.2s ease-out;
 }
 .sa2-toast > div {
@@ -2020,7 +2035,7 @@
   font-size: 16px;
 }
 .sa2-toast strong {
-  font-size: 10px;
+  font-size: 12px;
 }
 @keyframes sa2-toast {
   from {
@@ -2040,7 +2055,7 @@
     margin-left: 210px;
   }
   .sa2-primary-nav a {
-    font-size: 10px;
+    font-size: 12px;
   }
   .sa2-command-grid {
     grid-template-columns: 190px 1fr;
@@ -2151,12 +2166,38 @@
     width: 100%;
     padding: 10px 14px;
   }
-  .sa2-review-tools > div {
+  .sa2-review-tools-copy {
     margin: 0;
+  }
+  .sa2-review-tools-toggle {
+    display: block;
+    width: 100%;
+  }
+  .sa2-review-tools-controls {
+    display: none;
+    align-items: stretch;
+    flex-direction: column;
+  }
+  .sa2-review-tools-controls.is-open {
+    display: flex;
   }
   .sa2-review-tools select {
     width: 100%;
     height: 38px;
+  }
+  .sa2--knowledge-evidence .sa2-metrics,
+  .sa2--knowledge-raw-files .sa2-metrics,
+  .sa2--knowledge-transforms .sa2-metrics,
+  .sa2--data-jobs .sa2-metrics,
+  .sa2--data-packages .sa2-metrics {
+    display: none;
+  }
+  .sa2--knowledge-evidence .sa2-page-intro,
+  .sa2--knowledge-raw-files .sa2-page-intro,
+  .sa2--knowledge-transforms .sa2-page-intro,
+  .sa2--data-jobs .sa2-page-intro,
+  .sa2--data-packages .sa2-page-intro {
+    margin-bottom: 8px;
   }
   .sa2-metrics {
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -2310,6 +2351,72 @@
   }
 }
 
+/* V2.2.2 readable operations baseline: 13px work text, 12px metadata. */
+.sa2-primary-nav a,
+.sa2-secondary-nav a,
+.sa2-depth :where(p, label, button, input, select, textarea, dd, li),
+.sa2-object-browser :where(button, input, select),
+.sa2-object-detail :where(p, dd, li, button),
+.sa2-inspector :where(p, dd, button),
+.sa2-dialog :where(p, label, textarea, button, li),
+.sa2-review-history :where(b, span) {
+  font-size: 13px;
+  line-height: 1.5;
+}
+.sa2-depth :where(small, time, code, dt),
+.sa2-object-browser small,
+.sa2-object-detail :where(dt, code),
+.sa2-page-intro p,
+.sa2-kicker,
+.sa2-title-row p,
+.sa2-title-row div > span {
+  font-size: 12px !important;
+  line-height: 1.45;
+}
+.sa2-inline-detail {
+  margin-top: 14px;
+  border-left: 4px solid var(--module-accent);
+}
+.sa2-not-found {
+  min-height: 100vh;
+  display: grid;
+  align-content: center;
+  justify-items: start;
+  gap: 12px;
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 40px 24px;
+  color: #12213c;
+  font-family: 'DM Sans', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+}
+.sa2-not-found span {
+  color: #5c6f8d;
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+}
+.sa2-not-found h1,
+.sa2-not-found p {
+  margin: 0;
+}
+.sa2-not-found p {
+  color: #5c6f8d;
+  font-size: 15px;
+  line-height: 1.6;
+}
+.sa2-not-found a {
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  padding: 0 16px;
+  border-radius: 9px;
+  background: #3977f6;
+  color: #fff;
+  font-size: 14px;
+  font-weight: 750;
+  text-decoration: none;
+}
+
 /* V2.2.1 independent acceptance: readable hierarchy and task-safe interactions */
 .sa2-context-route {
   display: grid;
@@ -2349,7 +2456,7 @@
 .sa2-object-detail > header span,
 .sa2-page-facts span,
 .sa2-impact-box span {
-  font-size: 11px;
+  font-size: 12px;
   line-height: 1.35;
 }
 .sa2-depth small,
@@ -2414,7 +2521,7 @@
   justify-content: space-between;
   flex-direction: column;
   color: #8b98a8;
-  font-size: 9px;
+  font-size: 12px;
   line-height: 1;
 }
 .sa2-trust-chart button {
@@ -2477,7 +2584,7 @@
 .sa2-trust-compliance u,
 .sa2-trust-policy u {
   color: #315f57;
-  font-size: 9px;
+  font-size: 12px;
   text-align: right;
   text-decoration: none;
 }
@@ -2531,7 +2638,7 @@
 }
 .sa2-trust-risk code {
   color: #7d4050;
-  font-size: 9px;
+  font-size: 12px;
 }
 .sa2-trust-timeline button {
   grid-template-columns: 55px 12px minmax(200px, 1fr) 85px;
@@ -2594,7 +2701,7 @@
 }
 .sa2-trust-policy button > i b {
   color: #8693a3;
-  font-size: 8px;
+  font-size: 12px;
 }
 .sa2-impact-box {
   display: grid;
@@ -2608,13 +2715,13 @@
 }
 .sa2-impact-box span {
   color: #8c7580;
-  font-size: 9px;
+  font-size: 12px;
   font-weight: 800;
 }
 .sa2-impact-box strong,
 .sa2-impact-box code {
   color: #663f4c;
-  font-size: 10px;
+  font-size: 12px;
 }
 
 @media (max-width: 920px) {
@@ -2695,7 +2802,7 @@
   border-radius: 7px;
   background: #fff;
   color: #3e5774;
-  font-size: 9px;
+  font-size: 12px;
   text-align: left;
 }
 .sa2-intel-flow span i {
@@ -2716,7 +2823,7 @@
 .sa2-intel-flow > button > u {
   min-width: 70px;
   color: #516984;
-  font-size: 9px;
+  font-size: 12px;
   text-decoration: none;
 }
 .sa2-cap-tree button > span.domain {
@@ -2769,7 +2876,7 @@
 }
 .sa2-intel-cards u {
   color: #4e6680;
-  font-size: 9px;
+  font-size: 12px;
   text-decoration: none;
 }
 .sa2-intel-cards > button > div {
@@ -2783,7 +2890,7 @@
   padding-top: 5px;
   border-top: 1px solid #edf1f5;
   color: #4a627d;
-  font-size: 8px;
+  font-size: 12px;
   font-style: normal;
 }
 .sa2-intel-cards div i b {
@@ -2804,7 +2911,7 @@
 .sa2-intel-runs time,
 .sa2-intel-runs small {
   color: #8290a3;
-  font-size: 9px;
+  font-size: 12px;
 }
 .sa2-intel-runs button > span {
   display: grid;
@@ -2822,7 +2929,7 @@
 }
 .sa2-intel-runs u {
   color: #4b6480;
-  font-size: 9px;
+  font-size: 12px;
   text-align: right;
   text-decoration: none;
 }
@@ -2883,19 +2990,19 @@
 .sa2-intel-policy small,
 .sa2-intel-policy button > i b {
   color: #8995a4;
-  font-size: 8px;
+  font-size: 12px;
 }
 .sa2-intel-policy button > i {
   padding: 7px;
   border-radius: 6px;
   background: #f4f6f9;
   color: #4f6781;
-  font-size: 8px;
+  font-size: 12px;
   font-style: normal;
 }
 .sa2-intel-policy u {
   color: #4f6781;
-  font-size: 9px;
+  font-size: 12px;
   text-decoration: none;
 }
 .sa2-intel-prompts > button {
@@ -2915,7 +3022,7 @@
   border-radius: 7px;
   background: #12243c;
   color: #9fddd1;
-  font-size: 8px;
+  font-size: 12px;
   white-space: pre-wrap;
 }
 .sa2-intel-prompts button > span {
@@ -2926,7 +3033,7 @@
 }
 .sa2-intel-prompts u {
   color: #4d6580;
-  font-size: 9px;
+  font-size: 12px;
   text-decoration: none;
 }
 .sa2-evidence-chips {
@@ -2940,7 +3047,7 @@
   border-radius: 999px;
   background: #f6f8fb;
   color: #49627e;
-  font-size: 8px;
+  font-size: 12px;
 }
 @media (max-width: 920px) {
   .sa2-intel-cards {
@@ -3008,11 +3115,11 @@
 .sa2-org-directory small,
 .sa2-org-directory > button > b {
   color: #77879b;
-  font-size: 9px;
+  font-size: 12px;
 }
 .sa2-org-directory u {
   color: #385572;
-  font-size: 9px;
+  font-size: 12px;
   text-decoration: none;
 }
 .sa2-org-directory > button > i {
@@ -3048,14 +3155,14 @@
   display: flex;
   justify-content: space-between;
   color: #7a899b;
-  font-size: 9px;
+  font-size: 12px;
 }
 .sa2-org-cards u,
 .sa2-org-showcase u,
 .sa2-org-timeline u,
 .sa2-org-invites u {
   color: #4b6480;
-  font-size: 9px;
+  font-size: 12px;
   text-decoration: none;
 }
 .sa2-org-cards small,
@@ -3076,11 +3183,11 @@
 }
 .sa2-org-cards dt {
   color: #8b97a6;
-  font-size: 8px;
+  font-size: 12px;
 }
 .sa2-org-cards dd {
   margin: 0;
-  font-size: 9px;
+  font-size: 12px;
 }
 .sa2-org-meter button {
   display: grid;
@@ -3128,7 +3235,7 @@
   padding: 8px;
   background: #f3f6fa;
   color: #748398;
-  font-size: 8px;
+  font-size: 12px;
 }
 .sa2-org-matrix > button {
   padding: 8px 0;
@@ -3143,7 +3250,7 @@
   border-radius: 6px;
   background: color-mix(in srgb, var(--module-accent), white 92%);
   color: #3e5672;
-  font-size: 9px;
+  font-size: 12px;
 }
 .sa2-org-timeline > button {
   display: grid;
@@ -3164,7 +3271,7 @@
 .sa2-org-timeline time,
 .sa2-org-timeline small {
   color: #8391a3;
-  font-size: 9px;
+  font-size: 12px;
 }
 .sa2-org-timeline button > i {
   width: 8px;
@@ -3200,7 +3307,7 @@
   border-radius: 7px;
   background: #fff;
   color: #405875;
-  font-size: 9px;
+  font-size: 12px;
 }
 .sa2-org-graph span i {
   display: grid;
@@ -3262,7 +3369,7 @@
 .sa2-org-invites small,
 .sa2-org-invites time {
   color: #8190a2;
-  font-size: 9px;
+  font-size: 12px;
 }
 @media (max-width: 920px) {
   .sa2-org-cards,
@@ -3316,7 +3423,7 @@
 .sa2-object-browser > header span,
 .sa2-object-detail > header span {
   color: var(--module-accent);
-  font-size: 8px;
+  font-size: 12px;
   font-weight: 800;
   letter-spacing: 0.1em;
 }
@@ -3326,7 +3433,7 @@
 }
 .sa2-page-facts small {
   color: #7d8a9d;
-  font-size: 9px;
+  font-size: 12px;
 }
 .sa2-operator-workspace {
   display: grid;
@@ -3361,7 +3468,7 @@
   border-radius: 999px;
   background: #eef4fb;
   color: #59708d;
-  font-size: 8px;
+  font-size: 12px;
 }
 .sa2-object-browser > button {
   display: grid;
@@ -3399,7 +3506,7 @@
 }
 .sa2-object-browser > button > b {
   color: #314b6a;
-  font-size: 9px;
+  font-size: 12px;
   text-align: right;
 }
 .sa2-object-detail dl {
@@ -3416,12 +3523,12 @@
 }
 .sa2-object-detail dt {
   color: #8995a5;
-  font-size: 8px;
+  font-size: 12px;
 }
 .sa2-object-detail dd {
   margin: 0;
   color: #38506d;
-  font-size: 10px;
+  font-size: 12px;
 }
 .sa2-object-detail h5 {
   margin: 15px 0 8px;
@@ -3439,7 +3546,7 @@
   align-items: center;
   gap: 6px;
   color: #526a85;
-  font-size: 9px;
+  font-size: 12px;
 }
 .sa2-object-detail li span {
   display: grid;
@@ -3504,7 +3611,7 @@
 }
 .sa2-control-topology button span,
 .sa2-control-topology button u {
-  font-size: 9px;
+  font-size: 12px;
   text-decoration: none;
 }
 .sa2-control-timeline > button {
@@ -3526,7 +3633,7 @@
 .sa2-control-timeline time,
 .sa2-control-timeline small {
   color: #8491a2;
-  font-size: 9px;
+  font-size: 12px;
 }
 .sa2-control-timeline button > i {
   width: 8px;
@@ -3541,7 +3648,7 @@
 }
 .sa2-control-timeline u {
   color: #49627f;
-  font-size: 9px;
+  font-size: 12px;
   text-align: right;
   text-decoration: none;
 }
@@ -3554,7 +3661,7 @@
   padding: 8px;
   background: #f3f6fa;
   color: #6b7b90;
-  font-size: 9px;
+  font-size: 12px;
   text-align: center;
 }
 .sa2-control-calendar section {
@@ -3564,7 +3671,7 @@
 }
 .sa2-control-calendar section > span {
   color: #748398;
-  font-size: 9px;
+  font-size: 12px;
 }
 .sa2-control-calendar section button {
   display: block;
@@ -3576,7 +3683,7 @@
   border-radius: 5px;
   background: color-mix(in srgb, var(--module-accent), white 88%);
   color: #405977;
-  font-size: 8px;
+  font-size: 12px;
   text-align: left;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -3590,7 +3697,7 @@
 .sa2-control-layers > header span {
   padding: 7px;
   color: #738298;
-  font-size: 8px;
+  font-size: 12px;
   font-weight: 800;
   text-align: center;
 }
@@ -3610,7 +3717,7 @@
   border-radius: 7px;
   background: #edf8f3;
   color: #2c765e;
-  font-size: 8px;
+  font-size: 12px;
   text-align: left;
 }
 .sa2-control-layers > button span.fail {
@@ -3670,13 +3777,13 @@
 .sa2-control-catalog p {
   margin: 0;
   color: #7d8c9f;
-  font-size: 9px;
+  font-size: 12px;
 }
 .sa2-control-fleet header u,
 .sa2-control-vault u,
 .sa2-control-catalog u {
   color: #4d6681;
-  font-size: 9px;
+  font-size: 12px;
   text-decoration: none;
 }
 .sa2-control-fleet > button > div {
@@ -3730,7 +3837,7 @@
   border-radius: 5px;
   background: #f4f6f9;
   color: #526b86;
-  font-size: 9px;
+  font-size: 12px;
 }
 .sa2-control-policy > button {
   display: grid;
@@ -3755,12 +3862,12 @@
   border-radius: 5px;
   background: #f2f6fa;
   color: #526b84;
-  font-size: 8px;
+  font-size: 12px;
   font-style: normal;
 }
 .sa2-control-policy u {
   color: #526b84;
-  font-size: 9px;
+  font-size: 12px;
   text-decoration: none;
 }
 @media (max-width: 920px) {
@@ -3873,7 +3980,7 @@
 .sa2-depth-head span,
 .sa2-card-title span {
   color: var(--module-accent);
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 800;
   letter-spacing: 0.13em;
 }
@@ -3913,7 +4020,7 @@
   border-radius: 999px;
   background: #eef5ff;
   color: #2f65ad;
-  font-size: 10px;
+  font-size: 12px;
   text-decoration: none;
 }
 .sa2-depth-grid {
@@ -3982,7 +4089,7 @@
 .sa2-package-list u,
 .sa2-registry-list u {
   color: #48627f;
-  font-size: 11px;
+  font-size: 12px;
   text-align: right;
   text-decoration: none;
 }
@@ -3996,7 +4103,7 @@
   gap: 9px;
   padding-bottom: 17px;
   color: #52647b;
-  font-size: 11px;
+  font-size: 12px;
 }
 .sa2-mini-timeline > div::before {
   content: '';
@@ -4050,7 +4157,7 @@
   gap: 18px;
   padding-bottom: 13px;
   color: #66758a;
-  font-size: 11px;
+  font-size: 12px;
 }
 .sa2-matrix-toolbar b {
   color: #18345f;
@@ -4078,7 +4185,7 @@
   min-height: auto;
   background: #f2f5f9;
   color: #637288;
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 800;
 }
 .sa2-coverage-matrix .country {
@@ -4093,7 +4200,7 @@
 }
 .sa2-coverage-matrix .country span {
   color: #8290a2;
-  font-size: 9px;
+  font-size: 12px;
 }
 .sa2-coverage-matrix .covered {
   background: #eaf7f1;
@@ -4129,7 +4236,7 @@
   display: grid;
   gap: 6px;
   color: #53667d;
-  font-size: 11px;
+  font-size: 12px;
 }
 .sa2-source-rail select,
 .sa2-query-builder select,
@@ -4151,7 +4258,7 @@
   padding-top: 10px;
   border-top: 1px solid #dce5f0;
   color: #627389;
-  font-size: 11px;
+  font-size: 12px;
 }
 .sa2-connection-list {
   display: grid;
@@ -4191,7 +4298,7 @@
 .sa2-query-result dt,
 .sa2-worker-grid dt {
   color: #8a96a6;
-  font-size: 9px;
+  font-size: 12px;
 }
 .sa2-connection-list dd,
 .sa2-package-detail dd,
@@ -4199,7 +4306,7 @@
 .sa2-worker-grid dd {
   margin: 0;
   color: #354c69;
-  font-size: 11px;
+  font-size: 12px;
 }
 .sa2-split-workspace {
   display: grid;
@@ -4263,7 +4370,7 @@
   padding: 9px 0;
   border-bottom: 1px solid #edf1f5;
   color: #3f5570;
-  font-size: 11px;
+  font-size: 12px;
 }
 .sa2-callout {
   display: grid;
@@ -4274,7 +4381,7 @@
   border-radius: 6px;
   background: #eff6ff;
   color: #46617e;
-  font-size: 11px;
+  font-size: 12px;
 }
 .sa2-callout.warning {
   border-color: #ee8451;
@@ -4328,7 +4435,7 @@
   border-radius: 8px;
   background: #f4f7fb;
   color: #68778a;
-  font-size: 10px;
+  font-size: 12px;
 }
 .sa2-plan-hash code {
   color: #1d416f;
@@ -4350,7 +4457,7 @@
   align-items: center;
   padding: 8px 0;
   border-bottom: 1px solid #edf1f5;
-  font-size: 11px;
+  font-size: 12px;
 }
 .sa2-checkpoints > div > span {
   display: grid;
@@ -4373,7 +4480,7 @@
   border-radius: 8px;
   background: #102239;
   color: #9ccbc6;
-  font-size: 10px;
+  font-size: 12px;
 }
 .sa2-action-row {
   display: flex;
@@ -4441,7 +4548,7 @@
 .sa2-simple-table {
   display: grid;
   grid-template-columns: 2fr repeat(3, 1fr);
-  font-size: 11px;
+  font-size: 12px;
 }
 .sa2-simple-table > * {
   padding: 9px;
@@ -4588,7 +4695,7 @@
   color: #17345e;
 }
 .sa2-ring span {
-  font-size: 10px;
+  font-size: 12px;
   color: #8491a0;
 }
 .sa2-ring ul {
@@ -4608,12 +4715,12 @@
 }
 .sa2-source-profile dt {
   color: #8c97a6;
-  font-size: 9px;
+  font-size: 12px;
 }
 .sa2-source-profile dd {
   margin: 0;
   color: #344c68;
-  font-size: 11px;
+  font-size: 12px;
 }
 .sa2-source-graph {
   display: grid;
@@ -4623,7 +4730,7 @@
   padding: 12px;
   border-radius: 8px;
   background: #fff7f1;
-  font-size: 10px;
+  font-size: 12px;
 }
 .sa2-source-graph b {
   color: #b8622c;
@@ -4642,7 +4749,7 @@
   padding: 8px;
   background: #f7f3ef;
   color: #7b6e66;
-  font-size: 10px;
+  font-size: 12px;
   text-align: center;
 }
 .sa2-calendar-body > div {
@@ -4658,7 +4765,7 @@
   border-radius: 5px;
   background: #fff0e4;
   color: #a85625;
-  font-size: 9px;
+  font-size: 12px;
 }
 .sa2-plan-calendar > article:nth-child(2) {
   display: grid;
@@ -4672,7 +4779,7 @@
   padding: 10px;
   border-bottom: 1px solid #edf1f5;
   color: #53667c;
-  font-size: 11px;
+  font-size: 12px;
 }
 .sa2-plan-table span:first-child {
   display: grid;
@@ -4735,7 +4842,7 @@
   align-items: center;
   padding: 10px 0;
   border-bottom: 1px solid #edf1f5;
-  font-size: 11px;
+  font-size: 12px;
 }
 .sa2-event-line > span {
   display: grid;
@@ -4804,7 +4911,7 @@
   gap: 6px;
   padding: 6px 0;
   color: #5f7186;
-  font-size: 11px;
+  font-size: 12px;
 }
 .sa2-file-browser aside > button {
   display: flex;
@@ -4865,7 +4972,7 @@
 .sa2-transform-board article > p {
   min-height: 28px;
   color: #8491a0;
-  font-size: 9px;
+  font-size: 12px;
 }
 .sa2-transform-board article > button,
 .sa2-package-kanban article > button {
@@ -4906,7 +5013,7 @@
   border-radius: 7px;
   background: #f7f5f3;
   color: #77869a;
-  font-size: 10px;
+  font-size: 12px;
 }
 .sa2-receipt-strip i,
 .sa2-delivery-line i {
@@ -4941,7 +5048,7 @@
 .sa2-evidence-workspace u {
   text-decoration: none;
   color: #9d6040;
-  font-size: 10px;
+  font-size: 12px;
 }
 .sa2-paper {
   display: grid;
@@ -4969,7 +5076,7 @@
   border-radius: 7px;
   background: #f5f7fa;
   color: #68798e;
-  font-size: 10px;
+  font-size: 12px;
 }
 .sa2-review-form {
   display: grid;
@@ -4986,7 +5093,7 @@
   gap: 8px;
   padding: 7px;
   color: #596c83;
-  font-size: 11px;
+  font-size: 12px;
 }
 .sa2-knowledge-search {
   margin: 0;
@@ -5000,7 +5107,7 @@
 }
 .sa2-result-count {
   color: #77869b;
-  font-size: 10px;
+  font-size: 12px;
 }
 .sa2-search-hit {
   display: grid;
@@ -5023,7 +5130,7 @@
 }
 .sa2-search-hit p {
   color: #687a90;
-  font-size: 11px;
+  font-size: 12px;
 }
 .sa2-search-hit button {
   border: 0;
@@ -5034,7 +5141,7 @@
 .sa2-search-hit u {
   text-decoration: none;
   color: #77889a;
-  font-size: 10px;
+  font-size: 12px;
 }
 .sa2-package-kanban {
   grid-template-columns: repeat(4, 1fr);
@@ -5048,16 +5155,16 @@
 }
 .sa2-package-kanban dt {
   color: #8995a4;
-  font-size: 8px;
+  font-size: 12px;
 }
 .sa2-package-kanban dd {
   margin: 0;
-  font-size: 10px;
+  font-size: 12px;
 }
 .sa2-package-kanban u {
   text-decoration: none;
   color: #9c603d;
-  font-size: 9px;
+  font-size: 12px;
 }
 .sa2-health-layout {
   display: grid;
@@ -5073,7 +5180,7 @@
 .sa2-health-matrix > strong {
   padding: 7px;
   color: #69788c;
-  font-size: 10px;
+  font-size: 12px;
 }
 .sa2-health-matrix button {
   display: grid;
@@ -5115,7 +5222,7 @@
 .sa2-health-alert u {
   text-decoration: none;
   color: #9b6142;
-  font-size: 10px;
+  font-size: 12px;
 }
 
 @media (max-width: 1050px) {
@@ -5180,7 +5287,7 @@
   .sa2-simple-table {
     grid-template-columns: 1.5fr repeat(3, 1fr);
     overflow-x: auto;
-    font-size: 9px;
+    font-size: 12px;
   }
   .sa2-knowledge-funnel {
     grid-template-columns: 1fr 1fr;
@@ -5225,7 +5332,7 @@
 .sa2-object-detail > header span,
 .sa2-page-facts span,
 .sa2-impact-box span {
-  font-size: 11px;
+  font-size: 12px;
   line-height: 1.35;
 }
 .sa2-depth small,
