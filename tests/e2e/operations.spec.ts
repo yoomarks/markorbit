@@ -679,12 +679,78 @@ test('V2.2.1 protected dialog traps focus, closes with Escape and restores the i
   const dialog = page.getByRole('dialog', { name: /处理/ });
   await expect(dialog).toBeVisible();
   await expect(page.locator('.sa2-inspector')).toHaveAttribute('inert', '');
-  await expect(dialog.getByRole('button', { name: '取消' })).toBeFocused();
+  await expect(dialog.getByLabel('演示理由')).toBeFocused();
   await page.keyboard.press('Shift+Tab');
   await expect(dialog.getByRole('button', { name: '确认演示路径' })).toBeFocused();
   await page.keyboard.press('Escape');
   await expect(dialog).toHaveCount(0);
   await expect(page.getByRole('button', { name: '进入受保护操作' })).toBeFocused();
+});
+
+test('V2.2.2 isolates Knowledge review drafts by evidence version and confirms the exact target', async ({
+  page
+}) => {
+  await page.goto(`${urls.operations}/super-admin-v2/knowledge/evidence`);
+  await page.getByLabel('审核说明').fill('EVD-11842 专属草稿');
+  await page.getByLabel('定位准确性').selectOption('需修正');
+
+  await page.getByRole('button', { name: /Classification practice update/ }).click();
+  await expect(page.getByLabel('审核说明')).toHaveValue('Locator 与原文一致；保留适用范围限定。');
+  await expect(page.getByLabel('定位准确性')).toHaveValue('准确');
+  await page.getByLabel('审核说明').fill('EVD-11841 独立审核意见');
+
+  await page.getByRole('button', { name: '批准证据' }).click();
+  const dialog = page.getByRole('dialog', { name: /批准证据 EVD-11841/ });
+  await expect(dialog).toContainText('CNIPA Examination Guide · Chapter 3 §2.4');
+  await expect(dialog).toContainText('c42…18a · lines 2260–2274');
+  await expect(dialog).toContainText('2026.09');
+  await expect(dialog).toContainText('EVD-11841 独立审核意见');
+  await dialog.getByRole('button', { name: '取消' }).click();
+
+  await page.getByRole('button', { name: /Absolute grounds/ }).click();
+  await expect(page.getByLabel('审核说明')).toHaveValue('EVD-11842 专属草稿');
+  await expect(page.getByLabel('定位准确性')).toHaveValue('需修正');
+});
+
+test('V2.2.2 protected dialog traverses every control in DOM order before wrapping focus', async ({
+  page
+}) => {
+  await page.goto(`${urls.operations}/super-admin-v2/data/overview`);
+  await page.getByRole('button', { name: /CNIPA Gazette/ }).click();
+  await page.getByRole('button', { name: '进入受保护操作' }).click();
+  const dialog = page.getByRole('dialog', { name: /处理/ });
+  const reason = dialog.getByLabel('演示理由');
+  const cancel = dialog.getByRole('button', { name: '取消' });
+  const confirm = dialog.getByRole('button', { name: '确认演示路径' });
+
+  await expect(reason).toBeFocused();
+  await reason.fill('键盘可达的本地演示理由');
+  await page.keyboard.press('Tab');
+  await expect(cancel).toBeFocused();
+  await page.keyboard.press('Tab');
+  await expect(confirm).toBeFocused();
+  await page.keyboard.press('Tab');
+  await expect(reason).toBeFocused();
+  await page.keyboard.press('Shift+Tab');
+  await expect(confirm).toBeFocused();
+  await page.keyboard.press('Escape');
+  await expect(dialog).toHaveCount(0);
+  await expect(page.getByRole('button', { name: '进入受保护操作' })).toBeFocused();
+});
+
+test('V2.2.2 object detail is an honest non-modal region with keyboard close and focus return', async ({
+  page
+}) => {
+  await page.goto(`${urls.operations}/super-admin-v2/data/overview`);
+  const trigger = page.getByRole('button', { name: /CNIPA Gazette/ });
+  await trigger.click();
+  const detail = page.getByRole('complementary', { name: /CNIPA Gazette/ });
+  await expect(detail).toBeVisible();
+  await expect(detail).not.toHaveAttribute('aria-modal');
+  await expect(detail.getByRole('button', { name: '关闭详情' })).toBeFocused();
+  await page.keyboard.press('Escape');
+  await expect(detail).toHaveCount(0);
+  await expect(trigger).toBeFocused();
 });
 
 test('V2.2.1 overview alert deep-link returns with alert context restored', async ({ page }) => {

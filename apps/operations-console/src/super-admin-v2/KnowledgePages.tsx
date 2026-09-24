@@ -50,6 +50,7 @@ const evidenceRows = [
     candidate:
       'Evidence candidate: the assessment is contextual and cannot be reduced to an isolated token.',
     digest: 'a83…91f · lines 1842–1851',
+    version: '2026.09',
     status: '待审核'
   },
   {
@@ -61,6 +62,7 @@ const evidenceRows = [
     quote: '类似商品判断应结合功能、用途、销售渠道及相关公众的一般认知。',
     candidate: 'Evidence candidate: classification similarity requires contextual comparison.',
     digest: 'c42…18a · lines 2260–2274',
+    version: '2026.09',
     status: '待审核'
   },
   {
@@ -72,6 +74,7 @@ const evidenceRows = [
     quote: 'A specimen must show the mark as actually used in commerce for the identified goods.',
     candidate: 'Evidence candidate: the specimen must preserve the actual-use context.',
     digest: 'f18…02c · lines 8120–8131',
+    version: '2026.08',
     status: '高风险'
   }
 ] as const;
@@ -660,7 +663,25 @@ function Transforms({ onAction }: KnowledgePagesProps) {
 
 function Evidence({ onAction }: KnowledgePagesProps) {
   const [selectedId, setSelectedId] = useState<string>(evidenceRows[0].id);
+  const [drafts, setDrafts] = useState<Record<string, EvidenceDraft>>(() =>
+    Object.fromEntries(evidenceRows.map((row) => [row.id, createEvidenceDraft()]))
+  );
   const selected = evidenceRows.find((item) => item.id === selectedId) ?? evidenceRows[0];
+  const selectedDraft = drafts[selected.id] ?? createEvidenceDraft();
+  const updateDraft = (patch: Partial<EvidenceDraft>) => {
+    setDrafts((current) => ({
+      ...current,
+      [selected.id]: { ...(current[selected.id] ?? createEvidenceDraft()), ...patch }
+    }));
+  };
+  const reviewTarget = [
+    `来源版本 ${selected.version}`,
+    `原文定位 ${selected.locator} · ${selected.page}`,
+    `来源摘要 ${selected.digest}`,
+    `定位准确性 ${selectedDraft.accuracy}`,
+    `来源当前性 ${selectedDraft.currentness}`,
+    `本次审核意见 ${selectedDraft.note}`
+  ].join(' · ');
   return (
     <Shell
       pageId="evidence"
@@ -712,34 +733,62 @@ function Evidence({ onAction }: KnowledgePagesProps) {
           <Head label="REVIEW DECISION" title="审核结论" />
           <label>
             定位准确性
-            <select>
+            <select
+              value={selectedDraft.accuracy}
+              onChange={(event) => updateDraft({ accuracy: event.target.value })}
+            >
               <option>准确</option>
               <option>需修正</option>
             </select>
           </label>
           <label>
             来源当前性
-            <select>
+            <select
+              value={selectedDraft.currentness}
+              onChange={(event) => updateDraft({ currentness: event.target.value })}
+            >
               <option>当前</option>
               <option>已过期</option>
             </select>
           </label>
           <label>
             审核说明
-            <textarea defaultValue="Locator 与原文一致；保留适用范围限定。" />
+            <textarea
+              value={selectedDraft.note}
+              onChange={(event) => updateDraft({ note: event.target.value })}
+            />
           </label>
           <div className="sa2-callout warning">
             <b>治理边界</b>
             <span>这是证据供应审核，不是 Capability 验证或 canon mutation。</span>
           </div>
-          <button className="sa2-button" onClick={() => onAction(`批准证据 ${selected.id}`, true)}>
+          <button
+            className="sa2-button"
+            onClick={() => onAction(`批准证据 ${selected.id} · ${reviewTarget}`, true)}
+          >
             批准证据
           </button>
-          <button onClick={() => onAction(`退回证据 ${selected.id}`, true)}>退回修订</button>
+          <button onClick={() => onAction(`退回证据 ${selected.id} · ${reviewTarget}`, true)}>
+            退回修订
+          </button>
         </aside>
       </div>
     </Shell>
   );
+}
+
+interface EvidenceDraft {
+  accuracy: string;
+  currentness: string;
+  note: string;
+}
+
+function createEvidenceDraft(): EvidenceDraft {
+  return {
+    accuracy: '准确',
+    currentness: '当前',
+    note: 'Locator 与原文一致；保留适用范围限定。'
+  };
 }
 
 function Search({ query, setQuery, onAction }: KnowledgePagesProps) {

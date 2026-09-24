@@ -69,6 +69,7 @@ export function SuperAdminV2({
   const [mobileNav, setMobileNav] = useState(false);
   const [deepLinkContext, setDeepLinkContext] = useState<DeepLinkContext | null>(null);
   const dialogReturnFocus = useRef<HTMLElement | null>(null);
+  const inspectorReturnFocus = useRef<HTMLElement | null>(null);
   const hadDialog = useRef(false);
   const route = resolveRoute(path);
 
@@ -132,6 +133,18 @@ export function SuperAdminV2({
   const openDeepLink = (targetPath: string, sourceId: string) => {
     setDeepLinkContext({ sourcePath: path, sourceId, targetPath });
     navigate(targetPath);
+  };
+
+  const openInspector = (record: DemoRecord) => {
+    inspectorReturnFocus.current = document.activeElement as HTMLElement | null;
+    setSelected(record);
+  };
+
+  const closeInspector = () => {
+    const returnTarget = inspectorReturnFocus.current;
+    setSelected(null);
+    inspectorReturnFocus.current = null;
+    window.setTimeout(() => returnTarget?.focus(), 0);
   };
 
   return (
@@ -350,7 +363,7 @@ export function SuperAdminV2({
               setQuery={setQuery}
               statusFilter={statusFilter}
               setStatusFilter={setStatusFilter}
-              onSelect={setSelected}
+              onSelect={openInspector}
               onAction={action}
               onDeepLink={openDeepLink}
               focusObjectId={
@@ -367,7 +380,7 @@ export function SuperAdminV2({
         <Inspector
           record={selected}
           module={route.module}
-          onClose={() => setSelected(null)}
+          onClose={closeInspector}
           onAction={action}
         />
       )}
@@ -1415,6 +1428,17 @@ function Inspector({
   onClose: () => void;
   onAction: (label: string, protectedAction?: boolean) => void;
 }) {
+  const closeRef = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    closeRef.current?.focus();
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape' || document.querySelector('.sa2-dialog')) return;
+      event.preventDefault();
+      onClose();
+    };
+    document.addEventListener('keydown', onKeyDown);
+    return () => document.removeEventListener('keydown', onKeyDown);
+  }, [onClose]);
   const copyId = async () => {
     try {
       await navigator.clipboard.writeText(record.id);
@@ -1424,18 +1448,13 @@ function Inspector({
     }
   };
   return (
-    <aside
-      className="sa2-inspector"
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="inspector-title"
-    >
+    <aside className="sa2-inspector" role="complementary" aria-labelledby="inspector-title">
       <header>
         <div>
           <span>{module.shortLabel} · OBJECT DETAIL</span>
           <h2 id="inspector-title">{record.name}</h2>
         </div>
-        <button aria-label="关闭详情" onClick={onClose}>
+        <button ref={closeRef} aria-label="关闭详情" onClick={onClose}>
           ×
         </button>
       </header>
@@ -1493,7 +1512,7 @@ function ProtectedDialog({
   onDemoConfirm: () => void;
 }) {
   const dialogRef = useRef<HTMLElement>(null);
-  const cancelRef = useRef<HTMLButtonElement>(null);
+  const reasonRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
     const background = Array.from(
@@ -1505,7 +1524,7 @@ function ProtectedDialog({
       element.setAttribute('inert', '');
       element.setAttribute('aria-hidden', 'true');
     });
-    cancelRef.current?.focus();
+    reasonRef.current?.focus();
 
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
@@ -1520,7 +1539,7 @@ function ProtectedDialog({
         )
       );
       if (!controls.length) return;
-      const first = cancelRef.current ?? controls[0]!;
+      const first = controls[0]!;
       const last = controls[controls.length - 1]!;
       if (event.shiftKey && document.activeElement === first) {
         event.preventDefault();
@@ -1564,7 +1583,7 @@ function ProtectedDialog({
         </div>
         <label>
           <span>演示理由</span>
-          <textarea defaultValue="产品评审：检查受保护操作的确认路径" />
+          <textarea ref={reasonRef} defaultValue="产品评审：检查受保护操作的确认路径" />
         </label>
         <ul>
           <li>不会写入任何服务或数据库</li>
@@ -1572,7 +1591,7 @@ function ProtectedDialog({
           <li>确认后只显示本地演示反馈</li>
         </ul>
         <footer>
-          <button ref={cancelRef} className="sa2-button sa2-button--secondary" onClick={onClose}>
+          <button className="sa2-button sa2-button--secondary" onClick={onClose}>
             取消
           </button>
           <button className="sa2-button" onClick={onDemoConfirm}>
