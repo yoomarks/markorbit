@@ -6,6 +6,10 @@ import {
   urls,
   watchPage
 } from './helpers/page.js';
+import {
+  adminModules,
+  routeFor
+} from '../../apps/operations-console/src/super-admin-v2/catalog.js';
 
 const dataOwnerSummary = {
   contract_version: 'MARKORBIT_DATA_ENGINE_INTEGRATION_V1',
@@ -391,5 +395,88 @@ test('MarkOrbit Super Admin exposes truthful governed operator surfaces @visual'
   if (testInfo.project.name.startsWith('desktop')) {
     await capture(page, 'operations-console-desktop');
   }
+  assertHealthy();
+});
+
+test('Super Admin V2 preview is complete, refresh-safe and truthfully interactive @visual', async ({
+  page
+}, testInfo) => {
+  const assertHealthy = watchPage(page);
+  await page.goto(`${urls.operations}/super-admin-v2/overview/platform`);
+
+  await expect(page.getByRole('heading', { name: '总览', exact: true })).toBeVisible();
+  await expect(page.getByText('演示数据 · 仅供产品评审')).toBeVisible();
+  await expect(page.getByText('DEMO REVIEW')).toBeVisible();
+
+  if (testInfo.project.name.startsWith('mobile')) {
+    await page.getByRole('button', { name: '打开导航' }).click();
+  }
+  const primary = page.getByRole('navigation', { name: '全局一级导航' });
+  await expect(primary.getByRole('link')).toHaveCount(12);
+  await primary.getByRole('link', { name: /^Data Engine/ }).click();
+  await expect(page).toHaveURL(/\/super-admin-v2\/data\/overview$/);
+  await expect(page.getByRole('heading', { name: '数据覆盖与新鲜度' })).toBeVisible();
+
+  await page.getByRole('link', { name: '数据覆盖', exact: true }).click();
+  await expect(page).toHaveURL(/\/super-admin-v2\/data\/coverage$/);
+  await page.reload();
+  await expect(page.getByRole('heading', { name: '数据覆盖', exact: true })).toBeVisible();
+
+  const filter = page.getByLabel('筛选当前列表');
+  await filter.fill('USPTO');
+  const usptoRecord = page.getByRole('button', { name: /^USPTO TSDR DATA-USPTO/ });
+  await expect(usptoRecord).toBeVisible();
+  await expect(page.getByRole('button', { name: /CNIPA Gazette/ })).toHaveCount(0);
+  await usptoRecord.click();
+  const inspector = page.getByRole('dialog', { name: 'USPTO TSDR' });
+  await expect(inspector.getByText('DEMO FIXTURE · NOT OFFICIAL TRUTH')).toBeVisible();
+  await inspector.getByRole('button', { name: '进入受保护操作' }).click();
+  const protectedDialog = page.getByRole('dialog', { name: /处理 USPTO TSDR/ });
+  await expect(protectedDialog.getByText('此预览不会执行生产操作')).toBeVisible();
+  await protectedDialog.getByRole('button', { name: '确认演示路径' }).click();
+  await expect(page.getByText('没有调用 owner API')).toBeVisible();
+  await inspector.getByRole('button', { name: '关闭详情' }).click();
+
+  await page.getByLabel('评审状态').selectOption('permission');
+  await expect(page.getByRole('status').getByText('缺少精确读取权限')).toBeVisible();
+  await page.getByLabel('评审状态').selectOption('partial');
+  await expect(page.getByText('部分数据不可用')).toBeVisible();
+
+  await expectNoHorizontalOverflow(page);
+  await page.getByLabel('搜索当前模块').focus();
+  await expectVisibleFocus(page);
+  await capture(
+    page,
+    testInfo.project.name.startsWith('desktop')
+      ? 'super-admin-v2-data-desktop'
+      : 'super-admin-v2-data-mobile'
+  );
+  assertHealthy();
+});
+
+test('every Super Admin V2 first and second-level route is directly reviewable', async ({
+  page
+}, testInfo) => {
+  test.skip(
+    testInfo.project.name.startsWith('mobile'),
+    'The route matrix is viewport-independent.'
+  );
+  const assertHealthy = watchPage(page);
+
+  for (const module of adminModules) {
+    for (const secondaryPage of module.pages) {
+      await page.goto(`${urls.operations}${routeFor(module, secondaryPage)}`);
+      await expect(page.getByRole('heading', { name: module.label, exact: true })).toBeVisible();
+      await expect(
+        page.getByRole('heading', { name: secondaryPage.label, exact: true })
+      ).toBeVisible();
+      await expect(
+        page
+          .getByRole('navigation', { name: `${module.label} 二级导航` })
+          .getByRole('link', { name: secondaryPage.label, exact: true })
+      ).toHaveAttribute('aria-current', 'page');
+    }
+  }
+
   assertHealthy();
 });
