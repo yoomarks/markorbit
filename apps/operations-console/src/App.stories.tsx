@@ -111,6 +111,10 @@ export const SuperAdminV223EvidenceHierarchy = () => (
   <SuperAdminV2 initialPath="/super-admin-v2/knowledge/evidence" useBrowserHistory={false} />
 );
 
+export const SuperAdminV23RealUnconnectedBoundary = () => (
+  <SuperAdminV2 initialPath="/super-admin-v2/data/jobs?mode=real" useBrowserHistory={false} />
+);
+
 export const SuperAdminV2Permission = () => (
   <SuperAdminV2
     initialPath="/super-admin-v2/governance/risk"

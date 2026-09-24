@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Alert, Button, Card, DataList, PageHeader } from '@markorbit/ui';
+import { OwnerReadError, ownerReadHttpError } from './owner-read-error.js';
 
 export const DATA_PLATFORM_UNAVAILABLE_TEXT =
   'Unavailable is not the same as healthy, empty, zero, or no active work. No fallback state is inferred.';
@@ -135,13 +136,10 @@ export async function loadDataOwnerSummary(
     headers: { accept: 'application/json' }
   });
   const value: unknown = await response.json().catch(() => undefined);
-  if (!response.ok) {
-    const failure = record(value);
-    const code = typeof failure?.code === 'string' ? ` · ${failure.code}` : '';
-    throw new Error(`Data owner summary unavailable (${response.status}${code}).`);
-  }
+  if (!response.ok) throw ownerReadHttpError('Data owner summary', response.status, value);
   const parsed = parseDataOwnerSummary(value);
-  if (!parsed) throw new Error('Data owner summary is malformed and cannot be trusted.');
+  if (!parsed)
+    throw new OwnerReadError('contract', 'Data owner summary is malformed and cannot be trusted.');
   return parsed;
 }
 

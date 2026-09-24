@@ -944,6 +944,176 @@ test('V2.2.3 representative workspaces remain primary at common laptop size', as
   }
 });
 
+test('V2.3 Real platform overview reads both governed owners without Demo leakage', async ({
+  page
+}, testInfo) => {
+  await page.addInitScript(() => sessionStorage.setItem('markorbit-workspace-id', 'workspace-916'));
+  await page.route('**/api/internal/control-plane/data/summary', (route) =>
+    route.fulfill({ status: 200, json: dataOwnerSummary })
+  );
+  await page.route('**/api/internal/control-plane/knowledge/evidence-supply-health', (route) =>
+    route.fulfill({ status: 200, json: knowledgeOwnerHealth })
+  );
+
+  await page.goto(`${urls.operations}/super-admin-v2/overview/platform?mode=real`);
+
+  await expect(page.getByRole('heading', { level: 1 })).toHaveCount(1);
+  await expect(page.getByRole('note').getByText('REAL READ ONLY', { exact: true })).toBeVisible();
+  await expect(page.locator('.sa2-review-tools')).toHaveCount(0);
+  await expect(page.getByText('DEMO REVIEW', { exact: true })).toHaveCount(0);
+  await expect(page.getByTestId('real-owner-data')).toContainText('MARKORBIT_DATA_ENGINE');
+  await expect(page.getByTestId('real-owner-data')).toContainText('2026');
+  await expect(page.getByTestId('real-owner-knowledge')).toContainText('KNOWLEDGE');
+  await expect(page.getByTestId('real-owner-knowledge')).toContainText('workspace-916');
+  await expect(page.getByTestId('real-owner-data')).not.toContainText('CNIPA Gazette');
+  await expectNoHorizontalOverflow(page);
+  const viewport = testInfo.project.name.startsWith('mobile') ? 'mobile' : 'desktop';
+  await capture(page, `super-admin-v23-real-platform-${viewport}`);
+
+  const dataLink = page.getByRole('link', { name: '查看 Data Engine' });
+  await expect(dataLink).toHaveAttribute('href', '/super-admin-v2/data/overview?mode=real');
+  await dataLink.click();
+  await expect(page).toHaveURL(/\/super-admin-v2\/data\/overview\?mode=real$/);
+  await expect(page.getByRole('heading', { level: 1 })).toHaveCount(1);
+  await expect(page.getByRole('heading', { level: 1, name: 'Data Engine 真实摘要' })).toBeVisible();
+  await expect(page.getByText('MARKORBIT_DATA_ENGINE', { exact: true })).toBeVisible();
+  await expectNoHorizontalOverflow(page);
+  await capture(page, `super-admin-v23-real-data-${viewport}`);
+
+  await page.goto(`${urls.operations}/super-admin-v2/knowledge/overview?mode=real`);
+  await expect(page.getByRole('heading', { level: 1 })).toHaveCount(1);
+  await expect(page.getByRole('heading', { level: 1, name: 'Knowledge 真实摘要' })).toBeVisible();
+  await expect(page.getByTestId('real-owner-knowledge')).toContainText('evidence-supply-health.v1');
+  await expectNoHorizontalOverflow(page);
+  await capture(page, `super-admin-v23-real-knowledge-${viewport}`);
+});
+
+test('V2.3 keeps one available owner usable when its sibling is unavailable', async ({ page }) => {
+  await page.addInitScript(() => sessionStorage.setItem('markorbit-workspace-id', 'workspace-916'));
+  await page.route('**/api/internal/control-plane/data/summary', (route) =>
+    route.fulfill({
+      status: 503,
+      json: { code: 'DATA_ENGINE_UNAVAILABLE', message: 'Data owner unavailable.' }
+    })
+  );
+  await page.route('**/api/internal/control-plane/knowledge/evidence-supply-health', (route) =>
+    route.fulfill({ status: 200, json: knowledgeOwnerHealth })
+  );
+
+  await page.goto(`${urls.operations}/super-admin-v2/overview/platform?mode=real`);
+  await expect(page.getByTestId('real-owner-data')).toContainText('Owner 暂不可用');
+  await expect(page.getByTestId('real-owner-data')).not.toContainText('0 个任务');
+  await expect(page.getByTestId('real-owner-knowledge')).toContainText('workspace-916');
+  await expect(page.getByTestId('real-owner-knowledge')).toContainText('PARTIAL');
+});
+
+test('V2.3 distinguishes authentication, permission and timeout failures', async ({ page }) => {
+  await page.addInitScript(() => sessionStorage.setItem('markorbit-workspace-id', 'workspace-916'));
+  const scenarios = [
+    [401, 'AUTHENTICATION_REQUIRED', '需要登录'],
+    [403, 'PERMISSION_DENIED', '无读取权限'],
+    [504, 'DATA_ENGINE_TIMEOUT', '读取超时']
+  ] as const;
+
+  for (const [status, code, expected] of scenarios) {
+    await page.unroute('**/api/internal/control-plane/data/summary');
+    await page.route('**/api/internal/control-plane/data/summary', (route) =>
+      route.fulfill({ status, json: { code, message: code } })
+    );
+    await page.goto(`${urls.operations}/super-admin-v2/data/overview?mode=real&case=${status}`);
+    await expect(page.getByTestId('real-owner-data')).toContainText(expected);
+    await expect(page.getByTestId('real-owner-data')).not.toContainText('CNIPA Gazette');
+  }
+});
+
+test('V2.3 preserves explicit Knowledge stale and partial owner states', async ({ page }) => {
+  await page.addInitScript(() => sessionStorage.setItem('markorbit-workspace-id', 'workspace-916'));
+  const staleKnowledge = {
+    ...knowledgeOwnerHealth,
+    items: [
+      {
+        ...knowledgeOwnerHealth.items[0],
+        state: 'STALE',
+        coverage: { state: 'PARTIAL', reasons: ['One source is not current'] },
+        freshness: {
+          state: 'STALE',
+          lastSuccessfulAcquisitionAt: '2026-09-01T08:00:00.000Z'
+        }
+      }
+    ],
+    summary: {
+      ...knowledgeOwnerHealth.summary,
+      byState: {
+        HEALTHY: 0,
+        DEGRADED: 0,
+        STALE: 1,
+        BLOCKED: 0,
+        PARTIAL: 0,
+        UNKNOWN: 0
+      },
+      stale: 1
+    }
+  };
+  await page.route('**/api/internal/control-plane/knowledge/evidence-supply-health', (route) =>
+    route.fulfill({ status: 200, json: staleKnowledge })
+  );
+
+  await page.goto(`${urls.operations}/super-admin-v2/knowledge/overview?mode=real`);
+  await expect(page.getByTestId('real-owner-knowledge')).toContainText('数据过期');
+  await expect(page.getByTestId('real-owner-knowledge')).toContainText('部分可用');
+  await expect(page.getByTestId('real-owner-knowledge')).toContainText('STALE');
+  await expect(page.getByTestId('real-owner-knowledge')).toContainText('PARTIAL');
+});
+
+test('V2.3 renders a successful empty Knowledge owner result without a failure fallback', async ({
+  page
+}, testInfo) => {
+  test.skip(
+    testInfo.project.name.startsWith('mobile'),
+    'The empty-state semantics are viewport independent.'
+  );
+  await page.addInitScript(() => sessionStorage.setItem('markorbit-workspace-id', 'workspace-916'));
+  await page.route('**/api/internal/control-plane/knowledge/evidence-supply-health', (route) =>
+    route.fulfill({
+      status: 200,
+      json: {
+        ...knowledgeOwnerHealth,
+        items: [],
+        summary: {
+          total: 0,
+          byState: {
+            HEALTHY: 0,
+            DEGRADED: 0,
+            STALE: 0,
+            BLOCKED: 0,
+            PARTIAL: 0,
+            UNKNOWN: 0
+          },
+          coverage: { COMPLETE: 0, PARTIAL: 0, UNKNOWN: 0 },
+          requiringAttention: 0,
+          stale: 0,
+          blocked: 0,
+          recentChanges30d: 0
+        }
+      }
+    })
+  );
+
+  await page.goto(`${urls.operations}/super-admin-v2/knowledge/overview?mode=real`);
+  await expect(page.getByTestId('real-owner-knowledge')).toContainText(
+    'Owner 成功返回 0 个 target'
+  );
+  await expect(page.getByTestId('real-owner-knowledge')).not.toContainText('Owner 暂不可用');
+});
+
+test('V2.3 Real mode never backfills unconnected pages with Demo fixtures', async ({ page }) => {
+  await page.goto(`${urls.operations}/super-admin-v2/data/jobs?mode=real`);
+  await expect(page.getByRole('heading', { level: 1, name: '任务与调度' })).toBeVisible();
+  await expect(page.getByText('暂未接入', { exact: true })).toBeVisible();
+  await expect(page.getByText('CNIPA 公告增量', { exact: true })).toHaveCount(0);
+  await expect(page.locator('.sa2-review-tools')).toHaveCount(0);
+});
+
 test('V2.2.1 Copy ID writes the selected object ID locally and labels the effect', async ({
   page,
   context

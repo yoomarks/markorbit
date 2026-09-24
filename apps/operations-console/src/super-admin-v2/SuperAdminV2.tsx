@@ -13,6 +13,7 @@ import { ControlPlanePages } from './ControlPlanePages.js';
 import { OrganizationPages } from './OrganizationPages.js';
 import { IntelligencePages } from './IntelligencePages.js';
 import { TrustPages } from './TrustPages.js';
+import { RealControlPlane } from './RealControlPlane.js';
 import './styles.css';
 
 const GLYPHS: Record<string, string> = {
@@ -68,6 +69,17 @@ function contextFromAddress(address: string | undefined): DeepLinkContext | null
   };
 }
 
+function isRealAddress(address: string): boolean {
+  return new URL(address, 'http://super-admin.local').searchParams.get('mode') === 'real';
+}
+
+function addressForMode(address: string, real: boolean): string {
+  const url = new URL(address, 'http://super-admin.local');
+  if (real) url.searchParams.set('mode', 'real');
+  else url.searchParams.delete('mode');
+  return `${url.pathname}${url.search}`;
+}
+
 export function SuperAdminV2({
   initialPath,
   initialState = 'success',
@@ -95,6 +107,7 @@ export function SuperAdminV2({
   const inspectorReturnFocus = useRef<HTMLElement | null>(null);
   const hadDialog = useRef(false);
   const route = resolveRoute(path);
+  const isRealMode = isRealAddress(path);
   const isModuleOverview = route.page.id === route.module.pages[0]?.id;
   const showMetricStrip =
     (route.module.id === 'data' && ['overview', 'coverage', 'storage'].includes(route.page.id)) ||
@@ -144,6 +157,8 @@ export function SuperAdminV2({
       window.scrollTo({ top: 0, behavior: 'smooth' });
     }
   };
+
+  const navigateRoute = (nextPath: string) => navigate(addressForMode(nextPath, isRealMode));
 
   const records = useMemo(() => {
     const normalized = query.trim().toLowerCase();
@@ -208,7 +223,7 @@ export function SuperAdminV2({
 
   return (
     <div
-      className={`sa2 sa2--${route.module.id}-${route.page.id}${isModuleOverview ? ' sa2--module-overview' : ''}`}
+      className={`sa2 sa2--${route.module.id}-${route.page.id}${isModuleOverview ? ' sa2--module-overview' : ''}${isRealMode ? ' sa2--real-mode' : ''}`}
       style={{ '--module-accent': route.module.accent } as CSSProperties}
     >
       <a className="sa2-skip" href="#sa2-main">
@@ -232,17 +247,17 @@ export function SuperAdminV2({
           </button>
         </div>
         <div className="sa2-demo-pill">
-          <span /> DEMO REVIEW
+          <span /> {isRealMode ? 'REAL READ ONLY' : 'DEMO REVIEW'}
         </div>
         <nav aria-label="全局一级导航" className="sa2-primary-nav">
           {adminModules.map((module) => (
             <a
               key={module.id}
-              href={routeFor(module)}
+              href={addressForMode(routeFor(module), isRealMode)}
               aria-current={route.module.id === module.id ? 'page' : undefined}
               onClick={(event) => {
                 event.preventDefault();
-                navigate(routeFor(module));
+                navigateRoute(routeFor(module));
               }}
             >
               <span className="sa2-nav-icon" aria-hidden="true">
@@ -254,10 +269,10 @@ export function SuperAdminV2({
           ))}
         </nav>
         <div className="sa2-operator">
-          <span className="sa2-avatar">SC</span>
+          <span className="sa2-avatar">{isRealMode ? 'IO' : 'SC'}</span>
           <div>
-            <strong>Sarah Chen</strong>
-            <small>Internal Operator · Demo</small>
+            <strong>{isRealMode ? 'Internal Operator' : 'Sarah Chen'}</strong>
+            <small>{isRealMode ? 'Gateway-governed reads' : 'Internal Operator · Demo'}</small>
           </div>
           <button aria-label="账户菜单" onClick={() => action('账户菜单')}>
             •••
@@ -295,25 +310,36 @@ export function SuperAdminV2({
             <button aria-label="通知" onClick={() => action('通知中心')}>
               ♢<span className="sa2-dot" />
             </button>
-            <span className="sa2-source">
-              <i /> 演示数据
-            </span>
+            <button
+              className="sa2-source sa2-mode-switch"
+              onClick={() => navigate(addressForMode(path, !isRealMode))}
+            >
+              <i /> {isRealMode ? '真实只读' : '演示数据'}
+            </button>
           </div>
         </header>
 
-        <div className="sa2-demo-banner" role="note">
-          <span>DEMO</span>
-          <p>{DEMO_FIXTURE_NOTICE}</p>
-          <a
-            href="/"
-            onClick={(event) => {
-              event.preventDefault();
-              window.location.assign('/');
-            }}
-          >
-            返回当前真实控制台
-          </a>
-        </div>
+        {isRealMode ? (
+          <div className="sa2-real-banner" role="note">
+            <span>REAL READ ONLY</span>
+            <p>真实只读 · 只会通过 Gateway、HttpOnly session 与精确 owner capability 读取</p>
+            <button onClick={() => navigate(addressForMode(path, false))}>返回 Demo 评审</button>
+          </div>
+        ) : (
+          <div className="sa2-demo-banner" role="note">
+            <span>DEMO</span>
+            <p>{DEMO_FIXTURE_NOTICE}</p>
+            <a
+              href="/"
+              onClick={(event) => {
+                event.preventDefault();
+                window.location.assign('/');
+              }}
+            >
+              返回当前真实控制台
+            </a>
+          </div>
+        )}
 
         <section className="sa2-module-head">
           <div className="sa2-title-row">
@@ -326,23 +352,25 @@ export function SuperAdminV2({
               <span>{route.module.description}</span>
             </div>
           </div>
-          <button
-            className="sa2-button sa2-button--secondary"
-            onClick={() => action('刷新当前 fixture 快照')}
-          >
-            ↻ 模拟刷新
-          </button>
+          {!isRealMode && (
+            <button
+              className="sa2-button sa2-button--secondary"
+              onClick={() => action('刷新当前 fixture 快照')}
+            >
+              ↻ 模拟刷新
+            </button>
+          )}
         </section>
 
         <nav className="sa2-secondary-nav" aria-label={`${route.module.label} 二级导航`}>
           {route.module.pages.map((page) => (
             <a
               key={page.id}
-              href={routeFor(route.module, page)}
+              href={addressForMode(routeFor(route.module, page), isRealMode)}
               aria-current={page.id === route.page.id ? 'page' : undefined}
               onClick={(event) => {
                 event.preventDefault();
-                navigate(routeFor(route.module, page));
+                navigateRoute(routeFor(route.module, page));
               }}
             >
               {page.label}
@@ -350,38 +378,40 @@ export function SuperAdminV2({
           ))}
         </nav>
 
-        <aside className="sa2-review-tools" aria-label="Demo 评审工具">
-          <div className="sa2-review-tools-summary">
-            <strong>Demo 评审工具</strong>
-            <small>状态模拟不代表 owner 的真实运行状态</small>
-          </div>
-          <button
-            className="sa2-review-tools-toggle"
-            aria-expanded={reviewToolsOpen}
-            onClick={() => setReviewToolsOpen((current) => !current)}
-          >
-            {reviewToolsOpen ? '收起评审工具' : '展开评审工具'}
-          </button>
-          <div
-            className={
-              reviewToolsOpen ? 'sa2-review-tools-controls is-open' : 'sa2-review-tools-controls'
-            }
-          >
-            <label htmlFor="review-state">模拟页面状态</label>
-            <select
-              id="review-state"
-              value={reviewState}
-              onChange={(event) => setReviewState(event.target.value as ReviewState)}
+        {!isRealMode && (
+          <aside className="sa2-review-tools" aria-label="Demo 评审工具">
+            <div className="sa2-review-tools-summary">
+              <strong>Demo 评审工具</strong>
+              <small>状态模拟不代表 owner 的真实运行状态</small>
+            </div>
+            <button
+              className="sa2-review-tools-toggle"
+              aria-expanded={reviewToolsOpen}
+              onClick={() => setReviewToolsOpen((current) => !current)}
             >
-              <option value="success">成功 fixture</option>
-              <option value="partial">部分可用 fixture</option>
-              <option value="loading">加载中 fixture</option>
-              <option value="empty">无数据 fixture</option>
-              <option value="error">连接失败 fixture</option>
-              <option value="permission">无权限 fixture</option>
-            </select>
-          </div>
-        </aside>
+              {reviewToolsOpen ? '收起评审工具' : '展开评审工具'}
+            </button>
+            <div
+              className={
+                reviewToolsOpen ? 'sa2-review-tools-controls is-open' : 'sa2-review-tools-controls'
+              }
+            >
+              <label htmlFor="review-state">模拟页面状态</label>
+              <select
+                id="review-state"
+                value={reviewState}
+                onChange={(event) => setReviewState(event.target.value as ReviewState)}
+              >
+                <option value="success">成功 fixture</option>
+                <option value="partial">部分可用 fixture</option>
+                <option value="loading">加载中 fixture</option>
+                <option value="empty">无数据 fixture</option>
+                <option value="error">连接失败 fixture</option>
+                <option value="permission">无权限 fixture</option>
+              </select>
+            </div>
+          </aside>
+        )}
 
         <main id="sa2-main" tabIndex={-1}>
           {deepLinkContext && path === deepLinkContext.targetPath && (
@@ -397,39 +427,48 @@ export function SuperAdminV2({
               <button onClick={() => setDeepLinkContext(null)}>结束上下文</button>
             </aside>
           )}
-          <StateBoundary
-            state={reviewState}
-            pageTitle={route.page.label}
-            onRetry={() => setReviewState('success')}
-          >
-            {reviewState === 'partial' && (
-              <div className="sa2-partial" role="status">
-                <strong>部分数据不可用</strong>
-                <span>演示：一个 owner projection 已过期；其余数据保持可见并带来源。</span>
-              </div>
-            )}
-            {showMetricStrip && <MetricStrip module={route.module} pageId={route.page.id} />}
-            <ModuleWorkbench
-              module={route.module}
+          {isRealMode ? (
+            <RealControlPlane
+              moduleId={route.module.id}
               pageId={route.page.id}
               pageLabel={route.page.label}
-              records={records}
-              query={query}
-              setQuery={setQuery}
-              statusFilter={statusFilter}
-              setStatusFilter={setStatusFilter}
-              onSelect={openInspector}
-              onAction={action}
-              onDeepLink={openDeepLink}
-              focusObjectId={
-                deepLinkContext && path === deepLinkContext.targetPath
-                  ? deepLinkContext.targetObjectId
-                  : deepLinkContext && path === deepLinkContext.sourcePath
-                    ? deepLinkContext.sourceId
-                    : undefined
-              }
+              navigate={navigate}
             />
-          </StateBoundary>
+          ) : (
+            <StateBoundary
+              state={reviewState}
+              pageTitle={route.page.label}
+              onRetry={() => setReviewState('success')}
+            >
+              {reviewState === 'partial' && (
+                <div className="sa2-partial" role="status">
+                  <strong>部分数据不可用</strong>
+                  <span>演示：一个 owner projection 已过期；其余数据保持可见并带来源。</span>
+                </div>
+              )}
+              {showMetricStrip && <MetricStrip module={route.module} pageId={route.page.id} />}
+              <ModuleWorkbench
+                module={route.module}
+                pageId={route.page.id}
+                pageLabel={route.page.label}
+                records={records}
+                query={query}
+                setQuery={setQuery}
+                statusFilter={statusFilter}
+                setStatusFilter={setStatusFilter}
+                onSelect={openInspector}
+                onAction={action}
+                onDeepLink={openDeepLink}
+                focusObjectId={
+                  deepLinkContext && path === deepLinkContext.targetPath
+                    ? deepLinkContext.targetObjectId
+                    : deepLinkContext && path === deepLinkContext.sourcePath
+                      ? deepLinkContext.sourceId
+                      : undefined
+                }
+              />
+            </StateBoundary>
+          )}
         </main>
       </div>
 

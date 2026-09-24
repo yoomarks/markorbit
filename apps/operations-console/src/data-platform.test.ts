@@ -79,6 +79,32 @@ describe('Data Control Center owner-summary presentation', () => {
     ).rejects.toThrow('Data owner summary is malformed and cannot be trusted.');
   });
 
+  it('keeps authentication, permission and timeout failures typed for the Real read plane', async () => {
+    await expect(
+      loadDataOwnerSummary(vi.fn(() => response({ code: 'AUTHENTICATION_REQUIRED' }, 401)))
+    ).rejects.toMatchObject({ kind: 'authentication', status: 401 });
+    await expect(
+      loadDataOwnerSummary(vi.fn(() => response({ code: 'PERMISSION_DENIED' }, 403)))
+    ).rejects.toMatchObject({ kind: 'permission', status: 403 });
+    await expect(
+      loadDataOwnerSummary(vi.fn(() => response({ code: 'DATA_ENGINE_TIMEOUT' }, 504)))
+    ).rejects.toMatchObject({ kind: 'timeout', status: 504, code: 'DATA_ENGINE_TIMEOUT' });
+    await expect(
+      loadDataOwnerSummary(
+        vi.fn(() =>
+          response(
+            { code: 'DATA_ENGINE_UNAVAILABLE', message: 'Data Engine request timed out.' },
+            502
+          )
+        )
+      )
+    ).rejects.toMatchObject({
+      kind: 'timeout',
+      status: 502,
+      code: 'DATA_ENGINE_UNAVAILABLE'
+    });
+  });
+
   it('keeps unavailable and boundary language explicitly non-synthetic and read-only', () => {
     const unavailable = DATA_PLATFORM_UNAVAILABLE_TEXT.toLowerCase();
     expect(unavailable).toContain('not the same as healthy');
