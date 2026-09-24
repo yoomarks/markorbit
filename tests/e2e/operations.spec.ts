@@ -549,6 +549,33 @@ test('Super Admin V2 batch B keeps Workspace, identity and product truths separa
   assertHealthy();
 });
 
+test('Super Admin V2 batch C links Brain execution to governed Capability evidence', async ({
+  page
+}) => {
+  const assertHealthy = watchPage(page);
+  await page.goto(`${urls.operations}/super-admin-v2/brain/runs`);
+  await page
+    .getByRole('button', { name: /Matter opportunity analysis/ })
+    .first()
+    .click();
+  const brainRun = page.getByTestId('brain-runs-detail');
+  await expect(brainRun).toContainText('CAP-ANALYZE-001');
+  await expect(brainRun).toContainText('provider receipt pr-118');
+
+  await page.goto(`${urls.operations}/super-admin-v2/capabilities/catalog`);
+  await page
+    .getByRole('button', { name: /Analyze trademark opportunity/ })
+    .first()
+    .click();
+  const capability = page.getByTestId('capabilities-catalog-detail');
+  await expect(capability).toContainText('Outcome contract');
+  await expect(capability).toContainText('Implementation IMP-42');
+  await expect(capability).toContainText('Run BRUN-8821');
+  await expect(capability).toContainText('Reflection Candidate');
+  await expectNoHorizontalOverflow(page);
+  assertHealthy();
+});
+
 test('every Super Admin V2 first and second-level route is directly reviewable', async ({
   page
 }, testInfo) => {
@@ -577,7 +604,9 @@ test('every Super Admin V2 first and second-level route is directly reviewable',
         module.id === 'integrations' ||
         module.id === 'workspaces' ||
         module.id === 'users' ||
-        module.id === 'products'
+        module.id === 'products' ||
+        module.id === 'brain' ||
+        module.id === 'capabilities'
       ) {
         await expect(page.getByTestId(`${module.id}-page-${secondaryPage.id}`)).toBeVisible();
         await capture(page, `super-admin-v2-${module.id}-${secondaryPage.id}-desktop`);

@@ -11,6 +11,7 @@ import { DataEnginePages } from './DataEnginePages.js';
 import { KnowledgePages } from './KnowledgePages.js';
 import { ControlPlanePages } from './ControlPlanePages.js';
 import { OrganizationPages } from './OrganizationPages.js';
+import { IntelligencePages } from './IntelligencePages.js';
 import './styles.css';
 
 const GLYPHS: Record<string, string> = {
@@ -290,7 +291,9 @@ export function SuperAdminV2({
               'integrations',
               'workspaces',
               'users',
-              'products'
+              'products',
+              'brain',
+              'capabilities'
             ].includes(route.module.id) && (
               <MetricStrip module={route.module} pageId={route.page.id} />
             )}
@@ -537,6 +540,17 @@ interface WorkbenchProps {
 }
 
 function ModuleWorkbench(props: WorkbenchProps) {
+  if (props.module.id === 'brain' || props.module.id === 'capabilities') {
+    return (
+      <IntelligencePages
+        moduleId={props.module.id}
+        pageId={props.pageId}
+        query={props.query}
+        setQuery={props.setQuery}
+        onAction={props.onAction}
+      />
+    );
+  }
   if (
     props.module.id === 'workspaces' ||
     props.module.id === 'users' ||

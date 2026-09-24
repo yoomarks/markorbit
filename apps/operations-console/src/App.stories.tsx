@@ -55,6 +55,14 @@ export const SuperAdminV2ProductEntitlements = () => (
   <SuperAdminV2 initialPath="/super-admin-v2/products/entitlements" useBrowserHistory={false} />
 );
 
+export const SuperAdminV2BrainRun = () => (
+  <SuperAdminV2 initialPath="/super-admin-v2/brain/runs" useBrowserHistory={false} />
+);
+
+export const SuperAdminV2CapabilityLineage = () => (
+  <SuperAdminV2 initialPath="/super-admin-v2/capabilities/versions" useBrowserHistory={false} />
+);
+
 export const SuperAdminV2Permission = () => (
   <SuperAdminV2
     initialPath="/super-admin-v2/governance/risk"

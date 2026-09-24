@@ -2310,6 +2310,316 @@
   }
 }
 
+/* V2.2 batch C: Brain runtime and Capability canon remain distinct */
+.sa2-intel-flow,
+.sa2-cap-tree {
+  display: grid;
+  gap: 8px;
+}
+.sa2-intel-flow > button,
+.sa2-cap-tree > button {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  width: 100%;
+  padding: 10px;
+  overflow-x: auto;
+  border: 1px solid #e3e8f0;
+  border-radius: 8px;
+  background: #fafbfd;
+}
+.sa2-intel-flow > button.is-active {
+  border-color: var(--module-accent);
+  background: color-mix(in srgb, var(--module-accent), white 94%);
+}
+.sa2-intel-flow button > span,
+.sa2-cap-tree button > span {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: 7px;
+  min-width: 120px;
+  padding: 9px;
+  border-radius: 7px;
+  background: #fff;
+  color: #3e5774;
+  font-size: 9px;
+  text-align: left;
+}
+.sa2-intel-flow span i {
+  display: grid;
+  place-items: center;
+  width: 21px;
+  height: 21px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--module-accent), white 84%);
+  color: var(--module-accent);
+  font-style: normal;
+}
+.sa2-intel-flow span em {
+  margin-left: auto;
+  color: #9ba7b5;
+  font-style: normal;
+}
+.sa2-intel-flow > button > u {
+  min-width: 70px;
+  color: #516984;
+  font-size: 9px;
+  text-decoration: none;
+}
+.sa2-cap-tree button > span.domain {
+  flex: 0 0 55px;
+  justify-content: center;
+  background: color-mix(in srgb, var(--module-accent), white 82%);
+  color: var(--module-accent);
+  font-weight: 800;
+}
+.sa2-cap-tree button > span.cap {
+  min-width: 220px;
+  color: #213f67;
+  font-weight: 700;
+}
+.sa2-cap-tree button > i {
+  color: #9aa7b6;
+  font-style: normal;
+}
+.sa2-intel-cards {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 11px;
+}
+.sa2-intel-cards > button {
+  display: grid;
+  gap: 8px;
+  padding: 14px;
+  border: 1px solid #dbe4ef;
+  border-radius: 11px;
+  background: #fff;
+  color: #405773;
+  text-align: left;
+}
+.sa2-intel-cards > button.is-active {
+  border-color: var(--module-accent);
+  box-shadow: 0 7px 18px color-mix(in srgb, var(--module-accent), transparent 86%);
+}
+.sa2-intel-cards > button > span {
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 11px;
+  background: color-mix(in srgb, var(--module-accent), white 83%);
+  color: var(--module-accent);
+  font-weight: 800;
+}
+.sa2-intel-cards small {
+  color: #7f8ea0;
+}
+.sa2-intel-cards u {
+  color: #4e6680;
+  font-size: 9px;
+  text-decoration: none;
+}
+.sa2-intel-cards > button > div {
+  display: grid;
+  gap: 5px;
+}
+.sa2-intel-cards div i {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  padding-top: 5px;
+  border-top: 1px solid #edf1f5;
+  color: #4a627d;
+  font-size: 8px;
+  font-style: normal;
+}
+.sa2-intel-cards div i b {
+  color: #8995a4;
+}
+.sa2-intel-runs > button {
+  display: grid;
+  grid-template-columns: 70px minmax(180px, 1fr) 1.4fr 90px;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 12px 7px;
+  border: 0;
+  border-bottom: 1px solid #edf1f5;
+  background: transparent;
+  text-align: left;
+}
+.sa2-intel-runs time,
+.sa2-intel-runs small {
+  color: #8290a3;
+  font-size: 9px;
+}
+.sa2-intel-runs button > span {
+  display: grid;
+}
+.sa2-intel-runs button > i {
+  height: 6px;
+  overflow: hidden;
+  border-radius: 8px;
+  background: #e8edf4;
+}
+.sa2-intel-runs em {
+  display: block;
+  height: 100%;
+  background: var(--module-accent);
+}
+.sa2-intel-runs u {
+  color: #4b6480;
+  font-size: 9px;
+  text-align: right;
+  text-decoration: none;
+}
+.sa2-intel-cost {
+  display: flex;
+  align-items: flex-end;
+  gap: 22px;
+  min-height: 210px;
+}
+.sa2-intel-cost > button {
+  display: grid;
+  flex: 1;
+  align-items: end;
+  gap: 7px;
+  height: 170px;
+  padding: 10px;
+  border: 0;
+  background: transparent;
+  text-align: left;
+}
+.sa2-intel-cost button > span {
+  display: grid;
+}
+.sa2-intel-cost small {
+  color: #8190a3;
+}
+.sa2-intel-cost button > i {
+  width: 100%;
+  align-self: end;
+  border-radius: 7px 7px 2px 2px;
+  background: linear-gradient(
+    180deg,
+    var(--module-accent),
+    color-mix(in srgb, var(--module-accent), white 55%)
+  );
+}
+.sa2-intel-policy {
+  overflow-x: auto;
+}
+.sa2-intel-policy > button {
+  display: grid;
+  grid-template-columns: minmax(180px, 1.2fr) repeat(4, minmax(110px, 1fr)) 80px;
+  align-items: center;
+  gap: 7px;
+  min-width: 780px;
+  width: 100%;
+  padding: 10px 7px;
+  border: 0;
+  border-bottom: 1px solid #edf1f5;
+  background: transparent;
+  text-align: left;
+}
+.sa2-intel-policy button > span,
+.sa2-intel-policy button > i {
+  display: grid;
+  gap: 2px;
+}
+.sa2-intel-policy small,
+.sa2-intel-policy button > i b {
+  color: #8995a4;
+  font-size: 8px;
+}
+.sa2-intel-policy button > i {
+  padding: 7px;
+  border-radius: 6px;
+  background: #f4f6f9;
+  color: #4f6781;
+  font-size: 8px;
+  font-style: normal;
+}
+.sa2-intel-policy u {
+  color: #4f6781;
+  font-size: 9px;
+  text-decoration: none;
+}
+.sa2-intel-prompts > button {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr 90px;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 10px 7px;
+  border: 0;
+  border-bottom: 1px solid #edf1f5;
+  background: transparent;
+  text-align: left;
+}
+.sa2-intel-prompts code {
+  padding: 10px;
+  border-radius: 7px;
+  background: #12243c;
+  color: #9fddd1;
+  font-size: 8px;
+  white-space: pre-wrap;
+}
+.sa2-intel-prompts button > span {
+  display: grid;
+}
+.sa2-intel-prompts small {
+  color: #8190a3;
+}
+.sa2-intel-prompts u {
+  color: #4d6580;
+  font-size: 9px;
+  text-decoration: none;
+}
+.sa2-evidence-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.sa2-evidence-chips button {
+  padding: 6px 8px;
+  border: 1px solid #dce4ee;
+  border-radius: 999px;
+  background: #f6f8fb;
+  color: #49627e;
+  font-size: 8px;
+}
+@media (max-width: 920px) {
+  .sa2-intel-cards {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+@media (max-width: 760px) {
+  .sa2-intel-cards {
+    grid-template-columns: 1fr;
+  }
+  .sa2-intel-runs > button {
+    grid-template-columns: 58px 1fr 70px;
+  }
+  .sa2-intel-runs button > i {
+    grid-column: 2 / -1;
+    grid-row: 2;
+  }
+  .sa2-intel-cost {
+    gap: 8px;
+  }
+  .sa2-intel-cost > button {
+    padding: 5px;
+  }
+  .sa2-intel-prompts > button {
+    grid-template-columns: 1fr 70px;
+  }
+  .sa2-intel-prompts code {
+    grid-column: 1 / -1;
+  }
+}
+
 /* V2.2 batch B: organization, identity and product truth */
 .sa2-org-directory > button {
   position: relative;

@@ -5,6 +5,7 @@ import { DATA_ENGINE_PAGE_IDS } from './DataEnginePages.js';
 import { KNOWLEDGE_PAGE_IDS } from './KnowledgePages.js';
 import { BATCH_A_PAGE_IDS } from './ControlPlanePages.js';
 import { BATCH_B_PAGE_IDS } from './OrganizationPages.js';
+import { BATCH_C_PAGE_IDS } from './IntelligencePages.js';
 
 describe('Super Admin V2 navigation catalog', () => {
   it('freezes twelve unique first-level modules with addressable secondary pages', () => {
@@ -57,6 +58,14 @@ describe('Super Admin V2 navigation catalog', () => {
   it('has a dedicated V2.2 batch B definition for every Workspace, user and product page', () => {
     for (const moduleId of ['workspaces', 'users', 'products'] as const) {
       expect(BATCH_B_PAGE_IDS[moduleId]).toEqual(
+        adminModules.find((module) => module.id === moduleId)?.pages.map((page) => page.id)
+      );
+    }
+  });
+
+  it('has a dedicated V2.2 batch C definition for every Brain and Capability page', () => {
+    for (const moduleId of ['brain', 'capabilities'] as const) {
+      expect(BATCH_C_PAGE_IDS[moduleId]).toEqual(
         adminModules.find((module) => module.id === moduleId)?.pages.map((page) => page.id)
       );
     }
