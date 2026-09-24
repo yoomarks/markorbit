@@ -2310,6 +2310,95 @@
   }
 }
 
+/* V2.2.1 independent acceptance: readable hierarchy and task-safe interactions */
+.sa2-context-route {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 12px;
+  align-items: center;
+  margin-bottom: 14px;
+  padding: 12px 14px;
+  border: 1px solid #b8d5f3;
+  border-radius: 10px;
+  background: #eef7ff;
+  color: #25496f;
+  font-size: 13px;
+}
+.sa2-context-route span,
+.sa2-context-route strong {
+  min-width: 0;
+}
+.sa2-context-route button {
+  min-height: 40px;
+  padding: 0 14px;
+  border: 1px solid #8ab8e8;
+  border-radius: 8px;
+  background: #fff;
+  color: #174f8b;
+  font-weight: 750;
+}
+.sa2-context-route.is-restored {
+  border-color: #b8dfd1;
+  background: #effaf5;
+}
+.sa2-depth {
+  font-size: 14px;
+}
+.sa2-depth-head > div > span,
+.sa2-object-browser > header span,
+.sa2-object-detail > header span,
+.sa2-page-facts span,
+.sa2-impact-box span {
+  font-size: 11px;
+  line-height: 1.35;
+}
+.sa2-depth small,
+.sa2-object-browser > button small,
+.sa2-object-detail dt,
+.sa2-page-facts small,
+.sa2-evidence-workspace small,
+.sa2-package-kanban dt,
+.sa2-trust-risk code {
+  font-size: 12px;
+  line-height: 1.45;
+}
+.sa2-object-browser > button,
+.sa2-evidence-workspace > aside:first-child button,
+.sa2-package-kanban article > button {
+  min-height: 48px;
+}
+.sa2-query-record + .sa2-query-record {
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid #dfe7ef;
+}
+.sa2-dialog-layer {
+  overscroll-behavior: contain;
+}
+
+@media (max-width: 760px) {
+  .sa2-context-route {
+    grid-template-columns: 1fr;
+  }
+  .sa2-context-route button,
+  .sa2-evidence-workspace button,
+  .sa2-review-form button,
+  .sa2-dialog button,
+  .sa2-depth .sa2-button {
+    min-height: 44px;
+  }
+  .sa2-evidence-workspace > aside:first-child {
+    max-height: none;
+  }
+  .sa2-review-form {
+    position: relative;
+    z-index: 1;
+  }
+  .sa2-review-form textarea {
+    min-height: 96px;
+  }
+}
+
 /* V2.2 batch D: commercial owner records and protected governance operations */
 .sa2-trust-chart {
   display: grid;
@@ -5127,5 +5216,33 @@
   }
   .sa2-domain-map button i {
     display: none;
+  }
+}
+
+/* Final V2.2.1 type/touch overrides intentionally follow every page batch. */
+.sa2-depth-head > div > span,
+.sa2-object-browser > header span,
+.sa2-object-detail > header span,
+.sa2-page-facts span,
+.sa2-impact-box span {
+  font-size: 11px;
+  line-height: 1.35;
+}
+.sa2-depth small,
+.sa2-object-browser > button small,
+.sa2-object-detail dt,
+.sa2-page-facts small,
+.sa2-evidence-workspace small,
+.sa2-package-kanban dt,
+.sa2-trust-risk code {
+  font-size: 12px;
+  line-height: 1.45;
+}
+@media (max-width: 760px) {
+  .sa2-evidence-workspace button,
+  .sa2-review-form button,
+  .sa2-dialog button,
+  .sa2-depth .sa2-button {
+    min-height: 44px;
   }
 }

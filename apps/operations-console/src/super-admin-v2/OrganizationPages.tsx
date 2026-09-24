@@ -1210,16 +1210,24 @@ export function OrganizationPages({
   const modulePages = pages[moduleId];
   const page = modulePages[pageId] ?? modulePages[Object.keys(modulePages)[0]!]!;
   const [selectedId, setSelectedId] = useState(page.objects[0]?.id ?? '');
-  useEffect(() => setSelectedId(page.objects[0]?.id ?? ''), [page]);
+  const [localStatus, setLocalStatus] = useState('全部状态');
+  useEffect(() => {
+    setSelectedId(page.objects[0]?.id ?? '');
+    setLocalStatus('全部状态');
+  }, [page]);
   const visible = useMemo(() => {
     const value = query.trim().toLowerCase();
     return page.objects.filter(
       (item) =>
-        !value ||
-        `${item.id} ${item.name} ${item.kind} ${item.status}`.toLowerCase().includes(value)
+        (localStatus === '全部状态' || item.status === localStatus) &&
+        (!value ||
+          `${item.id} ${item.name} ${item.kind} ${item.status}`.toLowerCase().includes(value))
     );
-  }, [page, query]);
-  const selected = page.objects.find((item) => item.id === selectedId) ?? visible[0];
+  }, [localStatus, page, query]);
+  const selected = visible.find((item) => item.id === selectedId) ?? visible[0];
+  useEffect(() => {
+    if (selected && selected.id !== selectedId) setSelectedId(selected.id);
+  }, [selected, selectedId]);
   return (
     <section
       className={`sa2-depth sa2-org-page sa2-org-page--${page.variant}`}
@@ -1266,10 +1274,15 @@ export function OrganizationPages({
               onChange={(event) => setQuery(event.target.value)}
               placeholder={`搜索 ${page.objectLabel} ID 或名称`}
             />
-            <select aria-label="状态筛选">
+            <select
+              aria-label="状态筛选"
+              value={localStatus}
+              onChange={(event) => setLocalStatus(event.target.value)}
+            >
               <option>全部状态</option>
-              <option>正常</option>
-              <option>需关注</option>
+              {[...new Set(page.objects.map((item) => item.status))].map((status) => (
+                <option key={status}>{status}</option>
+              ))}
             </select>
           </div>
           {visible.map((item) => (
@@ -1290,7 +1303,7 @@ export function OrganizationPages({
             </button>
           ))}
         </article>
-        {selected && (
+        {selected ? (
           <article
             className="sa2-depth-card sa2-object-detail"
             data-testid={`${moduleId}-${pageId}-detail`}
@@ -1303,6 +1316,10 @@ export function OrganizationPages({
               <b>{selected.status}</b>
             </header>
             <dl>
+              <div>
+                <dt>对象 ID</dt>
+                <dd>{selected.id}</dd>
+              </div>
               {selected.fields.map((field) => (
                 <div key={field[0]}>
                   <dt>{field[0]}</dt>
@@ -1340,6 +1357,11 @@ export function OrganizationPages({
                 预演主要操作
               </button>
             </div>
+          </article>
+        ) : (
+          <article className="sa2-depth-card sa2-inline-empty">
+            <h4>没有匹配的演示对象</h4>
+            <p>当前筛选返回 0 条结果；详情和对象操作已清空。</p>
           </article>
         )}
       </div>

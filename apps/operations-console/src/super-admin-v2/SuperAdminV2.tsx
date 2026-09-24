@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type CSSProperties, type ReactNode } from 'react';
+import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import {
   adminModules,
   resolveRoute,
@@ -45,6 +45,12 @@ export interface SuperAdminV2Props {
   useBrowserHistory?: boolean;
 }
 
+interface DeepLinkContext {
+  sourcePath: string;
+  sourceId: string;
+  targetPath: string;
+}
+
 export function SuperAdminV2({
   initialPath,
   initialState = 'success',
@@ -61,6 +67,9 @@ export function SuperAdminV2({
   const [dialog, setDialog] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [mobileNav, setMobileNav] = useState(false);
+  const [deepLinkContext, setDeepLinkContext] = useState<DeepLinkContext | null>(null);
+  const dialogReturnFocus = useRef<HTMLElement | null>(null);
+  const hadDialog = useRef(false);
   const route = resolveRoute(path);
 
   useEffect(() => {
@@ -77,6 +86,18 @@ export function SuperAdminV2({
     setMobileNav(false);
     document.title = `${route.page.label} · ${route.module.label} · Super Admin V2`;
   }, [path, route.module.label, route.page.label]);
+
+  useEffect(() => {
+    if (dialog) {
+      hadDialog.current = true;
+      return;
+    }
+    if (hadDialog.current) {
+      dialogReturnFocus.current?.focus();
+      dialogReturnFocus.current = null;
+      hadDialog.current = false;
+    }
+  }, [dialog]);
 
   const navigate = (nextPath: string) => {
     setPath(nextPath);
@@ -99,11 +120,18 @@ export function SuperAdminV2({
   }, [query, route.module.id, statusFilter]);
 
   const action = (label: string, protectedAction = false) => {
-    if (protectedAction) setDialog(label);
-    else {
+    if (protectedAction) {
+      dialogReturnFocus.current = document.activeElement as HTMLElement | null;
+      setDialog(label);
+    } else {
       setNotice(`已展示 Demo 步骤“${label}”；未调用 owner API，也未产生生产变更。`);
       window.setTimeout(() => setNotice(null), 3200);
     }
+  };
+
+  const openDeepLink = (targetPath: string, sourceId: string) => {
+    setDeepLinkContext({ sourcePath: path, sourceId, targetPath });
+    navigate(targetPath);
   };
 
   return (
@@ -269,6 +297,19 @@ export function SuperAdminV2({
         </aside>
 
         <main id="sa2-main" tabIndex={-1}>
+          {deepLinkContext && path === deepLinkContext.targetPath && (
+            <aside className="sa2-context-route" aria-label="告警调查上下文">
+              <span>来自告警 {deepLinkContext.sourceId}</span>
+              <strong>已进入关联 owner 处理页面，未执行任何生产操作。</strong>
+              <button onClick={() => navigate(deepLinkContext.sourcePath)}>返回告警调查</button>
+            </aside>
+          )}
+          {deepLinkContext && path === deepLinkContext.sourcePath && (
+            <aside className="sa2-context-route is-restored" aria-label="已恢复的告警调查上下文">
+              <strong>已恢复告警 {deepLinkContext.sourceId} 的调查上下文</strong>
+              <button onClick={() => setDeepLinkContext(null)}>结束上下文</button>
+            </aside>
+          )}
           <div className="sa2-page-intro">
             <div>
               <p className="sa2-kicker">
@@ -311,6 +352,12 @@ export function SuperAdminV2({
               setStatusFilter={setStatusFilter}
               onSelect={setSelected}
               onAction={action}
+              onDeepLink={openDeepLink}
+              focusObjectId={
+                deepLinkContext && path === deepLinkContext.sourcePath
+                  ? deepLinkContext.sourceId
+                  : undefined
+              }
             />
           </StateBoundary>
         </main>
@@ -540,6 +587,8 @@ interface WorkbenchProps {
   setStatusFilter: (value: string) => void;
   onSelect: (record: DemoRecord) => void;
   onAction: (label: string, protectedAction?: boolean) => void;
+  onDeepLink: (targetPath: string, sourceId: string) => void;
+  focusObjectId?: string | undefined;
 }
 
 function ModuleWorkbench(props: WorkbenchProps) {
@@ -592,6 +641,8 @@ function ModuleWorkbench(props: WorkbenchProps) {
         query={props.query}
         setQuery={props.setQuery}
         onAction={props.onAction}
+        onDeepLink={props.onDeepLink}
+        focusObjectId={props.focusObjectId}
       />
     );
   }
@@ -1364,6 +1415,14 @@ function Inspector({
   onClose: () => void;
   onAction: (label: string, protectedAction?: boolean) => void;
 }) {
+  const copyId = async () => {
+    try {
+      await navigator.clipboard.writeText(record.id);
+      onAction(`已在本地剪贴板复制 Demo 对象 ID ${record.id}`);
+    } catch {
+      onAction(`本地剪贴板不可用；未复制 Demo 对象 ID ${record.id}`);
+    }
+  };
   return (
     <aside
       className="sa2-inspector"
@@ -1413,11 +1472,8 @@ function Inspector({
         <span>DEMO FIXTURE · NOT OFFICIAL TRUTH</span>
       </section>
       <footer>
-        <button
-          className="sa2-button sa2-button--secondary"
-          onClick={() => onAction('复制演示对象 ID')}
-        >
-          复制 ID
+        <button className="sa2-button sa2-button--secondary" onClick={() => void copyId()}>
+          复制对象 ID（本地）
         </button>
         <button className="sa2-button" onClick={() => onAction(`处理 ${record.name}`, true)}>
           进入受保护操作
@@ -1436,9 +1492,58 @@ function ProtectedDialog({
   onClose: () => void;
   onDemoConfirm: () => void;
 }) {
+  const dialogRef = useRef<HTMLElement>(null);
+  const cancelRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    const background = Array.from(
+      document.querySelectorAll<HTMLElement>(
+        '.sa2 > .sa2-body, .sa2 > .sa2-sidebar, .sa2 > .sa2-inspector'
+      )
+    );
+    background.forEach((element) => {
+      element.setAttribute('inert', '');
+      element.setAttribute('aria-hidden', 'true');
+    });
+    cancelRef.current?.focus();
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        onClose();
+        return;
+      }
+      if (event.key !== 'Tab' || !dialogRef.current) return;
+      const controls = Array.from(
+        dialogRef.current.querySelectorAll<HTMLElement>(
+          'button:not([disabled]), textarea:not([disabled]), input:not([disabled]), select:not([disabled]), a[href]'
+        )
+      );
+      if (!controls.length) return;
+      const first = cancelRef.current ?? controls[0]!;
+      const last = controls[controls.length - 1]!;
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    };
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+      background.forEach((element) => {
+        element.removeAttribute('inert');
+        element.removeAttribute('aria-hidden');
+      });
+    };
+  }, [onClose]);
+
   return (
     <div className="sa2-dialog-layer" role="presentation">
       <section
+        ref={dialogRef}
         className="sa2-dialog"
         role="dialog"
         aria-modal="true"
@@ -1467,7 +1572,7 @@ function ProtectedDialog({
           <li>确认后只显示本地演示反馈</li>
         </ul>
         <footer>
-          <button className="sa2-button sa2-button--secondary" onClick={onClose}>
+          <button ref={cancelRef} className="sa2-button sa2-button--secondary" onClick={onClose}>
             取消
           </button>
           <button className="sa2-button" onClick={onDemoConfirm}>

@@ -62,6 +62,8 @@ interface ControlPlanePagesProps {
   query: string;
   setQuery: (value: string) => void;
   onAction: (label: string, protectedAction?: boolean) => void;
+  onDeepLink?: (targetPath: string, sourceId: string) => void;
+  focusObjectId?: string | undefined;
 }
 
 const object = (
@@ -936,22 +938,32 @@ export function ControlPlanePages({
   pageId,
   query,
   setQuery,
-  onAction
+  onAction,
+  onDeepLink,
+  focusObjectId
 }: ControlPlanePagesProps) {
   const moduleDefinitions = definitions[moduleId];
   const definition =
     moduleDefinitions[pageId] ?? moduleDefinitions[Object.keys(moduleDefinitions)[0]!]!;
   const [selectedId, setSelectedId] = useState(definition.objects[0]?.id ?? '');
-  useEffect(() => setSelectedId(definition.objects[0]?.id ?? ''), [definition]);
+  const [ownerFilter, setOwnerFilter] = useState('全部 Owner');
+  useEffect(() => {
+    setSelectedId(focusObjectId ?? definition.objects[0]?.id ?? '');
+    setOwnerFilter('全部 Owner');
+  }, [definition, focusObjectId]);
   const visible = useMemo(() => {
     const normalized = query.trim().toLowerCase();
     return definition.objects.filter(
       (item) =>
-        !normalized ||
-        `${item.id} ${item.name} ${item.owner} ${item.status}`.toLowerCase().includes(normalized)
+        (ownerFilter === '全部 Owner' || item.owner === ownerFilter) &&
+        (!normalized ||
+          `${item.id} ${item.name} ${item.owner} ${item.status}`.toLowerCase().includes(normalized))
     );
-  }, [definition, query]);
-  const selected = definition.objects.find((item) => item.id === selectedId) ?? visible[0];
+  }, [definition, ownerFilter, query]);
+  const selected = visible.find((item) => item.id === selectedId) ?? visible[0];
+  useEffect(() => {
+    if (selected && selected.id !== selectedId) setSelectedId(selected.id);
+  }, [selected, selectedId]);
 
   return (
     <section
@@ -1002,7 +1014,11 @@ export function ControlPlanePages({
               onChange={(event) => setQuery(event.target.value)}
               placeholder={`搜索 ${definition.objectLabel} ID、名称或 owner`}
             />
-            <select aria-label="Owner 筛选">
+            <select
+              aria-label="Owner 筛选"
+              value={ownerFilter}
+              onChange={(event) => setOwnerFilter(event.target.value)}
+            >
               <option>全部 Owner</option>
               {[...new Set(definition.objects.map((item) => item.owner))].map((owner) => (
                 <option key={owner}>{owner}</option>
@@ -1068,6 +1084,14 @@ export function ControlPlanePages({
               ))}
             </ol>
             <div className="sa2-action-row">
+              {moduleId === 'overview' && pageId === 'alerts' && selected.id === 'ALT-7718' && (
+                <button
+                  className="sa2-button"
+                  onClick={() => onDeepLink?.('/super-admin-v2/knowledge/transforms', selected.id)}
+                >
+                  打开关联处理页面
+                </button>
+              )}
               <button
                 className="sa2-button sa2-button--secondary"
                 onClick={() => onAction(`查看 ${selected.id} 的 Demo 证据`)}

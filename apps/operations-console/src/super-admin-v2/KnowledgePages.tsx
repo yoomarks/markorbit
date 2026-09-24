@@ -1,3 +1,4 @@
+import { useMemo, useState } from 'react';
 import type { DemoRecord } from './fixtures.js';
 
 export const KNOWLEDGE_PAGE_IDS = [
@@ -35,6 +36,94 @@ const planRows = [
   ['PLAN-CN-08', 'CNIPA 公告采集', '工作日 10:00', '公告条目', '已启用'],
   ['PLAN-US-19', 'USPTO 手册扫描', '每日 02:00', '章节版本', '已启用'],
   ['PLAN-WO-03', 'Madrid notices', '每周一', '通知', '已暂停']
+] as const;
+
+const evidenceRows = [
+  {
+    id: 'EVD-11842',
+    title: 'Absolute grounds · distinctiveness',
+    source: 'EUIPO',
+    locator: 'Guidelines 2026 · §4.2.1',
+    page: 'Page 84',
+    quote:
+      'Assessment of distinctive character must consider the sign as a whole and the goods or services for which registration is sought.',
+    candidate:
+      'Evidence candidate: the assessment is contextual and cannot be reduced to an isolated token.',
+    digest: 'a83…91f · lines 1842–1851',
+    status: '待审核'
+  },
+  {
+    id: 'EVD-11841',
+    title: 'Classification practice update',
+    source: 'CNIPA',
+    locator: 'CNIPA Examination Guide · Chapter 3 §2.4',
+    page: 'Page 116',
+    quote: '类似商品判断应结合功能、用途、销售渠道及相关公众的一般认知。',
+    candidate: 'Evidence candidate: classification similarity requires contextual comparison.',
+    digest: 'c42…18a · lines 2260–2274',
+    status: '待审核'
+  },
+  {
+    id: 'EVD-11838',
+    title: 'Specimen requirements',
+    source: 'USPTO',
+    locator: 'TMEP · §904.03',
+    page: 'Page 312',
+    quote: 'A specimen must show the mark as actually used in commerce for the identified goods.',
+    candidate: 'Evidence candidate: the specimen must preserve the actual-use context.',
+    digest: 'f18…02c · lines 8120–8131',
+    status: '高风险'
+  }
+] as const;
+
+const knowledgeHits = [
+  {
+    id: 'KH-EU-1',
+    title: 'Distinctive character: assessment as a whole',
+    source: 'EUIPO',
+    locator: 'EUIPO Guidelines · §4.2.1 · Page 84',
+    summary: '整体评估显著性并保留商品、服务和适用范围。',
+    currentness: '当前'
+  },
+  {
+    id: 'KH-CN-1',
+    title: '整体观察与显著部分的关系',
+    source: 'CNIPA',
+    locator: 'CNIPA 审查指南 · 第三章 §2.4',
+    summary: '整体观察与显著部分比较需要结合相关公众认知。',
+    currentness: '6 小时前'
+  },
+  {
+    id: 'KH-US-1',
+    title: 'Failure-to-function doctrine',
+    source: 'USPTO',
+    locator: 'USPTO TMEP · §1202.04',
+    summary: '判断标志是否发挥来源识别功能并保留实际使用语境。',
+    currentness: '当前'
+  }
+] as const;
+
+const readyPackages = [
+  { id: 'RPK-4208', lane: 'Preparing', evidence: 24, target: 'Core intake', receipt: '尚未生成' },
+  { id: 'RPK-4207', lane: 'Preparing', evidence: 18, target: 'Core intake', receipt: '尚未生成' },
+  { id: 'RPK-4186', lane: 'Ready', evidence: 24, target: 'Core intake', receipt: 'Ready only' },
+  { id: 'RPK-4185', lane: 'Ready', evidence: 18, target: 'Core intake', receipt: 'Ready only' },
+  {
+    id: 'RPK-4164',
+    lane: 'Delivering',
+    evidence: 24,
+    target: 'Core content',
+    receipt: '等待 receipt'
+  },
+  {
+    id: 'RPK-4163',
+    lane: 'Delivering',
+    evidence: 18,
+    target: 'Core content',
+    receipt: '等待 receipt'
+  },
+  { id: 'RPK-4142', lane: 'Reconciled', evidence: 24, target: 'Core content', receipt: 'REC-4142' },
+  { id: 'RPK-4141', lane: 'Reconciled', evidence: 18, target: 'Core content', receipt: 'REC-4141' }
 ] as const;
 
 export function KnowledgePages(props: KnowledgePagesProps) {
@@ -570,6 +659,8 @@ function Transforms({ onAction }: KnowledgePagesProps) {
 }
 
 function Evidence({ onAction }: KnowledgePagesProps) {
+  const [selectedId, setSelectedId] = useState<string>(evidenceRows[0].id);
+  const selected = evidenceRows.find((item) => item.id === selectedId) ?? evidenceRows[0];
   return (
     <Shell
       pageId="evidence"
@@ -580,34 +671,35 @@ function Evidence({ onAction }: KnowledgePagesProps) {
       <div className="sa2-evidence-workspace">
         <aside className="sa2-depth-card">
           <Head label="REVIEW QUEUE" title="18 条待审核" />
-          {[
-            ['EVD-11842', 'Absolute grounds · distinctiveness', 'EUIPO'],
-            ['EVD-11841', 'Classification practice update', 'CNIPA'],
-            ['EVD-11838', 'Specimen requirements', 'USPTO']
-          ].map((row, index) => (
-            <button className={index === 0 ? 'is-active' : ''} key={row[0]}>
+          {evidenceRows.map((row) => (
+            <button
+              className={row.id === selected.id ? 'is-active' : ''}
+              key={row.id}
+              onClick={() => setSelectedId(row.id)}
+            >
               <span>
-                <strong>{row[1]}</strong>
+                <strong>{row.title}</strong>
                 <small>
-                  {row[0]} · {row[2]}
+                  {row.id} · {row.source}
                 </small>
               </span>
-              <u>{index === 2 ? '高风险' : '待审核'}</u>
+              <u>{row.status}</u>
             </button>
           ))}
         </aside>
-        <article className="sa2-depth-card sa2-document-preview">
-          <Head label="EXACT LOCATOR" title="Guidelines 2026 · §4.2.1" badge="Page 84" />
+        <article
+          className="sa2-depth-card sa2-document-preview"
+          data-testid="knowledge-evidence-detail"
+        >
+          <Head
+            label={`EXACT LOCATOR · ${selected.id}`}
+            title={selected.locator}
+            badge={selected.page}
+          />
           <div className="sa2-paper">
-            <p>
-              Assessment of distinctive character must consider the sign as a whole and the goods or
-              services for which registration is sought.
-            </p>
-            <mark>
-              Evidence candidate: the assessment is contextual and cannot be reduced to an isolated
-              token.
-            </mark>
-            <small>source_sha256: a83…91f · lines 1842–1851</small>
+            <p>{selected.quote}</p>
+            <mark>{selected.candidate}</mark>
+            <small>source_sha256: {selected.digest}</small>
           </div>
           <div className="sa2-review-history">
             <b>审核历史</b>
@@ -640,10 +732,10 @@ function Evidence({ onAction }: KnowledgePagesProps) {
             <b>治理边界</b>
             <span>这是证据供应审核，不是 Capability 验证或 canon mutation。</span>
           </div>
-          <button className="sa2-button" onClick={() => onAction('批准证据 EVD-11842', true)}>
+          <button className="sa2-button" onClick={() => onAction(`批准证据 ${selected.id}`, true)}>
             批准证据
           </button>
-          <button onClick={() => onAction('退回证据 EVD-11842', true)}>退回修订</button>
+          <button onClick={() => onAction(`退回证据 ${selected.id}`, true)}>退回修订</button>
         </aside>
       </div>
     </Shell>
@@ -651,6 +743,19 @@ function Evidence({ onAction }: KnowledgePagesProps) {
 }
 
 function Search({ query, setQuery, onAction }: KnowledgePagesProps) {
+  const [submittedQuery, setSubmittedQuery] = useState('');
+  const [sources, setSources] = useState(() => new Set(['EUIPO', 'CNIPA', 'USPTO', 'WIPO']));
+  const results = useMemo(() => {
+    const needle = submittedQuery.trim().toLowerCase();
+    return knowledgeHits.filter(
+      (hit) =>
+        sources.has(hit.source) &&
+        (!needle ||
+          `${hit.id} ${hit.title} ${hit.source} ${hit.locator} ${hit.summary}`
+            .toLowerCase()
+            .includes(needle))
+    );
+  }, [sources, submittedQuery]);
   return (
     <Shell
       pageId="search"
@@ -661,10 +766,19 @@ function Search({ query, setQuery, onAction }: KnowledgePagesProps) {
       <div className="sa2-search-workspace">
         <aside className="sa2-depth-card">
           <Head label="FACETS" title="过滤结果" />
-          {['EUIPO 36', 'CNIPA 24', 'USPTO 18', 'WIPO 12'].map((item) => (
-            <label key={item}>
-              <input type="checkbox" defaultChecked={item.startsWith('EU')} />
-              {item}
+          {['EUIPO', 'CNIPA', 'USPTO', 'WIPO'].map((source) => (
+            <label key={source}>
+              <input
+                type="checkbox"
+                checked={sources.has(source)}
+                onChange={(event) => {
+                  const next = new Set(sources);
+                  if (event.target.checked) next.add(source);
+                  else next.delete(source);
+                  setSources(next);
+                }}
+              />
+              {source} · {knowledgeHits.filter((hit) => hit.source === source).length}
             </label>
           ))}
           <hr />
@@ -685,24 +799,40 @@ function Search({ query, setQuery, onAction }: KnowledgePagesProps) {
               onChange={(event) => setQuery(event.target.value)}
               placeholder="例如：非显著性标志的整体判断"
             />
-            <button onClick={() => onAction('执行带引用知识检索')}>检索</button>
+            <button
+              onClick={() => {
+                setSubmittedQuery(query);
+                onAction('在本地 Demo 知识集中执行带引用检索');
+              }}
+            >
+              检索
+            </button>
           </div>
-          <p className="sa2-result-count">找到 90 条演示结果 · 42 ms · 检索不会修改知识状态</p>
-          {[
-            ['Distinctive character: assessment as a whole', 'EUIPO Guidelines · §4.2.1 · Page 84'],
-            ['整体观察与显著部分的关系', 'CNIPA 审查指南 · 第三章 §2.4'],
-            ['Failure-to-function doctrine', 'USPTO TMEP · §1202.04']
-          ].map((row, index) => (
-            <article className="sa2-depth-card sa2-search-hit" key={row[0]}>
+          <p className="sa2-result-count">
+            {results.length} 条演示结果 · 本地确定性 fixture · 检索不会修改知识状态
+          </p>
+          {results.map((row, index) => (
+            <article className="sa2-depth-card sa2-search-hit" key={row.id}>
               <span>{index + 1}</span>
               <div>
-                <h4>{row[0]}</h4>
-                <p>检索摘要展示与查询相关的证据片段，并保留适用范围、来源版本和当前性信息。</p>
-                <button onClick={() => onAction(`打开来源 ${row[1]}`)}>{row[1]}</button>
+                <h4>{row.title}</h4>
+                <p>{row.summary}</p>
+                <button onClick={() => onAction(`在本地打开 Demo 来源 ${row.locator}`)}>
+                  {row.locator}
+                </button>
               </div>
-              <u>{index === 1 ? '6 小时前' : '当前'}</u>
+              <u>{row.currentness}</u>
             </article>
           ))}
+          {!results.length && (
+            <article
+              className="sa2-depth-card sa2-inline-empty"
+              data-testid="knowledge-search-empty"
+            >
+              <h4>没有匹配的演示知识</h4>
+              <p>查询词和来源筛选已执行；0 条结果不会显示预置命中。</p>
+            </article>
+          )}
         </article>
       </div>
     </Shell>
@@ -710,6 +840,8 @@ function Search({ query, setQuery, onAction }: KnowledgePagesProps) {
 }
 
 function Packages({ onAction }: KnowledgePagesProps) {
+  const [selectedId, setSelectedId] = useState('RPK-4164');
+  const selected = readyPackages.find((item) => item.id === selectedId) ?? readyPackages[0];
   return (
     <Shell
       pageId="packages"
@@ -728,42 +860,50 @@ function Packages({ onAction }: KnowledgePagesProps) {
           ['Ready', '18'],
           ['Delivering', '3'],
           ['Reconciled', '297']
-        ].map((lane, index) => (
+        ].map((lane) => (
           <article key={lane[0]}>
             <header>
               <span>{lane[0]}</span>
               <b>{lane[1]}</b>
             </header>
-            {[0, 1].map((card) => (
-              <button key={card}>
-                <strong>RPK-{4208 - index * 22 - card}</strong>
-                <small>{['EUIPO distinctiveness', 'CN examination practice'][card]}</small>
-                <dl>
-                  <div>
-                    <dt>证据</dt>
-                    <dd>{24 - card * 6}</dd>
-                  </div>
-                  <div>
-                    <dt>目标</dt>
-                    <dd>{index < 2 ? 'Core intake' : 'Core content'}</dd>
-                  </div>
-                </dl>
-                <u>{index === 2 ? '等待 receipt' : lane[0]}</u>
-              </button>
-            ))}
+            {readyPackages
+              .filter((item) => item.lane === lane[0])
+              .map((item, card) => (
+                <button
+                  key={item.id}
+                  className={item.id === selected.id ? 'is-active' : ''}
+                  onClick={() => setSelectedId(item.id)}
+                >
+                  <strong>{item.id}</strong>
+                  <small>{['EUIPO distinctiveness', 'CN examination practice'][card]}</small>
+                  <dl>
+                    <div>
+                      <dt>证据</dt>
+                      <dd>{item.evidence}</dd>
+                    </div>
+                    <div>
+                      <dt>目标</dt>
+                      <dd>{item.target}</dd>
+                    </div>
+                  </dl>
+                  <u>{item.receipt}</u>
+                </button>
+              ))}
           </article>
         ))}
       </div>
-      <article className="sa2-depth-card sa2-delivery-line">
-        <Head label="DELIVERY DETAIL" title="RPK-4164" badge="等待 receipt" />
+      <article className="sa2-depth-card sa2-delivery-line" data-testid="knowledge-package-detail">
+        <Head label="DELIVERY DETAIL" title={selected.id} badge={selected.receipt} />
         <span>Manifest 已冻结</span>
         <i>→</i>
-        <span>24 evidence items</span>
+        <span>{selected.evidence} evidence items</span>
         <i>→</i>
-        <span>Core intake</span>
+        <span>{selected.target}</span>
         <i>→</i>
-        <b>未确认交付</b>
-        <button onClick={() => onAction('刷新 RPK-4164 receipt')}>刷新 receipt</button>
+        <b>{selected.receipt}</b>
+        <button onClick={() => onAction(`在本地刷新 ${selected.id} 的 Demo receipt`)}>
+          模拟刷新 receipt
+        </button>
       </article>
     </Shell>
   );

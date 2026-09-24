@@ -1,3 +1,4 @@
+import { useEffect, useMemo, useState } from 'react';
 import type { DemoRecord } from './fixtures.js';
 
 export const DATA_ENGINE_PAGE_IDS = [
@@ -255,9 +256,17 @@ function SourcesPage({ records, onSelect, onAction }: DataEnginePagesProps) {
 }
 
 function PackagesPage({ query, setQuery, onAction }: DataEnginePagesProps) {
-  const visible = packages.filter((item) =>
-    item.join(' ').toLowerCase().includes(query.toLowerCase())
+  const [selectedId, setSelectedId] = useState<string>(packages[0][0]);
+  const [qualityFilter, setQualityFilter] = useState('全部质量状态');
+  const visible = packages.filter(
+    (item) =>
+      (qualityFilter === '全部质量状态' || item[4] === qualityFilter) &&
+      item.join(' ').toLowerCase().includes(query.toLowerCase())
   );
+  const selected = visible.find((item) => item[0] === selectedId) ?? visible[0];
+  useEffect(() => {
+    if (selected && selected[0] !== selectedId) setSelectedId(selected[0]);
+  }, [selected, selectedId]);
   return (
     <PageShell
       pageId="packages"
@@ -282,15 +291,24 @@ function PackagesPage({ query, setQuery, onAction }: DataEnginePagesProps) {
               onChange={(event) => setQuery(event.target.value)}
               placeholder="搜索 package ID 或辖区"
             />
-            <select>
+            <select
+              aria-label="数据包质量状态"
+              value={qualityFilter}
+              onChange={(event) => setQualityFilter(event.target.value)}
+            >
               <option>全部质量状态</option>
               <option>Ready</option>
               <option>需关注</option>
+              <option>降级</option>
             </select>
           </div>
           <div className="sa2-package-list">
-            {visible.map((item, index) => (
-              <button key={item[0]} className={index === 0 ? 'is-active' : ''}>
+            {visible.map((item) => (
+              <button
+                key={item[0]}
+                className={item[0] === selected?.[0] ? 'is-active' : ''}
+                onClick={() => setSelectedId(item[0])}
+              >
                 <span>
                   <strong>{item[0]}</strong>
                   <small>{item[1]}</small>
@@ -302,38 +320,47 @@ function PackagesPage({ query, setQuery, onAction }: DataEnginePagesProps) {
             ))}
           </div>
         </article>
-        <article className="sa2-depth-card sa2-package-detail">
-          <CardTitle label="PACKAGE DETAIL" title="PKG-CN-2409" badge="需关注" />
-          <dl>
-            <div>
-              <dt>内容范围</dt>
-              <dd>2026-09-23 Gazette delta</dd>
+        {selected ? (
+          <article className="sa2-depth-card sa2-package-detail">
+            <CardTitle label="PACKAGE DETAIL" title={selected[0]} badge={selected[4]} />
+            <dl>
+              <div>
+                <dt>内容范围</dt>
+                <dd>{selected[1]} · 2026-09 fixture</dd>
+              </div>
+              <div>
+                <dt>校验摘要</dt>
+                <dd>
+                  {selected[2]} · {selected[3]} accepted
+                </dd>
+              </div>
+              <div>
+                <dt>Checkpoint</dt>
+                <dd>CP-{selected[0].slice(-4)}1</dd>
+              </div>
+            </dl>
+            <h4>内部文件</h4>
+            {[
+              'manifest.json · 12 KB',
+              'applications.parquet · 12.8 GB',
+              'events.parquet · 5.6 GB'
+            ].map((file) => (
+              <p className="sa2-file-row" key={file}>
+                {file}
+                <button>查看元数据</button>
+              </p>
+            ))}
+            <div className="sa2-callout warning">
+              <b>{selected[4] === 'Ready' ? '当前无阻断问题' : `${selected[4]} · 需 owner 审阅`}</b>
+              <span>质量状态来自 Demo fixture；不在聚合后台直接改写。</span>
             </div>
-            <div>
-              <dt>校验摘要</dt>
-              <dd>1,284,532 records · 28 rejected</dd>
-            </div>
-            <div>
-              <dt>Checkpoint</dt>
-              <dd>CP-88421</dd>
-            </div>
-          </dl>
-          <h4>内部文件</h4>
-          {[
-            'manifest.json · 12 KB',
-            'applications.parquet · 12.8 GB',
-            'events.parquet · 5.6 GB'
-          ].map((file) => (
-            <p className="sa2-file-row" key={file}>
-              {file}
-              <button>查看元数据</button>
-            </p>
-          ))}
-          <div className="sa2-callout warning">
-            <b>28 条质量问题</b>
-            <span>需由 owner 修复或接受，不在聚合后台直接改写。</span>
-          </div>
-        </article>
+          </article>
+        ) : (
+          <article className="sa2-depth-card sa2-inline-empty">
+            <h4>没有匹配的数据包</h4>
+            <p>详情与对象操作已清空。</p>
+          </article>
+        )}
       </div>
     </PageShell>
   );
@@ -346,11 +373,26 @@ function JobsPage({
   setStatusFilter,
   onAction
 }: DataEnginePagesProps) {
+  const [selectedId, setSelectedId] = useState<string>(runs[0][0]);
   const visible = runs.filter(
     (run) =>
       (statusFilter === '全部状态' || run[2] === statusFilter) &&
       run.join(' ').toLowerCase().includes(query.toLowerCase())
   );
+  const selected = visible.find((run) => run[0] === selectedId) ?? visible[0];
+  useEffect(() => {
+    if (selected && selected[0] !== selectedId) setSelectedId(selected[0]);
+  }, [selected, selectedId]);
+
+  const selectedSteps = selected
+    ? selected[2] === '已完成'
+      ? ['完成', '完成', '完成', '完成']
+      : selected[2] === '失败'
+        ? ['完成', '完成', '失败', '未开始']
+        : selected[2] === '运行中'
+          ? ['完成', '运行中', '未开始', '未开始']
+          : ['完成', '完成', '暂停', '未开始']
+    : [];
   return (
     <PageShell
       pageId="jobs"
@@ -386,7 +428,11 @@ function JobsPage({
       <div className="sa2-job-console">
         <article className="sa2-depth-card sa2-run-list">
           {visible.map((run, index) => (
-            <button key={run[0]} className={index === 0 ? 'is-active' : ''}>
+            <button
+              key={run[0]}
+              className={run[0] === selected?.[0] ? 'is-active' : ''}
+              onClick={() => setSelectedId(run[0])}
+            >
               <span className={`sa2-run-state s${index}`} />
               <span>
                 <strong>{run[1]}</strong>
@@ -401,52 +447,108 @@ function JobsPage({
             </button>
           ))}
         </article>
-        <article className="sa2-depth-card sa2-run-detail">
-          <CardTitle label="FROZEN PLAN" title="RUN-CN-8821" badge="等待审核" />
-          <div className="sa2-plan-hash">
-            <span>Plan SHA-256</span>
-            <code>63c7…a884</code>
-            <b>范围已冻结</b>
-          </div>
-          <div className="sa2-checkpoints">
-            <h4>阶段与检查点</h4>
-            {[
-              ['Fetch', '完成', '18,420'],
-              ['Normalize', '完成', '18,392'],
-              ['Validate', '暂停', '18,364'],
-              ['Publish', '未开始', '—']
-            ].map((step, index) => (
-              <div key={step[0]}>
-                <span>{index + 1}</span>
-                <b>{step[0]}</b>
-                <small>{step[2]} records</small>
-                <u>{step[1]}</u>
-              </div>
-            ))}
-          </div>
-          <div className="sa2-console-log" aria-label="最近运行日志">
-            <code>10:42:18 checkpoint CP-88421 persisted</code>
-            <code>10:42:19 plan requires explicit approval</code>
-            <code>10:42:19 no owner mutation dispatched</code>
-          </div>
-          <div className="sa2-action-row">
-            <button className="sa2-button" onClick={() => onAction('批准冻结计划并继续', true)}>
-              审核并继续
-            </button>
-            <button
-              className="sa2-button sa2-button--secondary"
-              onClick={() => onAction('从检查点恢复运行', true)}
-            >
-              从检查点恢复
-            </button>
-          </div>
-        </article>
+        {selected ? (
+          <article className="sa2-depth-card sa2-run-detail" data-testid="data-jobs-detail">
+            <CardTitle label="SELECTED OWNER RUN" title={selected[0]} badge={selected[2]} />
+            <div className="sa2-plan-hash">
+              <span>Checkpoint</span>
+              <code>{selected[4]}</code>
+              <b>{selected[1]}</b>
+            </div>
+            <div className="sa2-checkpoints">
+              <h4>阶段与检查点</h4>
+              {['Fetch', 'Normalize', 'Validate', 'Publish'].map((step, index) => (
+                <div key={step}>
+                  <span>{index + 1}</span>
+                  <b>{step}</b>
+                  <small>{selected[3]} progress</small>
+                  <u>{selectedSteps[index]}</u>
+                </div>
+              ))}
+            </div>
+            <div className="sa2-console-log" aria-label="最近运行日志">
+              <code>{selected[4]} · owner checkpoint fixture</code>
+              <code>
+                {selected[0]} · {selected[2]}
+              </code>
+              <code>Demo only · no owner mutation dispatched</code>
+            </div>
+            <div className="sa2-action-row">
+              {selected[2] === '等待审核' && (
+                <button
+                  className="sa2-button"
+                  onClick={() => onAction(`批准冻结计划并继续：${selected[0]}`, true)}
+                >
+                  审核并继续
+                </button>
+              )}
+              {selected[2] === '失败' && (
+                <button
+                  className="sa2-button"
+                  onClick={() => onAction(`从检查点恢复运行：${selected[0]}`, true)}
+                >
+                  从检查点恢复
+                </button>
+              )}
+              <button
+                className="sa2-button sa2-button--secondary"
+                onClick={() => onAction(`查看 ${selected[0]} 的本地 Demo 日志`)}
+              >
+                查看演示日志
+              </button>
+            </div>
+          </article>
+        ) : (
+          <article className="sa2-depth-card sa2-inline-empty" data-testid="data-jobs-empty">
+            <h4>没有匹配的运行</h4>
+            <p>当前筛选返回 0 条 Demo 任务；详情和对象操作已清空。</p>
+          </article>
+        )}
       </div>
     </PageShell>
   );
 }
 
+const dataQueryResults = [
+  {
+    id: 'US-87342156',
+    jurisdiction: 'US · USPTO',
+    applicationNumber: '87342156',
+    mark: 'MARKORBIT',
+    owner: 'Acme Technology Co.',
+    filed: '2016-07-18',
+    event: 'Maintenance accepted',
+    source: 'USPTO TSDR · 2026-09-24T02:00Z'
+  },
+  {
+    id: 'CN-12345678',
+    jurisdiction: 'CN · CNIPA',
+    applicationNumber: '12345678',
+    mark: '星轨',
+    owner: 'Sunrise Trading Ltd.',
+    filed: '2024-03-18',
+    event: 'Preliminary approval',
+    source: 'CNIPA Gazette · 2026-09-23T10:00Z'
+  }
+] as const;
+
 function QueryPage({ onAction }: DataEnginePagesProps) {
+  const [jurisdiction, setJurisdiction] = useState('US · USPTO');
+  const [field, setField] = useState('Application number');
+  const [value, setValue] = useState('87342156');
+  const [submitted, setSubmitted] = useState({ jurisdiction, field, value });
+  const results = useMemo(() => {
+    const needle = submitted.value.trim().toLowerCase();
+    if (!needle) return [];
+    return dataQueryResults.filter((item) => {
+      if (item.jurisdiction !== submitted.jurisdiction) return false;
+      if (submitted.field === 'Application number') {
+        return item.applicationNumber.toLowerCase().includes(needle);
+      }
+      if (submitted.field === 'Mark text') return item.mark.toLowerCase().includes(needle);
+      return item.owner.toLowerCase().includes(needle);
+    });
+  }, [submitted]);
   return (
     <PageShell
       pageId="query"
@@ -459,14 +561,14 @@ function QueryPage({ onAction }: DataEnginePagesProps) {
           <CardTitle label="QUERY BUILDER" title="案件检索条件" />
           <label>
             司法辖区
-            <select>
+            <select value={jurisdiction} onChange={(event) => setJurisdiction(event.target.value)}>
               <option>US · USPTO</option>
               <option>CN · CNIPA</option>
             </select>
           </label>
           <label>
             查询字段
-            <select>
+            <select value={field} onChange={(event) => setField(event.target.value)}>
               <option>Application number</option>
               <option>Mark text</option>
               <option>Owner name</option>
@@ -474,7 +576,7 @@ function QueryPage({ onAction }: DataEnginePagesProps) {
           </label>
           <label>
             查询值
-            <input defaultValue="87342156" />
+            <input value={value} onChange={(event) => setValue(event.target.value)} />
           </label>
           <label>
             事件时间
@@ -483,35 +585,57 @@ function QueryPage({ onAction }: DataEnginePagesProps) {
               <option>最近 12 个月</option>
             </select>
           </label>
-          <button className="sa2-button" onClick={() => onAction('执行只读数据查询')}>
+          <button
+            className="sa2-button"
+            onClick={() => {
+              setSubmitted({ jurisdiction, field, value });
+              onAction('在本地 Demo 数据集中执行只读查询');
+            }}
+          >
             执行只读查询
           </button>
         </article>
         <article className="sa2-depth-card sa2-query-result">
-          <CardTitle label="1 MATCH · 128 MS" title="案件 US-87342156" badge="Source fact" />
-          <h4>MARKORBIT</h4>
-          <p>Word mark · Class 42 · LIVE</p>
-          <dl>
-            <div>
-              <dt>申请人</dt>
-              <dd>Acme Technology Co.</dd>
+          <p className="sa2-result-count">{results.length} 条演示结果 · 本地确定性 fixture</p>
+          {results.length ? (
+            results.map((result) => (
+              <section key={result.id} className="sa2-query-record">
+                <CardTitle
+                  label="LOCAL DEMO MATCH"
+                  title={`案件 ${result.id}`}
+                  badge="Source fact"
+                />
+                <h4>{result.mark}</h4>
+                <p>{result.jurisdiction} · source fact</p>
+                <dl>
+                  <div>
+                    <dt>申请人</dt>
+                    <dd>{result.owner}</dd>
+                  </div>
+                  <div>
+                    <dt>申请日</dt>
+                    <dd>{result.filed}</dd>
+                  </div>
+                  <div>
+                    <dt>最近事件</dt>
+                    <dd>{result.event}</dd>
+                  </div>
+                  <div>
+                    <dt>来源版本</dt>
+                    <dd>{result.source}</dd>
+                  </div>
+                </dl>
+              </section>
+            ))
+          ) : (
+            <div className="sa2-inline-empty" data-testid="data-query-empty">
+              <h4>没有匹配的演示案件</h4>
+              <p>输入、辖区和查询字段已执行；0 条结果不会回退到预置对象。</p>
             </div>
-            <div>
-              <dt>申请日</dt>
-              <dd>2016-07-18</dd>
-            </div>
-            <div>
-              <dt>最近事件</dt>
-              <dd>Maintenance accepted</dd>
-            </div>
-            <div>
-              <dt>来源版本</dt>
-              <dd>USPTO TSDR · 2026-09-24T02:00Z</dd>
-            </div>
-          </dl>
+          )}
           <div className="sa2-callout">
             <b>读取边界</b>
-            <span>这是 owner source-fact 投影，不被标记为平台 Official Truth。</span>
+            <span>结果只来自本地 Demo 数据集，不是 owner 实时查询或平台 Official Truth。</span>
           </div>
         </article>
       </div>

@@ -607,6 +607,262 @@ test('Super Admin V2 batch D preserves financial owners and protects risky actio
   assertHealthy();
 });
 
+test('V2.2.1 keeps Data task selection, filters and deterministic query results aligned', async ({
+  page
+}, testInfo) => {
+  await page.goto(`${urls.operations}/super-admin-v2/data/jobs`);
+  await page.getByRole('button', { name: /WIPO Madrid 解析/ }).click();
+  await expect(page.getByTestId('data-jobs-detail')).toContainText('RUN-WO-5531');
+  await expect(page.getByTestId('data-jobs-detail')).toContainText('CP-55318');
+  await capture(
+    page,
+    `super-admin-v221-data-selection-${testInfo.project.name.startsWith('mobile') ? 'mobile' : 'desktop'}`
+  );
+
+  await page.getByLabel('运行状态').selectOption('运行中');
+  await expect(page.getByTestId('data-jobs-detail')).toContainText('RUN-US-9914');
+  await expect(page.getByRole('button', { name: /审核并继续/ })).toHaveCount(0);
+
+  await page.getByLabel('搜索运行').fill('does-not-exist');
+  await expect(page.getByTestId('data-jobs-empty')).toBeVisible();
+  await expect(page.getByTestId('data-jobs-detail')).toHaveCount(0);
+
+  await page.goto(`${urls.operations}/super-admin-v2/data/query`);
+  await page.getByLabel('查询值').fill('87342156');
+  await page.getByRole('button', { name: '执行只读查询' }).click();
+  await expect(page.getByText('1 条演示结果')).toBeVisible();
+  await expect(page.getByText('案件 US-87342156')).toBeVisible();
+  await page.getByLabel('查询值').fill('NO-MATCH');
+  await page.getByRole('button', { name: '执行只读查询' }).click();
+  await expect(page.getByText('0 条演示结果')).toBeVisible();
+  await expect(page.getByTestId('data-query-empty')).toBeVisible();
+});
+
+test('V2.2.1 keeps Knowledge evidence, approval target, search and Package detail aligned', async ({
+  page
+}, testInfo) => {
+  await page.goto(`${urls.operations}/super-admin-v2/knowledge/evidence`);
+  await page.getByRole('button', { name: /Classification practice update/ }).click();
+  const evidence = page.getByTestId('knowledge-evidence-detail');
+  await expect(evidence).toContainText('CNIPA Examination Guide · Chapter 3 §2.4');
+  await expect(evidence).toContainText('EVD-11841');
+  await capture(
+    page,
+    `super-admin-v221-knowledge-selection-${testInfo.project.name.startsWith('mobile') ? 'mobile' : 'desktop'}`
+  );
+  await page.getByRole('button', { name: '批准证据' }).click();
+  await expect(page.getByRole('dialog', { name: /批准证据 EVD-11841/ })).toBeVisible();
+  await page.getByRole('button', { name: '取消' }).click();
+
+  await page.goto(`${urls.operations}/super-admin-v2/knowledge/search`);
+  await page.getByLabel('知识检索词').fill('CNIPA');
+  await page.getByRole('button', { name: '检索', exact: true }).click();
+  await expect(page.getByText('1 条演示结果')).toBeVisible();
+  await expect(page.getByRole('heading', { name: '整体观察与显著部分的关系' })).toBeVisible();
+  await page.getByLabel('知识检索词').fill('no-known-evidence');
+  await page.getByRole('button', { name: '检索', exact: true }).click();
+  await expect(page.getByText('0 条演示结果')).toBeVisible();
+  await expect(page.getByTestId('knowledge-search-empty')).toBeVisible();
+
+  await page.goto(`${urls.operations}/super-admin-v2/knowledge/packages`);
+  await page.getByRole('button', { name: /RPK-4207/ }).click();
+  await expect(page.getByTestId('knowledge-package-detail')).toContainText('RPK-4207');
+  await expect(page.getByTestId('knowledge-package-detail')).toContainText('18 evidence items');
+});
+
+test('V2.2.1 protected dialog traps focus, closes with Escape and restores the invoking control', async ({
+  page
+}) => {
+  await page.goto(`${urls.operations}/super-admin-v2/data/overview`);
+  await page.getByRole('button', { name: /CNIPA Gazette/ }).click();
+  await page.getByRole('button', { name: '进入受保护操作' }).click();
+  const dialog = page.getByRole('dialog', { name: /处理/ });
+  await expect(dialog).toBeVisible();
+  await expect(page.locator('.sa2-inspector')).toHaveAttribute('inert', '');
+  await expect(dialog.getByRole('button', { name: '取消' })).toBeFocused();
+  await page.keyboard.press('Shift+Tab');
+  await expect(dialog.getByRole('button', { name: '确认演示路径' })).toBeFocused();
+  await page.keyboard.press('Escape');
+  await expect(dialog).toHaveCount(0);
+  await expect(page.getByRole('button', { name: '进入受保护操作' })).toBeFocused();
+});
+
+test('V2.2.1 overview alert deep-link returns with alert context restored', async ({ page }) => {
+  await page.goto(`${urls.operations}/super-admin-v2/overview/alerts`);
+  await page
+    .getByRole('button', { name: /WIPO 转换连续失败/ })
+    .first()
+    .click();
+  await page.getByRole('button', { name: '打开关联处理页面' }).click();
+  await expect(page).toHaveURL(/\/super-admin-v2\/knowledge\/transforms$/);
+  await expect(page.getByText('来自告警 ALT-7718')).toBeVisible();
+  await expect(page.getByRole('button', { name: '返回告警调查' })).toBeVisible();
+  await page.goBack();
+  await expect(page).toHaveURL(/\/super-admin-v2\/overview\/alerts$/);
+  await expect(page.getByTestId('overview-alerts-detail')).toContainText('ALT-7718');
+  await expect(page.getByText('已恢复告警 ALT-7718 的调查上下文')).toBeVisible();
+});
+
+test('V2.2.1 Copy ID writes the selected object ID locally and labels the effect', async ({
+  page,
+  context
+}) => {
+  await context.grantPermissions(['clipboard-read', 'clipboard-write']);
+  await page.goto(`${urls.operations}/super-admin-v2/data/overview`);
+  await page.getByRole('button', { name: /CNIPA Gazette/ }).click();
+  await page.getByRole('button', { name: '复制对象 ID（本地）' }).click();
+  await expect.poll(() => page.evaluate(() => navigator.clipboard.readText())).toBe('DATA-CNIPA');
+  await expect(page.getByRole('status')).toContainText(
+    '已在本地剪贴板复制 Demo 对象 ID DATA-CNIPA'
+  );
+});
+
+test('V2.2.1 filters invalidate hidden selections across every page renderer family', async ({
+  page
+}) => {
+  const families = [
+    [
+      '/super-admin-v2/overview/platform',
+      /Data Engine CN 批次等待批准/,
+      'INC-2048',
+      'overview-platform-detail'
+    ],
+    [
+      '/super-admin-v2/workspaces/directory',
+      /Global Brand LLC/,
+      'WSP-ACME',
+      'workspaces-directory-detail'
+    ],
+    ['/super-admin-v2/brain/runs', /Trademark classification/, 'BRUN-8821', 'brain-runs-detail'],
+    [
+      '/super-admin-v2/billing/payments',
+      /Sunrise renewal auth/,
+      'PAY-4482',
+      'billing-payments-detail'
+    ]
+  ] as const;
+  for (const [route, selectedName, visibleId, detailId] of families) {
+    await page.goto(`${urls.operations}${route}`);
+    await page.getByRole('button', { name: selectedName }).first().click();
+    await page.getByLabel('搜索当前模块').fill(visibleId);
+    await expect(page.getByTestId(detailId)).toContainText(visibleId);
+    await page.getByLabel('搜索当前模块').fill('NO-SUCH-OBJECT');
+    await expect(page.getByTestId(detailId)).toHaveCount(0);
+    await expect(page.locator('.sa2-inline-empty')).toContainText('没有匹配');
+  }
+
+  await page.goto(`${urls.operations}/super-admin-v2/data/packages`);
+  await page.getByRole('button', { name: /PKG-WO-2408/ }).click();
+  await page.getByLabel('数据包质量状态').selectOption('Ready');
+  await expect(page.locator('.sa2-package-detail')).toContainText('PKG-US-2409');
+  await expect(page.locator('.sa2-package-detail')).not.toContainText('PKG-WO-2408');
+});
+
+const v221ModuleTasks = [
+  [
+    'overview',
+    '/super-admin-v2/overview/platform',
+    /Data Engine CN 批次等待批准/,
+    'overview-platform-detail',
+    'INC-2051'
+  ],
+  [
+    'workspaces',
+    '/super-admin-v2/workspaces/directory',
+    /Sunrise Trading/,
+    'workspaces-directory-detail',
+    'WSP-SUNRISE'
+  ],
+  [
+    'users',
+    '/super-admin-v2/users/relationships',
+    /Sarah Chen → MO Labs/,
+    'users-relationships-detail',
+    'REL-1008-LABS'
+  ],
+  [
+    'products',
+    '/super-admin-v2/products/entitlements',
+    /Pro → Site/,
+    'products-entitlements-detail',
+    'ENT-PRO-SITE'
+  ],
+  ['data', '/super-admin-v2/data/jobs', /USPTO TSDR 同步/, 'data-jobs-detail', 'RUN-US-9914'],
+  [
+    'knowledge',
+    '/super-admin-v2/knowledge/evidence',
+    /Classification practice update/,
+    'knowledge-evidence-detail',
+    'EVD-11841'
+  ],
+  ['brain', '/super-admin-v2/brain/runs', /Evidence summary/, 'brain-runs-detail', 'BRUN-8814'],
+  [
+    'capabilities',
+    '/super-admin-v2/capabilities/catalog',
+    /Summarize governed evidence/,
+    'capabilities-catalog-detail',
+    'CAP-EVIDENCE-SUMMARY'
+  ],
+  [
+    'integrations',
+    '/super-admin-v2/integrations/switches',
+    /Stripe · Global Brand/,
+    'integrations-switches-detail',
+    'AVL-STRIPE'
+  ],
+  [
+    'operations',
+    '/super-admin-v2/operations/recovery',
+    /WIPO conversion replay/,
+    'operations-recovery-detail',
+    'RCV-9813'
+  ],
+  [
+    'billing',
+    '/super-admin-v2/billing/payments',
+    /Global Brand renewal/,
+    'billing-payments-detail',
+    'PAY-4518'
+  ],
+  [
+    'governance',
+    '/super-admin-v2/governance/risk',
+    /Billing role escalation/,
+    'governance-risk-detail',
+    'RSK-1108'
+  ]
+] as const;
+
+for (const [moduleId, route, objectName, detailId, objectId] of v221ModuleTasks) {
+  test(`V2.2.1 ${moduleId} task selects an object and binds detail to it`, async ({ page }) => {
+    await page.goto(`${urls.operations}${route}`);
+    await page.getByRole('button', { name: objectName }).first().click();
+    await expect(page.getByTestId(detailId)).toContainText(objectId);
+    await expect(
+      page.getByRole('button', { name: /预演|查看|批准|审核|处理/ }).last()
+    ).toBeVisible();
+  });
+}
+
+test('V2.2.1 stays operable at 390px and 200 percent page zoom', async ({
+  page,
+  context
+}, testInfo) => {
+  test.skip(
+    !testInfo.project.name.startsWith('mobile'),
+    'Narrow acceptance runs in mobile project.'
+  );
+  await page.goto(`${urls.operations}/super-admin-v2/knowledge/evidence`);
+  const cdp = await context.newCDPSession(page);
+  await cdp.send('Emulation.setPageScaleFactor', { pageScaleFactor: 2 });
+  await expect.poll(() => page.evaluate(() => window.visualViewport?.scale ?? 1)).toBe(2);
+  await page.getByRole('button', { name: /Classification practice update/ }).focus();
+  await page.keyboard.press('Enter');
+  await expect(page.getByTestId('knowledge-evidence-detail')).toContainText('EVD-11841');
+  await expect(page.getByRole('button', { name: '批准证据' })).toBeVisible();
+  await expectNoHorizontalOverflow(page);
+});
+
 test('every Super Admin V2 first and second-level route is directly reviewable', async ({
   page
 }, testInfo) => {

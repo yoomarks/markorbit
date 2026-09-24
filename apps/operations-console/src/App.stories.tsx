@@ -71,6 +71,19 @@ export const SuperAdminV2ProtectedRiskOperation = () => (
   <SuperAdminV2 initialPath="/super-admin-v2/governance/risk" useBrowserHistory={false} />
 );
 
+export const SuperAdminV221DeterministicDataQuery = () => (
+  <SuperAdminV2 initialPath="/super-admin-v2/data/query" useBrowserHistory={false} />
+);
+
+export const SuperAdminV221DeterministicKnowledgeSearch = () => (
+  <SuperAdminV2 initialPath="/super-admin-v2/knowledge/search" useBrowserHistory={false} />
+);
+
+export const SuperAdminV221MobileEvidenceReview = () => (
+  <SuperAdminV2 initialPath="/super-admin-v2/knowledge/evidence" useBrowserHistory={false} />
+);
+SuperAdminV221MobileEvidenceReview.parameters = { viewport: { defaultViewport: 'mobile1' } };
+
 export const SuperAdminV2Permission = () => (
   <SuperAdminV2
     initialPath="/super-admin-v2/governance/risk"
