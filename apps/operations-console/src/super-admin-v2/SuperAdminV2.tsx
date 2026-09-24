@@ -97,7 +97,7 @@ export function SuperAdminV2({
   const action = (label: string, protectedAction = false) => {
     if (protectedAction) setDialog(label);
     else {
-      setNotice(`${label}：已在本地演示视图中完成，不产生生产变更。`);
+      setNotice(`已展示 Demo 步骤“${label}”；未调用 owner API，也未产生生产变更。`);
       window.setTimeout(() => setNotice(null), 3200);
     }
   };
@@ -221,9 +221,9 @@ export function SuperAdminV2({
           </div>
           <button
             className="sa2-button sa2-button--secondary"
-            onClick={() => action('刷新演示快照')}
+            onClick={() => action('刷新当前 fixture 快照')}
           >
-            ↻ 刷新快照
+            ↻ 模拟刷新
           </button>
         </section>
 
@@ -243,6 +243,27 @@ export function SuperAdminV2({
           ))}
         </nav>
 
+        <aside className="sa2-review-tools" aria-label="Demo 评审工具">
+          <div>
+            <span>DEMO REVIEW TOOLS</span>
+            <strong>界面状态模拟</strong>
+            <small>仅切换 fixture 展示状态，不代表 owner 的真实运行状态。</small>
+          </div>
+          <label htmlFor="review-state">模拟页面状态</label>
+          <select
+            id="review-state"
+            value={reviewState}
+            onChange={(event) => setReviewState(event.target.value as ReviewState)}
+          >
+            <option value="success">成功 fixture</option>
+            <option value="partial">部分可用 fixture</option>
+            <option value="loading">加载中 fixture</option>
+            <option value="empty">无数据 fixture</option>
+            <option value="error">连接失败 fixture</option>
+            <option value="permission">无权限 fixture</option>
+          </select>
+        </aside>
+
         <main id="sa2-main" tabIndex={-1}>
           <div className="sa2-page-intro">
             <div>
@@ -251,21 +272,6 @@ export function SuperAdminV2({
               </p>
               <h2>{route.page.label}</h2>
               <p>当前为可交互设计评审页。对象状态、来源和受保护边界均显式展示。</p>
-            </div>
-            <div className="sa2-state-review">
-              <label htmlFor="review-state">评审状态</label>
-              <select
-                id="review-state"
-                value={reviewState}
-                onChange={(event) => setReviewState(event.target.value as ReviewState)}
-              >
-                <option value="success">成功</option>
-                <option value="partial">部分可用</option>
-                <option value="loading">加载中</option>
-                <option value="empty">无数据</option>
-                <option value="error">连接失败</option>
-                <option value="permission">无权限</option>
-              </select>
             </div>
           </div>
 
@@ -307,14 +313,19 @@ export function SuperAdminV2({
           onClose={() => setDialog(null)}
           onDemoConfirm={() => {
             setDialog(null);
-            setNotice('已完成演示确认；没有调用 owner API，也没有产生生产变更。');
+            setNotice('已展示受保护操作的 Demo 确认；未调用 owner API，也未产生生产变更。');
           }}
         />
       )}
       {notice && (
         <div className="sa2-toast" role="status">
-          <strong>演示反馈</strong>
-          <span>{notice}</span>
+          <div>
+            <strong>Demo 反馈</strong>
+            <span>{notice}</span>
+          </div>
+          <button aria-label="关闭 Demo 反馈" onClick={() => setNotice(null)}>
+            ×
+          </button>
         </div>
       )}
       {mobileNav && (

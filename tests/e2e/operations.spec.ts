@@ -406,7 +406,7 @@ test('Super Admin V2 preview is complete, refresh-safe and truthfully interactiv
 
   await expect(page.getByRole('heading', { name: '总览', exact: true })).toBeVisible();
   await expect(page.getByText('演示数据 · 仅供产品评审')).toBeVisible();
-  await expect(page.getByText('DEMO REVIEW')).toBeVisible();
+  await expect(page.getByText('DEMO REVIEW', { exact: true })).toBeVisible();
 
   if (testInfo.project.name.startsWith('mobile')) {
     await page.getByRole('button', { name: '打开导航' }).click();
@@ -430,16 +430,23 @@ test('Super Admin V2 preview is complete, refresh-safe and truthfully interactiv
   const protectedDialog = page.getByRole('dialog', { name: /批准冻结计划并继续/ });
   await expect(protectedDialog.getByText('此预览不会执行生产操作')).toBeVisible();
   await protectedDialog.getByRole('button', { name: '确认演示路径' }).click();
-  await expect(page.getByText('没有调用 owner API')).toBeVisible();
+  const demoFeedback = page.getByRole('status');
+  await expect(demoFeedback.getByText('未调用 owner API')).toBeVisible();
+  await demoFeedback.getByRole('button', { name: '关闭 Demo 反馈' }).click();
 
-  await page.getByLabel('评审状态').selectOption('permission');
+  await page.getByLabel('模拟页面状态').selectOption('permission');
   await expect(page.getByRole('status').getByText('缺少精确读取权限')).toBeVisible();
-  await page.getByLabel('评审状态').selectOption('partial');
+  await page.getByLabel('模拟页面状态').selectOption('partial');
   await expect(page.getByText('部分数据不可用')).toBeVisible();
 
   await expectNoHorizontalOverflow(page);
   await page.getByLabel('搜索当前模块').focus();
   await expectVisibleFocus(page);
+  await page.getByLabel('模拟页面状态').selectOption('success');
+  await page.evaluate(() => {
+    (document.activeElement as HTMLElement | null)?.blur();
+    window.scrollTo(0, 0);
+  });
   await capture(
     page,
     testInfo.project.name.startsWith('desktop')
@@ -462,7 +469,9 @@ test('Super Admin V2 Knowledge evidence review preserves the protected decision 
   const protectedDialog = page.getByRole('dialog', { name: /批准证据 EVD-11842/ });
   await expect(protectedDialog.getByText('此预览不会执行生产操作')).toBeVisible();
   await protectedDialog.getByRole('button', { name: '确认演示路径' }).click();
-  await expect(page.getByText('没有调用 owner API')).toBeVisible();
+  const demoFeedback = page.getByRole('status');
+  await expect(demoFeedback.getByText('未调用 owner API')).toBeVisible();
+  await demoFeedback.getByRole('button', { name: '关闭 Demo 反馈' }).click();
   await expectNoHorizontalOverflow(page);
   if (testInfo.project.name.startsWith('mobile')) {
     await capture(page, 'super-admin-v2-knowledge-evidence-mobile');
