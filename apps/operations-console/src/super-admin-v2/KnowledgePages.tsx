@@ -801,7 +801,7 @@ function Evidence({ onAction }: KnowledgePagesProps) {
     `定位准确性 ${selectedDraft.accuracy}`,
     `来源当前性 ${selectedDraft.currentness}`,
     `本次审核意见 ${selectedDraft.note}`
-  ].join(' · ');
+  ].join(' |CTX| ');
   return (
     <Shell
       pageId="evidence"
@@ -884,11 +884,11 @@ function Evidence({ onAction }: KnowledgePagesProps) {
           </div>
           <button
             className="sa2-button"
-            onClick={() => onAction(`批准证据 ${selected.id} · ${reviewTarget}`, true)}
+            onClick={() => onAction(`批准证据 ${selected.id} |CTX| ${reviewTarget}`, true)}
           >
             批准证据
           </button>
-          <button onClick={() => onAction(`退回证据 ${selected.id} · ${reviewTarget}`, true)}>
+          <button onClick={() => onAction(`退回证据 ${selected.id} |CTX| ${reviewTarget}`, true)}>
             退回修订
           </button>
         </aside>

@@ -1584,6 +1584,7 @@ function ProtectedDialog({
 }) {
   const dialogRef = useRef<HTMLElement>(null);
   const reasonRef = useRef<HTMLTextAreaElement>(null);
+  const [actionTitle, ...actionContext] = action.split(' |CTX| ');
 
   useEffect(() => {
     const background = Array.from(
@@ -1643,9 +1644,16 @@ function ProtectedDialog({
           <span className="sa2-lock">⌾</span>
           <div>
             <span>PROTECTED ACTION · DEMO</span>
-            <h2 id="protected-title">{action}</h2>
+            <h2 id="protected-title">{actionTitle}</h2>
           </div>
         </header>
+        {actionContext.length > 0 && (
+          <ul className="sa2-dialog-context" aria-label="本次操作目标核对">
+            {actionContext.map((item) => (
+              <li key={item}>{item}</li>
+            ))}
+          </ul>
+        )}
         <div className="sa2-dialog-warning">
           <strong>此预览不会执行生产操作</strong>
           <p>

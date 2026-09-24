@@ -434,6 +434,8 @@ test('Super Admin V2 preview is complete, refresh-safe and truthfully interactiv
   await expect(demoFeedback.getByText('未调用 owner API')).toBeVisible();
   await demoFeedback.getByRole('button', { name: '关闭 Demo 反馈' }).click();
 
+  const reviewToolsToggle = page.getByRole('button', { name: '展开评审工具' });
+  if (await reviewToolsToggle.isVisible()) await reviewToolsToggle.click();
   await page.getByLabel('模拟页面状态').selectOption('permission');
   await expect(page.getByRole('status').getByText('缺少精确读取权限')).toBeVisible();
   await page.getByLabel('模拟页面状态').selectOption('partial');
@@ -689,7 +691,7 @@ test('V2.2.1 protected dialog traps focus, closes with Escape and restores the i
 
 test('V2.2.2 isolates Knowledge review drafts by evidence version and confirms the exact target', async ({
   page
-}) => {
+}, testInfo) => {
   await page.goto(`${urls.operations}/super-admin-v2/knowledge/evidence`);
   await page.getByLabel('审核说明').fill('EVD-11842 专属草稿');
   await page.getByLabel('定位准确性').selectOption('需修正');
@@ -705,6 +707,10 @@ test('V2.2.2 isolates Knowledge review drafts by evidence version and confirms t
   await expect(dialog).toContainText('c42…18a · lines 2260–2274');
   await expect(dialog).toContainText('2026.09');
   await expect(dialog).toContainText('EVD-11841 独立审核意见');
+  await capture(
+    page,
+    `super-admin-v222-evidence-confirm-${testInfo.project.name.startsWith('mobile') ? 'mobile' : 'desktop'}`
+  );
   await dialog.getByRole('button', { name: '取消' }).click();
 
   await page.getByRole('button', { name: /Absolute grounds/ }).click();
@@ -840,7 +846,7 @@ test('V2.2.2 unknown Super Admin routes render an explicit not-found state', asy
 
 test('V2.2.2 prioritizes the 390px evidence workspace and keeps approval text readable', async ({
   page
-}) => {
+}, testInfo) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto(`${urls.operations}/super-admin-v2/knowledge/evidence`);
   await expect(page.getByLabel('模拟页面状态')).toBeHidden();
@@ -852,6 +858,10 @@ test('V2.2.2 prioritizes the 390px evidence workspace and keeps approval text re
     .first()
     .evaluate((element) => Number.parseFloat(getComputedStyle(element).fontSize));
   expect(historySize).toBeGreaterThanOrEqual(13);
+  await capture(
+    page,
+    `super-admin-v222-evidence-workspace-${testInfo.project.name.startsWith('mobile') ? 'mobile' : 'desktop'}`
+  );
   await page.getByRole('button', { name: '展开评审工具' }).click();
   await expect(page.getByLabel('模拟页面状态')).toBeVisible();
   await expectNoHorizontalOverflow(page);
