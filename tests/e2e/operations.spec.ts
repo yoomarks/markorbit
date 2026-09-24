@@ -479,6 +479,39 @@ test('Super Admin V2 Knowledge evidence review preserves the protected decision 
   assertHealthy();
 });
 
+test('Super Admin V2 batch A links incidents, recovery evidence and integration layers', async ({
+  page
+}) => {
+  const assertHealthy = watchPage(page);
+  await page.goto(`${urls.operations}/super-admin-v2/overview/platform`);
+  await expect(page.getByTestId('overview-page-platform')).toBeVisible();
+  await page
+    .getByRole('button', { name: /Data Engine CN 批次等待批准/ })
+    .first()
+    .click();
+  await expect(page.getByTestId('overview-platform-detail')).toContainText('Checkpoint CP-88421');
+
+  await page.goto(`${urls.operations}/super-admin-v2/operations/recovery`);
+  await expect(page.getByTestId('operations-page-recovery')).toBeVisible();
+  await page
+    .getByRole('button', { name: /CN publish from checkpoint/ })
+    .last()
+    .click();
+  await expect(page.getByTestId('operations-recovery-detail')).toContainText('Plan hash matches');
+  await page.getByRole('button', { name: '预演主要操作' }).click();
+  await expect(page.getByRole('dialog', { name: /审阅恢复条件/ })).toBeVisible();
+  await page.getByRole('button', { name: '取消' }).click();
+
+  await page.goto(`${urls.operations}/super-admin-v2/integrations/switches`);
+  await expect(page.getByTestId('integrations-page-switches')).toBeVisible();
+  await expect(page.getByText('GLOBAL POLICY')).toBeVisible();
+  await expect(page.getByText('PRODUCT ENTITLEMENT')).toBeVisible();
+  await expect(page.getByText('WORKSPACE CONFIG')).toBeVisible();
+  await expect(page.getByText('CONNECTION HEALTH', { exact: true })).toBeVisible();
+  await expectNoHorizontalOverflow(page);
+  assertHealthy();
+});
+
 test('every Super Admin V2 first and second-level route is directly reviewable', async ({
   page
 }, testInfo) => {
@@ -499,7 +532,13 @@ test('every Super Admin V2 first and second-level route is directly reviewable',
           .getByRole('link', { name: secondaryPage.label, exact: true })
       ).toHaveAttribute('aria-current', 'page');
 
-      if (module.id === 'data' || module.id === 'knowledge') {
+      if (
+        module.id === 'data' ||
+        module.id === 'knowledge' ||
+        module.id === 'overview' ||
+        module.id === 'operations' ||
+        module.id === 'integrations'
+      ) {
         await expect(page.getByTestId(`${module.id}-page-${secondaryPage.id}`)).toBeVisible();
         await capture(page, `super-admin-v2-${module.id}-${secondaryPage.id}-desktop`);
       }

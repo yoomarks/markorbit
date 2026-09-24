@@ -31,6 +31,18 @@ export const SuperAdminV2KnowledgeEvidence = () => (
   <SuperAdminV2 initialPath="/super-admin-v2/knowledge/evidence" useBrowserHistory={false} />
 );
 
+export const SuperAdminV2CommandCenter = () => (
+  <SuperAdminV2 initialPath="/super-admin-v2/overview/platform" useBrowserHistory={false} />
+);
+
+export const SuperAdminV2ControlledRecovery = () => (
+  <SuperAdminV2 initialPath="/super-admin-v2/operations/recovery" useBrowserHistory={false} />
+);
+
+export const SuperAdminV2IntegrationLayers = () => (
+  <SuperAdminV2 initialPath="/super-admin-v2/integrations/switches" useBrowserHistory={false} />
+);
+
 export const SuperAdminV2Permission = () => (
   <SuperAdminV2
     initialPath="/super-admin-v2/governance/risk"

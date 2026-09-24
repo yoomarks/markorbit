@@ -9,6 +9,7 @@ import {
 import { DEMO_FIXTURE_NOTICE, demoRecords, moduleMetrics, type DemoRecord } from './fixtures.js';
 import { DataEnginePages } from './DataEnginePages.js';
 import { KnowledgePages } from './KnowledgePages.js';
+import { ControlPlanePages } from './ControlPlanePages.js';
 import './styles.css';
 
 const GLYPHS: Record<string, string> = {
@@ -282,7 +283,9 @@ export function SuperAdminV2({
                 <span>演示：一个 owner projection 已过期；其余数据保持可见并带来源。</span>
               </div>
             )}
-            <MetricStrip module={route.module} pageId={route.page.id} />
+            {!['overview', 'operations', 'integrations'].includes(route.module.id) && (
+              <MetricStrip module={route.module} pageId={route.page.id} />
+            )}
             <ModuleWorkbench
               module={route.module}
               pageId={route.page.id}
@@ -526,6 +529,21 @@ interface WorkbenchProps {
 }
 
 function ModuleWorkbench(props: WorkbenchProps) {
+  if (
+    props.module.id === 'overview' ||
+    props.module.id === 'operations' ||
+    props.module.id === 'integrations'
+  ) {
+    return (
+      <ControlPlanePages
+        moduleId={props.module.id}
+        pageId={props.pageId}
+        query={props.query}
+        setQuery={props.setQuery}
+        onAction={props.onAction}
+      />
+    );
+  }
   if (props.module.id === 'data') {
     return <DataEnginePages {...props} />;
   }
