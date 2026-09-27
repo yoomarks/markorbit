@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { ModuleId } from './catalog.js';
+import { translateSuperAdminText, useSuperAdminI18n } from './i18n.js';
 
 export const BATCH_A_PAGE_IDS = {
   overview: ['platform', 'health', 'alerts', 'usage', 'attention'],
@@ -942,6 +943,7 @@ export function ControlPlanePages({
   onDeepLink,
   focusObjectId
 }: ControlPlanePagesProps) {
+  const { locale } = useSuperAdminI18n();
   const moduleDefinitions = definitions[moduleId];
   const definition =
     moduleDefinitions[pageId] ?? moduleDefinitions[Object.keys(moduleDefinitions)[0]!]!;
@@ -961,6 +963,7 @@ export function ControlPlanePages({
     );
   }, [definition, ownerFilter, query]);
   const selected = visible.find((item) => item.id === selectedId) ?? visible[0];
+  const localizedObjectLabel = translateSuperAdminText(definition.objectLabel, locale);
   useEffect(() => {
     if (selected && selected.id !== selectedId) setSelectedId(selected.id);
   }, [selected, selectedId]);
@@ -997,16 +1000,29 @@ export function ControlPlanePages({
           <header>
             <div>
               <span>{definition.objectLabel.toUpperCase()}</span>
-              <h2>{definition.objectLabel}列表</h2>
+              <h2 data-i18n-preserve="localized-text">
+                {locale === 'en-US'
+                  ? `${localizedObjectLabel} list`
+                  : `${definition.objectLabel}列表`}
+              </h2>
             </div>
             <b>{visible.length} DEMO</b>
           </header>
           <div className="sa2-inline-search">
             <input
-              aria-label={`搜索${definition.objectLabel}`}
+              data-i18n-preserve="localized-attribute"
+              aria-label={
+                locale === 'en-US'
+                  ? `Search ${localizedObjectLabel}`
+                  : `搜索${definition.objectLabel}`
+              }
               value={query}
               onChange={(event) => setQuery(event.target.value)}
-              placeholder={`搜索 ${definition.objectLabel} ID、名称或 owner`}
+              placeholder={
+                locale === 'en-US'
+                  ? `Search ${localizedObjectLabel} by ID, name, or owner`
+                  : `搜索 ${definition.objectLabel} ID、名称或 owner`
+              }
             />
             <select
               aria-label="Owner 筛选"

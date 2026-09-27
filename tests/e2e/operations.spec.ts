@@ -407,7 +407,7 @@ test('Super Admin V2 preview is complete, refresh-safe and truthfully interactiv
   await expect(page.getByRole('heading', { level: 1 })).toHaveCount(1);
   await expect(page.locator('.sa2-module-name')).toHaveText('总览');
   await expect(page.getByText('演示数据 · 仅供产品评审')).toBeVisible();
-  await expect(page.getByText('DEMO REVIEW', { exact: true })).toBeVisible();
+  await expect(page.getByText('演示评审', { exact: true })).toBeVisible();
 
   if (testInfo.project.name.startsWith('mobile')) {
     await page.getByRole('button', { name: '打开导航' }).click();
@@ -684,7 +684,7 @@ test('V2.2.1 protected dialog traps focus, closes with Escape and restores the i
   await expect(page.locator('.sa2-inspector')).toHaveAttribute('inert', '');
   await expect(dialog.getByLabel('演示理由')).toBeFocused();
   await page.keyboard.press('Shift+Tab');
-  await expect(dialog.getByRole('button', { name: '确认演示路径' })).toBeFocused();
+  await expect(dialog.getByRole('button', { name: 'English', exact: true })).toBeFocused();
   await page.keyboard.press('Escape');
   await expect(dialog).toHaveCount(0);
   await expect(page.getByRole('button', { name: '进入受保护操作' })).toBeFocused();
@@ -727,6 +727,8 @@ test('V2.2.2 protected dialog traverses every control in DOM order before wrappi
   await page.getByRole('button', { name: '进入受保护操作' }).click();
   const dialog = page.getByRole('dialog', { name: /处理/ });
   const reason = dialog.getByLabel('演示理由');
+  const chinese = dialog.getByRole('button', { name: '简体中文', exact: true });
+  const english = dialog.getByRole('button', { name: 'English', exact: true });
   const cancel = dialog.getByRole('button', { name: '取消' });
   const confirm = dialog.getByRole('button', { name: '确认演示路径' });
 
@@ -737,9 +739,13 @@ test('V2.2.2 protected dialog traverses every control in DOM order before wrappi
   await page.keyboard.press('Tab');
   await expect(confirm).toBeFocused();
   await page.keyboard.press('Tab');
+  await expect(chinese).toBeFocused();
+  await page.keyboard.press('Tab');
+  await expect(english).toBeFocused();
+  await page.keyboard.press('Tab');
   await expect(reason).toBeFocused();
   await page.keyboard.press('Shift+Tab');
-  await expect(confirm).toBeFocused();
+  await expect(english).toBeFocused();
   await page.keyboard.press('Escape');
   await expect(dialog).toHaveCount(0);
   await expect(page.getByRole('button', { name: '进入受保护操作' })).toBeFocused();
@@ -958,7 +964,7 @@ test('V2.3 Real platform overview reads both governed owners without Demo leakag
   await page.goto(`${urls.operations}/super-admin-v2/overview/platform?mode=real`);
 
   await expect(page.getByRole('heading', { level: 1 })).toHaveCount(1);
-  await expect(page.getByRole('note').getByText('REAL READ ONLY', { exact: true })).toBeVisible();
+  await expect(page.locator('.sa2-real-banner > span')).toHaveText('真实只读');
   await expect(page.locator('.sa2-review-tools')).toHaveCount(0);
   await expect(page.getByText('DEMO REVIEW', { exact: true })).toHaveCount(0);
   await expect(page.getByTestId('real-owner-data')).toContainText('MARKORBIT_DATA_ENGINE');
@@ -1004,7 +1010,7 @@ test('V2.3 keeps one available owner usable when its sibling is unavailable', as
   await expect(page.getByTestId('real-owner-data')).toContainText('Owner 暂不可用');
   await expect(page.getByTestId('real-owner-data')).not.toContainText('0 个任务');
   await expect(page.getByTestId('real-owner-knowledge')).toContainText('workspace-916');
-  await expect(page.getByTestId('real-owner-knowledge')).toContainText('PARTIAL');
+  await expect(page.getByTestId('real-owner-knowledge')).toContainText('部分可用');
 });
 
 test('V2.3 distinguishes authentication, permission and timeout failures', async ({ page }) => {
@@ -1061,8 +1067,6 @@ test('V2.3 preserves explicit Knowledge stale and partial owner states', async (
   await page.goto(`${urls.operations}/super-admin-v2/knowledge/overview?mode=real`);
   await expect(page.getByTestId('real-owner-knowledge')).toContainText('数据过期');
   await expect(page.getByTestId('real-owner-knowledge')).toContainText('部分可用');
-  await expect(page.getByTestId('real-owner-knowledge')).toContainText('STALE');
-  await expect(page.getByTestId('real-owner-knowledge')).toContainText('PARTIAL');
 });
 
 test('V2.3 renders a successful empty Knowledge owner result without a failure fallback', async ({
@@ -1206,7 +1210,13 @@ const v221ModuleTasks = [
     'knowledge-evidence-detail',
     'EVD-11841'
   ],
-  ['brain', '/super-admin-v2/brain/runs', /Evidence summary/, 'brain-runs-detail', 'BRUN-8814'],
+  [
+    'brain',
+    '/super-admin-v2/brain/runs',
+    /Evidence summary|证据摘要/,
+    'brain-runs-detail',
+    'BRUN-8814'
+  ],
   [
     'capabilities',
     '/super-admin-v2/capabilities/catalog',
@@ -1272,6 +1282,11 @@ test('V2.2.1 stays operable at 390px and 200 percent page zoom', async ({
   await expect(page.getByTestId('knowledge-evidence-detail')).toContainText('EVD-11841');
   await expect(page.getByRole('button', { name: '批准证据' })).toBeVisible();
   await expectNoHorizontalOverflow(page);
+  await page.getByRole('button', { name: 'English', exact: true }).click();
+  await expect(page.locator('html')).toHaveAttribute('lang', 'en-US');
+  await expect(page.getByRole('button', { name: 'Approve evidence' })).toBeVisible();
+  await expectNoHorizontalOverflow(page);
+  await capture(page, 'super-admin-v2-i18n-knowledge-evidence-en-200-percent');
 });
 
 test('every Super Admin V2 first and second-level route is directly reviewable', async ({
@@ -1333,4 +1348,146 @@ test('every Super Admin V2 first and second-level route is directly reviewable',
   }
 
   assertHealthy();
+});
+
+test('Super Admin V2 defaults to Chinese and restores an English preference without losing task context', async ({
+  page
+}, testInfo) => {
+  test.skip(
+    testInfo.project.name.startsWith('mobile'),
+    'State and persistence semantics are viewport independent.'
+  );
+  await page.addInitScript(() => {
+    if (sessionStorage.getItem('sa2-i18n-test-started')) return;
+    localStorage.removeItem('markorbit.super-admin-v2.locale');
+    sessionStorage.setItem('sa2-i18n-test-started', 'true');
+  });
+  await page.goto(`${urls.operations}/super-admin-v2/data/jobs`);
+
+  await expect(page.locator('html')).toHaveAttribute('lang', 'zh-CN');
+  await expect(page.getByRole('button', { name: '简体中文', exact: true })).toHaveAttribute(
+    'aria-pressed',
+    'true'
+  );
+  await page.getByRole('button', { name: /USPTO TSDR/ }).click();
+  await expect(page.getByTestId('data-jobs-detail')).toContainText('RUN-US-9914');
+
+  await page.getByRole('button', { name: 'English', exact: true }).click();
+  await expect(page.locator('html')).toHaveAttribute('lang', 'en-US');
+  await expect(page.getByRole('button', { name: 'English', exact: true })).toHaveAttribute(
+    'aria-pressed',
+    'true'
+  );
+  await expect(page.getByTestId('data-jobs-detail')).toContainText('RUN-US-9914');
+  await expect(page).toHaveURL(/\/super-admin-v2\/data\/jobs$/);
+
+  await page.reload();
+  await expect(page.locator('html')).toHaveAttribute('lang', 'en-US');
+  await expect(page.getByRole('button', { name: 'English', exact: true })).toHaveAttribute(
+    'aria-pressed',
+    'true'
+  );
+});
+
+test('Super Admin V2 language switching preserves an evidence draft and protected confirmation', async ({
+  page
+}) => {
+  await page.addInitScript(() => localStorage.setItem('markorbit.super-admin-v2.locale', 'zh-CN'));
+  await page.goto(`${urls.operations}/super-admin-v2/knowledge/evidence`);
+  await page.getByRole('button', { name: /Classification practice update/ }).click();
+  await page.getByLabel('审核说明').fill('EVD-11841 双语评审草稿');
+  await page.getByLabel('定位准确性').selectOption('需修正');
+  await page.getByRole('button', { name: '批准证据' }).click();
+
+  const dialog = page.getByRole('dialog');
+  const reason = dialog.locator('textarea');
+  await reason.fill('双语确认仍绑定 EVD-11841');
+  await dialog.getByRole('button', { name: 'English', exact: true }).click();
+  await expect(page.locator('html')).toHaveAttribute('lang', 'en-US');
+  await expect(reason).toHaveValue('双语确认仍绑定 EVD-11841');
+  await expect(dialog).toContainText('EVD-11841');
+  await expect(dialog.getByRole('button', { name: 'Cancel' })).toBeVisible();
+  await dialog.getByRole('button', { name: 'Cancel' }).click();
+
+  await expect(page.getByTestId('knowledge-evidence-detail')).toContainText('EVD-11841');
+  await expect(page.getByLabel('Review note')).toHaveValue('EVD-11841 双语评审草稿');
+  await expect(page.getByLabel('Locator accuracy')).toHaveValue('需修正');
+});
+
+test('Super Admin V2 keeps API credential and permission selections stable across locales', async ({
+  page
+}) => {
+  await page.addInitScript(() => localStorage.setItem('markorbit.super-admin-v2.locale', 'zh-CN'));
+
+  await page.goto(`${urls.operations}/super-admin-v2/integrations/credentials`);
+  await page.locator('.sa2-object-browser > button').filter({ hasText: 'CRED-STR-04' }).click();
+  await expect(page.getByTestId('integrations-credentials-detail')).toContainText('CRED-STR-04');
+  await page.getByRole('button', { name: 'English', exact: true }).click();
+  await expect(page.getByTestId('integrations-credentials-detail')).toContainText('CRED-STR-04');
+
+  await page.goto(`${urls.operations}/super-admin-v2/users/roles`);
+  await page.locator('.sa2-object-browser > button').filter({ hasText: 'ROLE-IP-ADMIN' }).click();
+  await expect(page.getByTestId('users-roles-detail')).toContainText('ROLE-IP-ADMIN');
+  await page.getByRole('button', { name: '简体中文', exact: true }).click();
+  await expect(page.getByTestId('users-roles-detail')).toContainText('ROLE-IP-ADMIN');
+});
+
+test('Super Admin V2 bilingual representatives remain usable at desktop and 390px', async ({
+  page
+}, testInfo) => {
+  await page.addInitScript(() => localStorage.setItem('markorbit.super-admin-v2.locale', 'zh-CN'));
+  const viewport = testInfo.project.name.startsWith('mobile') ? 'mobile' : 'desktop';
+  const representatives = [
+    ['/super-admin-v2/overview/platform', 'overview'],
+    ['/super-admin-v2/data/jobs', 'data-jobs'],
+    ['/super-admin-v2/knowledge/evidence', 'knowledge-evidence']
+  ] as const;
+
+  for (const [route, name] of representatives) {
+    await page.goto(`${urls.operations}${route}`);
+    await expect(page.locator('html')).toHaveAttribute('lang', 'zh-CN');
+    await expect(page.getByRole('heading', { level: 1 })).toHaveCount(1);
+    await expectNoHorizontalOverflow(page);
+    await capture(page, `super-admin-v2-i18n-${name}-zh-${viewport}`);
+
+    await page.getByRole('button', { name: 'English', exact: true }).click();
+    await expect(page.locator('html')).toHaveAttribute('lang', 'en-US');
+    await expect(page.locator('.sa2-i18n-root')).toHaveAttribute('data-i18n-missing-count', '0');
+    await expectNoHorizontalOverflow(page);
+    await capture(page, `super-admin-v2-i18n-${name}-en-${viewport}`);
+    await page.getByRole('button', { name: '简体中文', exact: true }).click();
+  }
+
+  if (!testInfo.project.name.startsWith('mobile')) {
+    await page.setViewportSize({ width: 1366, height: 768 });
+    await page.goto(`${urls.operations}/super-admin-v2/data/jobs`);
+    await page.getByRole('button', { name: 'English', exact: true }).click();
+    await expectNoHorizontalOverflow(page);
+    await capture(page, 'super-admin-v2-i18n-data-jobs-en-laptop');
+  }
+});
+
+test('Super Admin V2 English locale has no untranslated visible UI across all 90 routes', async ({
+  page
+}, testInfo) => {
+  test.skip(
+    testInfo.project.name.startsWith('mobile'),
+    'The translation-key route audit is viewport independent.'
+  );
+  await page.addInitScript(() => localStorage.setItem('markorbit.super-admin-v2.locale', 'en-US'));
+  const failures: string[] = [];
+
+  for (const module of adminModules) {
+    for (const secondaryPage of module.pages) {
+      const route = routeFor(module, secondaryPage);
+      await page.goto(`${urls.operations}${route}`);
+      const root = page.locator('.sa2-i18n-root');
+      await expect(root).toHaveAttribute('data-locale', 'en-US');
+      await expect.poll(async () => root.getAttribute('data-i18n-missing-count')).not.toBeNull();
+      const missing = await root.getAttribute('data-i18n-missing');
+      if (missing) failures.push(`${route}: ${missing}`);
+    }
+  }
+
+  expect(failures, failures.join('\n')).toEqual([]);
 });

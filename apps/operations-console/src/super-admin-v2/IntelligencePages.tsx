@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { ModuleId } from './catalog.js';
+import { translateSuperAdminText, useSuperAdminI18n } from './i18n.js';
 
 export const BATCH_C_PAGE_IDS = {
   brain: [
@@ -765,6 +766,7 @@ export function IntelligencePages({
   setQuery,
   onAction
 }: IntelligencePagesProps) {
+  const { locale } = useSuperAdminI18n();
   const modulePages = definitions[moduleId];
   const page = modulePages[pageId] ?? modulePages[Object.keys(modulePages)[0]!]!;
   const [selectedId, setSelectedId] = useState(page.objects[0]?.id ?? '');
@@ -782,6 +784,7 @@ export function IntelligencePages({
     );
   }, [localStatus, page, query]);
   const selected = visible.find((item) => item.id === selectedId) ?? visible[0];
+  const localizedObjectLabel = translateSuperAdminText(page.objectLabel, locale);
   useEffect(() => {
     if (selected && selected.id !== selectedId) setSelectedId(selected.id);
   }, [selected, selectedId]);
@@ -814,16 +817,25 @@ export function IntelligencePages({
           <header>
             <div>
               <span>{page.objectLabel.toUpperCase()}</span>
-              <h2>{page.objectLabel}列表</h2>
+              <h2 data-i18n-preserve="localized-text">
+                {locale === 'en-US' ? `${localizedObjectLabel} list` : `${page.objectLabel}列表`}
+              </h2>
             </div>
             <b>{visible.length} DEMO</b>
           </header>
           <div className="sa2-inline-search">
             <input
-              aria-label={`搜索${page.objectLabel}`}
+              data-i18n-preserve="localized-attribute"
+              aria-label={
+                locale === 'en-US' ? `Search ${localizedObjectLabel}` : `搜索${page.objectLabel}`
+              }
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder={`搜索 ${page.objectLabel} ID 或名称`}
+              placeholder={
+                locale === 'en-US'
+                  ? `Search ${localizedObjectLabel} by ID or name`
+                  : `搜索 ${page.objectLabel} ID 或名称`
+              }
             />
             <select
               aria-label="状态筛选"

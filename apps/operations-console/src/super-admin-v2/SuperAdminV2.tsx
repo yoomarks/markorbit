@@ -14,6 +14,12 @@ import { OrganizationPages } from './OrganizationPages.js';
 import { IntelligencePages } from './IntelligencePages.js';
 import { TrustPages } from './TrustPages.js';
 import { RealControlPlane } from './RealControlPlane.js';
+import {
+  LanguageSwitcher,
+  SuperAdminI18nProvider,
+  translateSuperAdminText,
+  useSuperAdminI18n
+} from './i18n.js';
 import './styles.css';
 
 const GLYPHS: Record<string, string> = {
@@ -80,11 +86,20 @@ function addressForMode(address: string, real: boolean): string {
   return `${url.pathname}${url.search}`;
 }
 
-export function SuperAdminV2({
+export function SuperAdminV2(props: SuperAdminV2Props) {
+  return (
+    <SuperAdminI18nProvider>
+      <SuperAdminV2Content {...props} />
+    </SuperAdminI18nProvider>
+  );
+}
+
+function SuperAdminV2Content({
   initialPath,
   initialState = 'success',
   useBrowserHistory = true
 }: SuperAdminV2Props) {
+  const { locale } = useSuperAdminI18n();
   const browserPath =
     typeof window === 'undefined'
       ? undefined
@@ -133,10 +148,13 @@ export function SuperAdminV2({
     setQuery('');
     setStatusFilter('全部状态');
     setMobileNav(false);
-    document.title = route.isValid
-      ? `${route.page.label} · ${route.module.label} · Super Admin V2`
-      : '页面不存在 · Super Admin V2';
-  }, [path, route.isValid, route.module.label, route.page.label]);
+    document.title = translateSuperAdminText(
+      route.isValid
+        ? `${route.page.label} · ${route.module.label} · Super Admin V2`
+        : '页面不存在 · Super Admin V2',
+      locale
+    );
+  }, [locale, path, route.isValid, route.module.label, route.page.label]);
 
   useEffect(() => {
     if (dialog) {
@@ -296,14 +314,21 @@ export function SuperAdminV2({
               搜索当前模块
             </label>
             <input
+              data-i18n-preserve="localized-attribute"
               id="global-search"
               value={query}
               onChange={(event) => setQuery(event.target.value)}
-              placeholder={`搜索 ${route.module.shortLabel} 中的名称或 ID…`}
+              aria-label={locale === 'en-US' ? 'Search current module' : '搜索当前模块'}
+              placeholder={
+                locale === 'en-US'
+                  ? `Search ${translateSuperAdminText(route.module.shortLabel, locale)} by name or ID…`
+                  : `搜索 ${route.module.shortLabel} 中的名称或 ID…`
+              }
             />
             <kbd>⌘ K</kbd>
           </div>
           <div className="sa2-top-actions">
+            <LanguageSwitcher />
             <button aria-label="帮助" onClick={() => action('帮助中心')}>
               ?
             </button>
@@ -329,6 +354,12 @@ export function SuperAdminV2({
           <div className="sa2-demo-banner" role="note">
             <span>DEMO</span>
             <p>{DEMO_FIXTURE_NOTICE}</p>
+            <button
+              className="sa2-banner-mode-action"
+              onClick={() => navigate(addressForMode(path, true))}
+            >
+              进入真实只读
+            </button>
             <a
               href="/"
               onClick={(event) => {
@@ -362,7 +393,14 @@ export function SuperAdminV2({
           )}
         </section>
 
-        <nav className="sa2-secondary-nav" aria-label={`${route.module.label} 二级导航`}>
+        <nav
+          className="sa2-secondary-nav"
+          aria-label={
+            locale === 'en-US'
+              ? `${translateSuperAdminText(route.module.label, locale)} secondary navigation`
+              : `${route.module.label} 二级导航`
+          }
+        >
           {route.module.pages.map((page) => (
             <a
               key={page.id}
@@ -672,9 +710,17 @@ const pageMetrics: Record<string, readonly (readonly [string, string, string])[]
 };
 
 function MetricStrip({ module, pageId }: { module: AdminModule; pageId: string }) {
+  const { locale } = useSuperAdminI18n();
   const metrics = pageMetrics[`${module.id}:${pageId}`] ?? moduleMetrics[module.id];
   return (
-    <section className="sa2-metrics" aria-label={`${module.label} 摘要`}>
+    <section
+      className="sa2-metrics"
+      aria-label={
+        locale === 'en-US'
+          ? `${translateSuperAdminText(module.label, locale)} summary`
+          : `${module.label} 摘要`
+      }
+    >
       {metrics.map(([label, value, note], index) => (
         <article key={label}>
           <div>
@@ -1675,6 +1721,7 @@ function ProtectedDialog({
             <span>PROTECTED ACTION · DEMO</span>
             <h2 id="protected-title">{actionTitle}</h2>
           </div>
+          <LanguageSwitcher />
         </header>
         {actionContext.length > 0 && (
           <ul className="sa2-dialog-context" aria-label="本次操作目标核对">

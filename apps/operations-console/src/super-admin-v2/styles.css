@@ -314,6 +314,51 @@
   background: #fff;
   color: #52617a;
 }
+.sa2-i18n-root {
+  display: contents;
+}
+.sa2-language-switcher {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: #f3f6fb;
+}
+.sa2-top-actions .sa2-language-switcher button {
+  width: auto;
+  height: 28px;
+  padding: 0 9px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: #5b6c86;
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.sa2-top-actions .sa2-language-switcher button[aria-pressed='true'] {
+  background: #fff;
+  color: #174db5;
+  box-shadow: 0 1px 4px #163b7220;
+}
+.sa2-dialog header .sa2-language-switcher {
+  margin-left: auto;
+}
+.sa2-dialog header .sa2-language-switcher button {
+  min-height: 30px;
+  padding: 0 9px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: #5b6c86;
+  font-size: 12px;
+  font-weight: 700;
+}
+.sa2-dialog header .sa2-language-switcher button[aria-pressed='true'] {
+  background: #fff;
+  color: #174db5;
+}
 .sa2-dot {
   position: absolute;
   right: 7px;
@@ -369,6 +414,15 @@
   margin-left: auto;
   color: #6d5420;
   font-weight: 700;
+}
+.sa2-banner-mode-action {
+  display: none;
+  margin-left: auto;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font-weight: 800;
+  text-decoration: underline;
 }
 .sa2-module-head {
   padding: 22px 28px 17px;
@@ -2133,6 +2187,14 @@
   .sa2-source {
     display: none;
   }
+  .sa2-top-actions .sa2-language-switcher,
+  .sa2-top-actions .sa2-language-switcher button {
+    display: inline-flex;
+  }
+  .sa2-top-actions .sa2-language-switcher button {
+    padding: 0 7px;
+    font-size: 11px;
+  }
   .sa2-demo-banner {
     padding: 8px 14px;
     align-items: flex-start;
@@ -2342,6 +2404,24 @@
     from {
       transform: translateY(100%);
     }
+  }
+}
+
+@media (max-width: 520px) {
+  .sa2-topbar {
+    height: auto;
+    min-height: 58px;
+    padding-block: 10px;
+    flex-wrap: wrap;
+  }
+  .sa2-topbar .sa2-global-search {
+    order: 3;
+    display: flex;
+    flex: 1 0 100%;
+    width: 100%;
+  }
+  .sa2-top-actions {
+    margin-left: 0;
   }
 }
 
@@ -5618,7 +5698,8 @@
     align-items: flex-start;
   }
   .sa2-real-banner button {
-    display: none;
+    display: block;
+    flex: 0 0 auto;
   }
   .sa2-real-grid,
   .sa2-real-facts,
@@ -5641,5 +5722,28 @@
   .sa2-real-targets li div,
   .sa2-real-targets time {
     grid-column: 1 / -1;
+  }
+}
+
+/* Keep the compact header usable at browser zoom. Mode changes remain available
+   in the clearly labelled Demo/Real banner directly below the header. */
+@media (max-width: 760px) {
+  .sa2-top-actions {
+    margin-left: 0;
+  }
+  .sa2-top-actions .sa2-mode-switch.sa2-source {
+    display: none;
+  }
+  .sa2-demo-banner .sa2-banner-mode-action {
+    display: block;
+    flex: 0 0 auto;
+  }
+  .sa2-top-actions .sa2-language-switcher button {
+    padding-inline: 5px;
+    font-size: 10px;
+  }
+  .sa2-demo-banner,
+  .sa2-real-banner {
+    flex-wrap: wrap;
   }
 }

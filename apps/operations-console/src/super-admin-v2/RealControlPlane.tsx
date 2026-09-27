@@ -5,6 +5,7 @@ import {
   type KnowledgeOwnerHealthResult
 } from '../knowledge-platform.js';
 import { OwnerReadError, type OwnerReadFailureKind } from '../owner-read-error.js';
+import { formatSuperAdminDateTime, useSuperAdminI18n } from './i18n.js';
 
 type ReadFailureKind = OwnerReadFailureKind | 'context';
 
@@ -97,13 +98,6 @@ function workspaceId(): string | null {
   return window.sessionStorage.getItem('markorbit-workspace-id');
 }
 
-function formatTime(value: string): string {
-  return new Intl.DateTimeFormat('zh-CN', {
-    dateStyle: 'medium',
-    timeStyle: 'medium'
-  }).format(new Date(value));
-}
-
 const failureTitles: Record<ReadFailureKind, string> = {
   authentication: '需要登录',
   permission: '无读取权限',
@@ -155,6 +149,7 @@ function DataOwnerCard({
   detail?: boolean;
   navigate?: (path: string) => void;
 }) {
+  const { locale } = useSuperAdminI18n();
   return (
     <article className="sa2-real-owner" data-testid="real-owner-data">
       <header>
@@ -179,7 +174,7 @@ function DataOwnerCard({
             </div>
             <div>
               <dt>生成时间</dt>
-              <dd>{formatTime(state.value.generated_at)}</dd>
+              <dd>{formatSuperAdminDateTime(state.value.generated_at, locale)}</dd>
             </div>
             <div>
               <dt>来源</dt>
@@ -257,6 +252,7 @@ function KnowledgeOwnerCard({
   detail?: boolean;
   navigate?: (path: string) => void;
 }) {
+  const { locale } = useSuperAdminI18n();
   return (
     <article className="sa2-real-owner" data-testid="real-owner-knowledge">
       <header>
@@ -285,7 +281,7 @@ function KnowledgeOwnerCard({
             </div>
             <div>
               <dt>Observed at</dt>
-              <dd>{formatTime(state.value.observedAt)}</dd>
+              <dd>{formatSuperAdminDateTime(state.value.observedAt, locale)}</dd>
             </div>
             <div>
               <dt>Workspace</dt>
@@ -325,7 +321,9 @@ function KnowledgeOwnerCard({
                       <span>{item.state}</span>
                       <span>{item.coverage.state}</span>
                       <span>{item.freshness.state}</span>
-                      <time dateTime={item.observedAt}>{formatTime(item.observedAt)}</time>
+                      <time dateTime={item.observedAt}>
+                        {formatSuperAdminDateTime(item.observedAt, locale)}
+                      </time>
                     </li>
                   ))}
                 </ul>

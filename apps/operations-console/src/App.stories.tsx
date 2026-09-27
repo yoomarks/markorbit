@@ -1,6 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react';
 import { OperationsApp } from './App.js';
 import { SuperAdminV2 } from './super-admin-v2/SuperAdminV2.js';
+import { SUPER_ADMIN_LOCALE_STORAGE_KEY } from './super-admin-v2/i18n.js';
 export default {
   title: 'Products/Operations Console',
   component: OperationsApp,
@@ -127,3 +128,21 @@ export const SuperAdminV2Narrow = () => (
   <SuperAdminV2 initialPath="/super-admin-v2/knowledge/evidence" useBrowserHistory={false} />
 );
 SuperAdminV2Narrow.parameters = { viewport: { defaultViewport: 'mobile1' } };
+
+function bilingualFixture(locale: 'zh-CN' | 'en-US', path: string) {
+  window.localStorage.setItem(SUPER_ADMIN_LOCALE_STORAGE_KEY, locale);
+  return <SuperAdminV2 initialPath={path} useBrowserHistory={false} />;
+}
+
+export const SuperAdminV2ChineseEvidenceFixture = () =>
+  bilingualFixture('zh-CN', '/super-admin-v2/knowledge/evidence');
+
+export const SuperAdminV2EnglishEvidenceFixture = () =>
+  bilingualFixture('en-US', '/super-admin-v2/knowledge/evidence');
+
+export const SuperAdminV2EnglishDataJobsFixture = () =>
+  bilingualFixture('en-US', '/super-admin-v2/data/jobs');
+
+export const SuperAdminV2ChineseMobileFixture = () =>
+  bilingualFixture('zh-CN', '/super-admin-v2/data/jobs');
+SuperAdminV2ChineseMobileFixture.parameters = { viewport: { defaultViewport: 'mobile1' } };

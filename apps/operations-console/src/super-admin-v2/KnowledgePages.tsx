@@ -838,9 +838,9 @@ function Evidence({ onAction }: KnowledgePagesProps) {
             badge={selected.page}
           />
           <div className="sa2-paper">
-            <p>{selected.quote}</p>
+            <p data-i18n-preserve="source-original">{selected.quote}</p>
             <mark>{selected.candidate}</mark>
-            <small>source_sha256: {selected.digest}</small>
+            <small data-i18n-preserve="source-digest">source_sha256: {selected.digest}</small>
           </div>
           <div className="sa2-review-history">
             <b>审核历史</b>
