@@ -28,7 +28,7 @@ export interface PreviewStore {
   workspaces: Record<WorkspaceId, WorkspaceState>;
   updateDraft(id: WorkspaceId, update: (draft: SiteConfig) => SiteConfig): void;
   saveDraft(id: WorkspaceId): void;
-  publish(id: WorkspaceId, label?: string): number;
+  publish(id: WorkspaceId, label?: string, prepare?: (draft: SiteConfig) => SiteConfig): number;
   restore(id: WorkspaceId, version: number): void;
   submitLead(
     id: WorkspaceId,
@@ -37,12 +37,20 @@ export interface PreviewStore {
   updateLead(id: WorkspaceId, leadId: string, status: DemoLead['status']): void;
   reset(id?: WorkspaceId): void;
   setRole(id: WorkspaceId, role: WorkspaceState['role']): void;
+  resetDemoAccess(id: WorkspaceId): void;
 }
 
 const StoreContext = createContext<PreviewStore | undefined>(undefined);
 
 export function PreviewStoreProvider({ children }: { children: ReactNode }) {
   const [workspaces, setWorkspaces] = useState(initial);
+
+  const requireOwner = useCallback(
+    (id: WorkspaceId) => {
+      if (workspaces[id].role !== 'OWNER') throw new Error('SITE_PREVIEW_FORBIDDEN');
+    },
+    [workspaces]
+  );
 
   const commit = useCallback((next: Record<WorkspaceId, WorkspaceState>) => {
     setWorkspaces(next);
@@ -54,19 +62,24 @@ export function PreviewStoreProvider({ children }: { children: ReactNode }) {
     () => ({
       workspaces,
       updateDraft(id, update) {
+        requireOwner(id);
         commit({
           ...workspaces,
           [id]: { ...workspaces[id], draft: update(structuredClone(workspaces[id].draft)) }
         });
       },
       saveDraft(id) {
+        requireOwner(id);
         commit({ ...workspaces, [id]: { ...workspaces[id], savedAt: new Date().toISOString() } });
       },
-      publish(id, label = 'Demo publication') {
+      publish(id, label = 'Demo publication', prepare) {
+        requireOwner(id);
         const workspace = workspaces[id];
         const version = workspace.versions.length + 1;
         const publishedAt = new Date().toISOString();
-        const config = structuredClone(workspace.draft);
+        const config = prepare
+          ? prepare(structuredClone(workspace.draft))
+          : structuredClone(workspace.draft);
         commit({
           ...workspaces,
           [id]: {
@@ -84,6 +97,7 @@ export function PreviewStoreProvider({ children }: { children: ReactNode }) {
         return version;
       },
       restore(id, version) {
+        requireOwner(id);
         const workspace = workspaces[id];
         const historical = workspace.versions.find((item) => item.version === version);
         if (!historical) return;
@@ -110,6 +124,7 @@ export function PreviewStoreProvider({ children }: { children: ReactNode }) {
         return lead;
       },
       updateLead(id, leadId, status) {
+        requireOwner(id);
         const workspace = workspaces[id];
         commit({
           ...workspaces,
@@ -120,15 +135,21 @@ export function PreviewStoreProvider({ children }: { children: ReactNode }) {
         });
       },
       reset(id) {
+        if (id) requireOwner(id);
         const next = { ...workspaces };
         for (const target of id ? [id] : workspaceIds) next[target] = seedWorkspace(target);
         commit(next);
       },
       setRole(id, role) {
+        requireOwner(id);
         commit({ ...workspaces, [id]: { ...workspaces[id], role } });
+      },
+      resetDemoAccess(id) {
+        const next = { ...workspaces, [id]: seedWorkspace(id) };
+        commit(next);
       }
     }),
-    [commit, workspaces]
+    [commit, requireOwner, workspaces]
   );
 
   return <StoreContext.Provider value={value}>{children}</StoreContext.Provider>;

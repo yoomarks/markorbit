@@ -12,7 +12,7 @@ import type { AdminSection, WorkspaceId } from './domain.js';
 export type Route =
   | { kind: 'landing' }
   | { kind: 'admin'; workspaceId: WorkspaceId; section: AdminSection; itemId?: string }
-  | { kind: 'site'; workspaceId: WorkspaceId; path: string }
+  | { kind: 'site'; workspaceId: WorkspaceId; path: string; mode: 'published' | 'draft' }
   | { kind: 'not-found'; path: string };
 
 const sections = new Set<AdminSection>([
@@ -38,10 +38,13 @@ export function parseRoute(pathname: string): Route {
       : { kind: 'not-found', path: pathname };
   }
   if (parts[0] === 'site' && (parts[1] === 'atlas' || parts[1] === 'foundry')) {
+    const isDraft = parts[2] === 'preview' && parts[3] === 'draft';
+    const pathParts = isDraft ? parts.slice(4) : parts.slice(2);
     return {
       kind: 'site',
       workspaceId: parts[1],
-      path: `/${parts.slice(2).join('/')}`.replace(/\/$/u, '') || '/'
+      path: `/${pathParts.join('/')}`.replace(/\/$/u, '') || '/',
+      mode: isDraft ? 'draft' : 'published'
     };
   }
   return { kind: 'not-found', path: pathname };

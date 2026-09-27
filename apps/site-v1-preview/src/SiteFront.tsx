@@ -4,9 +4,17 @@ import type { DemoLead, SiteConfig, WorkspaceId } from './domain.js';
 import { usePreviewStore } from './store.js';
 import { Link } from './router.js';
 
-export function SiteFront({ workspaceId, path }: { workspaceId: WorkspaceId; path: string }) {
+export function SiteFront({
+  workspaceId,
+  path,
+  mode = 'published'
+}: {
+  workspaceId: WorkspaceId;
+  path: string;
+  mode?: 'published' | 'draft';
+}) {
   const workspace = usePreviewStore().workspaces[workspaceId];
-  const config = workspace.published;
+  const config = mode === 'draft' ? workspace.draft : workspace.published;
   return (
     <div
       className={`site-front site-template-${config.template}`}
@@ -15,13 +23,13 @@ export function SiteFront({ workspaceId, path }: { workspaceId: WorkspaceId; pat
       }
     >
       <div className="front-demo-bar">
-        <strong>DEMO SITE</strong>
+        <strong>{mode === 'draft' ? 'DRAFT PREVIEW' : 'DEMO SITE'}</strong>
         <span>Fictional content · no real quote, order, payment, filing, or submission</span>
         <Link href={`/admin/${workspaceId}/overview`}>Open Site Admin</Link>
       </div>
       <SiteHeader workspaceId={workspaceId} config={config} />
       <main id="site-main">
-        <SiteRoute workspaceId={workspaceId} path={path} config={config} />
+        <SiteRoute workspaceId={workspaceId} path={path} config={config} mode={mode} />
       </main>
       <SiteFooter workspaceId={workspaceId} config={config} />
     </div>
@@ -71,15 +79,26 @@ function SiteHeader({ workspaceId, config }: { workspaceId: WorkspaceId; config:
 function SiteRoute({
   workspaceId,
   path,
-  config
+  config,
+  mode
 }: {
   workspaceId: WorkspaceId;
   path: string;
   config: SiteConfig;
+  mode: 'published' | 'draft';
 }) {
   const parts = path.split('/').filter(Boolean);
+  const pageFor = (pagePath: string) => config.pages.find((page) => page.path === pagePath);
+  const mayVisit = (pagePath: string) => {
+    const page = pageFor(pagePath);
+    return Boolean(page && (mode === 'draft' || (page.visible && page.status === 'PUBLISHED')));
+  };
+  const notFound = <NotFound workspaceId={workspaceId} />;
+  if (path === '/' && !mayVisit('/')) return notFound;
   if (path === '/') return <Home workspaceId={workspaceId} config={config} />;
+  if (path === '/services' && !mayVisit('/services')) return notFound;
   if (path === '/services') return <ServiceDirectory workspaceId={workspaceId} config={config} />;
+  if (parts[0] === 'services' && parts[1] && !mayVisit('/services')) return notFound;
   if (parts[0] === 'services' && parts[1])
     return (
       <ServiceDetail
@@ -89,16 +108,21 @@ function SiteRoute({
         {...(parts[3] ? { sourceContentId: parts[3] } : {})}
       />
     );
-  if (path === '/insights') return <Insights workspaceId={workspaceId} config={config} />;
+  if ((path === '/insights' || parts[0] === 'insights') && (!mayVisit('/insights') || !config.modules.insights))
+    return notFound;
+  if (path === '/insights') return <Insights workspaceId={workspaceId} config={config} mode={mode} />;
   if (parts[0] === 'insights' && parts[1])
-    return <Article workspaceId={workspaceId} config={config} slug={parts[1]} />;
-  if (path === '/assets' && config.modules.assets) return <Assets workspaceId={workspaceId} />;
+    return <Article workspaceId={workspaceId} config={config} slug={parts[1]} mode={mode} />;
+  if (path === '/assets' && mayVisit('/assets') && config.modules.assets)
+    return <Assets workspaceId={workspaceId} />;
+  if (parts[0] === 'contact' && !mayVisit('/contact')) return notFound;
   if (parts[0] === 'contact')
     return (
       <Inquiry
         workspaceId={workspaceId}
         config={config}
-        {...(parts[2] ? { sourceContentId: parts[2] } : {})}
+        {...(parts[2] && !parts[2].startsWith('asset-') ? { sourceContentId: parts[2] } : {})}
+        {...(parts[2]?.startsWith('asset-') ? { sourceAssetId: parts[2] } : {})}
         {...(parts[4] ? { sourceServiceId: parts[4] } : {})}
       />
     );
@@ -111,15 +135,12 @@ function SiteRoute({
 function Home({ workspaceId, config }: { workspaceId: WorkspaceId; config: SiteConfig }) {
   const base = `/site/${workspaceId}`;
   const blocks = config.blocks.filter((block) => block.visible);
-  const hero = blocks.find((block) => block.kind === 'hero');
-  const proof = blocks.find((block) => block.kind === 'proof');
-  const services = blocks.find((block) => block.kind === 'services');
-  const insights = blocks.find((block) => block.kind === 'insights');
-  const cta = blocks.find((block) => block.kind === 'cta');
-  if (config.template === 'exchange')
-    return (
-      <>
-        <section className="exchange-hero">
+  return (
+    <>
+      {blocks.map((block) => {
+        if (block.kind === 'hero' && config.template === 'exchange')
+          return (
+            <section className="exchange-hero" key={block.id} data-block-id={block.id}>
           <div className="exchange-index">
             FBE
             <br />
@@ -127,8 +148,8 @@ function Home({ workspaceId, config }: { workspaceId: WorkspaceId; config: SiteC
           </div>
           <div>
             <p className="front-eyebrow">Brand assets / professional support / global</p>
-            <h1>{hero?.title}</h1>
-            <p className="front-lead">{hero?.body}</p>
+            <h1>{block.title}</h1>
+            <p className="front-lead">{block.body}</p>
             <div className="front-actions">
               <Link className="front-button" href={`${base}/assets`}>
                 Explore demo assets
@@ -142,68 +163,47 @@ function Home({ workspaceId, config }: { workspaceId: WorkspaceId; config: SiteC
             <span>VERA</span>
             <small>Demo word mark</small>
           </div>
-        </section>
-        <section className="marquee" aria-label="Demo disclaimer">
+            </section>
+          );
+        if (block.kind === 'hero')
+          return (
+            <section className="counsel-hero" key={block.id} data-block-id={block.id}>
+              <div>
+                <p className="front-eyebrow">Independent trademark guidance · {config.market}</p>
+                <h1>{block.title}</h1>
+                <p className="front-lead">{block.body}</p>
+                <div className="front-actions">
+                  <Link className="front-button" href={`${base}/contact`}>Discuss your next move</Link>
+                  <Link className="front-text-link" href={`${base}/services`}>Explore services <span>↗</span></Link>
+                </div>
+                <div className="hero-note"><span>01</span><p>No order or filing begins without an explicit, reviewable next step.</p></div>
+              </div>
+              <div className="hero-art" aria-label="Abstract portfolio planning illustration">
+                <div className="art-grid" />
+                <div className="art-card card-one"><small>MARKETS</small><strong>US · EU · UK</strong></div>
+                <div className="art-card card-two"><small>DECISION MAP</small><strong>Evidence → Review</strong></div>
+                <div className="art-seal">A</div>
+              </div>
+            </section>
+          );
+        if (block.kind === 'proof' && config.template === 'exchange')
+          return (
+            <div key={block.id} data-block-id={block.id}>
+              <section className="marquee" aria-label="Demo disclaimer">
           DEMO LISTINGS · RIGHTS NOT VERIFIED · REVIEW BEFORE TRANSACTION · DEMO LISTINGS
-        </section>
-        {proof && (
-          <section className="exchange-statement">
+              </section>
+              <section className="exchange-statement">
             <p>01 / OUR APPROACH</p>
-            <h2>{proof.title}</h2>
-            <p>{proof.body}</p>
-          </section>
-        )}
-        <ServiceStrip
-          workspaceId={workspaceId}
-          config={config}
-          {...(services?.title ? { title: services.title } : {})}
-        />
-        <InsightStrip
-          workspaceId={workspaceId}
-          config={config}
-          {...(insights?.title ? { title: insights.title } : {})}
-        />
-        {cta && <FrontCta workspaceId={workspaceId} block={cta} />}
-      </>
-    );
-  return (
-    <>
-      <section className="counsel-hero">
-        <div>
-          <p className="front-eyebrow">Independent trademark guidance · {config.market}</p>
-          <h1>{hero?.title}</h1>
-          <p className="front-lead">{hero?.body}</p>
-          <div className="front-actions">
-            <Link className="front-button" href={`${base}/contact`}>
-              Discuss your next move
-            </Link>
-            <Link className="front-text-link" href={`${base}/services`}>
-              Explore services <span>↗</span>
-            </Link>
-          </div>
-          <div className="hero-note">
-            <span>01</span>
-            <p>No order or filing begins without an explicit, reviewable next step.</p>
-          </div>
-        </div>
-        <div className="hero-art" aria-label="Abstract portfolio planning illustration">
-          <div className="art-grid" />
-          <div className="art-card card-one">
-            <small>MARKETS</small>
-            <strong>US · EU · UK</strong>
-          </div>
-          <div className="art-card card-two">
-            <small>DECISION MAP</small>
-            <strong>Evidence → Review</strong>
-          </div>
-          <div className="art-seal">A</div>
-        </div>
-      </section>
-      {proof && (
-        <section className="counsel-proof">
+            <h2>{block.title}</h2><p>{block.body}</p>
+              </section>
+            </div>
+          );
+        if (block.kind === 'proof')
+          return (
+            <section className="counsel-proof" key={block.id} data-block-id={block.id}>
           <p className="front-eyebrow">A counsel-led approach</p>
-          <h2>{proof.title}</h2>
-          <p>{proof.body}</p>
+          <h2>{block.title}</h2>
+          <p>{block.body}</p>
           <dl>
             <div>
               <dt>01</dt>
@@ -218,19 +218,14 @@ function Home({ workspaceId, config }: { workspaceId: WorkspaceId; config: SiteC
               <dd>Explicit authority</dd>
             </div>
           </dl>
-        </section>
-      )}
-      <ServiceStrip
-        workspaceId={workspaceId}
-        config={config}
-        {...(services?.title ? { title: services.title } : {})}
-      />
-      <InsightStrip
-        workspaceId={workspaceId}
-        config={config}
-        {...(insights?.title ? { title: insights.title } : {})}
-      />
-      {cta && <FrontCta workspaceId={workspaceId} block={cta} />}
+            </section>
+          );
+        if (block.kind === 'services')
+          return <ServiceStrip key={block.id} workspaceId={workspaceId} config={config} title={block.title} />;
+        if (block.kind === 'insights')
+          return <InsightStrip key={block.id} workspaceId={workspaceId} config={config} title={block.title} />;
+        return <FrontCta key={block.id} workspaceId={workspaceId} block={block} />;
+      })}
     </>
   );
 }
@@ -477,8 +472,18 @@ function ServiceDetail({
   );
 }
 
-function Insights({ workspaceId, config }: { workspaceId: WorkspaceId; config: SiteConfig }) {
-  const published = config.content.filter((item) => item.status === 'PUBLISHED');
+function Insights({
+  workspaceId,
+  config,
+  mode = 'published'
+}: {
+  workspaceId: WorkspaceId;
+  config: SiteConfig;
+  mode?: 'published' | 'draft';
+}) {
+  const published = config.content.filter(
+    (item) => mode === 'draft' || item.status === 'PUBLISHED'
+  );
   return (
     <>
       <FrontTitle
@@ -512,13 +517,17 @@ function Insights({ workspaceId, config }: { workspaceId: WorkspaceId; config: S
 function Article({
   workspaceId,
   config,
-  slug
+  slug,
+  mode = 'published'
 }: {
   workspaceId: WorkspaceId;
   config: SiteConfig;
   slug: string;
+  mode?: 'published' | 'draft';
 }) {
-  const article = config.content.find((item) => item.slug === slug && item.status === 'PUBLISHED');
+  const article = config.content.find(
+    (item) => item.slug === slug && (mode === 'draft' || item.status === 'PUBLISHED')
+  );
   if (!article) return <NotFound workspaceId={workspaceId} />;
   const service = config.services.find((item) => item.id === article.relatedServiceId);
   return (
@@ -530,9 +539,9 @@ function Article({
         <h1>{article.title}</h1>
         <p className="front-lead">{article.excerpt}</p>
         <div className="byline">
-          <span className="lead-avatar">AC</span>
+          <span className="lead-avatar">{workspaceId === 'foundry' ? 'FE' : 'AC'}</span>
           <span>
-            <strong>Atlas editorial team</strong>
+            <strong>{workspaceId === 'foundry' ? 'Foundry editorial desk' : 'Atlas editorial team'}</strong>
             <small>Demo authorship · updated 25 Sep 2026</small>
           </span>
         </div>
@@ -582,9 +591,9 @@ function Article({
 
 function Assets({ workspaceId }: { workspaceId: WorkspaceId }) {
   const assets = [
-    { name: 'VERA NORTH', class: '03 / 025', note: 'Demo presentation record' },
-    { name: 'COMMON FIELD', class: '09 / 042', note: 'Rights and availability unverified' },
-    { name: 'AURELIA', class: '035', note: 'Fictional transaction fixture' }
+    { id: 'asset-vera-north', name: 'VERA NORTH', class: '03 / 025', note: 'Demo presentation record' },
+    { id: 'asset-common-field', name: 'COMMON FIELD', class: '09 / 042', note: 'Rights and availability unverified' },
+    { id: 'asset-aurelia', name: 'AURELIA', class: '035', note: 'Fictional transaction fixture' }
   ];
   return (
     <>
@@ -603,7 +612,10 @@ function Assets({ workspaceId }: { workspaceId: WorkspaceId }) {
               <p className="front-eyebrow">{asset.class}</p>
               <h2>{asset.name}</h2>
               <p>{asset.note}</p>
-              <Link className="front-text-link" href={`/site/${workspaceId}/contact`}>
+              <Link
+                className="front-text-link"
+                href={`/site/${workspaceId}/contact/source/${asset.id}/service/svc-asset-review`}
+              >
                 Request a governed review →
               </Link>
             </article>
@@ -626,12 +638,14 @@ function Inquiry({
   workspaceId,
   config,
   sourceContentId,
-  sourceServiceId
+  sourceServiceId,
+  sourceAssetId
 }: {
   workspaceId: WorkspaceId;
   config: SiteConfig;
   sourceContentId?: string;
   sourceServiceId?: string;
+  sourceAssetId?: string;
 }) {
   const store = usePreviewStore();
   const services = config.services.filter((item) => item.visible);
@@ -639,6 +653,8 @@ function Inquiry({
     services.find((item) => item.id === sourceServiceId)?.id ?? services[0]?.id ?? '';
   const [step, setStep] = useState(0);
   const [submitted, setSubmitted] = useState<DemoLead>();
+  const [consent, setConsent] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [data, setData] = useState<InquiryData>({
     serviceId: initialService,
@@ -681,7 +697,7 @@ function Inquiry({
           <span>Site</span>
           <strong>{submitted.siteId}</strong>
           <span>Source</span>
-          <strong>{submitted.sourceContentId ?? submitted.sourcePath}</strong>
+          <strong>{submitted.sourceContentId ?? submitted.sourceAssetId ?? submitted.sourcePath}</strong>
         </div>
         <div className="front-actions">
           <Link className="front-button" href={`/admin/${workspaceId}/leads/${submitted.id}`}>
@@ -705,6 +721,11 @@ function Inquiry({
         {sourceContentId && (
           <div className="source-chip">
             Source preserved: <strong>{sourceContentId}</strong>
+          </div>
+        )}
+        {sourceAssetId && (
+          <div className="source-chip">
+            Asset context preserved: <strong>{sourceAssetId}</strong>
           </div>
         )}
         <ol className="inquiry-steps">
@@ -810,16 +831,25 @@ function Inquiry({
               </div>
               <div>
                 <dt>Source</dt>
-                <dd>{sourceContentId ?? '/contact'}</dd>
+                <dd>{sourceContentId ?? sourceAssetId ?? '/contact'}</dd>
               </div>
             </dl>
             <label className="consent">
-              <input required type="checkbox" />{' '}
+              <input
+                required
+                type="checkbox"
+                checked={consent}
+                onChange={(event) => {
+                  setConsent(event.target.checked);
+                  setErrors((current) => ({ ...current, consent: '' }));
+                }}
+              />{' '}
               <span>
                 I understand this creates only a browser-local demo lead and does not request a real
                 professional service.
               </span>
             </label>
+            {errors.consent && <p className="field-error">Error: {errors.consent}</p>}
           </>
         )}
         <div className="form-actions">
@@ -833,9 +863,18 @@ function Inquiry({
           ) : (
             <Button
               type="button"
-              onClick={() =>
-                setSubmitted(
-                  store.submitLead(workspaceId, {
+              disabled={submitting}
+              onClick={() => {
+                if (!consent) {
+                  setErrors((current) => ({
+                    ...current,
+                    consent: 'Confirm the demo-only consent before submitting.'
+                  }));
+                  return;
+                }
+                if (submitting || submitted) return;
+                setSubmitting(true);
+                const lead = store.submitLead(workspaceId, {
                     name: data.name,
                     email: data.email,
                     company: data.company,
@@ -843,10 +882,11 @@ function Inquiry({
                     serviceId: data.serviceId,
                     message: data.message,
                     sourcePath: window.location.pathname,
-                    ...(sourceContentId && sourceContentId !== 'service' ? { sourceContentId } : {})
-                  })
-                )
-              }
+                    ...(sourceContentId && sourceContentId !== 'service' ? { sourceContentId } : {}),
+                    ...(sourceAssetId ? { sourceAssetId } : {})
+                  });
+                setSubmitted(lead);
+              }}
             >
               Submit demo inquiry
             </Button>

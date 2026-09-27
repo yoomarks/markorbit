@@ -14,7 +14,8 @@ function RoutedApp() {
         {...(route.itemId ? { itemId: route.itemId } : {})}
       />
     );
-  if (route.kind === 'site') return <SiteFront workspaceId={route.workspaceId} path={route.path} />;
+  if (route.kind === 'site')
+    return <SiteFront workspaceId={route.workspaceId} path={route.path} mode={route.mode} />;
   if (route.kind === 'not-found')
     return (
       <main className="preview-not-found">

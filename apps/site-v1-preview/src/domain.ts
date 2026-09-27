@@ -89,6 +89,7 @@ export interface DemoLead {
   message: string;
   sourcePath: string;
   sourceContentId?: string;
+  sourceAssetId?: string;
   status: 'NEW' | 'QUALIFIED' | 'FOLLOW_UP';
 }
 

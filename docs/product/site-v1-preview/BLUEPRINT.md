@@ -68,7 +68,7 @@ Home
 `- Not found
 ```
 
-Template **Northstar Counsel** is editorial, calm, and advisory. Template **Foundry Exchange** is high-contrast, catalogue-led, and focused on brand assets and transactions. They differ in typography, density, composition, navigation, cards, and hero treatment—not only color and logo.
+Template **Atlas IP Counsel** is editorial, calm, and advisory. Template **Foundry Exchange** is high-contrast, catalogue-led, and focused on brand assets and transactions. They differ in typography, density, composition, navigation, cards, and hero treatment—not only color and logo.
 
 ## Core demo objects and relationships
 

@@ -382,25 +382,8 @@ function Pages({ workspaceId, readOnly }: { workspaceId: WorkspaceId; readOnly: 
             Navigation follows this order. Hidden pages remain available in the draft for review.
           </p>
         </div>
-        <Button
-          disabled={readOnly}
-          onClick={() =>
-            store.updateDraft(workspaceId, (draft) => ({
-              ...draft,
-              pages: [
-                ...draft.pages,
-                {
-                  id: `page-${Date.now()}`,
-                  path: `/new-page-${draft.pages.length + 1}`,
-                  title: 'New page',
-                  visible: false,
-                  status: 'DRAFT'
-                }
-              ]
-            }))
-          }
-        >
-          Add page
+        <Button disabled title="Custom page types are outside this bounded preview.">
+          Add page unavailable in preview
         </Button>
       </div>
       <div className="data-table" role="table" aria-label="Site pages">
@@ -446,8 +429,11 @@ function Pages({ workspaceId, readOnly }: { workspaceId: WorkspaceId; readOnly: 
               >
                 {page.visible ? 'Hide' : 'Show'}
               </button>
-              <Link href={`/site/${workspaceId}${page.path}`} className="text-link">
-                Preview
+              <Link
+                href={`/site/${workspaceId}/preview/draft${page.path}`}
+                className="text-link"
+              >
+                Preview draft
               </Link>
             </span>
           </div>
@@ -891,7 +877,7 @@ function Content({
           <div className="card-actions">
             <Link
               className="button-link secondary"
-              href={`/site/${workspaceId}/insights/${selected.slug}`}
+              href={`/site/${workspaceId}/preview/draft/insights/${selected.slug}`}
             >
               Preview draft route
             </Link>
@@ -908,8 +894,19 @@ function Content({
             <Button
               disabled={readOnly}
               onClick={() => {
-                update({ status: 'PUBLISHED', version: selected.version + 1 });
-                const version = store.publish(workspaceId, `Content release: ${selected.title}`);
+                const nextVersion = selected.version + 1;
+                const version = store.publish(
+                  workspaceId,
+                  `Content release: ${selected.title}`,
+                  (draft) => ({
+                    ...draft,
+                    content: draft.content.map((item) =>
+                      item.id === selected.id
+                        ? { ...item, status: 'PUBLISHED', version: nextVersion }
+                        : item
+                    )
+                  })
+                );
                 setStatus(`Content and Site demo published as v${version}`);
               }}
             >
@@ -977,7 +974,15 @@ function Services({ workspaceId, readOnly }: { workspaceId: WorkspaceId; readOnl
   );
 }
 
-function Leads({ workspaceId, itemId }: { workspaceId: WorkspaceId; itemId?: string }) {
+function Leads({
+  workspaceId,
+  itemId,
+  readOnly
+}: {
+  workspaceId: WorkspaceId;
+  itemId?: string;
+  readOnly: boolean;
+}) {
   const store = usePreviewStore();
   const workspace = store.workspaces[workspaceId];
   const selected = workspace.leads.find((lead) => lead.id === itemId) ?? workspace.leads[0];
@@ -1014,12 +1019,20 @@ function Leads({ workspaceId, itemId }: { workspaceId: WorkspaceId; itemId?: str
           </Link>
         ))}
       </Card>
-      {selected && <LeadDetail workspaceId={workspaceId} lead={selected} />}
+      {selected && <LeadDetail workspaceId={workspaceId} lead={selected} readOnly={readOnly} />}
     </div>
   );
 }
 
-function LeadDetail({ workspaceId, lead }: { workspaceId: WorkspaceId; lead: DemoLead }) {
+function LeadDetail({
+  workspaceId,
+  lead,
+  readOnly
+}: {
+  workspaceId: WorkspaceId;
+  lead: DemoLead;
+  readOnly: boolean;
+}) {
   const store = usePreviewStore();
   const workspace = store.workspaces[workspaceId];
   const service = workspace.published.services.find((item) => item.id === lead.serviceId);
@@ -1062,7 +1075,7 @@ function LeadDetail({ workspaceId, lead }: { workspaceId: WorkspaceId; lead: Dem
         <h3>Attribution lineage</h3>
         <div className="lineage">
           <span>
-            Source <strong>{lead.sourceContentId ?? lead.sourcePath}</strong>
+            Source <strong>{lead.sourceContentId ?? lead.sourceAssetId ?? lead.sourcePath}</strong>
           </span>
           <i>→</i>
           <span>
@@ -1081,11 +1094,15 @@ function LeadDetail({ workspaceId, lead }: { workspaceId: WorkspaceId; lead: Dem
       <div className="card-actions">
         <Button
           variant="secondary"
+          disabled={readOnly}
           onClick={() => store.updateLead(workspaceId, lead.id, 'QUALIFIED')}
         >
           Mark qualified
         </Button>
-        <Button onClick={() => store.updateLead(workspaceId, lead.id, 'FOLLOW_UP')}>
+        <Button
+          disabled={readOnly}
+          onClick={() => store.updateLead(workspaceId, lead.id, 'FOLLOW_UP')}
+        >
           Prepare follow-up
         </Button>
       </div>
@@ -1148,11 +1165,11 @@ function Analytics({ workspaceId }: { workspaceId: WorkspaceId }) {
         </Alert>
       )}
       <section className="metric-grid">
-        <Metric label="Unique demo visitors" value="2,193" delta="77% of sessions" />
+        <Metric label="Illustrative visitors" value="2,193" delta="Fixture only · no live denominator" />
         <Metric
           label="Inquiry rate"
-          value={`${workspace.leads.length ? '4.8' : '0.0'}%`}
-          delta="Demo calculation"
+          value="Unavailable"
+          delta="No measured visitor denominator"
         />
         <Metric
           label="Content-assisted leads"
@@ -1317,6 +1334,17 @@ function Settings({ workspaceId, readOnly }: { workspaceId: WorkspaceId; readOnl
         <Button variant="danger" disabled={readOnly} onClick={() => store.reset(workspaceId)}>
           Reset this demo Workspace
         </Button>
+        {readOnly && (
+          <div className="demo-access-reset">
+            <Alert tone="warning" title="Demo access recovery">
+              This resets browser-local fixtures to the seeded OWNER state. It is not an
+              authorization path for a production Workspace.
+            </Alert>
+            <Button variant="secondary" onClick={() => store.resetDemoAccess(workspaceId)}>
+              Reset demo access and fixtures
+            </Button>
+          </div>
+        )}
       </Card>
     </div>
   );
