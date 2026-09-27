@@ -1,0 +1,17 @@
+# MO-SITE-V1-2-CUSTOMER-PORTAL-PREVIEW
+
+## Task contract
+
+1. **Task ID:** `MO-SITE-V1-2-CUSTOMER-PORTAL-PREVIEW`.
+2. **Repository and allowed directories:** `yoomarks/markorbit`; `apps/markreg-web/customer-portal-preview.html`, `apps/markreg-web/src/customer-portal-preview/**`, the focused MarkReg Web test and Vite multi-entry wiring, `docs/product/site-v1.2-customer-portal/**`, this task file, `tests/e2e/customer-portal-v1-preview.spec.ts`, and `playwright.customer-portal-v1-preview.config.ts`.
+3. **Objective and user-visible outcome:** add a standalone, bilingual, fixture-only Customer Portal preview that proves one bound platform identity can continue the same Workspace relationship and business objects across Web and a mini-program-adapted view without creating channel-owned truth.
+4. **Canonical sources:** `AGENTS.md`; repository `ui-design` skill; Issues #1234, #1235 authoritative architecture freeze, #1239 authoritative WeChat audit, and #1324; PR #1440 Blueprint read-only baseline; Core auth/Workspace, Customer Context, Directory, MarkReg Customer Relationship/Quote/Order/Matter, Site, Gateway, and bounded WeChat adapter contracts.
+5. **Contracts consumed or changed:** no production/shared contract change. Local fixture types mirror the required identity, relationship, representation, object-authorization, and owner boundaries.
+6. **Required behavior:** Chinese-first and complete English UI; desktop Web and phone mini-program-adapted presentations; overview/tasks, business, trademark assets, quotes/orders, files, messages, account/company members; consultation, login, relationship claim, company representation, business read, file submission, cross-channel continuation, and logout demonstrations.
+7. **State transitions:** visitor inquiry remains `LEAD_ONLY`; session `SIGNED_OUT -> VERIFIED_LOGIN -> RELATIONSHIP_SELECTED`; relationship claim `PENDING_REVIEW -> VERIFIED | REJECTED`; company representation `NOT_SELECTED -> AUTHORIZED_SCOPE_SELECTED`; document task `AWAITING_CUSTOMER -> DEMO_SUBMITTED`; logout revokes the current preview session only.
+8. **UI states:** loading, empty, owner unavailable/error, authentication required, permission denied, partial owner data, success, rejected claim, expired representation, desktop and 390px phone.
+9. **Events emitted and consumed:** browser-local demo events only (`demo.session.started`, `demo.relationship.selected`, `demo.claim.rejected`, `demo.document.submitted`, `demo.session.ended`). No production event, identity binding, Customer mutation, Order/Matter mutation, payment, WeChat login, or protected action.
+10. **Acceptance tests:** Vitest interaction/authorization tests, fixture-backed Storybook states, and Playwright Golden Path proving Web-to-mini-to-Web object continuity, tenant/customer/member isolation, lead non-promotion, rejected identity claim, logout protection, and locale-neutral business state.
+11. **Validation commands:** affected MarkReg Web lint/typecheck/test/build/Storybook, focused Playwright config, repository workspace/persistence/story/gateway checks, format check, and `pnpm task:prepush` before push.
+12. **Non-goals:** production Auth refactor; a second Customer owner; live Customer/Order/Matter/Payment writes; real WeChat login/openid/unionid binding; cross-device persistence; real file upload; native-device acceptance; PR #1440 code or scope changes.
+13. **Expected PR title:** `feat(site): add unified customer portal V1.2 preview`.
