@@ -1,0 +1,17 @@
+# MO-SITE-V1-PREVIEW — interactive Site V1 product preview
+
+## Task contract
+
+1. **Task ID:** `MO-SITE-V1-PREVIEW`.
+2. **Repository and allowed directories:** `yoomarks/markorbit`; `apps/site-v1-preview/**`, `docs/product/site-v1-preview/**`, this task file, `tests/e2e/site-v1-preview.spec.ts`, `playwright.site-v1-preview.config.ts`, and `pnpm-lock.yaml`.
+3. **Objective and user-visible outcome:** deliver a fixture-only, browser-runnable Workspace Site Admin and customer Site Front that prove site creation/configuration, draft-versus-published behavior, content publication, visitor inquiry, lead readback, responsive layouts, and Workspace isolation.
+4. **Canonical sources:** repository `AGENTS.md`; current Books 01–07 / accepted Capability Canon locks as reflected by the repository; Issues #1234–#1239, especially the authoritative #1235 architecture freeze; `packages/contracts/src/site.ts`; `services/site/**`; Lite Site Manager and Content Studio; MarkReg Site Entry and commercial journey owners; the repository `ui-design` skill.
+5. **Contracts consumed or changed:** no shared or production contract changes. The preview mirrors stable Site vocabulary and owner boundaries with local TypeScript fixture types only.
+6. **Required behavior:** two isolated demo Workspaces; complete Admin IA; two distinct front templates; live editor preview; explicit draft/published snapshots and restore; content-to-service attribution; multi-step inquiry with validation and review; one durable local demo lead ID visible in Admin; direct URL and history recovery.
+7. **State transitions:** Site setup `DRAFT -> READY -> DEMO_PUBLISHED`; editor changes `PUBLISHED_SNAPSHOT -> UNSAVED_DRAFT -> SAVED_DRAFT -> DEMO_PUBLISHED`; content `DRAFT -> REVIEW_READY -> DEMO_PUBLISHED`; inquiry `EDITING -> REVIEW -> DEMO_SUBMITTED`; lead `NEW -> QUALIFIED -> FOLLOW_UP`; restore creates a new draft from a prior demo version.
+8. **UI states:** loading, empty, validation error, permission denied, partial data, save failure/recovery, success, stale/unpublished draft, desktop and 390px mobile.
+9. **Events emitted and consumed:** local preview events only (`site.draft.saved`, `site.demo.published`, `content.demo.published`, `inquiry.demo.submitted`, `lead.status.changed`). No production event bus, payment, email, domain, search-engine, mini-program, or order event is emitted.
+10. **Acceptance tests:** Vitest interaction tests, fixture-backed Storybook stories, and Playwright golden paths for editor-to-front publishing, visitor-to-lead lineage, content-to-inquiry attribution, history/direct URLs, mobile, validation, restore, and tenant isolation.
+11. **Validation commands:** `pnpm --filter @markorbit/site-v1-preview lint`, `typecheck`, `test`, `build`, `build-storybook`; `pnpm exec playwright test --config playwright.site-v1-preview.config.ts`; repository boundary, format, and affected checks; `pnpm task:prepush` before push.
+12. **Non-goals:** production API integration; durable backend writes; database migrations; shared contract expansion; real publish, DNS, payment, email, order, filing, provider selection, search submission, or mini-program deployment; replacement of current Site/Lite/MarkReg surfaces.
+13. **Expected PR title:** `feat(site): add interactive Site V1 preview`.
