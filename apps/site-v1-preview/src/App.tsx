@@ -3,6 +3,7 @@ import { AdminApp } from './AdminApp.js';
 import { SiteFront } from './SiteFront.js';
 import { PreviewStoreProvider } from './store.js';
 import { Link, RouterProvider, useRouter } from './router.js';
+import { AdminLocaleProvider } from './i18n.js';
 
 function RoutedApp() {
   const { route } = useRouter();
@@ -15,7 +16,14 @@ function RoutedApp() {
       />
     );
   if (route.kind === 'site')
-    return <SiteFront workspaceId={route.workspaceId} path={route.path} mode={route.mode} />;
+    return (
+      <SiteFront
+        workspaceId={route.workspaceId}
+        path={route.path}
+        mode={route.mode}
+        {...(route.locale ? { locale: route.locale } : {})}
+      />
+    );
   if (route.kind === 'not-found')
     return (
       <main className="preview-not-found">
@@ -82,9 +90,11 @@ function Landing() {
 export function App({ initialPath }: { initialPath?: string }) {
   return (
     <PreviewStoreProvider>
-      <RouterProvider {...(initialPath ? { initialPath } : {})}>
-        <RoutedApp />
-      </RouterProvider>
+      <AdminLocaleProvider>
+        <RouterProvider {...(initialPath ? { initialPath } : {})}>
+          <RoutedApp />
+        </RouterProvider>
+      </AdminLocaleProvider>
     </PreviewStoreProvider>
   );
 }

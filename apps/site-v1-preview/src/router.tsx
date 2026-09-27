@@ -7,12 +7,18 @@ import {
   type MouseEvent,
   type ReactNode
 } from 'react';
-import type { AdminSection, WorkspaceId } from './domain.js';
+import type { AdminSection, Locale, WorkspaceId } from './domain.js';
 
 export type Route =
   | { kind: 'landing' }
   | { kind: 'admin'; workspaceId: WorkspaceId; section: AdminSection; itemId?: string }
-  | { kind: 'site'; workspaceId: WorkspaceId; path: string; mode: 'published' | 'draft' }
+  | {
+      kind: 'site';
+      workspaceId: WorkspaceId;
+      path: string;
+      mode: 'published' | 'draft';
+      locale?: Locale;
+    }
   | { kind: 'not-found'; path: string };
 
 const sections = new Set<AdminSection>([
@@ -39,12 +45,15 @@ export function parseRoute(pathname: string): Route {
   }
   if (parts[0] === 'site' && (parts[1] === 'atlas' || parts[1] === 'foundry')) {
     const isDraft = parts[2] === 'preview' && parts[3] === 'draft';
-    const pathParts = isDraft ? parts.slice(4) : parts.slice(2);
+    const localePart = isDraft ? parts[4] : parts[2];
+    const locale = localePart === 'zh-CN' || localePart === 'en-US' ? localePart : undefined;
+    const pathParts = isDraft ? parts.slice(locale ? 5 : 4) : parts.slice(locale ? 3 : 2);
     return {
       kind: 'site',
       workspaceId: parts[1],
       path: `/${pathParts.join('/')}`.replace(/\/$/u, '') || '/',
-      mode: isDraft ? 'draft' : 'published'
+      mode: isDraft ? 'draft' : 'published',
+      ...(locale ? { locale } : {})
     };
   }
   return { kind: 'not-found', path: pathname };
@@ -103,14 +112,33 @@ export function Link({
   [key: string]: unknown;
 }) {
   const router = useRouter();
+  let resolvedHref = href;
+  if (router.route.kind === 'site' && router.route.locale) {
+    const sitePrefix = `/site/${router.route.workspaceId}`;
+    if (href === sitePrefix || href.startsWith(`${sitePrefix}/`)) {
+      const rawRemainder = href.slice(sitePrefix.length);
+      const hasExplicitLocale =
+        /^\/(?:zh-CN|en-US)(?=\/|$)/u.test(rawRemainder) ||
+        /^\/preview\/draft\/(?:zh-CN|en-US)(?=\/|$)/u.test(rawRemainder);
+      if (hasExplicitLocale) resolvedHref = href;
+      else {
+        const remainder = rawRemainder;
+        const localizedPrefix =
+          router.route.mode === 'draft'
+            ? `${sitePrefix}/preview/draft/${router.route.locale}`
+            : `${sitePrefix}/${router.route.locale}`;
+        resolvedHref = `${localizedPrefix}${remainder || '/'}`;
+      }
+    }
+  }
   return (
     <a
-      href={href}
+      href={resolvedHref}
       className={className}
       onClick={(event: MouseEvent<HTMLAnchorElement>) => {
         if (!event.metaKey && !event.ctrlKey && !event.shiftKey && event.button === 0) {
           event.preventDefault();
-          router.navigate(href);
+          router.navigate(resolvedHref);
         }
       }}
       {...rest}

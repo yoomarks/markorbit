@@ -17,7 +17,8 @@ export const EditorUnpublishedDraft: Story = {
   decorators: [
     (Story) => {
       const state = seedWorkspace('atlas');
-      state.draft.blocks[0]!.title = 'A private draft headline';
+      state.draft.localized['zh-CN'].blocks.hero!.title = '尚未发布的中文首页标题';
+      state.draft.localePublication['zh-CN'] = 'DRAFT';
       localStorage.setItem(`${demoStoragePrefix}atlas`, JSON.stringify(state));
       return <Story />;
     }
@@ -36,6 +37,8 @@ export const PermissionDenied: Story = {
   ]
 };
 export const AnalyticsPartial: Story = { args: { initialPath: '/admin/foundry/analytics' } };
-export const CounselTemplate: Story = { args: { initialPath: '/site/atlas/' } };
-export const ExchangeTemplate: Story = { args: { initialPath: '/site/foundry/' } };
-export const InquiryValidation: Story = { args: { initialPath: '/site/atlas/contact' } };
+export const CounselTemplateChinese: Story = { args: { initialPath: '/site/atlas/zh-CN/' } };
+export const CounselTemplateEnglish: Story = { args: { initialPath: '/site/atlas/en-US/' } };
+export const ExchangeTemplateChinese: Story = { args: { initialPath: '/site/foundry/zh-CN/' } };
+export const ExchangeTemplateEnglish: Story = { args: { initialPath: '/site/foundry/en-US/' } };
+export const InquiryValidation: Story = { args: { initialPath: '/site/atlas/zh-CN/contact' } };

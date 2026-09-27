@@ -70,6 +70,19 @@ Home
 
 Template **Atlas IP Counsel** is editorial, calm, and advisory. Template **Foundry Exchange** is high-contrast, catalogue-led, and focused on brand assets and transactions. They differ in typography, density, composition, navigation, cards, and hero treatment—not only color and logo.
 
+## V1.1 locale and publication model
+
+- Site Admin UI locale is an operator preference. It defaults to `zh-CN`, supports `en-US`, and never changes Site configuration or visitor language.
+- `defaultLocale`, `enabledLocales`, and each locale's publication state belong to the Workspace Site draft and immutable published snapshot.
+- Visitor locale is restored from stable `/site/:workspace/zh-CN/...` and `/site/:workspace/en-US/...` URLs. Legacy `/site/:workspace/...` links resolve through the Site's published default locale.
+- Page, block, service, article, SEO, legal copy, author identity, review status, and version metadata are locale-scoped fixtures. IDs, `productRef`, `packageRef`, original visitor messages, and attribution lineage are never translated.
+- Draft preview uses `/site/:workspace/preview/draft/:locale/...`; it cannot leak into the published route.
+- A locale in `DRAFT` or disabled state is not publicly routable. There is no silent fallback that makes an unreviewed translation appear published.
+
+## Persistence truth
+
+Site V1 Preview persists only browser-local fixtures in `localStorage`. Repository PostgreSQL suites validate other owners and shared boundaries; they are **not evidence that Site V1 Preview has server-side persistence**. This preview adds no production API, database, migration, Site Runtime, Workspace, Lite, or Super Admin change.
+
 ## Core demo objects and relationships
 
 ```text

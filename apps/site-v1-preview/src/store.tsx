@@ -14,7 +14,9 @@ const storagePrefix = 'markorbit:site-v1-preview:';
 function load(id: WorkspaceId): WorkspaceState {
   try {
     const value = localStorage.getItem(`${storagePrefix}${id}`);
-    return value ? (JSON.parse(value) as WorkspaceState) : seedWorkspace(id);
+    if (!value) return seedWorkspace(id);
+    const parsed = JSON.parse(value) as WorkspaceState;
+    return parsed.draft.localized && parsed.published.localized ? parsed : seedWorkspace(id);
   } catch {
     return seedWorkspace(id);
   }
@@ -112,6 +114,13 @@ export function PreviewStoreProvider({ children }: { children: ReactNode }) {
       },
       submitLead(id, input) {
         const workspace = workspaces[id];
+        const duplicate = workspace.leads.find(
+          (lead) =>
+            lead.email === input.email &&
+            lead.message === input.message &&
+            lead.sourcePath === input.sourcePath
+        );
+        if (duplicate) return duplicate;
         const lead: DemoLead = {
           ...input,
           id: nextLeadId(workspace.leads.length),

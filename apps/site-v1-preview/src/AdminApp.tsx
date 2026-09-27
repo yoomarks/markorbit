@@ -17,10 +17,13 @@ import type {
   ContentRecord,
   DemoLead,
   SiteConfig,
+  Locale,
   WorkspaceId
 } from './domain.js';
+import { projectLocale } from './domain.js';
 import { hasUnpublishedChanges, usePreviewStore } from './store.js';
 import { Link, useRouter } from './router.js';
+import { useAdminI18n } from './i18n.js';
 
 const nav: { section: AdminSection; label: string; icon: string }[] = [
   { section: 'overview', label: 'Overview', icon: '⌂' },
@@ -85,6 +88,7 @@ export function AdminApp({
   const workspace = store.workspaces[workspaceId];
   const router = useRouter();
   const [mobileNav, setMobileNav] = useState(false);
+  const { locale, setLocale, t } = useAdminI18n();
   const unpublished = hasUnpublishedChanges(workspace);
   const [title, description] = titles[section];
   const readOnly = workspace.role === 'VIEWER';
@@ -115,7 +119,7 @@ export function AdminApp({
               aria-current={section === item.section ? 'page' : undefined}
             >
               <span aria-hidden>{item.icon}</span>
-              {item.label}
+              {t(item.label)}
               {item.section === 'leads' && workspace.leads.length ? (
                 <b>{workspace.leads.length}</b>
               ) : null}
@@ -123,7 +127,7 @@ export function AdminApp({
           ))}
         </nav>
         <div className="admin-sidebar__footer">
-          <span className="demo-dot" /> Demo fixtures only
+          <span className="demo-dot" /> {t('Demo fixtures only')}
         </div>
       </aside>
       <div className="admin-main">
@@ -141,9 +145,31 @@ export function AdminApp({
             <strong>{workspace.draft.brandName}</strong>
           </div>
           <div className="topbar-actions">
+            <div
+              className="admin-locale-switch"
+              role="group"
+              aria-label="界面语言 / Interface language"
+            >
+              <button
+                type="button"
+                className={locale === 'zh-CN' ? 'is-active' : ''}
+                aria-pressed={locale === 'zh-CN'}
+                onClick={() => setLocale('zh-CN')}
+              >
+                简体中文
+              </button>
+              <button
+                type="button"
+                className={locale === 'en-US' ? 'is-active' : ''}
+                aria-pressed={locale === 'en-US'}
+                onClick={() => setLocale('en-US')}
+              >
+                English
+              </button>
+            </div>
             <Select
-              label="Workspace"
-              aria-label="Workspace"
+              label={t('Workspace')}
+              aria-label={t('Workspace')}
               value={workspaceId}
               onChange={(event) => router.navigate(`/admin/${event.target.value}/${section}`)}
             >
@@ -151,7 +177,7 @@ export function AdminApp({
               <option value="foundry">Foundry Exchange</option>
             </Select>
             <Link className="button-link secondary" href={`/site/${workspaceId}/`}>
-              View Site
+              {t('View Site')}
             </Link>
             <span className="avatar" aria-label="Demo user">
               MA
@@ -160,35 +186,35 @@ export function AdminApp({
         </header>
         <main id="main" className="admin-content">
           <div className="fixture-ribbon">
-            <strong>INTERACTIVE PRODUCT PREVIEW</strong>
+            <strong>{t('INTERACTIVE PRODUCT PREVIEW')}</strong>
             <span>No production data, publication, payment, email, or domain action</span>
           </div>
           <PageHeader
-            title={title}
-            description={description}
+            title={t(title)}
+            description={t(description)}
             actions={
               <div className="header-actions">
                 <Badge>
                   {unpublished
-                    ? 'Unpublished draft'
+                    ? t('Unpublished draft')
                     : `Demo published · v${workspace.versions.length}`}
                 </Badge>
                 {section !== 'editor' && (
                   <Link className="button-link" href={`/admin/${workspaceId}/editor`}>
-                    Edit Site
+                    {t('Edit Site')}
                   </Link>
                 )}
               </div>
             }
           />
           {readOnly && (
-            <Alert tone="warning" title="View-only access">
+            <Alert tone="warning" title={t('View-only access')}>
               This fixture role may inspect Site state and preview the customer experience, but
               cannot change or publish it.
             </Alert>
           )}
           {unpublished && section !== 'editor' && (
-            <Alert tone="warning" title="Draft differs from the customer-facing demo">
+            <Alert tone="warning" title={t('Draft differs from the customer-facing demo')}>
               Changes remain private to this Workspace until an explicit demo publication.
             </Alert>
           )}
@@ -235,8 +261,9 @@ function AdminScreen(props: {
 }
 
 function Overview({ workspaceId }: { workspaceId: WorkspaceId }) {
+  const { t } = useAdminI18n();
   const workspace = usePreviewStore().workspaces[workspaceId];
-  const draft = workspace.draft;
+  const draft = projectLocale(workspace.draft, workspace.draft.defaultLocale);
   const checklist = [
     ['Brand configured', Boolean(draft.brandName && draft.primary)],
     ['Public service available', draft.services.some((service) => service.visible)],
@@ -246,15 +273,23 @@ function Overview({ workspaceId }: { workspaceId: WorkspaceId }) {
   return (
     <div className="screen-stack">
       <section className="metric-grid" aria-label="Site performance summary">
-        <Metric label="Demo visits" value="2,846" delta="+18%" />
         <Metric
-          label="Inquiries"
-          value={String(workspace.leads.length)}
-          delta={workspace.leads.length ? 'from this browser' : 'no demo submissions'}
+          label={t('Publication readiness')}
+          value={`${checklist.filter(([, done]) => done).length}/${checklist.length}`}
+          delta="Workspace draft checklist"
         />
-        <Metric label="Content assist" value="34%" delta="Demo attribution" />
         <Metric
-          label="Published version"
+          label={t('Unpublished draft')}
+          value={hasUnpublishedChanges(workspace) ? '1' : '0'}
+          delta={hasUnpublishedChanges(workspace) ? 'Needs review' : 'Up to date'}
+        />
+        <Metric
+          label={t('Pending leads')}
+          value={String(workspace.leads.filter((lead) => lead.status !== 'QUALIFIED').length)}
+          delta="Exact browser-local submissions"
+        />
+        <Metric
+          label={t('Published version')}
           value={`v${workspace.versions.length}`}
           delta={new Date(workspace.publishedAt).toLocaleDateString()}
         />
@@ -263,8 +298,8 @@ function Overview({ workspaceId }: { workspaceId: WorkspaceId }) {
         <Card className="site-health-card">
           <div className="section-heading">
             <div>
-              <span className="eyebrow">Site health</span>
-              <h2>One action before launch</h2>
+              <span className="eyebrow">{t('Site health')}</span>
+              <h2>{t('One action before launch')}</h2>
             </div>
             <span className="health-score">75%</span>
           </div>
@@ -287,10 +322,10 @@ function Overview({ workspaceId }: { workspaceId: WorkspaceId }) {
         <Card className="preview-card">
           <div className="section-heading">
             <div>
-              <span className="eyebrow">Published demo</span>
+              <span className="eyebrow">{t('Published demo')}</span>
               <h2>{draft.domain}</h2>
             </div>
-            <Badge>Safe preview</Badge>
+            <Badge>{t('Safe preview')}</Badge>
           </div>
           <MiniSite config={workspace.published} />
           <div className="card-actions">
@@ -305,7 +340,7 @@ function Overview({ workspaceId }: { workspaceId: WorkspaceId }) {
       </div>
       <div className="dashboard-grid thirds">
         <Card>
-          <span className="eyebrow">Latest content</span>
+          <span className="eyebrow">{t('Latest content')}</span>
           <h2>{draft.content[0]?.title}</h2>
           <p>{draft.content[0]?.excerpt}</p>
           <Link
@@ -316,7 +351,7 @@ function Overview({ workspaceId }: { workspaceId: WorkspaceId }) {
           </Link>
         </Card>
         <Card>
-          <span className="eyebrow">Latest inquiry</span>
+          <span className="eyebrow">{t('Latest inquiry')}</span>
           {workspace.leads[0] ? (
             <>
               <h2>{workspace.leads[0].name}</h2>
@@ -330,7 +365,7 @@ function Overview({ workspaceId }: { workspaceId: WorkspaceId }) {
             </>
           ) : (
             <>
-              <h2>No demo inquiries yet</h2>
+              <h2>{t('No demo inquiries yet')}</h2>
               <p>Complete the customer inquiry path to create an attributable fixture.</p>
               <Link className="text-link" href={`/site/${workspaceId}/contact`}>
                 Try the inquiry path →
@@ -339,8 +374,8 @@ function Overview({ workspaceId }: { workspaceId: WorkspaceId }) {
           )}
         </Card>
         <Card>
-          <span className="eyebrow">Authority boundary</span>
-          <h2>Projection, not business truth</h2>
+          <span className="eyebrow">{t('Authority boundary')}</span>
+          <h2>{t('Projection, not business truth')}</h2>
           <p>
             Visible services and fee notes reference owners. They do not create a Quote, Customer,
             Order, Payment, provider appointment, or filing.
@@ -363,7 +398,9 @@ function Metric({ label, value, delta }: { label: string; value: string; delta: 
 
 function Pages({ workspaceId, readOnly }: { workspaceId: WorkspaceId; readOnly: boolean }) {
   const store = usePreviewStore();
+  const { t } = useAdminI18n();
   const workspace = store.workspaces[workspaceId];
+  const localizedDraft = projectLocale(workspace.draft, workspace.draft.defaultLocale);
   const move = (id: string, offset: number) =>
     store.updateDraft(workspaceId, (draft) => {
       const index = draft.pages.findIndex((page) => page.id === id);
@@ -377,23 +414,23 @@ function Pages({ workspaceId, readOnly }: { workspaceId: WorkspaceId; readOnly: 
     <Card className="table-card">
       <div className="section-heading">
         <div>
-          <h2>Site map</h2>
+          <h2>{t('Site map')}</h2>
           <p>
             Navigation follows this order. Hidden pages remain available in the draft for review.
           </p>
         </div>
         <Button disabled title="Custom page types are outside this bounded preview.">
-          Add page unavailable in preview
+          {t('Add page unavailable in preview')}
         </Button>
       </div>
       <div className="data-table" role="table" aria-label="Site pages">
         <div role="row" className="data-row data-head">
-          <span>Page</span>
-          <span>Path</span>
-          <span>Status</span>
-          <span>Actions</span>
+          <span>{t('Page')}</span>
+          <span>{t('Path')}</span>
+          <span>{t('Status')}</span>
+          <span>{t('Actions')}</span>
         </div>
-        {workspace.draft.pages.map((page, index) => (
+        {localizedDraft.pages.map((page, index) => (
           <div role="row" className="data-row" key={page.id}>
             <span>
               <strong>{page.title}</strong>
@@ -429,11 +466,8 @@ function Pages({ workspaceId, readOnly }: { workspaceId: WorkspaceId; readOnly: 
               >
                 {page.visible ? 'Hide' : 'Show'}
               </button>
-              <Link
-                href={`/site/${workspaceId}/preview/draft${page.path}`}
-                className="text-link"
-              >
-                Preview draft
+              <Link href={`/site/${workspaceId}/preview/draft${page.path}`} className="text-link">
+                {t('Preview draft')}
               </Link>
             </span>
           </div>
@@ -445,20 +479,46 @@ function Pages({ workspaceId, readOnly }: { workspaceId: WorkspaceId; readOnly: 
 
 function Editor({ workspaceId, readOnly }: { workspaceId: WorkspaceId; readOnly: boolean }) {
   const store = usePreviewStore();
+  const { t } = useAdminI18n();
   const workspace = store.workspaces[workspaceId];
   const draft = workspace.draft;
+  const [contentLocale, setContentLocale] = useState<Locale>(draft.defaultLocale);
+  const draftView = projectLocale(draft, contentLocale);
+  const publishedView = projectLocale(workspace.published, contentLocale);
   const [selected, setSelected] = useState(draft.blocks[0]?.id ?? '');
   const [device, setDevice] = useState<'desktop' | 'mobile'>('desktop');
   const [showPublished, setShowPublished] = useState(false);
   const [status, setStatus] = useState('');
   const [publishOpen, setPublishOpen] = useState(false);
-  const activeConfig = showPublished ? workspace.published : draft;
-  const block = draft.blocks.find((item) => item.id === selected);
+  const activeConfig = showPublished ? publishedView : draftView;
+  const block = draftView.blocks.find((item) => item.id === selected);
   const updateBlock = (update: Partial<Block>) =>
-    store.updateDraft(workspaceId, (config) => ({
-      ...config,
-      blocks: config.blocks.map((item) => (item.id === selected ? { ...item, ...update } : item))
-    }));
+    store.updateDraft(workspaceId, (config) => {
+      const current = config.localized[contentLocale].blocks[selected];
+      return {
+        ...config,
+        blocks: config.blocks.map((item) =>
+          item.id === selected && update.visible !== undefined
+            ? { ...item, visible: update.visible }
+            : item
+        ),
+        localized: {
+          ...config.localized,
+          [contentLocale]: {
+            ...config.localized[contentLocale],
+            blocks: {
+              ...config.localized[contentLocale].blocks,
+              [selected]: {
+                label: update.label ?? current?.label ?? '',
+                title: update.title ?? current?.title ?? '',
+                body: update.body ?? current?.body ?? ''
+              }
+            }
+          }
+        },
+        localePublication: { ...config.localePublication, [contentLocale]: 'DRAFT' }
+      };
+    });
   const moveBlock = (offset: number) =>
     store.updateDraft(workspaceId, (config) => {
       const index = config.blocks.findIndex((item) => item.id === selected);
@@ -482,21 +542,30 @@ function Editor({ workspaceId, readOnly }: { workspaceId: WorkspaceId; readOnly:
             className={!showPublished ? 'is-active' : ''}
             onClick={() => setShowPublished(false)}
           >
-            Draft
+            {t('Draft')}
           </button>
           <button
             className={showPublished ? 'is-active' : ''}
             onClick={() => setShowPublished(true)}
           >
-            Published v{workspace.versions.length}
+            {t('Published')} v{workspace.versions.length}
           </button>
         </div>
+        <Select
+          label="内容语言 / Content language"
+          aria-label="内容语言 / Content language"
+          value={contentLocale}
+          onChange={(event) => setContentLocale(event.target.value as Locale)}
+        >
+          <option value="zh-CN">简体中文</option>
+          <option value="en-US">English</option>
+        </Select>
         <div className="segmented" aria-label="Preview device">
           <button
             className={device === 'desktop' ? 'is-active' : ''}
             onClick={() => setDevice('desktop')}
           >
-            Desktop
+            {t('Desktop')}
           </button>
           <button
             className={device === 'mobile' ? 'is-active' : ''}
@@ -508,31 +577,31 @@ function Editor({ workspaceId, readOnly }: { workspaceId: WorkspaceId; readOnly:
         <span className="save-state" role="status">
           {status ||
             (hasUnpublishedChanges(workspace)
-              ? 'Draft has unpublished changes'
-              : 'Draft matches published demo')}
+              ? t('Draft has unpublished changes')
+              : t('Draft matches published demo'))}
         </span>
         <Button
           variant="secondary"
           disabled={readOnly}
           onClick={() => {
             store.saveDraft(workspaceId);
-            setStatus('Draft saved locally');
+            setStatus(t('Draft saved locally'));
           }}
         >
-          Save draft
+          {t('Save draft')}
         </Button>
         <Button disabled={readOnly} onClick={() => setPublishOpen(true)}>
-          Review & publish
+          {t('Review & publish')}
         </Button>
       </div>
       <div className="editor-grid">
         <aside className="editor-tree">
           <div>
-            <span className="eyebrow">Page</span>
-            <h2>Home</h2>
+            <span className="eyebrow">{t('Page')}</span>
+            <h2>{t('Home')}</h2>
           </div>
           <ol>
-            {draft.blocks.map((item, index) => (
+            {draftView.blocks.map((item, index) => (
               <li key={item.id}>
                 <button
                   className={selected === item.id ? 'is-selected' : ''}
@@ -541,7 +610,7 @@ function Editor({ workspaceId, readOnly }: { workspaceId: WorkspaceId; readOnly:
                   <span className="drag">⠿</span>
                   <span>
                     <strong>{item.label}</strong>
-                    <small>{item.visible ? 'Visible' : 'Hidden'}</small>
+                    <small>{t(item.visible ? 'Visible' : 'Hidden')}</small>
                   </span>
                   <Badge>{index + 1}</Badge>
                 </button>
@@ -568,7 +637,7 @@ function Editor({ workspaceId, readOnly }: { workspaceId: WorkspaceId; readOnly:
               }))
             }
           >
-            + Add block
+            + {t('Add block')}
           </Button>
         </aside>
         <section className="editor-canvas" aria-label={`${device} Site preview`}>
@@ -580,53 +649,60 @@ function Editor({ workspaceId, readOnly }: { workspaceId: WorkspaceId; readOnly:
           </div>
         </section>
         <aside className="editor-properties">
-          <span className="eyebrow">Properties</span>
+          <span className="eyebrow">{t('Properties')}</span>
           <h2>{block?.label ?? 'Select a block'}</h2>
           {block && (
             <fieldset disabled={readOnly || showPublished}>
               <TextInput
-                label="Block label"
+                label={t('Block label')}
                 value={block.label}
                 onChange={(event) => updateBlock({ label: event.target.value })}
               />
               <TextInput
-                label="Heading"
+                label={t('Heading')}
                 value={block.title}
                 onChange={(event) => updateBlock({ title: event.target.value })}
               />
               <TextArea
-                label="Supporting copy"
+                label={t('Supporting copy')}
                 rows={5}
                 value={block.body}
                 onChange={(event) => updateBlock({ body: event.target.value })}
               />
               <Checkbox
-                label="Show this block"
+                label={t('Show this block')}
                 checked={block.visible}
                 onChange={(event) => updateBlock({ visible: event.target.checked })}
               />
               <div className="property-actions">
                 <Button type="button" variant="secondary" onClick={() => moveBlock(-1)}>
-                  Move up
+                  {t('Move up')}
                 </Button>
                 <Button type="button" variant="secondary" onClick={() => moveBlock(1)}>
-                  Move down
+                  {t('Move down')}
                 </Button>
               </div>
               <hr />
               <TextInput
-                label="Brand name"
-                value={draft.brandName}
+                label={t('Brand name')}
+                value={draftView.brandName}
                 onChange={(event) =>
                   store.updateDraft(workspaceId, (config) => ({
                     ...config,
-                    brandName: event.target.value
+                    localized: {
+                      ...config.localized,
+                      [contentLocale]: {
+                        ...config.localized[contentLocale],
+                        brandName: event.target.value
+                      }
+                    },
+                    localePublication: { ...config.localePublication, [contentLocale]: 'DRAFT' }
                   }))
                 }
               />
               <div className="color-fields">
                 <label>
-                  Primary
+                  {t('Primary')}
                   <input
                     aria-label="Primary color"
                     type="color"
@@ -640,7 +716,7 @@ function Editor({ workspaceId, readOnly }: { workspaceId: WorkspaceId; readOnly:
                   />
                 </label>
                 <label>
-                  Accent
+                  {t('Accent')}
                   <input
                     aria-label="Accent color"
                     type="color"
@@ -667,7 +743,7 @@ function Editor({ workspaceId, readOnly }: { workspaceId: WorkspaceId; readOnly:
             aria-labelledby="publish-title"
           >
             <span className="eyebrow">Demo publication checklist</span>
-            <h2 id="publish-title">Publish this snapshot?</h2>
+            <h2 id="publish-title">{t('Publish this snapshot?')}</h2>
             <p>
               The customer Site will switch from v{workspace.versions.length} to v
               {workspace.versions.length + 1}. No domain, email, search, payment, or production data
@@ -693,9 +769,19 @@ function Editor({ workspaceId, readOnly }: { workspaceId: WorkspaceId; readOnly:
               <Button
                 disabled={!checklist.every(Boolean)}
                 onClick={() => {
-                  const version = store.publish(workspaceId);
+                  const version = store.publish(
+                    workspaceId,
+                    `Locale release: ${contentLocale}`,
+                    (config) => ({
+                      ...config,
+                      localePublication: {
+                        ...config.localePublication,
+                        [contentLocale]: 'PUBLISHED'
+                      }
+                    })
+                  );
                   setPublishOpen(false);
-                  setStatus(`Demo published as version ${version}`);
+                  setStatus(`${t('Demo published as version')} ${version}`);
                 }}
               >
                 Publish demo v{workspace.versions.length + 1}
@@ -707,8 +793,8 @@ function Editor({ workspaceId, readOnly }: { workspaceId: WorkspaceId; readOnly:
       <Card className="version-card">
         <div className="section-heading">
           <div>
-            <h2>Version history</h2>
-            <p>Restore creates a new draft. Historical demo snapshots remain unchanged.</p>
+            <h2>{t('Version history')}</h2>
+            <p>{t('Restore creates a new draft. Historical demo snapshots remain unchanged.')}</p>
           </div>
         </div>
         <div className="version-list">
@@ -727,7 +813,7 @@ function Editor({ workspaceId, readOnly }: { workspaceId: WorkspaceId; readOnly:
                   setStatus(`Version ${version.version} restored into a new draft`);
                 }}
               >
-                Restore to draft
+                {t('Restore to draft')}
               </Button>
             </div>
           ))}
@@ -738,6 +824,7 @@ function Editor({ workspaceId, readOnly }: { workspaceId: WorkspaceId; readOnly:
 }
 
 function MiniSite({ config, selectedBlock }: { config: SiteConfig; selectedBlock?: string }) {
+  const { t } = useAdminI18n();
   const visible = config.blocks.filter((item) => item.visible);
   const hero = visible.find((item) => item.kind === 'hero');
   return (
@@ -752,7 +839,9 @@ function MiniSite({ config, selectedBlock }: { config: SiteConfig; selectedBlock
     >
       <header>
         <strong>{config.brandName}</strong>
-        <span>Services &nbsp; Insights &nbsp; Contact</span>
+        <span>
+          {t('Services')} &nbsp; {t('Insights')} &nbsp; {t('Contact')}
+        </span>
       </header>
       <main>
         {visible.map((block) => (
@@ -773,7 +862,7 @@ function MiniSite({ config, selectedBlock }: { config: SiteConfig; selectedBlock
                   ))}
               </div>
             )}
-            {block.kind === 'cta' && <button>Start an inquiry</button>}
+            {block.kind === 'cta' && <button>{t('Start an inquiry')}</button>}
           </section>
         ))}
       </main>
@@ -791,29 +880,60 @@ function Content({
   readOnly: boolean;
 }) {
   const store = usePreviewStore();
+  const { t } = useAdminI18n();
   const workspace = store.workspaces[workspaceId];
-  const [selectedId, setSelectedId] = useState(itemId ?? workspace.draft.content[0]?.id);
-  const selected = workspace.draft.content.find((item) => item.id === selectedId);
+  const [contentLocale, setContentLocale] = useState<Locale>(workspace.draft.defaultLocale);
+  const localizedDraft = projectLocale(workspace.draft, contentLocale);
+  const [selectedId, setSelectedId] = useState(itemId ?? localizedDraft.content[0]?.id);
+  const selected = localizedDraft.content.find((item) => item.id === selectedId);
   const [status, setStatus] = useState('');
   const update = (changes: Partial<ContentRecord>) =>
     selected &&
-    store.updateDraft(workspaceId, (config) => ({
-      ...config,
-      content: config.content.map((item) =>
-        item.id === selected.id ? { ...item, ...changes } : item
-      )
-    }));
+    store.updateDraft(workspaceId, (config) => {
+      const current = config.localized[contentLocale].content[selected.id];
+      return {
+        ...config,
+        content: config.content.map((item) =>
+          item.id === selected.id ? { ...item, ...changes } : item
+        ),
+        localized: {
+          ...config.localized,
+          [contentLocale]: {
+            ...config.localized[contentLocale],
+            content: {
+              ...config.localized[contentLocale].content,
+              [selected.id]: {
+                title: changes.title ?? current?.title ?? '',
+                excerpt: changes.excerpt ?? current?.excerpt ?? '',
+                body: changes.body ?? current?.body ?? '',
+                status: changes.status ?? current?.status ?? 'DRAFT',
+                version: changes.version ?? current?.version ?? 1
+              }
+            }
+          }
+        },
+        localePublication: { ...config.localePublication, [contentLocale]: 'DRAFT' }
+      };
+    });
   return (
     <div className="content-workbench">
       <Card className="content-list">
         <div className="section-heading">
           <div>
-            <h2>Content library</h2>
+            <h2>{t('Content library')}</h2>
             <p>Fixture packages mirror reviewed Lite content lineage.</p>
           </div>
-          <Button disabled={readOnly}>New content</Button>
+          <Select
+            label="内容语言 / Content language"
+            value={contentLocale}
+            onChange={(event) => setContentLocale(event.target.value as Locale)}
+          >
+            <option value="zh-CN">简体中文</option>
+            <option value="en-US">English</option>
+          </Select>
+          <Button disabled={readOnly}>{t('New content')}</Button>
         </div>
-        {workspace.draft.content.map((item) => (
+        {localizedDraft.content.map((item) => (
           <button
             key={item.id}
             className={selected?.id === item.id ? 'content-row is-active' : 'content-row'}
@@ -834,52 +954,52 @@ function Content({
           <div className="section-heading">
             <div>
               <span className="eyebrow">Exact demo content · {selected.packageRef}</span>
-              <h2>Edit content</h2>
+              <h2>{t('Edit content')}</h2>
             </div>
             <Badge>{selected.status}</Badge>
           </div>
           <fieldset disabled={readOnly}>
             <TextInput
-              label="Title"
+              label={t('Title')}
               value={selected.title}
               onChange={(event) => update({ title: event.target.value, status: 'DRAFT' })}
             />
             <TextArea
-              label="Excerpt"
+              label={t('Excerpt')}
               rows={3}
               value={selected.excerpt}
               onChange={(event) => update({ excerpt: event.target.value, status: 'DRAFT' })}
             />
             <TextArea
-              label="Body"
+              label={t('Body')}
               rows={10}
               value={selected.body}
               onChange={(event) => update({ body: event.target.value, status: 'DRAFT' })}
             />
             <Select
-              label="Related service"
+              label={t('Related service')}
               value={selected.relatedServiceId}
               onChange={(event) =>
                 update({ relatedServiceId: event.target.value, status: 'DRAFT' })
               }
             >
-              {workspace.draft.services.map((service) => (
+              {localizedDraft.services.map((service) => (
                 <option value={service.id} key={service.id}>
                   {service.title}
                 </option>
               ))}
             </Select>
           </fieldset>
-          <Alert title="Publication boundary">
+          <Alert title={t('Publication boundary')}>
             This demo action changes the Site preview snapshot only. It does not bypass Lite human
             review or publish externally.
           </Alert>
           <div className="card-actions">
             <Link
               className="button-link secondary"
-              href={`/site/${workspaceId}/preview/draft/insights/${selected.slug}`}
+              href={`/site/${workspaceId}/preview/draft/${contentLocale}/insights/${selected.slug}`}
             >
-              Preview draft route
+              {t('Preview draft')}
             </Link>
             <Button
               disabled={readOnly}
@@ -889,7 +1009,7 @@ function Content({
                 setStatus('Content prepared in the Site draft');
               }}
             >
-              Prepare demo publication
+              {t('Prepare demo publication')}
             </Button>
             <Button
               disabled={readOnly}
@@ -902,15 +1022,37 @@ function Content({
                     ...draft,
                     content: draft.content.map((item) =>
                       item.id === selected.id
-                        ? { ...item, status: 'PUBLISHED', version: nextVersion }
+                        ? {
+                            ...item,
+                            title: selected.title,
+                            excerpt: selected.excerpt,
+                            body: selected.body,
+                            status: 'PUBLISHED',
+                            version: nextVersion
+                          }
                         : item
-                    )
+                    ),
+                    localized: {
+                      ...draft.localized,
+                      [contentLocale]: {
+                        ...draft.localized[contentLocale],
+                        content: {
+                          ...draft.localized[contentLocale].content,
+                          [selected.id]: {
+                            ...draft.localized[contentLocale].content[selected.id]!,
+                            status: 'PUBLISHED',
+                            version: nextVersion
+                          }
+                        }
+                      }
+                    },
+                    localePublication: { ...draft.localePublication, [contentLocale]: 'PUBLISHED' }
                   })
                 );
                 setStatus(`Content and Site demo published as v${version}`);
               }}
             >
-              Publish content demo
+              {t('Publish content demo')}
             </Button>
           </div>
           {status && (
@@ -926,17 +1068,19 @@ function Content({
 
 function Services({ workspaceId, readOnly }: { workspaceId: WorkspaceId; readOnly: boolean }) {
   const store = usePreviewStore();
+  const { t } = useAdminI18n();
   const workspace = store.workspaces[workspaceId];
+  const localizedDraft = projectLocale(workspace.draft, workspace.draft.defaultLocale);
   return (
     <div className="service-admin-grid">
-      {workspace.draft.services.map((service) => (
+      {localizedDraft.services.map((service) => (
         <Card key={service.id} className="service-admin-card">
           <div className="section-heading">
             <Badge>
               {service.productRef} · v{service.version}
             </Badge>
             <Checkbox
-              label="Visible"
+              label={t('Visible')}
               disabled={readOnly}
               checked={service.visible}
               onChange={(event) =>
@@ -953,15 +1097,15 @@ function Services({ workspaceId, readOnly }: { workspaceId: WorkspaceId; readOnl
           <p>{service.summary}</p>
           <dl>
             <div>
-              <dt>Markets</dt>
+              <dt>{t('Markets')}</dt>
               <dd>{service.markets.join(', ')}</dd>
             </div>
             <div>
-              <dt>Fee display</dt>
+              <dt>{t('Fee display')}</dt>
               <dd>{service.feeNote}</dd>
             </div>
             <div>
-              <dt>Authority</dt>
+              <dt>{t('Authority')}</dt>
               <dd>Display reference only; final scope and Quote remain owner truth.</dd>
             </div>
           </dl>
@@ -984,12 +1128,13 @@ function Leads({
   readOnly: boolean;
 }) {
   const store = usePreviewStore();
+  const { t } = useAdminI18n();
   const workspace = store.workspaces[workspaceId];
   const selected = workspace.leads.find((lead) => lead.id === itemId) ?? workspace.leads[0];
   if (!workspace.leads.length)
     return (
       <EmptyState
-        title="No demo leads yet"
+        title={t('No demo leads yet')}
         description="Complete an inquiry on this Workspace's Site Front. The submitted demo object will appear here with the same ID and source lineage."
         action={
           <Link className="button-link" href={`/site/${workspaceId}/contact`}>
@@ -1001,7 +1146,7 @@ function Leads({
   return (
     <div className="leads-layout">
       <Card className="lead-list">
-        <h2>Inbox</h2>
+        <h2>{t('Inbox')}</h2>
         {workspace.leads.map((lead) => (
           <Link
             key={lead.id}
@@ -1034,6 +1179,7 @@ function LeadDetail({
   readOnly: boolean;
 }) {
   const store = usePreviewStore();
+  const { t } = useAdminI18n();
   const workspace = store.workspaces[workspaceId];
   const service = workspace.published.services.find((item) => item.id === lead.serviceId);
   return (
@@ -1068,11 +1214,11 @@ function LeadDetail({
         </div>
       </div>
       <section className="message-card">
-        <span className="eyebrow">Visitor message</span>
+        <span className="eyebrow">{t('Visitor message')}</span>
         <p>{lead.message}</p>
       </section>
       <section>
-        <h3>Attribution lineage</h3>
+        <h3>{t('Attribution lineage')}</h3>
         <div className="lineage">
           <span>
             Source <strong>{lead.sourceContentId ?? lead.sourceAssetId ?? lead.sourcePath}</strong>
@@ -1087,7 +1233,7 @@ function LeadDetail({
           </span>
         </div>
       </section>
-      <Alert title="Handoff boundary">
+      <Alert title={t('Handoff boundary')}>
         Qualifying this demo lead does not create a Customer Relationship, Quote, Order, Payment,
         Matter, provider selection, or protected action.
       </Alert>
@@ -1097,13 +1243,13 @@ function LeadDetail({
           disabled={readOnly}
           onClick={() => store.updateLead(workspaceId, lead.id, 'QUALIFIED')}
         >
-          Mark qualified
+          {t('Mark qualified')}
         </Button>
         <Button
           disabled={readOnly}
           onClick={() => store.updateLead(workspaceId, lead.id, 'FOLLOW_UP')}
         >
-          Prepare follow-up
+          {t('Prepare follow-up')}
         </Button>
       </div>
     </Card>
@@ -1111,26 +1257,27 @@ function LeadDetail({
 }
 
 function ClientService({ workspaceId }: { workspaceId: WorkspaceId }) {
+  const { t } = useAdminI18n();
   return (
     <div className="screen-stack">
-      <Alert title="Projection only">
+      <Alert title={t('Projection only')}>
         These demo requests illustrate a future Site view. Order, Matter, official status, payment,
         and provider truth remain with their current owners.
       </Alert>
       <Card className="table-card">
         <div className="section-heading">
           <div>
-            <h2>Customer requests</h2>
+            <h2>{t('Customer requests')}</h2>
             <p>Example read projections, clearly labelled as demo.</p>
           </div>
           <Badge>Demo data</Badge>
         </div>
         <div className="data-table">
           <div className="data-row data-head">
-            <span>Reference</span>
-            <span>Request</span>
-            <span>Stage</span>
-            <span>Last update</span>
+            <span>{t('Reference')}</span>
+            <span>{t('Request')}</span>
+            <span>{t('Stage')}</span>
+            <span>{t('Last update')}</span>
           </div>
           <div className="data-row">
             <strong>DEMO-REQ-1027</strong>
@@ -1154,35 +1301,40 @@ function ClientService({ workspaceId }: { workspaceId: WorkspaceId }) {
 }
 
 function Analytics({ workspaceId }: { workspaceId: WorkspaceId }) {
+  const { t } = useAdminI18n();
   const workspace = usePreviewStore().workspaces[workspaceId];
   const contentLeads = workspace.leads.filter((lead) => lead.sourceContentId).length;
   return (
     <div className="screen-stack">
       {workspace.analyticsPartial && (
-        <Alert tone="warning" title="Partial demo analytics">
+        <Alert tone="warning" title={t('Partial demo analytics')}>
           Traffic source detail is unavailable for this Workspace fixture. No missing values were
           inferred.
         </Alert>
       )}
       <section className="metric-grid">
-        <Metric label="Illustrative visitors" value="2,193" delta="Fixture only · no live denominator" />
         <Metric
-          label="Inquiry rate"
-          value="Unavailable"
+          label={t('Illustrative visitors')}
+          value="2,193"
+          delta="Fixture only · no live denominator"
+        />
+        <Metric
+          label={t('Inquiry rate')}
+          value={t('Unavailable')}
           delta="No measured visitor denominator"
         />
         <Metric
-          label="Content-assisted leads"
+          label={t('Content-assisted leads')}
           value={String(contentLeads)}
           delta="Exact local lineage"
         />
-        <Metric label="Top market" value={workspace.draft.market} delta="Fixture signal" />
+        <Metric label={t('Top market')} value={workspace.draft.market} delta="Fixture signal" />
       </section>
       <div className="dashboard-grid">
         <Card>
           <div className="section-heading">
             <div>
-              <h2>Conversion path</h2>
+              <h2>{t('Conversion path')}</h2>
               <p>Illustrative funnel; browser-created leads are exact.</p>
             </div>
             <Badge>Demo</Badge>
@@ -1195,7 +1347,7 @@ function Analytics({ workspaceId }: { workspaceId: WorkspaceId }) {
           </div>
         </Card>
         <Card>
-          <h2>Content to demand</h2>
+          <h2>{t('Content to demand')}</h2>
           {workspace.draft.content.map((item) => (
             <div className="content-performance" key={item.id}>
               <span>
@@ -1215,23 +1367,24 @@ function Analytics({ workspaceId }: { workspaceId: WorkspaceId }) {
 
 function Seo({ workspaceId, readOnly }: { workspaceId: WorkspaceId; readOnly: boolean }) {
   const store = usePreviewStore();
+  const { t } = useAdminI18n();
   const workspace = store.workspaces[workspaceId];
   const [status, setStatus] = useState('');
   return (
     <div className="dashboard-grid">
       <Card>
-        <span className="eyebrow">Demo domain</span>
+        <span className="eyebrow">{t('Demo domain')}</span>
         <h2>{workspace.draft.domain}</h2>
         <div className="domain-state">
           <span className="status-dot warning" />
           <div>
-            <strong>Verification not executed</strong>
+            <strong>{t('Verification not executed')}</strong>
             <p>DNS changes and host activation are outside this preview.</p>
           </div>
         </div>
         <TextInput
           disabled={readOnly}
-          label="Proposed hostname"
+          label={t('Proposed hostname')}
           value={workspace.draft.domain}
           onChange={(event) =>
             store.updateDraft(workspaceId, (config) => ({ ...config, domain: event.target.value }))
@@ -1250,7 +1403,7 @@ function Seo({ workspaceId, readOnly }: { workspaceId: WorkspaceId; readOnly: bo
         )}
       </Card>
       <Card>
-        <span className="eyebrow">Search preview</span>
+        <span className="eyebrow">{t('Search preview')}</span>
         <div className="search-preview">
           <small>{workspace.draft.domain}</small>
           <h2>{workspace.draft.brandName} · Trademark services</h2>
@@ -1277,12 +1430,13 @@ function Seo({ workspaceId, readOnly }: { workspaceId: WorkspaceId; readOnly: bo
 
 function Settings({ workspaceId, readOnly }: { workspaceId: WorkspaceId; readOnly: boolean }) {
   const store = usePreviewStore();
+  const { t } = useAdminI18n();
   const workspace = store.workspaces[workspaceId];
   const config = workspace.draft;
   return (
     <div className="dashboard-grid">
       <Card>
-        <h2>Modules</h2>
+        <h2>{t('Modules')}</h2>
         <p>Enable only the projections this Workspace needs.</p>
         {Object.entries(config.modules).map(([key, value]) => (
           <Checkbox
@@ -1306,10 +1460,10 @@ function Settings({ workspaceId, readOnly }: { workspaceId: WorkspaceId; readOnl
         ))}
       </Card>
       <Card>
-        <h2>Workspace & access</h2>
+        <h2>{t('Workspace & access')}</h2>
         <Select
           disabled={readOnly}
-          label="Demo permission"
+          label={t('Demo permission')}
           value={workspace.role}
           onChange={(event) => store.setRole(workspaceId, event.target.value as 'OWNER' | 'VIEWER')}
         >
@@ -1318,30 +1472,63 @@ function Settings({ workspaceId, readOnly }: { workspaceId: WorkspaceId; readOnl
         </Select>
         <Select
           disabled={readOnly}
-          label="Locale"
-          value={config.locale}
+          label="站点默认语言 / Site default language"
+          value={config.defaultLocale}
           onChange={(event) =>
-            store.updateDraft(workspaceId, (draft) => ({ ...draft, locale: event.target.value }))
+            store.updateDraft(workspaceId, (draft) => ({
+              ...draft,
+              defaultLocale: event.target.value as Locale,
+              locale: event.target.value
+            }))
           }
         >
           <option value="en-US">English (US)</option>
           <option value="zh-CN">简体中文</option>
         </Select>
-        <Alert title="Workspace-owned settings">
+        <fieldset className="locale-publication" disabled={readOnly}>
+          <legend>启用与发布语言 / Enabled & published locales</legend>
+          {(['zh-CN', 'en-US'] as const).map((locale) => (
+            <div key={locale} className="locale-publication-row">
+              <Checkbox
+                label={locale === 'zh-CN' ? '简体中文' : 'English'}
+                disabled={locale === config.defaultLocale}
+                checked={config.enabledLocales.includes(locale)}
+                onChange={(event) =>
+                  store.updateDraft(workspaceId, (draft) => ({
+                    ...draft,
+                    enabledLocales: event.target.checked
+                      ? [...new Set([...draft.enabledLocales, locale])]
+                      : draft.enabledLocales.filter((item) => item !== locale)
+                  }))
+                }
+              />
+              <Badge>{config.localePublication[locale]}</Badge>
+              <span>
+                {
+                  Object.values(config.localized[locale].content).filter(
+                    (item) => item.status === 'PUBLISHED'
+                  ).length
+                }
+                /{Object.keys(config.localized[locale].content).length} 内容已审核
+              </span>
+            </div>
+          ))}
+        </fieldset>
+        <Alert title={t('Workspace-owned settings')}>
           Subscription, billing method, team identity, and primary permissions remain in Workspace
           Console and are not recreated here.
         </Alert>
         <Button variant="danger" disabled={readOnly} onClick={() => store.reset(workspaceId)}>
-          Reset this demo Workspace
+          {t('Reset this demo Workspace')}
         </Button>
         {readOnly && (
           <div className="demo-access-reset">
-            <Alert tone="warning" title="Demo access recovery">
+            <Alert tone="warning" title={t('Demo access recovery')}>
               This resets browser-local fixtures to the seeded OWNER state. It is not an
               authorization path for a production Workspace.
             </Alert>
             <Button variant="secondary" onClick={() => store.resetDemoAccess(workspaceId)}>
-              Reset demo access and fixtures
+              {t('Reset demo access and fixtures')}
             </Button>
           </div>
         )}

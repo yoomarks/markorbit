@@ -443,6 +443,46 @@ a {
   min-width: 160px;
   padding: 0.55rem 0.7rem;
 }
+.admin-locale-switch,
+.site-locale-switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 3px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: #f5f7f6;
+}
+.admin-locale-switch button,
+.site-locale-switch a {
+  border: 0;
+  border-radius: 999px;
+  padding: 6px 9px;
+  background: transparent;
+  color: #5a6561;
+  font-size: 0.72rem;
+  text-decoration: none;
+}
+.admin-locale-switch button.is-active,
+.site-locale-switch a[aria-current='page'] {
+  background: white;
+  color: #173f38;
+  box-shadow: 0 1px 4px rgb(20 44 37 / 12%);
+}
+.locale-publication {
+  margin: 16px 0;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+.locale-publication-row {
+  display: grid;
+  grid-template-columns: minmax(110px, 1fr) auto auto;
+  align-items: center;
+  gap: 10px;
+  margin-top: 10px;
+  font-size: 0.76rem;
+}
 .avatar {
   display: grid;
   place-items: center;
@@ -807,6 +847,7 @@ a {
   color: #9ba6a1;
 }
 .editor-canvas {
+  position: relative;
   display: grid;
   place-items: start center;
   padding: 28px;
@@ -2181,14 +2222,21 @@ a {
     min-width: 170px;
   }
   .editor-canvas {
+    display: block;
     padding: 16px;
     overflow: auto;
   }
   .device-frame,
   .device-frame.mobile {
-    width: 390px;
-    max-width: none;
-    transform-origin: top left;
+    width: 100%;
+    max-width: 100%;
+  }
+  .editor-canvas::before {
+    content: '适应宽度 · Fit to width';
+    position: absolute;
+    margin-top: -13px;
+    color: #66716d;
+    font-size: 0.65rem;
   }
   .editor-properties {
     grid-column: auto;

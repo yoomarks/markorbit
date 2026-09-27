@@ -3,9 +3,11 @@ import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { App } from './App.js';
 import { seedWorkspace } from './domain.js';
+import { adminLocaleStorageKey } from './i18n.js';
 
 beforeEach(() => {
   localStorage.clear();
+  localStorage.setItem(adminLocaleStorageKey, 'en-US');
   window.history.replaceState({}, '', '/');
 });
 
@@ -29,7 +31,7 @@ describe('Site V1 interactive preview', () => {
   it('creates one attributable lead and reads it back in the same Workspace', async () => {
     const user = userEvent.setup();
     render(
-      <App initialPath="/site/atlas/contact/source/content-filing-map/service/svc-global-strategy" />
+      <App initialPath="/site/atlas/en-US/contact/source/content-filing-map/service/svc-global-strategy" />
     );
     await user.click(screen.getByRole('button', { name: 'Continue' }));
     await user.type(screen.getByLabelText('Your name'), 'Maya Chen');
@@ -72,7 +74,7 @@ describe('Site V1 interactive preview', () => {
 
   it('shows field-level validation and retains user input', async () => {
     const user = userEvent.setup();
-    render(<App initialPath="/site/atlas/contact" />);
+    render(<App initialPath="/site/atlas/en-US/contact" />);
     await user.click(screen.getByRole('button', { name: 'Continue' }));
     await user.click(screen.getByRole('button', { name: 'Continue' }));
     expect(screen.getByText('Error: Enter your name.')).toBeVisible();
@@ -88,7 +90,7 @@ describe('Site V1 interactive preview', () => {
     render(<App initialPath="/admin/atlas/settings" />);
     expect(screen.getByText(/View-only access/)).toBeVisible();
     expect(screen.getByRole('button', { name: 'Reset this demo Workspace' })).toBeDisabled();
-    expect(screen.getByLabelText('Locale')).toBeDisabled();
+    expect(screen.getByLabelText('站点默认语言 / Site default language')).toBeDisabled();
   });
 
   it('publishes the exact edited content snapshot once', async () => {
@@ -136,7 +138,7 @@ describe('Site V1 interactive preview', () => {
 
   it('rejects an inquiry without explicit consent and prevents duplicates', async () => {
     const user = userEvent.setup();
-    render(<App initialPath="/site/atlas/contact" />);
+    render(<App initialPath="/site/atlas/en-US/contact" />);
     await user.click(screen.getByRole('button', { name: 'Continue' }));
     await user.type(screen.getByLabelText('Your name'), 'Maya Chen');
     await user.type(screen.getByLabelText('Work email'), 'maya@example.com');
@@ -146,7 +148,9 @@ describe('Site V1 interactive preview', () => {
     );
     await user.click(screen.getByRole('button', { name: 'Continue' }));
     await user.click(screen.getByRole('button', { name: 'Submit demo inquiry' }));
-    expect(screen.getByText('Error: Confirm the demo-only consent before submitting.')).toBeVisible();
+    expect(
+      screen.getByText('Error: Confirm the demo-only consent before submitting.')
+    ).toBeVisible();
     const persisted = localStorage.getItem('markorbit:site-v1-preview:atlas');
     const leads = persisted
       ? (JSON.parse(persisted) as ReturnType<typeof seedWorkspace>).leads
@@ -160,7 +164,7 @@ describe('Site V1 interactive preview', () => {
       page.id === 'services' ? { ...page, visible: false } : page
     );
     localStorage.setItem('markorbit:site-v1-preview:atlas', JSON.stringify(state));
-    render(<App initialPath="/site/atlas/services" />);
+    render(<App initialPath="/site/atlas/en-US/services" />);
     expect(screen.getByRole('heading', { name: 'This page is outside the orbit.' })).toBeVisible();
   });
 
@@ -177,8 +181,63 @@ describe('Site V1 interactive preview', () => {
       )
     ];
     localStorage.setItem('markorbit:site-v1-preview:atlas', JSON.stringify(state));
-    const { container } = render(<App initialPath="/site/atlas/" />);
+    const { container } = render(<App initialPath="/site/atlas/en-US/" />);
     const text = container.querySelector('#site-main')?.textContent ?? '';
     expect(text.indexOf(services.title)).toBeLessThan(text.indexOf(proof.title));
+  });
+
+  it('defaults Site Admin to Chinese and keeps editor state when UI language changes', async () => {
+    localStorage.removeItem(adminLocaleStorageKey);
+    const user = userEvent.setup();
+    render(<App initialPath="/admin/atlas/editor" />);
+    expect(screen.getByRole('heading', { name: '可视化编辑' })).toBeVisible();
+    const heading = screen.getByLabelText('标题');
+    await user.clear(heading);
+    await user.type(heading, '保留中的中文草稿');
+    await user.click(screen.getByRole('button', { name: 'English' }));
+    expect(screen.getByRole('heading', { name: 'Visual editor' })).toBeVisible();
+    expect(screen.getByLabelText('Heading')).toHaveValue('保留中的中文草稿');
+    expect(window.location.pathname).toBe('/');
+    expect(localStorage.getItem(adminLocaleStorageKey)).toBe('en-US');
+  });
+
+  it('restores visitor locale from a stable URL without changing Site configuration', () => {
+    const state = seedWorkspace('atlas');
+    localStorage.setItem('markorbit:site-v1-preview:atlas', JSON.stringify(state));
+    const { unmount } = render(<App initialPath="/site/atlas/zh-CN/" />);
+    expect(screen.getByRole('heading', { name: '守护你正在建立的品牌。' })).toBeVisible();
+    expect(document.documentElement.lang).toBe('zh-CN');
+    unmount();
+    render(<App initialPath="/site/atlas/en-US/" />);
+    expect(
+      screen.getByRole('heading', { name: 'Protect the brand you are building.' })
+    ).toBeVisible();
+    const persisted = JSON.parse(
+      localStorage.getItem('markorbit:site-v1-preview:atlas') ?? '{}'
+    ) as ReturnType<typeof seedWorkspace>;
+    expect(persisted.published.defaultLocale).toBe('zh-CN');
+  });
+
+  it('does not expose a locale whose publication status is draft', () => {
+    const state = seedWorkspace('atlas');
+    state.published.localePublication['en-US'] = 'DRAFT';
+    localStorage.setItem('markorbit:site-v1-preview:atlas', JSON.stringify(state));
+    render(<App initialPath="/site/atlas/en-US/" />);
+    expect(screen.getByText('This locale has not been reviewed and published.')).toBeVisible();
+  });
+
+  it('keeps Foundry authorship and selected asset context in its own Workspace', async () => {
+    const user = userEvent.setup();
+    const { unmount } = render(
+      <App initialPath="/site/foundry/en-US/insights/filing-map-before-expansion" />
+    );
+    expect(screen.getByText('Foundry editorial desk')).toBeVisible();
+    expect(screen.queryByText('Atlas editorial team')).not.toBeInTheDocument();
+    unmount();
+
+    render(<App initialPath="/site/foundry/en-US/assets" />);
+    await user.click(screen.getAllByRole('link', { name: 'Request a governed review →' })[0]!);
+    expect(screen.getByText('asset-vera-north')).toBeVisible();
+    expect(screen.getByLabelText('Service')).toHaveValue('svc-asset-review');
   });
 });
