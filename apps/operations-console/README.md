@@ -32,3 +32,20 @@ If there is no authoritative aggregate source for service health, failure counts
 - reviewed/provider/AI evidence is not Official Truth.
 
 Future Brain/Capability pages must begin with bounded read-only owner projections before any governed mutation surface is introduced.
+
+## Super Admin V2 runnable-design preview
+
+The V2 product-review surface is isolated from the current Control Center app.
+
+```bash
+pnpm --filter @markorbit/operations-console dev --host 127.0.0.1 --port 4175
+```
+
+Open `http://127.0.0.1:4175/super-admin-v2/overview/platform`.
+
+All V2 data is explicitly labelled demo fixture data. The preview does not call production write
+routes and protected actions only exercise the local confirmation experience. The existing `/`
+entry continues to mount the current owner-routed Operations Console.
+
+See `docs/ui/SUPER-ADMIN-V2-BLUEPRINT.md` for the full IA, state matrix, authority boundary and
+acceptance map.
