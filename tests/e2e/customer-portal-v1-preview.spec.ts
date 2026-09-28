@@ -213,3 +213,123 @@ test('captures desktop and mini product review evidence', async ({ page }, testI
     });
   }
 });
+
+test('guided registration explains identity boundaries before structured Demo verification', async ({
+  page
+}) => {
+  await page.getByRole('button', { name: /对话式注册引导/ }).click();
+  const registration = page.getByRole('dialog', { name: '对话式注册引导' });
+  await expect(registration).toContainText('聊天不会核发账号或自动认领已有业务');
+  await registration.getByRole('button', { name: '继续' }).click();
+  await expect(registration).toContainText('企业主体证明 + 有效授权');
+  await registration.getByRole('button', { name: '进入账号设置' }).click();
+  await expect(registration).toContainText('不会发送短信、保存密码或绑定微信身份');
+  await registration.getByRole('checkbox').check();
+  await registration.getByRole('button', { name: '完成 Demo 验证' }).click();
+  await expect(page.getByText('matter-cn-nova-2026').first()).toBeVisible();
+});
+
+test('conversational filing validates offers, fails safely, produces a Demo receipt and continues cross-channel', async ({
+  page
+}, testInfo) => {
+  await page.goto(`${path}?channel=mini`);
+  await page.getByRole('button', { name: '使用已绑定 Demo 身份继续' }).click();
+  const navigation = page.getByRole('navigation', { name: '小程序主导航' });
+  await navigation.getByRole('button', { name: '办业务' }).click();
+  await page
+    .getByRole('button', { name: /发起申请/ })
+    .first()
+    .click();
+  const journey = page.getByRole('dialog', { name: '申请办理' });
+  await expect(journey).toContainText('聊天文本直接通过');
+  await journey.getByLabel('商标名称').fill('NOVA PRIME');
+  await journey.getByRole('button', { name: /继续准备资料/ }).click();
+  await journey.getByRole('button', { name: /选择 Demo 资料包/ }).click();
+  await journey.getByRole('button', { name: /提取并核对/ }).click();
+  await journey.getByRole('checkbox').check();
+  await journey.getByRole('button', { name: /选择国家与类别/ }).click();
+  await journey.getByRole('button', { name: /检查缺失信息/ }).click();
+  await expect(journey).toContainText('仍需专业审核');
+  await journey.getByRole('button', { name: /生成申请草稿/ }).click();
+  await expect(journey).toContainText('draft-us-nova-042');
+  await journey.getByRole('button', { name: /查看报价/ }).click();
+  await expect(journey).toContainText('澄远知识产权服务（上海）有限公司');
+  await expect(journey).toContainText('CNY');
+
+  for (const [code, reason] of [
+    ['EXPIRED', '已过期'],
+    ['USED', '已经使用'],
+    ['CNONLY', '只适用于中国申请'],
+    ['STACK2', '不能与当前活动叠加']
+  ] as const) {
+    await journey.getByLabel('优惠券').fill(code);
+    await journey.getByRole('button', { name: '验证' }).click();
+    await expect(journey).toContainText(reason);
+  }
+
+  await journey.getByLabel('优惠券').fill('SAVE600');
+  await journey.getByRole('button', { name: '验证' }).click();
+  await expect(journey).toContainText('¥12,200.00');
+  await testInfo.attach('portal-v2-quote-coupon-mini-390', {
+    body: await page.screenshot({ fullPage: true }),
+    contentType: 'image/png'
+  });
+  if (testInfo.project.name === 'customer-portal-mini-390') {
+    await page.screenshot({
+      path: 'docs/product/site-v1.2-customer-portal/evidence/v2-mini-390-quote-offer.png',
+      fullPage: false
+    });
+  }
+  await journey.getByRole('button', { name: /明确确认并进入付款/ }).click();
+  await expect(journey).toContainText('不可手工输入其他商户');
+  await journey.getByRole('button', { name: '演示支付失败' }).click();
+  await expect(journey.getByRole('alert')).toContainText('未收到款项');
+  await journey.getByRole('button', { name: '生成 Demo 支付回执' }).click();
+  await expect(journey).toContainText('RCPT-DEMO-2026-0042');
+  await expect(journey.getByRole('button', { name: /不可重复付款/ })).toBeDisabled();
+  await testInfo.attach('portal-v2-payment-receipt-mini-390', {
+    body: await page.screenshot({ fullPage: true }),
+    contentType: 'image/png'
+  });
+  if (testInfo.project.name === 'customer-portal-mini-390') {
+    await page.screenshot({
+      path: 'docs/product/site-v1.2-customer-portal/evidence/v2-mini-390-payment-receipt.png',
+      fullPage: false
+    });
+  }
+  await journey.getByRole('button', { name: '查看同一业务进度' }).click();
+  await expect(page.getByText('Demo 回执已生成 · 等待机构专业审核')).toBeVisible();
+
+  await page.goto(`${path}?channel=web&locale=en-US&journey=open&journeyStep=7`);
+  const englishJourney = page.getByRole('dialog', { name: 'Application journey' });
+  await expect(englishJourney).toContainText('RCPT-DEMO-2026-0042');
+  await expect(englishJourney).toContainText('CNY');
+  await expect(englishJourney).toContainText('NOVA PRIME');
+});
+
+test('expired quote cannot be confirmed or enter payment', async ({ page }) => {
+  await page.goto(`${path}?fixture=quote-expired&journey=open&journeyStep=6`);
+  await page.getByRole('button', { name: '使用 MO 账号登录' }).click();
+  const journey = page.getByRole('dialog', { name: '申请办理' });
+  await expect(journey.getByRole('alert')).toContainText('报价已过有效期');
+  await expect(journey.getByRole('button', { name: /明确确认并进入付款/ })).toBeDisabled();
+});
+
+test('captures the V2 guided quote workbench at each acceptance viewport', async ({
+  page
+}, testInfo) => {
+  await page.goto(`${path}?journey=open&journeyStep=6`);
+  await page.getByRole('button', { name: '使用 MO 账号登录' }).click();
+  const journey = page.getByRole('dialog', { name: '申请办理' });
+  if (testInfo.project.name === 'customer-portal-desktop') {
+    await journey.getByLabel('优惠券').fill('SAVE600');
+    await journey.getByRole('button', { name: '验证' }).click();
+  }
+  await page.screenshot({
+    path:
+      testInfo.project.name === 'customer-portal-desktop'
+        ? 'docs/product/site-v1.2-customer-portal/evidence/v2-web-desktop-quote-workbench.png'
+        : 'docs/product/site-v1.2-customer-portal/evidence/v2-mini-390-quote-start.png',
+    fullPage: false
+  });
+});

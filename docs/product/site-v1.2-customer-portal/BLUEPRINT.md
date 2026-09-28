@@ -232,3 +232,9 @@ The mobile experience uses the established five-destination IA but no longer ren
 The previous mini view proved authorization and cross-channel continuity but visually resembled a narrow back-office page. The redesign adds a branded service shell, human/AI assistance, content and FAQ surfaces, service discovery, progressive status explanations, time-grouped messages, and a durable account hub. Density is higher but remains scannable through section rhythm, restrained color roles, a shared icon/tile system, consistent 44px-or-larger actions and a single dominant action per card.
 
 These changes are presentation and fixture behavior only. “Advisor,” update times, guide content and assistant entry are labelled or bounded as Demo UI; they do not assert real staffing, SLA, official status, AI authority, native WeChat authentication or production persistence.
+
+## V2 conversational application and payment extension
+
+V2 keeps the five-destination customer IA and adds one resumable application workbench. Conversation is a guided clarification surface around structured fields, source-labelled file extraction, country/class selection, completeness checks, draft review, exact Quote review and controlled Payment handoff. It is never the authority for identity, company representation, professional approval, filing, merchant selection or funds.
+
+The exact V2 decision, Owner matrix, coupon/payment state model, negative rules and production dependencies are recorded in `V2-DECISION-RECORD.md`.

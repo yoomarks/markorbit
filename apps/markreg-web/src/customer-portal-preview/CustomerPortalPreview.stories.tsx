@@ -58,6 +58,33 @@ export const MiniProgramEnglish: Story = {
   args: { fixtureMode: 'success', defaultChannel: 'mini', defaultLocale: 'en-US' },
   parameters: miniParameters
 };
+export const ConversationalApplication: Story = {
+  args: {
+    fixtureMode: 'success',
+    defaultChannel: 'mini',
+    defaultJourneyOpen: true,
+    defaultApplicationStep: 0
+  },
+  parameters: miniParameters
+};
+export const QuoteExpired: Story = {
+  args: {
+    fixtureMode: 'quote-expired',
+    defaultChannel: 'web',
+    defaultJourneyOpen: true,
+    defaultApplicationStep: 6
+  }
+};
+export const PaymentReceipt: Story = {
+  args: {
+    fixtureMode: 'success',
+    defaultChannel: 'mini',
+    defaultJourneyOpen: true,
+    defaultApplicationStep: 7,
+    defaultPaymentStatus: 'PAID_DEMO'
+  },
+  parameters: miniParameters
+};
 export const SignedOut: Story = { args: { fixtureMode: 'signed-out' } };
 export const LoadingAuthorization: Story = { args: { fixtureMode: 'loading' } };
 export const EmptyRelationship: Story = { args: { fixtureMode: 'empty' } };

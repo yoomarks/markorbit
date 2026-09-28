@@ -1,7 +1,14 @@
 export type Locale = 'zh-CN' | 'en-US';
 export type Channel = 'web' | 'h5' | 'mini';
 export type FixtureMode =
-  'success' | 'loading' | 'empty' | 'error' | 'permission' | 'partial' | 'signed-out';
+  | 'success'
+  | 'loading'
+  | 'empty'
+  | 'error'
+  | 'permission'
+  | 'partial'
+  | 'signed-out'
+  | 'quote-expired';
 
 export type PortalSection =
   'home' | 'services' | 'progress' | 'trademarks' | 'messages' | 'profile';
@@ -51,6 +58,12 @@ export const quoteFixture = {
   currency: 'CNY',
   totalMinor: 1280000,
   validUntil: '2026-10-08',
+  serviceProvider: '澄远知识产权服务（上海）有限公司',
+  serviceProviderEn: 'Atlas Intellectual Property Services (Shanghai) Co., Ltd.',
+  merchantEntity: '澄远知识产权服务（上海）有限公司',
+  merchantEntityEn: 'Atlas Intellectual Property Services (Shanghai) Co., Ltd.',
+  sourceSiteId: 'site-atlas-web-cn',
+  sourceChannel: 'SITE_WEB',
   lines: [
     {
       label: '商标近似检索与分析',
@@ -69,6 +82,19 @@ export const quoteFixture = {
     'Includes search, application preparation and filing coordination for one word mark in one class; later office-action responses are excluded.'
 } as const;
 
+export const paymentFixture = {
+  id: 'payment-demo-us-nova-042',
+  orderId: 'order-us-nova-042',
+  merchantAccountRef: 'merchant-atlas-cny-demo',
+  method: '微信支付 · Demo 沙箱',
+  methodEn: 'WeChat Pay · Demo sandbox',
+  originalMinor: 1280000,
+  discountMinor: 60000,
+  payableMinor: 1220000,
+  currency: 'CNY',
+  receiptNumber: 'RCPT-DEMO-2026-0042'
+} as const;
+
 export interface PortalState {
   locale: Locale;
   channel: Channel;
@@ -81,6 +107,18 @@ export interface PortalState {
   consultationReference: string | null;
   claimStatus: 'IDLE' | 'REJECTED';
   quoteStatus: 'PENDING' | 'CONFIRMED_DEMO' | 'QUESTION_SENT_DEMO';
+  applicationStatus:
+    'IDLE' | 'DRAFT' | 'QUOTE_READY' | 'QUOTE_CONFIRMED' | 'PAYMENT_PENDING' | 'PAID_DEMO';
+  applicationStep: number;
+  couponCode: string;
+  couponStatus: 'IDLE' | 'VALID' | 'EXPIRED' | 'USED' | 'INAPPLICABLE' | 'NON_STACKABLE';
+  paymentStatus: 'UNPAID' | 'PROCESSING_DEMO' | 'FAILED_DEMO' | 'PAID_DEMO';
+  draftBrandName: string;
+  draftApplicant: string;
+  draftCountry: string;
+  draftClasses: string[];
+  draftFileReady: boolean;
+  draftExtractionConfirmed: boolean;
 }
 
 export const identities: readonly DemoIdentity[] = [
@@ -247,7 +285,18 @@ export const defaultState: PortalState = {
   unreadMessages: 2,
   consultationReference: null,
   claimStatus: 'IDLE',
-  quoteStatus: 'PENDING'
+  quoteStatus: 'PENDING',
+  applicationStatus: 'IDLE',
+  applicationStep: 0,
+  couponCode: '',
+  couponStatus: 'IDLE',
+  paymentStatus: 'UNPAID',
+  draftBrandName: 'NOVA',
+  draftApplicant: '诺瓦实验室（上海）有限公司',
+  draftCountry: 'US',
+  draftClasses: ['9', '42'],
+  draftFileReady: false,
+  draftExtractionConfirmed: false
 };
 
 export function identityFor(state: PortalState): DemoIdentity | undefined {

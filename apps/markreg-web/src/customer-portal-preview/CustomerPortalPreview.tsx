@@ -17,6 +17,7 @@ import {
   type RelationshipBinding
 } from './domain.js';
 import { getCopy } from './i18n.js';
+import { CustomerApplicationJourney } from './CustomerApplicationJourney.js';
 import './customer-portal-preview.css';
 
 const icons: Record<PortalSection, string> = {
@@ -36,6 +37,9 @@ export interface CustomerPortalPreviewProps {
   defaultChannel?: Channel;
   defaultLocale?: PortalState['locale'];
   defaultSection?: PortalSection;
+  defaultJourneyOpen?: boolean;
+  defaultApplicationStep?: number;
+  defaultPaymentStatus?: PortalState['paymentStatus'];
   persist?: boolean;
 }
 
@@ -45,6 +49,9 @@ export function CustomerPortalPreview({
   defaultChannel = 'web',
   defaultLocale = 'zh-CN',
   defaultSection,
+  defaultJourneyOpen = false,
+  defaultApplicationStep,
+  defaultPaymentStatus,
   persist = true
 }: CustomerPortalPreviewProps) {
   const [state, setState] = useState<PortalState>(() => {
@@ -54,6 +61,14 @@ export function CustomerPortalPreview({
       channel: defaultChannel,
       locale: defaultLocale,
       section: defaultSection ?? initial.section,
+      applicationStep: defaultApplicationStep ?? initial.applicationStep,
+      applicationStatus:
+        defaultPaymentStatus === 'PAID_DEMO'
+          ? 'PAID_DEMO'
+          : defaultApplicationStep === 7
+            ? 'PAYMENT_PENDING'
+            : initial.applicationStatus,
+      paymentStatus: defaultPaymentStatus ?? initial.paymentStatus,
       ...(fixtureMode === 'signed-out'
         ? { identityId: null, relationshipId: null }
         : !initial.identityId && !persist
@@ -62,9 +77,10 @@ export function CustomerPortalPreview({
     };
   });
   const [dialog, setDialog] = useState<
-    'relationships' | 'consult' | 'claim' | 'upload' | 'quote' | 'business' | null
+    'relationships' | 'consult' | 'claim' | 'registration' | 'upload' | 'quote' | 'business' | null
   >(null);
   const [selectedBusinessId, setSelectedBusinessId] = useState<string | null>(null);
+  const [journeyOpen, setJourneyOpen] = useState(defaultJourneyOpen);
   const [liveMessage, setLiveMessage] = useState('');
   const copy = getCopy(state.locale);
   const identity = identityFor(state);
@@ -131,6 +147,7 @@ export function CustomerPortalPreview({
         onLogin={() => login()}
         onConsult={() => setDialog('consult')}
         onClaim={() => setDialog('claim')}
+        onRegistration={() => setDialog('registration')}
       >
         {dialog === 'consult' && (
           <ConsultDialog
@@ -147,6 +164,16 @@ export function CustomerPortalPreview({
             state={state}
             onClose={() => setDialog(null)}
             onReject={() => update({ claimStatus: 'REJECTED' })}
+          />
+        )}
+        {dialog === 'registration' && (
+          <RegistrationDialog
+            state={state}
+            onClose={() => setDialog(null)}
+            onComplete={() => {
+              setDialog(null);
+              login();
+            }}
           />
         )}
       </LoginScreen>
@@ -265,6 +292,12 @@ export function CustomerPortalPreview({
               onUpload={() => setDialog('upload')}
               onQuote={() => setDialog('quote')}
               onBusiness={openBusiness}
+              onStartApplication={() => {
+                if (state.applicationStatus === 'IDLE') {
+                  update({ applicationStatus: 'DRAFT', applicationStep: 0 });
+                }
+                setJourneyOpen(true);
+              }}
               onChannel={switchChannel}
               onRelationship={() => setDialog('relationships')}
               onLogout={logout}
@@ -356,6 +389,18 @@ export function CustomerPortalPreview({
           }
         />
       )}
+      {journeyOpen && (
+        <CustomerApplicationJourney
+          state={state}
+          quoteExpired={fixtureMode === 'quote-expired'}
+          onClose={() => setJourneyOpen(false)}
+          onUpdate={update}
+          onProgress={() => {
+            update({ section: 'progress' });
+            setJourneyOpen(false);
+          }}
+        />
+      )}
     </div>
   );
 }
@@ -387,6 +432,7 @@ function LoginScreen({
   onLogin,
   onConsult,
   onClaim,
+  onRegistration,
   children
 }: {
   state: PortalState;
@@ -394,6 +440,7 @@ function LoginScreen({
   onLogin: () => void;
   onConsult: () => void;
   onClaim: () => void;
+  onRegistration: () => void;
   children?: React.ReactNode;
 }) {
   const copy = getCopy(state.locale);
@@ -437,6 +484,16 @@ function LoginScreen({
           <Button variant="secondary" className="cp-secondary" onClick={onClaim}>
             {copy.claim}
           </Button>
+          <button className="cp-registration-entry" onClick={onRegistration}>
+            <span>MO</span>
+            <b>{state.locale === 'zh-CN' ? '对话式注册引导' : 'Guided account setup'}</b>
+            <small>
+              {state.locale === 'zh-CN'
+                ? '了解资料并选择个人或企业办理身份'
+                : 'Understand requirements and choose an acting identity'}
+            </small>
+            <i>→</i>
+          </button>
           <button className="cp-text-button" onClick={onConsult}>
             {copy.visitor} <strong>{copy.consult} →</strong>
           </button>
@@ -468,6 +525,7 @@ function PortalSectionView({
   onUpload,
   onQuote,
   onBusiness,
+  onStartApplication,
   onChannel,
   onRelationship,
   onLogout
@@ -479,6 +537,7 @@ function PortalSectionView({
   onUpload: () => void;
   onQuote: () => void;
   onBusiness: (businessId: string) => void;
+  onStartApplication: () => void;
   onChannel: () => void;
   onRelationship: () => void;
   onLogout: () => void;
@@ -492,7 +551,11 @@ function PortalSectionView({
   const hasDocumentTask = Boolean(documentMatter) && !state.documentSubmitted;
   const canAccessQuote = items.some((item) => item.id === quoteFixture.businessId);
   const hasQuoteTask = canAccessQuote && state.quoteStatus === 'PENDING';
-  const pendingCount = Number(hasDocumentTask) + Number(hasQuoteTask);
+  const hasPaymentTask =
+    canAccessQuote &&
+    state.applicationStatus === 'PAYMENT_PENDING' &&
+    state.paymentStatus !== 'PAID_DEMO';
+  const pendingCount = Number(hasDocumentTask) + Number(hasQuoteTask) + Number(hasPaymentTask);
 
   if (state.channel !== 'web') {
     return (
@@ -505,11 +568,13 @@ function PortalSectionView({
         pendingCount={pendingCount}
         hasDocumentTask={hasDocumentTask}
         hasQuoteTask={hasQuoteTask}
+        hasPaymentTask={hasPaymentTask}
         canAccessQuote={canAccessQuote}
         onSection={onSection}
         onUpload={onUpload}
         onQuote={onQuote}
         onBusiness={onBusiness}
+        onStartApplication={onStartApplication}
         onChannel={onChannel}
         onRelationship={onRelationship}
         onLogout={onLogout}
@@ -547,11 +612,7 @@ function PortalSectionView({
                 <Button className="cp-primary" onClick={() => onSection('progress')}>
                   {copy.viewProgress}
                 </Button>
-                <Button
-                  variant="secondary"
-                  className="cp-secondary"
-                  onClick={() => onSection('services')}
-                >
+                <Button variant="secondary" className="cp-secondary" onClick={onStartApplication}>
                   {copy.startService}
                 </Button>
               </div>
@@ -582,6 +643,19 @@ function PortalSectionView({
                   id={quoteFixture.id}
                   copy={copy}
                   onAction={onQuote}
+                />
+              )}
+              {hasPaymentTask && (
+                <TaskCard
+                  badge={localized('待付款', 'Payment due')}
+                  title={localized('完成 NOVA 美国申请付款', 'Pay for NOVA US filing')}
+                  detail={localized(
+                    '订单 order-us-nova-042 · CNY 12,200（已使用 Demo 优惠）',
+                    'Order order-us-nova-042 · CNY 12,200 (Demo offer applied)'
+                  )}
+                  id="payment-demo-us-nova-042"
+                  copy={copy}
+                  onAction={onStartApplication}
                 />
               )}
             </div>
@@ -638,18 +712,21 @@ function PortalSectionView({
             title={copy.serviceRegistration}
             hint={copy.serviceRegistrationHint}
             action={copy.startApplication}
+            onClick={onStartApplication}
           />
           <ServiceCard
             icon="⌕"
             title={copy.serviceSearch}
             hint={copy.serviceSearchHint}
             action={copy.startApplication}
+            onClick={onStartApplication}
           />
           <ServiceCard
             icon="↗"
             title={copy.serviceResponse}
             hint={copy.serviceResponseHint}
             action={copy.startApplication}
+            onClick={onStartApplication}
           />
         </section>
         <section className="cp-panel cp-collection">
@@ -749,6 +826,20 @@ function PortalSectionView({
             onAction={onQuote}
           />
         )}
+        {state.applicationStatus !== 'IDLE' && (
+          <Message
+            text={
+              state.paymentStatus === 'PAID_DEMO'
+                ? localized('Demo 支付回执已生成', 'Demo payment receipt generated')
+                : localized('订单待付款', 'Order awaiting payment')
+            }
+            id="payment-demo-us-nova-042"
+            unread={state.paymentStatus !== 'PAID_DEMO'}
+            copy={copy}
+            action={localized('查看订单与付款', 'View order and payment')}
+            onAction={onStartApplication}
+          />
+        )}
       </SimplePage>
     );
   }
@@ -832,19 +923,21 @@ function ServiceCard({
   icon,
   title,
   hint,
-  action
+  action,
+  onClick
 }: {
   icon: string;
   title: string;
   hint: string;
   action: string;
+  onClick: () => void;
 }) {
   return (
     <article className="cp-service-card">
       <span>{icon}</span>
       <h2>{title}</h2>
       <p>{hint}</p>
-      <Button variant="secondary" className="cp-secondary">
+      <Button variant="secondary" className="cp-secondary" onClick={onClick}>
         {action} →
       </Button>
     </article>
@@ -860,11 +953,13 @@ function MiniPortalPage({
   pendingCount,
   hasDocumentTask,
   hasQuoteTask,
+  hasPaymentTask,
   canAccessQuote,
   onSection,
   onUpload,
   onQuote,
   onBusiness,
+  onStartApplication,
   onChannel,
   onRelationship,
   onLogout
@@ -877,11 +972,13 @@ function MiniPortalPage({
   pendingCount: number;
   hasDocumentTask: boolean;
   hasQuoteTask: boolean;
+  hasPaymentTask: boolean;
   canAccessQuote: boolean;
   onSection: (section: PortalSection) => void;
   onUpload: () => void;
   onQuote: () => void;
   onBusiness: (businessId: string) => void;
+  onStartApplication: () => void;
   onChannel: () => void;
   onRelationship: () => void;
   onLogout: () => void;
@@ -892,11 +989,7 @@ function MiniPortalPage({
   const assets = items.filter((item) => item.kind === 'ASSET');
 
   if (state.section === 'home') {
-    const heroAction = hasDocumentTask
-      ? onUpload
-      : hasQuoteTask
-        ? onQuote
-        : () => onSection('services');
+    const heroAction = hasDocumentTask ? onUpload : hasQuoteTask ? onQuote : onStartApplication;
     return (
       <div className="mini-page mini-home">
         <section className="mini-welcome-hero">
@@ -942,7 +1035,9 @@ function MiniPortalPage({
                 ? copy.upload
                 : hasQuoteTask
                   ? copy.messageTwo.replace('报价待确认：', '').replace('Quote to review: ', '')
-                  : copy.noTasks}
+                  : hasPaymentTask
+                    ? t('完成 NOVA 美国申请付款', 'Pay for NOVA US filing')
+                    : copy.noTasks}
             </h2>
             <p>
               {hasDocumentTask
@@ -955,7 +1050,12 @@ function MiniPortalPage({
                       '查看费用和服务范围，确认后我们再继续。',
                       'Review fees and scope before the service continues.'
                     )
-                  : copy.noTasksHint}
+                  : hasPaymentTask
+                    ? t(
+                        '订单仍为待付款；聊天不会执行扣款。',
+                        'The order is still unpaid. Chat never charges funds.'
+                      )
+                    : copy.noTasksHint}
             </p>
             <button onClick={heroAction}>
               {pendingCount ? copy.continue : copy.startService}
@@ -1114,6 +1214,7 @@ function MiniPortalPage({
               description={copy.serviceRegistrationHint}
               scene={t('适合：准备推出新品牌或新产品', 'For new brands or products')}
               action={copy.startApplication}
+              onClick={onStartApplication}
             />
             <MiniServiceProduct
               badge={t('申请前推荐', 'Recommended first')}
@@ -1122,6 +1223,7 @@ function MiniPortalPage({
               description={copy.serviceSearchHint}
               scene={t('适合：想先了解近似风险', 'For understanding similarity risk')}
               action={copy.startApplication}
+              onClick={onStartApplication}
             />
             <MiniServiceProduct
               badge={t('顾问协助', 'Advisor supported')}
@@ -1130,6 +1232,7 @@ function MiniPortalPage({
               description={copy.serviceResponseHint}
               scene={t('适合：已经收到官方通知', 'For an official notice already received')}
               action={copy.startApplication}
+              onClick={onStartApplication}
             />
           </div>
         </section>
@@ -1208,13 +1311,18 @@ function MiniPortalPage({
                 needsAction={
                   item.id === matter?.id
                     ? hasDocumentTask
-                    : item.id === quoteFixture.businessId && hasQuoteTask
+                    : item.id === quoteFixture.businessId &&
+                      (hasQuoteTask ||
+                        (state.applicationStatus === 'PAYMENT_PENDING' &&
+                          state.paymentStatus !== 'PAID_DEMO'))
                 }
                 onAction={
                   item.id === matter?.id
                     ? onUpload
                     : item.id === quoteFixture.businessId
-                      ? onQuote
+                      ? state.applicationStatus === 'PAYMENT_PENDING'
+                        ? onStartApplication
+                        : onQuote
                       : () => undefined
                 }
                 onDetail={() => onBusiness(item.id)}
@@ -1299,6 +1407,25 @@ function MiniPortalPage({
               unread={state.quoteStatus === 'PENDING'}
               action={state.quoteStatus === 'PENDING' ? copy.quoteReview : undefined}
               onClick={onQuote}
+            />
+          )}
+          {state.applicationStatus !== 'IDLE' && (
+            <MiniMessageCard
+              tone="blue"
+              icon="付"
+              title={
+                state.paymentStatus === 'PAID_DEMO'
+                  ? t('Demo 支付回执已生成', 'Demo payment receipt generated')
+                  : t('订单待付款', 'Order awaiting payment')
+              }
+              detail={t(
+                'NOVA 美国商标检索与申请 · order-us-nova-042',
+                'NOVA US search and filing · order-us-nova-042'
+              )}
+              time="11:30"
+              unread={state.paymentStatus !== 'PAID_DEMO'}
+              action={t('查看订单与付款', 'View order & payment')}
+              onClick={onStartApplication}
             />
           )}
         </section>
@@ -1401,6 +1528,18 @@ function MiniPortalPage({
           label={copy.myFiles}
           meta={state.documentSubmitted ? t('含新提交资料', 'New file added') : ''}
         />
+        <MiniMenu
+          icon="付"
+          label={t('订单与付款', 'Orders & payments')}
+          meta={
+            state.paymentStatus === 'PAID_DEMO'
+              ? t('Demo 回执 1', '1 Demo receipt')
+              : state.applicationStatus !== 'IDLE'
+                ? t('待付款', 'Payment due')
+                : ''
+          }
+          onClick={onStartApplication}
+        />
         <MiniMenu icon="票" label={copy.invoices} />
         <MiniMenu
           icon="企"
@@ -1420,7 +1559,7 @@ function MiniPortalPage({
       <Button variant="danger" className="cp-danger-button mini-logout" onClick={onLogout}>
         {copy.logout}
       </Button>
-      <p className="mini-version">MarkOrbit Customer Portal · Demo V1.2</p>
+      <p className="mini-version">MarkOrbit Customer Portal · Demo V2</p>
     </div>
   );
 }
@@ -1491,7 +1630,7 @@ function MiniBusinessCard({
   onClick?: (() => void) | undefined;
 }) {
   const title = state.locale === 'zh-CN' ? item.title : item.titleEn;
-  const status = state.locale === 'zh-CN' ? item.status : item.statusEn;
+  const status = businessStatus(state, item);
   return (
     <article className={`mini-business-card ${compact ? 'is-compact' : ''}`}>
       <div className="mini-mark-tile">{item.title.slice(0, 1)}</div>
@@ -1541,7 +1680,8 @@ function MiniServiceProduct({
   title,
   description,
   scene,
-  action
+  action,
+  onClick
 }: {
   badge: string;
   icon: string;
@@ -1549,6 +1689,7 @@ function MiniServiceProduct({
   description: string;
   scene: string;
   action: string;
+  onClick: () => void;
 }) {
   return (
     <article className="mini-service-product">
@@ -1559,7 +1700,7 @@ function MiniServiceProduct({
         <p>{description}</p>
         <small>{scene}</small>
       </div>
-      <button>{action} ›</button>
+      <button onClick={onClick}>{action} ›</button>
     </article>
   );
 }
@@ -1607,7 +1748,7 @@ function MiniProgressCard({
         <i />
       </div>
       <div className="mini-progress-copy">
-        <strong>{state.locale === 'zh-CN' ? item.status : item.statusEn}</strong>
+        <strong>{businessStatus(state, item)}</strong>
         <small>
           {t('最近更新：2026-09-28 10:20 · Demo', 'Last updated: 2026-09-28 10:20 · Demo')}
         </small>
@@ -1616,7 +1757,9 @@ function MiniProgressCard({
           {needsAction
             ? item.kind === 'MATTER'
               ? t('请补充首次使用说明', 'Add the first-use statement')
-              : t('请查看并确认报价', 'Review and confirm the quote')
+              : state.applicationStatus === 'PAYMENT_PENDING'
+                ? t('请完成受控付款步骤', 'Complete the controlled payment step')
+                : t('请查看并确认报价', 'Review and confirm the quote')
             : t(
                 '服务顾问正在处理，暂时无需操作',
                 'Your advisor is handling this; no action needed'
@@ -1712,6 +1855,34 @@ function PanelHeading({
   );
 }
 
+function businessStatus(state: PortalState, item: BusinessItem) {
+  if (item.id === quoteFixture.businessId) {
+    if (state.paymentStatus === 'PAID_DEMO') {
+      return state.locale === 'zh-CN'
+        ? 'Demo 回执已生成 · 等待机构专业审核'
+        : 'Demo receipt generated · awaiting professional review';
+    }
+    if (state.paymentStatus === 'FAILED_DEMO') {
+      return state.locale === 'zh-CN'
+        ? 'Demo 支付失败 · 仍待付款'
+        : 'Demo payment failed · still unpaid';
+    }
+    if (state.applicationStatus === 'PAYMENT_PENDING') {
+      return state.locale === 'zh-CN' ? '报价已确认 · 待付款' : 'Quote confirmed · payment due';
+    }
+    if (state.quoteStatus !== 'PENDING') {
+      return state.quoteStatus === 'CONFIRMED_DEMO'
+        ? state.locale === 'zh-CN'
+          ? 'Demo 报价已确认 · 等待机构继续办理'
+          : 'Demo quote confirmed · waiting for service team'
+        : state.locale === 'zh-CN'
+          ? '已提出报价问题 · 等待回复'
+          : 'Quote question sent · awaiting reply';
+    }
+  }
+  return state.locale === 'zh-CN' ? item.status : item.statusEn;
+}
+
 function BusinessRow({
   state,
   item,
@@ -1722,18 +1893,7 @@ function BusinessRow({
   onOpen: (businessId: string) => void;
 }) {
   const copy = getCopy(state.locale);
-  const status =
-    item.id === quoteFixture.businessId && state.quoteStatus !== 'PENDING'
-      ? state.quoteStatus === 'CONFIRMED_DEMO'
-        ? state.locale === 'zh-CN'
-          ? 'Demo 报价已确认 · 等待机构继续办理'
-          : 'Demo quote confirmed · waiting for service team'
-        : state.locale === 'zh-CN'
-          ? '已提出报价问题 · 等待回复'
-          : 'Quote question sent · awaiting reply'
-      : state.locale === 'zh-CN'
-        ? item.status
-        : item.statusEn;
+  const status = businessStatus(state, item);
   return (
     <article className="cp-business-row">
       <span className={`cp-object-icon cp-object-${item.kind.toLowerCase()}`}>
@@ -2283,6 +2443,121 @@ function ClaimDialog({
       >
         {copy.claimAction}
       </Button>
+    </Modal>
+  );
+}
+
+function RegistrationDialog({
+  state,
+  onClose,
+  onComplete
+}: {
+  state: PortalState;
+  onClose: () => void;
+  onComplete: () => void;
+}) {
+  const [step, setStep] = useState(0);
+  const [accepted, setAccepted] = useState(false);
+  const t = (zh: string, en: string) => (state.locale === 'zh-CN' ? zh : en);
+  return (
+    <Modal title={t('对话式注册引导', 'Guided account setup')} onClose={onClose}>
+      <div className="cp-registration-steps">
+        {[t('了解需求', 'Needs'), t('办理身份', 'Identity'), t('账号验证', 'Verification')].map(
+          (label, index) => (
+            <span key={label} className={index <= step ? 'is-active' : ''}>
+              <i>{index + 1}</i>
+              {label}
+            </span>
+          )
+        )}
+      </div>
+      {step === 0 && (
+        <div className="cp-registration-body">
+          <div className="cp-registration-bubble">
+            <span>MO</span>
+            <p>
+              {t(
+                '我会先说明开户和申请所需资料，再把你带到受控验证流程。聊天不会核发账号或自动认领已有业务。',
+                'I’ll explain account and filing requirements, then hand off to a controlled verification flow. Chat cannot issue an account or automatically claim existing business.'
+              )}
+            </p>
+          </div>
+          <div className="cp-registration-grid">
+            <button>{t('我准备申请新商标', 'I want to file a new mark')}</button>
+            <button>{t('我想查看已有业务', 'I need existing business access')}</button>
+          </div>
+          <Button className="cp-primary cp-full" onClick={() => setStep(1)}>
+            {t('继续', 'Continue')}
+          </Button>
+        </div>
+      )}
+      {step === 1 && (
+        <div className="cp-registration-body">
+          <p className="cp-modal-lead">
+            {t(
+              '办理身份决定需要核对的证明，但不会自动授予企业业务权限。',
+              'The acting identity determines required evidence, but does not automatically grant company business access.'
+            )}
+          </p>
+          <div className="cp-registration-grid">
+            <button className="is-selected">
+              <b>{t('企业办理', 'Company')}</b>
+              <small>{t('企业主体证明 + 有效授权', 'Entity evidence + valid authorization')}</small>
+            </button>
+            <button>
+              <b>{t('个人办理', 'Individual')}</b>
+              <small>{t('可信身份验证', 'Trusted identity verification')}</small>
+            </button>
+          </div>
+          <div className="cp-modal-actions">
+            <Button variant="secondary" className="cp-secondary" onClick={() => setStep(0)}>
+              ←
+            </Button>
+            <Button className="cp-primary" onClick={() => setStep(2)}>
+              {t('进入账号设置', 'Continue to account setup')}
+            </Button>
+          </div>
+        </div>
+      )}
+      {step === 2 && (
+        <div className="cp-registration-body">
+          <label className="cp-field">
+            <span>{t('手机号', 'Mobile number')}</span>
+            <input value="+86 138 **** 6208" readOnly />
+          </label>
+          <label className="cp-field">
+            <span>{t('验证码', 'Verification code')}</span>
+            <input value="123456" readOnly />
+          </label>
+          <div className="cp-inline-warning">
+            {t(
+              'Preview 使用结构化 Demo 验证；不会发送短信、保存密码或绑定微信身份。企业授权仍需机构核验。',
+              'Preview uses structured Demo verification. It sends no SMS, stores no password and binds no WeChat identity. Company authorization still requires firm verification.'
+            )}
+          </div>
+          <label className="cp-check">
+            <input
+              type="checkbox"
+              checked={accepted}
+              onChange={(event) => setAccepted(event.target.checked)}
+            />
+            <span>
+              {t(
+                '我理解这是 Demo 身份验证，并同意查看演示客户数据。',
+                'I understand this is Demo identity verification and consent to viewing Demo customer data.'
+              )}
+            </span>
+          </label>
+          <div className="cp-modal-actions">
+            <Button variant="secondary" className="cp-secondary" onClick={() => setStep(1)}>
+              ←
+            </Button>
+            <Button className="cp-primary" disabled={!accepted} onClick={onComplete}>
+              {t('完成 Demo 验证', 'Complete Demo verification')}
+            </Button>
+          </div>
+        </div>
+      )}
     </Modal>
   );
 }
