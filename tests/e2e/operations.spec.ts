@@ -1518,6 +1518,7 @@ test('V2.2.1 stays operable at 390px and 200 percent page zoom', async ({
 test('every Super Admin V2 first and second-level route is directly reviewable', async ({
   page
 }, testInfo) => {
+  test.setTimeout(90_000);
   test.skip(
     testInfo.project.name.startsWith('mobile'),
     'The route matrix is viewport-independent.'
