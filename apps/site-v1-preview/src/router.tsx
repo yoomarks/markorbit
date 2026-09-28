@@ -7,14 +7,22 @@ import {
   type MouseEvent,
   type ReactNode
 } from 'react';
-import type { AdminSection, Locale, WorkspaceId } from './domain.js';
+import {
+  defaultSiteId,
+  siteIds,
+  type AdminSection,
+  type DemoSiteId,
+  type Locale,
+  type WorkspaceId
+} from './domain.js';
 
 export type Route =
   | { kind: 'landing' }
-  | { kind: 'admin'; workspaceId: WorkspaceId; section: AdminSection; itemId?: string }
+  | { kind: 'site-portfolio'; workspaceId: WorkspaceId }
+  | { kind: 'admin'; siteId: DemoSiteId; section: AdminSection; itemId?: string }
   | {
       kind: 'site';
-      workspaceId: WorkspaceId;
+      siteId: DemoSiteId;
       path: string;
       mode: 'published' | 'draft';
       locale?: Locale;
@@ -37,20 +45,38 @@ const sections = new Set<AdminSection>([
 export function parseRoute(pathname: string): Route {
   const parts = pathname.split('/').filter(Boolean).map(decodeURIComponent);
   if (!parts.length) return { kind: 'landing' };
-  if (parts[0] === 'admin' && (parts[1] === 'atlas' || parts[1] === 'foundry')) {
+  if (
+    parts[0] === 'admin' &&
+    (parts[1] === 'atlas' || parts[1] === 'foundry') &&
+    parts[2] === 'sites'
+  )
+    return { kind: 'site-portfolio', workspaceId: parts[1] };
+  if (
+    parts[0] === 'admin' &&
+    (parts[1] === 'atlas' || parts[1] === 'foundry' || siteIds.includes(parts[1] as DemoSiteId))
+  ) {
+    const siteId = siteIds.includes(parts[1] as DemoSiteId)
+      ? (parts[1] as DemoSiteId)
+      : defaultSiteId(parts[1] as WorkspaceId);
     const section = (parts[2] ?? 'overview') as AdminSection;
     return sections.has(section)
-      ? { kind: 'admin', workspaceId: parts[1], section, ...(parts[3] ? { itemId: parts[3] } : {}) }
+      ? { kind: 'admin', siteId, section, ...(parts[3] ? { itemId: parts[3] } : {}) }
       : { kind: 'not-found', path: pathname };
   }
-  if (parts[0] === 'site' && (parts[1] === 'atlas' || parts[1] === 'foundry')) {
+  if (
+    parts[0] === 'site' &&
+    (parts[1] === 'atlas' || parts[1] === 'foundry' || siteIds.includes(parts[1] as DemoSiteId))
+  ) {
+    const siteId = siteIds.includes(parts[1] as DemoSiteId)
+      ? (parts[1] as DemoSiteId)
+      : defaultSiteId(parts[1] as WorkspaceId);
     const isDraft = parts[2] === 'preview' && parts[3] === 'draft';
     const localePart = isDraft ? parts[4] : parts[2];
     const locale = localePart === 'zh-CN' || localePart === 'en-US' ? localePart : undefined;
     const pathParts = isDraft ? parts.slice(locale ? 5 : 4) : parts.slice(locale ? 3 : 2);
     return {
       kind: 'site',
-      workspaceId: parts[1],
+      siteId,
       path: `/${pathParts.join('/')}`.replace(/\/$/u, '') || '/',
       mode: isDraft ? 'draft' : 'published',
       ...(locale ? { locale } : {})
@@ -114,7 +140,7 @@ export function Link({
   const router = useRouter();
   let resolvedHref = href;
   if (router.route.kind === 'site' && router.route.locale) {
-    const sitePrefix = `/site/${router.route.workspaceId}`;
+    const sitePrefix = `/site/${router.route.siteId}`;
     if (href === sitePrefix || href.startsWith(`${sitePrefix}/`)) {
       const rawRemainder = href.slice(sitePrefix.length);
       const hasExplicitLocale =

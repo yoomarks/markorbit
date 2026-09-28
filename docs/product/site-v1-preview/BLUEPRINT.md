@@ -42,6 +42,10 @@ The plain-language navigation, Site Front module rules, and planned Customer Por
 in [`NAVIGATION-IA.md`](./NAVIGATION-IA.md). Stable routes and owner boundaries below remain valid;
 the customer-facing labels are intentionally simpler than these architectural area names.
 
+The approved Workspace → My Sites → current Site operating model, production contract audit and
+renderer compatibility path are defined in
+[`MULTI-SITE-ADMIN-REVIEW.md`](./MULTI-SITE-ADMIN-REVIEW.md).
+
 | Area             | Primary question                              | Primary action                          | Owner boundary                        |
 | ---------------- | --------------------------------------------- | --------------------------------------- | ------------------------------------- |
 | 概况 / Overview  | Is my Site ready and what needs attention?    | Continue setup / inspect inquiry        | Aggregates demo state only            |
@@ -91,7 +95,7 @@ Site V1 Preview persists only browser-local fixtures in `localStorage`. Reposito
 ## Core demo objects and relationships
 
 ```text
-DemoWorkspace 1--1 DemoSite
+DemoWorkspace 1--* DemoSite
 DemoSite 1--1 DraftConfiguration
 DemoSite 1--1 PublishedSnapshot
 DemoSite 1--* PublishedVersion
@@ -101,6 +105,10 @@ DemoSite 1--* ContentItem --ref--> reviewed PublishPackage fixture
 ContentItem 0..1 --> ServiceDisplay
 Inquiry --source page/content/service--> DemoLead --workspace/site--> DemoWorkspace
 ```
+
+Each DemoSite has its own stable `siteId`, terminal type, permissions, browser storage key, draft,
+published snapshot, version history and inquiries. Sharing an explicitly authorized Workspace
+source never shares publication state.
 
 Every stored key includes the Workspace ID. Submitted inquiries receive one stable `DEMO-LEAD-*` ID that is shown on the confirmation screen and in the matching Admin lead detail.
 

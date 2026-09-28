@@ -16,12 +16,13 @@ import type {
   Block,
   ContentRecord,
   DemoLead,
-  SiteConfig,
   Locale,
-  WorkspaceId
+  ServiceRecord,
+  SiteConfig,
+  TranslationStatus
 } from './domain.js';
 import { projectLocale } from './domain.js';
-import { hasUnpublishedChanges, usePreviewStore } from './store.js';
+import { hasUnpublishedChanges, usePreviewStore, type SiteSelector } from './store.js';
 import { Link, useRouter } from './router.js';
 import { useAdminI18n } from './i18n.js';
 
@@ -60,12 +61,12 @@ export function AdminApp({
   section,
   itemId
 }: {
-  workspaceId: WorkspaceId;
+  workspaceId: SiteSelector;
   section: AdminSection;
   itemId?: string;
 }) {
   const store = usePreviewStore();
-  const workspace = store.workspaces[workspaceId];
+  const workspace = store.site(workspaceId);
   const router = useRouter();
   const [mobileNav, setMobileNav] = useState(false);
   const { locale, setLocale, t } = useAdminI18n();
@@ -74,6 +75,29 @@ export function AdminApp({
   const readOnly = workspace.role === 'VIEWER';
   const primarySection =
     section === 'client-service' ? 'leads' : section === 'seo' ? 'settings' : section;
+
+  if (workspace.role === 'NONE') {
+    return (
+      <main className="site-access-denied">
+        <span className="admin-brand__mark">MO</span>
+        <span className="eyebrow">403 · {workspace.siteId}</span>
+        <h1>{t('No access to this Site')}</h1>
+        <p>
+          {t(
+            'Your Workspace membership does not grant access to this Site. Direct links cannot reveal drafts, inquiries or settings.'
+          )}
+        </p>
+        <div className="card-actions">
+          <Link className="button-link" href={`/admin/${workspace.workspaceId}/sites`}>
+            {t('Back to My Sites')}
+          </Link>
+          <Button variant="secondary" onClick={() => store.resetDemoAccess(workspaceId)}>
+            {t('Reset demo access and fixtures')}
+          </Button>
+        </div>
+      </main>
+    );
+  }
 
   return (
     <div className="admin-shell">
@@ -85,12 +109,16 @@ export function AdminApp({
             <small>{t('Site management')}</small>
           </div>
         </div>
+        <Link className="back-to-sites" href={`/admin/${workspace.workspaceId}/sites`}>
+          ← {t('Back to My Sites')}
+        </Link>
         <div className="workspace-chip">
           <span>{workspace.workspaceName.slice(0, 1)}</span>
           <div>
-            <strong>{workspace.workspaceName}</strong>
+            <strong>{workspace.siteName}</strong>
             <small>
-              {t('Site')} · {t(workspace.lifecycle === 'ACTIVE' ? 'Active' : 'Draft')}
+              {t(workspace.terminal === 'WEB' ? 'Website' : 'WeChat mini-program')} ·{' '}
+              {t(workspace.lifecycle === 'ACTIVE' ? 'Active' : 'Draft')}
             </small>
           </div>
         </div>
@@ -127,8 +155,9 @@ export function AdminApp({
             ☰
           </button>
           <div>
-            <span className="topbar-context">{t('Workspace / Site')}</span>
-            <strong>{workspace.draft.brandName}</strong>
+            <span className="topbar-context">{workspace.workspaceName}</span>
+            <strong>{workspace.siteName}</strong>
+            <small className="topbar-site-id">{workspace.siteId}</small>
           </div>
           <div className="topbar-actions">
             <div
@@ -154,13 +183,16 @@ export function AdminApp({
               </button>
             </div>
             <Select
-              label={t('Workspace')}
-              aria-label={t('Workspace')}
-              value={workspaceId}
+              label={t('Current Site')}
+              aria-label={t('Current Site')}
+              value={workspace.siteId}
               onChange={(event) => router.navigate(`/admin/${event.target.value}/${section}`)}
             >
-              <option value="atlas">Atlas Counsel</option>
-              <option value="foundry">Foundry Exchange</option>
+              {store.workspaceSites(workspace.workspaceId).map((site) => (
+                <option key={site.siteId} value={site.siteId}>
+                  {site.siteName}
+                </option>
+              ))}
             </Select>
             <Link className="button-link secondary" href={`/site/${workspaceId}/`}>
               {t('View Site')}
@@ -218,7 +250,7 @@ export function AdminApp({
 }
 
 function AdminScreen(props: {
-  workspaceId: WorkspaceId;
+  workspaceId: SiteSelector;
   section: AdminSection;
   itemId?: string;
   readOnly: boolean;
@@ -269,9 +301,9 @@ function AdminRelatedPages({
   );
 }
 
-function Overview({ workspaceId }: { workspaceId: WorkspaceId }) {
+function Overview({ workspaceId }: { workspaceId: SiteSelector }) {
   const { t } = useAdminI18n();
-  const workspace = usePreviewStore().workspaces[workspaceId];
+  const workspace = usePreviewStore().site(workspaceId);
   const draft = projectLocale(workspace.draft, workspace.draft.defaultLocale);
   const checklist = [
     ['Brand configured', Boolean(draft.brandName && draft.primary)],
@@ -405,10 +437,10 @@ function Metric({ label, value, delta }: { label: string; value: string; delta: 
   );
 }
 
-function Pages({ workspaceId, readOnly }: { workspaceId: WorkspaceId; readOnly: boolean }) {
+function Pages({ workspaceId, readOnly }: { workspaceId: SiteSelector; readOnly: boolean }) {
   const store = usePreviewStore();
   const { t } = useAdminI18n();
-  const workspace = store.workspaces[workspaceId];
+  const workspace = store.site(workspaceId);
   const localizedDraft = projectLocale(workspace.draft, workspace.draft.defaultLocale);
   const move = (id: string, offset: number) =>
     store.updateDraft(workspaceId, (draft) => {
@@ -486,16 +518,17 @@ function Pages({ workspaceId, readOnly }: { workspaceId: WorkspaceId; readOnly: 
   );
 }
 
-function Editor({ workspaceId, readOnly }: { workspaceId: WorkspaceId; readOnly: boolean }) {
+function Editor({ workspaceId, readOnly }: { workspaceId: SiteSelector; readOnly: boolean }) {
   const store = usePreviewStore();
   const { t } = useAdminI18n();
-  const workspace = store.workspaces[workspaceId];
+  const workspace = store.site(workspaceId);
+  const miniProgram = workspace.terminal === 'WECHAT_MINIPROGRAM';
   const draft = workspace.draft;
   const [contentLocale, setContentLocale] = useState<Locale>(draft.defaultLocale);
   const draftView = projectLocale(draft, contentLocale);
   const publishedView = projectLocale(workspace.published, contentLocale);
   const [selected, setSelected] = useState(draft.blocks[0]?.id ?? '');
-  const [device, setDevice] = useState<'desktop' | 'mobile'>('desktop');
+  const [device, setDevice] = useState<'desktop' | 'mobile'>(miniProgram ? 'mobile' : 'desktop');
   const [showPublished, setShowPublished] = useState(false);
   const [status, setStatus] = useState('');
   const [publishOpen, setPublishOpen] = useState(false);
@@ -569,20 +602,24 @@ function Editor({ workspaceId, readOnly }: { workspaceId: WorkspaceId; readOnly:
           <option value="zh-CN">简体中文</option>
           <option value="en-US">English</option>
         </Select>
-        <div className="segmented" aria-label="Preview device">
-          <button
-            className={device === 'desktop' ? 'is-active' : ''}
-            onClick={() => setDevice('desktop')}
-          >
-            {t('Desktop')}
-          </button>
-          <button
-            className={device === 'mobile' ? 'is-active' : ''}
-            onClick={() => setDevice('mobile')}
-          >
-            390px
-          </button>
-        </div>
+        {miniProgram ? (
+          <Badge>{t('Mini-program touch preview')}</Badge>
+        ) : (
+          <div className="segmented" aria-label="Preview device">
+            <button
+              className={device === 'desktop' ? 'is-active' : ''}
+              onClick={() => setDevice('desktop')}
+            >
+              {t('Desktop')}
+            </button>
+            <button
+              className={device === 'mobile' ? 'is-active' : ''}
+              onClick={() => setDevice('mobile')}
+            >
+              390px
+            </button>
+          </div>
+        )}
         <span className="save-state" role="status">
           {status ||
             (hasUnpublishedChanges(workspace)
@@ -649,12 +686,22 @@ function Editor({ workspaceId, readOnly }: { workspaceId: WorkspaceId; readOnly:
             + {t('Add block')}
           </Button>
         </aside>
-        <section className="editor-canvas" aria-label={`${device} Site preview`}>
-          <div className={`device-frame ${device}`}>
-            <MiniSite
-              config={activeConfig}
-              {...(!showPublished ? { selectedBlock: selected } : {})}
-            />
+        <section
+          className={`editor-canvas ${miniProgram ? 'is-mini-program' : ''}`}
+          aria-label={miniProgram ? 'WeChat mini-program preview' : `${device} Site preview`}
+        >
+          <div className={`device-frame ${miniProgram ? 'mini-program' : device}`}>
+            {miniProgram ? (
+              <MiniProgramSite
+                config={activeConfig}
+                {...(!showPublished ? { selectedBlock: selected } : {})}
+              />
+            ) : (
+              <MiniSite
+                config={activeConfig}
+                {...(!showPublished ? { selectedBlock: selected } : {})}
+              />
+            )}
           </div>
         </section>
         <aside className="editor-properties">
@@ -751,12 +798,13 @@ function Editor({ workspaceId, readOnly }: { workspaceId: WorkspaceId; readOnly:
             aria-modal="true"
             aria-labelledby="publish-title"
           >
-            <span className="eyebrow">Demo publication checklist</span>
+            <span className="eyebrow">{t('Demo publication checklist')}</span>
             <h2 id="publish-title">{t('Publish this snapshot?')}</h2>
             <p>
-              The customer Site will switch from v{workspace.versions.length} to v
-              {workspace.versions.length + 1}. No domain, email, search, payment, or production data
-              action will run.
+              {t(
+                'The customer Site will switch to the next exact version. No domain, email, search, payment, or production data action will run.'
+              )}{' '}
+              v{workspace.versions.length} → v{workspace.versions.length + 1}
             </p>
             <ul className="check-list">
               {[
@@ -767,13 +815,13 @@ function Editor({ workspaceId, readOnly }: { workspaceId: WorkspaceId; readOnly:
               ].map((label, index) => (
                 <li key={label}>
                   <span className="check is-done">{checklist[index] ? '✓' : '!'}</span>
-                  {label}
+                  {t(label)}
                 </li>
               ))}
             </ul>
             <div className="dialog-actions">
               <Button variant="secondary" onClick={() => setPublishOpen(false)}>
-                Keep editing
+                {t('Keep editing')}
               </Button>
               <Button
                 disabled={!checklist.every(Boolean)}
@@ -793,7 +841,7 @@ function Editor({ workspaceId, readOnly }: { workspaceId: WorkspaceId; readOnly:
                   setStatus(`${t('Demo published as version')} ${version}`);
                 }}
               >
-                Publish demo v{workspace.versions.length + 1}
+                {t('Publish demo')} v{workspace.versions.length + 1}
               </Button>
             </div>
           </section>
@@ -879,20 +927,76 @@ function MiniSite({ config, selectedBlock }: { config: SiteConfig; selectedBlock
   );
 }
 
+function MiniProgramSite({
+  config,
+  selectedBlock
+}: {
+  config: SiteConfig;
+  selectedBlock?: string;
+}) {
+  const visible = config.blocks.filter((item) => item.visible);
+  const services = config.services.filter((item) => item.visible).slice(0, 2);
+  return (
+    <div className="mini-program-site">
+      <header>
+        <span>9:41</span>
+        <strong>{config.brandName}</strong>
+        <span>•••</span>
+      </header>
+      <main>
+        {visible.map((block) => (
+          <section
+            key={block.id}
+            className={`${block.kind} ${selectedBlock === block.id ? 'is-selected' : ''}`}
+          >
+            <span>{block.label}</span>
+            <h3>{block.title}</h3>
+            <p>{block.body}</p>
+            {block.kind === 'services' && (
+              <div className="mini-program-services">
+                {services.map((service) => (
+                  <article key={service.id}>
+                    <b>{service.title}</b>
+                    <small>{service.summary}</small>
+                  </article>
+                ))}
+              </div>
+            )}
+          </section>
+        ))}
+      </main>
+      <nav aria-label="Mini-program tab bar">
+        <b>首页</b>
+        <span>办业务</span>
+        <span>进度</span>
+        <span>消息</span>
+        <span>我的</span>
+      </nav>
+    </div>
+  );
+}
+
 function Content({
   workspaceId,
   itemId,
   readOnly
 }: {
-  workspaceId: WorkspaceId;
+  workspaceId: SiteSelector;
   itemId?: string;
   readOnly: boolean;
 }) {
   const store = usePreviewStore();
   const { t } = useAdminI18n();
-  const workspace = store.workspaces[workspaceId];
+  const workspace = store.site(workspaceId);
   const [contentLocale, setContentLocale] = useState<Locale>(workspace.draft.defaultLocale);
   const localizedDraft = projectLocale(workspace.draft, contentLocale);
+  const [query, setQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState<'ALL' | TranslationStatus>('ALL');
+  const filteredContent = localizedDraft.content.filter(
+    (item) =>
+      (statusFilter === 'ALL' || item.status === statusFilter) &&
+      `${item.title} ${item.excerpt} ${item.packageRef}`.toLowerCase().includes(query.toLowerCase())
+  );
   const [selectedId, setSelectedId] = useState(itemId ?? localizedDraft.content[0]?.id);
   const selected = localizedDraft.content.find((item) => item.id === selectedId);
   const [status, setStatus] = useState('');
@@ -942,7 +1046,24 @@ function Content({
           </Select>
           <Button disabled={readOnly}>{t('New content')}</Button>
         </div>
-        {localizedDraft.content.map((item) => (
+        <div className="list-filters">
+          <TextInput
+            label={t('Search content')}
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+          />
+          <Select
+            label={t('Filter by status')}
+            value={statusFilter}
+            onChange={(event) => setStatusFilter(event.target.value as 'ALL' | TranslationStatus)}
+          >
+            <option value="ALL">{t('All statuses')}</option>
+            <option value="DRAFT">DRAFT</option>
+            <option value="REVIEW_READY">REVIEW_READY</option>
+            <option value="PUBLISHED">PUBLISHED</option>
+          </Select>
+        </div>
+        {filteredContent.map((item) => (
           <button
             key={item.id}
             className={selected?.id === item.id ? 'content-row is-active' : 'content-row'}
@@ -957,6 +1078,7 @@ function Content({
             <Badge>{item.status}</Badge>
           </button>
         ))}
+        {!filteredContent.length && <p className="empty-filter">{t('No matching content')}</p>}
       </Card>
       {selected && (
         <Card className="content-editor">
@@ -1075,54 +1197,128 @@ function Content({
   );
 }
 
-function Services({ workspaceId, readOnly }: { workspaceId: WorkspaceId; readOnly: boolean }) {
+function Services({ workspaceId, readOnly }: { workspaceId: SiteSelector; readOnly: boolean }) {
   const store = usePreviewStore();
   const { t } = useAdminI18n();
-  const workspace = store.workspaces[workspaceId];
-  const localizedDraft = projectLocale(workspace.draft, workspace.draft.defaultLocale);
-  return (
-    <div className="service-admin-grid">
-      {localizedDraft.services.map((service) => (
-        <Card key={service.id} className="service-admin-card">
-          <div className="section-heading">
-            <Badge>
-              {service.productRef} · v{service.version}
-            </Badge>
-            <Checkbox
-              label={t('Visible')}
-              disabled={readOnly}
-              checked={service.visible}
-              onChange={(event) =>
-                store.updateDraft(workspaceId, (config) => ({
-                  ...config,
-                  services: config.services.map((item) =>
-                    item.id === service.id ? { ...item, visible: event.target.checked } : item
-                  )
-                }))
+  const workspace = store.site(workspaceId);
+  const [contentLocale, setContentLocale] = useState<Locale>(workspace.draft.defaultLocale);
+  const [query, setQuery] = useState('');
+  const localizedDraft = projectLocale(workspace.draft, contentLocale);
+  const filteredServices = localizedDraft.services.filter((service) =>
+    `${service.title} ${service.summary} ${service.productRef}`
+      .toLowerCase()
+      .includes(query.toLowerCase())
+  );
+  const updateService = (serviceId: string, changes: Partial<ServiceRecord>) =>
+    store.updateDraft(workspaceId, (config) => {
+      const localized = config.localized[contentLocale].services[serviceId];
+      return {
+        ...config,
+        services: config.services.map((service) =>
+          service.id === serviceId
+            ? {
+                ...service,
+                ...(changes.visible === undefined ? {} : { visible: changes.visible })
               }
-            />
-          </div>
-          <h2>{service.title}</h2>
-          <p>{service.summary}</p>
-          <dl>
-            <div>
-              <dt>{t('Markets')}</dt>
-              <dd>{service.markets.join(', ')}</dd>
+            : service
+        ),
+        localized: {
+          ...config.localized,
+          [contentLocale]: {
+            ...config.localized[contentLocale],
+            services: {
+              ...config.localized[contentLocale].services,
+              [serviceId]: {
+                title: changes.title ?? localized?.title ?? '',
+                summary: changes.summary ?? localized?.summary ?? '',
+                feeNote: changes.feeNote ?? localized?.feeNote ?? ''
+              }
+            }
+          }
+        },
+        localePublication: { ...config.localePublication, [contentLocale]: 'DRAFT' }
+      };
+    });
+  return (
+    <div className="screen-stack">
+      <Card className="management-toolbar">
+        <div>
+          <span className="eyebrow">{t('Service display management')}</span>
+          <h2>{t('Services visible on this Site')}</h2>
+          <p>
+            {t(
+              'These are Site-specific display records linked to owner-backed product references.'
+            )}
+          </p>
+        </div>
+        <TextInput
+          label={t('Search services')}
+          value={query}
+          onChange={(event) => setQuery(event.target.value)}
+        />
+        <Select
+          label="内容语言 / Content language"
+          value={contentLocale}
+          onChange={(event) => setContentLocale(event.target.value as Locale)}
+        >
+          <option value="zh-CN">简体中文</option>
+          <option value="en-US">English</option>
+        </Select>
+      </Card>
+      <div className="service-admin-grid">
+        {filteredServices.map((service) => (
+          <Card key={service.id} className="service-admin-card">
+            <div className="section-heading">
+              <Badge>
+                {service.productRef} · v{service.version}
+              </Badge>
+              <Checkbox
+                label={t('Visible')}
+                disabled={readOnly}
+                checked={service.visible}
+                onChange={(event) => updateService(service.id, { visible: event.target.checked })}
+              />
             </div>
-            <div>
-              <dt>{t('Fee display')}</dt>
-              <dd>{service.feeNote}</dd>
-            </div>
-            <div>
-              <dt>{t('Authority')}</dt>
-              <dd>Display reference only; final scope and Quote remain owner truth.</dd>
-            </div>
-          </dl>
-          <Link className="text-link" href={`/site/${workspaceId}/services/${service.id}`}>
-            Preview service →
-          </Link>
-        </Card>
-      ))}
+            <fieldset disabled={readOnly}>
+              <TextInput
+                label={t('Title')}
+                value={service.title}
+                onChange={(event) => updateService(service.id, { title: event.target.value })}
+              />
+              <TextArea
+                label={t('Summary')}
+                rows={4}
+                value={service.summary}
+                onChange={(event) => updateService(service.id, { summary: event.target.value })}
+              />
+              <TextArea
+                label={t('Fee display')}
+                rows={3}
+                value={service.feeNote}
+                onChange={(event) => updateService(service.id, { feeNote: event.target.value })}
+              />
+            </fieldset>
+            <dl>
+              <div>
+                <dt>{t('Markets')}</dt>
+                <dd>{service.markets.join(', ')}</dd>
+              </div>
+              <div>
+                <dt>{t('Language status')}</dt>
+                <dd>{workspace.draft.localePublication[contentLocale]}</dd>
+              </div>
+              <div>
+                <dt>{t('Authority')}</dt>
+                <dd>Display reference only; final scope and Quote remain owner truth.</dd>
+              </div>
+            </dl>
+            <Link className="text-link" href={`/site/${workspaceId}/services/${service.id}`}>
+              {t('Preview service')} →
+            </Link>
+          </Card>
+        ))}
+        {!filteredServices.length && <p className="empty-filter">{t('No matching services')}</p>}
+      </div>
     </div>
   );
 }
@@ -1132,13 +1328,13 @@ function Leads({
   itemId,
   readOnly
 }: {
-  workspaceId: WorkspaceId;
+  workspaceId: SiteSelector;
   itemId?: string;
   readOnly: boolean;
 }) {
   const store = usePreviewStore();
   const { t } = useAdminI18n();
-  const workspace = store.workspaces[workspaceId];
+  const workspace = store.site(workspaceId);
   const selected = workspace.leads.find((lead) => lead.id === itemId) ?? workspace.leads[0];
   const relatedPages = (
     <AdminRelatedPages
@@ -1200,13 +1396,13 @@ function LeadDetail({
   lead,
   readOnly
 }: {
-  workspaceId: WorkspaceId;
+  workspaceId: SiteSelector;
   lead: DemoLead;
   readOnly: boolean;
 }) {
   const store = usePreviewStore();
   const { t } = useAdminI18n();
-  const workspace = store.workspaces[workspaceId];
+  const workspace = store.site(workspaceId);
   const service = workspace.published.services.find((item) => item.id === lead.serviceId);
   return (
     <Card className="lead-detail">
@@ -1238,6 +1434,14 @@ function LeadDetail({
             {lead.siteId} / {lead.workspaceId}
           </strong>
         </div>
+        <div>
+          <span>{t('Channel')}</span>
+          <strong>{t(lead.channel === 'WEB' ? 'Website' : 'WeChat mini-program')}</strong>
+        </div>
+        <div>
+          <span>{t('Customer relationship')}</span>
+          <strong>{t('Not linked — lead only')}</strong>
+        </div>
       </div>
       <section className="message-card">
         <span className="eyebrow">{t('Visitor message')}</span>
@@ -1260,8 +1464,9 @@ function LeadDetail({
         </div>
       </section>
       <Alert title={t('Handoff boundary')}>
-        Qualifying this demo lead does not create a Customer Relationship, Quote, Order, Payment,
-        Matter, provider selection, or protected action.
+        {t(
+          'Qualifying this demo lead does not create or merge a Customer Relationship, Quote, Order, Payment, Matter, provider selection, or protected action.'
+        )}
       </Alert>
       <div className="card-actions">
         <Button
@@ -1282,7 +1487,7 @@ function LeadDetail({
   );
 }
 
-function ClientService({ workspaceId }: { workspaceId: WorkspaceId }) {
+function ClientService({ workspaceId }: { workspaceId: SiteSelector }) {
   const { t } = useAdminI18n();
   return (
     <div className="screen-stack">
@@ -1337,9 +1542,9 @@ function ClientService({ workspaceId }: { workspaceId: WorkspaceId }) {
   );
 }
 
-function Analytics({ workspaceId }: { workspaceId: WorkspaceId }) {
+function Analytics({ workspaceId }: { workspaceId: SiteSelector }) {
   const { t } = useAdminI18n();
-  const workspace = usePreviewStore().workspaces[workspaceId];
+  const workspace = usePreviewStore().site(workspaceId);
   const contentLeads = workspace.leads.filter((lead) => lead.sourceContentId).length;
   return (
     <div className="screen-stack">
@@ -1402,10 +1607,10 @@ function Analytics({ workspaceId }: { workspaceId: WorkspaceId }) {
   );
 }
 
-function Seo({ workspaceId, readOnly }: { workspaceId: WorkspaceId; readOnly: boolean }) {
+function Seo({ workspaceId, readOnly }: { workspaceId: SiteSelector; readOnly: boolean }) {
   const store = usePreviewStore();
   const { t } = useAdminI18n();
-  const workspace = store.workspaces[workspaceId];
+  const workspace = store.site(workspaceId);
   const [status, setStatus] = useState('');
   return (
     <div className="dashboard-grid">
@@ -1475,10 +1680,10 @@ function Seo({ workspaceId, readOnly }: { workspaceId: WorkspaceId; readOnly: bo
   );
 }
 
-function Settings({ workspaceId, readOnly }: { workspaceId: WorkspaceId; readOnly: boolean }) {
+function Settings({ workspaceId, readOnly }: { workspaceId: SiteSelector; readOnly: boolean }) {
   const store = usePreviewStore();
   const { t } = useAdminI18n();
-  const workspace = store.workspaces[workspaceId];
+  const workspace = store.site(workspaceId);
   const config = workspace.draft;
   return (
     <div className="dashboard-grid">
@@ -1489,6 +1694,58 @@ function Settings({ workspaceId, readOnly }: { workspaceId: WorkspaceId; readOnl
           { href: `/admin/${workspaceId}/seo`, label: t('Domain & search') }
         ]}
       />
+      <Card className="site-identity-card">
+        <span className="eyebrow">{t('Current Site identity')}</span>
+        <h2>{workspace.siteName}</h2>
+        <dl className="lead-facts">
+          <div>
+            <dt>siteId</dt>
+            <dd>{workspace.siteId}</dd>
+          </div>
+          <div>
+            <dt>{t('Workspace')}</dt>
+            <dd>{workspace.workspaceName}</dd>
+          </div>
+          <div>
+            <dt>{t('Terminal')}</dt>
+            <dd>{t(workspace.terminal === 'WEB' ? 'Website' : 'WeChat mini-program')}</dd>
+          </div>
+          <div>
+            <dt>{t('Channel configuration')}</dt>
+            <dd>{workspace.terminal === 'WEB' ? config.domain : t('Demo AppID not configured')}</dd>
+          </div>
+        </dl>
+        <Alert title={t('Independent publication boundary')}>
+          {t(
+            'Drafts and publication versions belong only to this siteId. Shared Workspace sources do not publish another Site.'
+          )}
+        </Alert>
+      </Card>
+      <Card className="shared-source-card">
+        <div className="section-heading">
+          <div>
+            <span className="eyebrow">{t('Authorized shared sources')}</span>
+            <h2>{t('References this Site may use')}</h2>
+            <p>
+              {t(
+                'Import is explicit. A source update never changes this Site draft or publishes it automatically.'
+              )}
+            </p>
+          </div>
+          <Badge>{t('Read-only references')}</Badge>
+        </div>
+        <div className="source-grant-list">
+          {workspace.sharedSources.map((source) => (
+            <div key={source.sourceRef}>
+              <Badge>{source.kind}</Badge>
+              <code>{source.sourceRef}</code>
+              <span>
+                {source.access} · {source.updateMode}
+              </span>
+            </div>
+          ))}
+        </div>
+      </Card>
       <Card>
         <h2>{t('Modules')}</h2>
         <p>Enable only the projections this Workspace needs.</p>
@@ -1519,10 +1776,13 @@ function Settings({ workspaceId, readOnly }: { workspaceId: WorkspaceId; readOnl
           disabled={readOnly}
           label={t('Demo permission')}
           value={workspace.role}
-          onChange={(event) => store.setRole(workspaceId, event.target.value as 'OWNER' | 'VIEWER')}
+          onChange={(event) =>
+            store.setRole(workspaceId, event.target.value as 'OWNER' | 'VIEWER' | 'NONE')
+          }
         >
           <option value="OWNER">Site manager (editable)</option>
           <option value="VIEWER">Viewer (read-only)</option>
+          <option value="NONE">No Site access (direct route denied)</option>
         </Select>
         <Select
           disabled={readOnly}
@@ -1573,7 +1833,7 @@ function Settings({ workspaceId, readOnly }: { workspaceId: WorkspaceId; readOnl
           Console and are not recreated here.
         </Alert>
         <Button variant="danger" disabled={readOnly} onClick={() => store.reset(workspaceId)}>
-          {t('Reset this demo Workspace')}
+          {t('Reset this demo Site')}
         </Button>
         {readOnly && (
           <div className="demo-access-reset">

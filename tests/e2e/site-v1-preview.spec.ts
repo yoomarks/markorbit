@@ -98,7 +98,7 @@ test('negative boundaries: consent, VIEWER mutation, hidden route, and Workspace
   await page.getByRole('link', { name: 'Find this lead in Site Admin' }).click();
 
   await page.evaluate(() => {
-    const key = 'markorbit:site-v1-preview:atlas';
+    const key = 'markorbit:site-v1-preview:site:site_atlas_demo';
     const state = JSON.parse(localStorage.getItem(key) ?? '{}');
     state.role = 'VIEWER';
     state.published.pages = state.published.pages.map((item: { id: string; visible: boolean }) =>
@@ -114,6 +114,69 @@ test('negative boundaries: consent, VIEWER mutation, hidden route, and Workspace
   ).toBeVisible();
   await page.goto('/admin/foundry/leads');
   await expect(page.getByRole('heading', { name: 'No inquiries yet' })).toBeVisible();
+});
+
+test('one Workspace operates isolated Web and mini-program Sites', async ({ page }, testInfo) => {
+  await page.goto('/admin/atlas/sites');
+  await expect(page.getByRole('heading', { name: 'My Sites' })).toBeVisible();
+  await page.screenshot({ path: testInfo.outputPath('my-sites-en.png'), fullPage: true });
+  await page.getByRole('button', { name: '简体中文' }).click();
+  await expect(page.getByRole('heading', { name: '我的 Site' })).toBeVisible();
+  await expect(page.getByText('Atlas 官方网站')).toBeVisible();
+  await expect(page.getByText('Atlas 微信小程序')).toBeVisible();
+  await page.screenshot({ path: testInfo.outputPath('my-sites-zh.png'), fullPage: true });
+
+  await page.getByRole('link', { name: /管理 Atlas 官方网站/u }).click();
+  await page.getByRole('link', { name: '装修首页', exact: true }).click();
+  await page.getByLabel('内容语言 / Content language').selectOption('zh-CN');
+  await page.getByLabel('标题').fill('只发布到官方网站的首页');
+  await page.getByRole('button', { name: '检查并发布' }).click();
+  await page.getByRole('button', { name: /发布演示 v2/u }).click();
+
+  await page.getByLabel('当前 Site').selectOption('site_atlas_mini_demo');
+  await expect(page.getByText('小程序触屏预览')).toBeVisible();
+  await expect(page.getByRole('button', { name: '已发布 v1' })).toBeVisible();
+  await expect(page.getByText('只发布到官方网站的首页')).toHaveCount(0);
+  if (testInfo.project.name === 'site-v1-mobile-390') {
+    const width = await page.evaluate(() => ({
+      viewport: document.documentElement.clientWidth,
+      page: document.documentElement.scrollWidth,
+      canvas: document.querySelector('.editor-canvas')?.scrollWidth ?? 0
+    }));
+    expect(width.page).toBeLessThanOrEqual(width.viewport);
+    expect(width.canvas).toBeLessThanOrEqual(width.viewport);
+  }
+  await page.screenshot({ path: testInfo.outputPath('mini-editor-zh.png'), fullPage: true });
+  await page.getByRole('button', { name: 'English' }).click();
+  await expect(page.getByText('Mini-program touch preview')).toBeVisible();
+  await page.screenshot({ path: testInfo.outputPath('mini-editor-en.png'), fullPage: true });
+  await page.getByRole('button', { name: '简体中文' }).click();
+
+  await page.goto('/site/site_atlas_mini_demo/en-US/contact');
+  await page.getByRole('button', { name: 'Continue' }).click();
+  await page.getByLabel('Your name').fill('Mini Channel Lead');
+  await page.getByLabel('Work email').fill('mini@example.com');
+  await page
+    .getByLabel('What are you trying to decide?')
+    .fill('Keep the mini-program inquiry source separate from the website.');
+  await page.getByRole('button', { name: 'Continue' }).click();
+  await page.getByLabel(/I understand/).check();
+  await page.getByRole('button', { name: 'Submit demo inquiry' }).click();
+  await page.getByRole('link', { name: 'Find this lead in Site Admin' }).click();
+  await expect(page.getByText('site_atlas_mini_demo / atlas')).toBeVisible();
+  await expect(page.getByText('微信小程序', { exact: true })).toBeVisible();
+  await expect(page.getByText('尚未关联，仅为线索')).toBeVisible();
+
+  await page.evaluate(() => {
+    const key = 'markorbit:site-v1-preview:site:site_atlas_mini_demo';
+    const state = JSON.parse(localStorage.getItem(key) ?? '{}');
+    state.role = 'NONE';
+    localStorage.setItem(key, JSON.stringify(state));
+  });
+  await page.goto('/admin/site_atlas_mini_demo/content/content-clearance');
+  await expect(page.getByRole('heading', { name: '无权访问此 Site' })).toBeVisible();
+  await expect(page.getByLabel('标题')).toHaveCount(0);
+  await page.screenshot({ path: testInfo.outputPath('site-access-denied-zh.png'), fullPage: true });
 });
 
 test('plain-language navigation reveals the expected Admin and visitor tasks', async ({

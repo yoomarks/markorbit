@@ -1,13 +1,7 @@
 import { createContext, useContext, useEffect, useState, type FormEvent } from 'react';
 import { Button, Select, TextArea, TextInput } from '@markorbit/ui';
-import {
-  projectLocale,
-  type DemoLead,
-  type Locale,
-  type SiteConfig,
-  type WorkspaceId
-} from './domain.js';
-import { usePreviewStore } from './store.js';
+import { projectLocale, type DemoLead, type Locale, type SiteConfig } from './domain.js';
+import { usePreviewStore, type SiteSelector } from './store.js';
 import { Link } from './router.js';
 import { frontT } from './front-i18n.js';
 
@@ -33,12 +27,12 @@ export function SiteFront({
   mode = 'published',
   locale: requestedLocale
 }: {
-  workspaceId: WorkspaceId;
+  workspaceId: SiteSelector;
   path: string;
   mode?: 'published' | 'draft';
   locale?: Locale;
 }) {
-  const workspace = usePreviewStore().workspaces[workspaceId];
+  const workspace = usePreviewStore().site(workspaceId);
   const snapshot = mode === 'draft' ? workspace.draft : workspace.published;
   const locale = requestedLocale ?? snapshot.defaultLocale;
   const localeAvailable =
@@ -66,6 +60,19 @@ export function SiteFront({
     }
   }, [config.localized, locale, path, snapshot.enabledLocales, workspaceId]);
   const t = (message: string) => frontT(locale, message);
+  if (workspace.terminal === 'WECHAT_MINIPROGRAM') {
+    return (
+      <FrontLocaleContext.Provider value={locale}>
+        <MiniProgramPublic
+          workspaceId={workspaceId}
+          config={config}
+          localeAvailable={localeAvailable}
+          mode={mode}
+          path={path}
+        />
+      </FrontLocaleContext.Provider>
+    );
+  }
   return (
     <FrontLocaleContext.Provider value={locale}>
       <div
@@ -98,11 +105,89 @@ export function SiteFront({
   );
 }
 
+function MiniProgramPublic({
+  workspaceId,
+  config,
+  localeAvailable,
+  mode,
+  path
+}: {
+  workspaceId: SiteSelector;
+  config: SiteConfig;
+  localeAvailable: boolean;
+  mode: 'published' | 'draft';
+  path: string;
+}) {
+  const t = useFrontT();
+  const blocks = config.blocks.filter((block) => block.visible);
+  return (
+    <div className="mini-program-public">
+      <div className="front-demo-bar">
+        <strong>{t(mode === 'draft' ? 'DRAFT PREVIEW' : 'DEMO SITE')}</strong>
+        <span>{t('Fictional content · no real quote, order, payment, filing, or submission')}</span>
+        <Link href={`/admin/${workspaceId}/overview`}>{t('Open Site Admin')}</Link>
+      </div>
+      <div className="mini-program-public__device">
+        <header>
+          <span>9:41</span>
+          <strong>{config.brandName}</strong>
+          <span>•••</span>
+        </header>
+        {localeAvailable && path !== '/' ? (
+          <main>
+            <SiteRoute workspaceId={workspaceId} path={path} config={config} mode={mode} />
+          </main>
+        ) : localeAvailable ? (
+          <main>
+            {blocks.map((block) => (
+              <section key={block.id} className={block.kind}>
+                <span>{block.label}</span>
+                <h1>{block.title}</h1>
+                <p>{block.body}</p>
+                {block.kind === 'services' && (
+                  <div className="mini-program-public__services">
+                    {config.services
+                      .filter((service) => service.visible)
+                      .slice(0, 3)
+                      .map((service) => (
+                        <article key={service.id}>
+                          <strong>{service.title}</strong>
+                          <small>{service.summary}</small>
+                        </article>
+                      ))}
+                  </div>
+                )}
+                {block.kind === 'cta' && (
+                  <Link className="front-button" href={`/site/${workspaceId}/contact`}>
+                    {t('Start an inquiry')}
+                  </Link>
+                )}
+              </section>
+            ))}
+          </main>
+        ) : (
+          <main className="mini-program-public__unavailable">
+            <h1>{t('This page is outside the orbit.')}</h1>
+            <p>{t('This locale has not been reviewed and published.')}</p>
+          </main>
+        )}
+        <nav aria-label="Mini-program navigation">
+          <b>{t('Home')}</b>
+          <span>{t('Start')}</span>
+          <span>{t('Progress')}</span>
+          <span>{t('Messages')}</span>
+          <span>{t('My account')}</span>
+        </nav>
+      </div>
+    </div>
+  );
+}
+
 function LocaleUnavailable({
   workspaceId,
   defaultLocale
 }: {
-  workspaceId: WorkspaceId;
+  workspaceId: SiteSelector;
   defaultLocale: Locale;
 }) {
   const t = useFrontT();
@@ -129,7 +214,7 @@ function SiteHeader({
   path,
   mode
 }: {
-  workspaceId: WorkspaceId;
+  workspaceId: SiteSelector;
   config: SiteConfig;
   path: string;
   mode: 'published' | 'draft';
@@ -204,7 +289,7 @@ function SiteRoute({
   config,
   mode
 }: {
-  workspaceId: WorkspaceId;
+  workspaceId: SiteSelector;
   path: string;
   config: SiteConfig;
   mode: 'published' | 'draft';
@@ -258,7 +343,7 @@ function SiteRoute({
   return <NotFound workspaceId={workspaceId} />;
 }
 
-function Home({ workspaceId, config }: { workspaceId: WorkspaceId; config: SiteConfig }) {
+function Home({ workspaceId, config }: { workspaceId: SiteSelector; config: SiteConfig }) {
   const base = `/site/${workspaceId}`;
   const t = useFrontT();
   const blocks = config.blocks.filter(
@@ -398,7 +483,7 @@ function ServiceStrip({
   config,
   title
 }: {
-  workspaceId: WorkspaceId;
+  workspaceId: SiteSelector;
   config: SiteConfig;
   title?: string;
 }) {
@@ -439,7 +524,7 @@ function InsightStrip({
   config,
   title
 }: {
-  workspaceId: WorkspaceId;
+  workspaceId: SiteSelector;
   config: SiteConfig;
   title?: string;
 }) {
@@ -482,7 +567,7 @@ function FrontCta({
   workspaceId,
   block
 }: {
-  workspaceId: WorkspaceId;
+  workspaceId: SiteSelector;
   block: SiteConfig['blocks'][number];
 }) {
   const t = useFrontT();
@@ -502,7 +587,7 @@ function ServiceDirectory({
   workspaceId,
   config
 }: {
-  workspaceId: WorkspaceId;
+  workspaceId: SiteSelector;
   config: SiteConfig;
 }) {
   const t = useFrontT();
@@ -560,7 +645,7 @@ function ServiceDetail({
   serviceId,
   sourceContentId
 }: {
-  workspaceId: WorkspaceId;
+  workspaceId: SiteSelector;
   config: SiteConfig;
   serviceId: string;
   sourceContentId?: string;
@@ -648,7 +733,7 @@ function Insights({
   config,
   mode = 'published'
 }: {
-  workspaceId: WorkspaceId;
+  workspaceId: SiteSelector;
   config: SiteConfig;
   mode?: 'published' | 'draft';
 }) {
@@ -694,7 +779,7 @@ function Article({
   slug,
   mode = 'published'
 }: {
-  workspaceId: WorkspaceId;
+  workspaceId: SiteSelector;
   config: SiteConfig;
   slug: string;
   mode?: 'published' | 'draft';
@@ -767,7 +852,7 @@ function Article({
   );
 }
 
-function Assets({ workspaceId }: { workspaceId: WorkspaceId }) {
+function Assets({ workspaceId }: { workspaceId: SiteSelector }) {
   const t = useFrontT();
   const assets = [
     {
@@ -832,7 +917,7 @@ function Inquiry({
   sourceServiceId,
   sourceAssetId
 }: {
-  workspaceId: WorkspaceId;
+  workspaceId: SiteSelector;
   config: SiteConfig;
   sourceContentId?: string;
   sourceServiceId?: string;
@@ -1175,7 +1260,7 @@ function Policy({ kind, config }: { kind: 'privacy' | 'terms'; config: SiteConfi
   );
 }
 
-function NotFound({ workspaceId }: { workspaceId: WorkspaceId }) {
+function NotFound({ workspaceId }: { workspaceId: SiteSelector }) {
   const t = useFrontT();
   return (
     <section className="not-found">
@@ -1204,7 +1289,7 @@ function SiteFooter({
   config,
   mode
 }: {
-  workspaceId: WorkspaceId;
+  workspaceId: SiteSelector;
   config: SiteConfig;
   mode: 'published' | 'draft';
 }) {

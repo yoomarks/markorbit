@@ -11,7 +11,10 @@ equivalent product language rather than literal internal terminology.
 publish articles, maintain service descriptions, read inquiries, and check whether the Site is
 ready to publish.
 
-**Entry and hierarchy:** `/admin/:workspace/overview` opens an eight-item task navigation. The
+**Entry and hierarchy:** `/admin/:workspace/sites` opens **我的 Site / My Sites**. Selecting one
+instance opens `/admin/:siteId/overview` and its eight-item task navigation. The legacy
+`/admin/:workspace/overview` route remains compatible and resolves the Workspace's default Web
+Site. The
 existing `client-service` and `seo` routes remain directly addressable, but appear as related pages
 inside **咨询 / Inquiries** and **设置 / Settings** instead of adding two more primary choices.
 

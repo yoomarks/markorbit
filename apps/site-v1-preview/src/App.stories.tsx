@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react';
 import { App } from './App.js';
-import { demoStoragePrefix } from './store.js';
-import { seedWorkspace } from './domain.js';
+import { demoStoragePrefix, siteStorageKey } from './store.js';
+import { seedSite, seedWorkspace } from './domain.js';
 
 const meta = {
   title: 'Site V1/Interactive preview',
@@ -12,6 +12,13 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 export const AdminOverview: Story = { args: { initialPath: '/admin/atlas/overview' } };
+export const MySites: Story = { args: { initialPath: '/admin/atlas/sites' } };
+export const MiniProgramEditor: Story = {
+  args: { initialPath: '/admin/site_atlas_mini_demo/editor' }
+};
+export const MiniProgramFront: Story = {
+  args: { initialPath: '/site/site_atlas_mini_demo/zh-CN/' }
+};
 export const EditorUnpublishedDraft: Story = {
   args: { initialPath: '/admin/atlas/editor' },
   decorators: [
@@ -32,6 +39,17 @@ export const PermissionDenied: Story = {
       const state = seedWorkspace('atlas');
       state.role = 'VIEWER';
       localStorage.setItem(`${demoStoragePrefix}atlas`, JSON.stringify(state));
+      return <Story />;
+    }
+  ]
+};
+export const SiteAccessDenied: Story = {
+  args: { initialPath: '/admin/site_atlas_mini_demo/overview' },
+  decorators: [
+    (Story) => {
+      const state = seedSite('site_atlas_mini_demo');
+      state.role = 'NONE';
+      localStorage.setItem(siteStorageKey(state.siteId), JSON.stringify(state));
       return <Story />;
     }
   ]

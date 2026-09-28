@@ -57,6 +57,7 @@ describe('Site V1 interactive preview', () => {
       id: 'DEMO-LEAD-0001',
       workspaceId: 'atlas',
       siteId: atlas.siteId,
+      channel: 'WEB',
       createdAt: new Date().toISOString(),
       name: 'Atlas lead',
       email: 'atlas@example.com',
@@ -89,7 +90,7 @@ describe('Site V1 interactive preview', () => {
     localStorage.setItem('markorbit:site-v1-preview:atlas', JSON.stringify(state));
     render(<App initialPath="/admin/atlas/settings" />);
     expect(screen.getByText(/View-only access/)).toBeVisible();
-    expect(screen.getByRole('button', { name: 'Reset this demo Workspace' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Reset this demo Site' })).toBeDisabled();
     expect(screen.getByLabelText('站点默认语言 / Site default language')).toBeDisabled();
   });
 
@@ -120,6 +121,7 @@ describe('Site V1 interactive preview', () => {
       id: 'DEMO-LEAD-0001',
       workspaceId: 'atlas',
       siteId: state.siteId,
+      channel: 'WEB',
       createdAt: new Date().toISOString(),
       name: 'Read only',
       email: 'viewer@example.com',
@@ -283,5 +285,58 @@ describe('Site V1 interactive preview', () => {
     expect(within(foundryNavigation).getByRole('link', { name: '商标展示' })).toBeVisible();
     expect(within(foundryNavigation).queryByRole('link', { name: '文章' })).not.toBeInTheDocument();
     expect(within(foundryNavigation).queryByRole('link', { name: '我的' })).not.toBeInTheDocument();
+  });
+
+  it('opens My Sites before entering one independently identified Site Admin', () => {
+    localStorage.removeItem(adminLocaleStorageKey);
+    render(<App initialPath="/admin/atlas/sites" />);
+
+    expect(screen.getByRole('heading', { name: '我的 Site' })).toBeVisible();
+    expect(screen.getByText('Atlas 官方网站')).toBeVisible();
+    expect(screen.getByText('Atlas 微信小程序')).toBeVisible();
+    expect(screen.getByText('site_atlas_demo')).toBeVisible();
+    expect(screen.getByText('site_atlas_mini_demo')).toBeVisible();
+    expect(screen.getByRole('link', { name: /管理 Atlas 微信小程序/u })).toHaveAttribute(
+      'href',
+      '/admin/site_atlas_mini_demo/overview'
+    );
+  });
+
+  it('keeps website and mini-program drafts and publication versions isolated by siteId', async () => {
+    localStorage.removeItem(adminLocaleStorageKey);
+    const user = userEvent.setup();
+    const website = render(<App initialPath="/admin/site_atlas_demo/editor" />);
+    const heading = screen.getByLabelText('标题');
+    await user.clear(heading);
+    await user.type(heading, '只属于官网的草稿标题');
+    await user.click(screen.getByRole('button', { name: '检查并发布' }));
+    await user.click(screen.getByRole('button', { name: '发布演示 v2' }));
+    website.unmount();
+
+    render(<App initialPath="/admin/site_atlas_mini_demo/editor" />);
+    expect(screen.getAllByText('Atlas 微信小程序').length).toBeGreaterThan(0);
+    expect(screen.getByRole('button', { name: '已发布 v1' })).toBeVisible();
+    expect(screen.queryByText('只属于官网的草稿标题')).not.toBeInTheDocument();
+
+    const webState = JSON.parse(
+      localStorage.getItem('markorbit:site-v1-preview:site:site_atlas_demo') ?? '{}'
+    ) as ReturnType<typeof seedWorkspace>;
+    const miniState = JSON.parse(
+      localStorage.getItem('markorbit:site-v1-preview:site:site_atlas_mini_demo') ?? '{}'
+    ) as ReturnType<typeof seedWorkspace>;
+    expect(webState.versions).toHaveLength(2);
+    expect(miniState.versions).toHaveLength(1);
+  });
+
+  it('blocks an employee without current-Site permission on a direct Admin URL', () => {
+    localStorage.removeItem(adminLocaleStorageKey);
+    const state = seedWorkspace('atlas');
+    state.role = 'NONE';
+    localStorage.setItem('markorbit:site-v1-preview:site:site_atlas_demo', JSON.stringify(state));
+
+    render(<App initialPath="/admin/site_atlas_demo/content/content-clearance" />);
+    expect(screen.getByRole('heading', { name: '无权访问此 Site' })).toBeVisible();
+    expect(screen.queryByLabelText('标题')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '发布内容演示' })).not.toBeInTheDocument();
   });
 });

@@ -1,120 +1,205 @@
 import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from 'react';
 import {
+  defaultSiteId,
   nextLeadId,
-  seedWorkspace,
+  seedSite,
+  siteIds,
   workspaceIds,
+  workspacePortfolios,
   type DemoLead,
+  type DemoSiteId,
   type SiteConfig,
-  type WorkspaceId,
-  type WorkspaceState
+  type SiteState,
+  type WorkspaceId
 } from './domain.js';
 
 const storagePrefix = 'markorbit:site-v1-preview:';
+const siteStorageKey = (siteId: DemoSiteId) => `${storagePrefix}site:${siteId}`;
 
-function load(id: WorkspaceId): WorkspaceState {
-  try {
-    const value = localStorage.getItem(`${storagePrefix}${id}`);
-    if (!value) return seedWorkspace(id);
-    const parsed = JSON.parse(value) as WorkspaceState;
-    return parsed.draft.localized && parsed.published.localized ? parsed : seedWorkspace(id);
-  } catch {
-    return seedWorkspace(id);
-  }
+export type SiteSelector = WorkspaceId | DemoSiteId;
+
+function selectorSiteId(selector: SiteSelector): DemoSiteId {
+  return selector.startsWith('site_')
+    ? (selector as DemoSiteId)
+    : defaultSiteId(selector as WorkspaceId);
 }
 
-function initial(): Record<WorkspaceId, WorkspaceState> {
-  return { atlas: load('atlas'), foundry: load('foundry') };
+function validState(value: unknown, expectedSiteId: DemoSiteId): value is SiteState {
+  if (!value || typeof value !== 'object') return false;
+  const state = value as Partial<SiteState>;
+  return (
+    state.siteId === expectedSiteId &&
+    Boolean(state.draft?.localized) &&
+    Boolean(state.published?.localized)
+  );
+}
+
+function normalizeState(state: SiteState): SiteState {
+  return {
+    ...state,
+    sharedSources: state.sharedSources ?? seedSite(state.siteId).sharedSources,
+    leads: state.leads.map((lead) => ({
+      ...lead,
+      channel: lead.channel ?? state.terminal
+    }))
+  };
+}
+
+function load(siteId: DemoSiteId): SiteState {
+  try {
+    const direct = localStorage.getItem(siteStorageKey(siteId));
+    if (direct) {
+      const parsed = JSON.parse(direct) as unknown;
+      if (validState(parsed, siteId)) return normalizeState(parsed);
+    }
+
+    // Compatibility: migrate the former one-record-per-Workspace fixture into its default Web Site.
+    const workspaceId: WorkspaceId = siteId === 'site_foundry_demo' ? 'foundry' : 'atlas';
+    if (defaultSiteId(workspaceId) === siteId) {
+      const legacy = localStorage.getItem(`${storagePrefix}${workspaceId}`);
+      if (legacy) {
+        const parsed = JSON.parse(legacy) as Partial<SiteState>;
+        if (parsed.draft?.localized && parsed.published?.localized) {
+          const seed = seedSite(siteId);
+          return normalizeState({
+            ...seed,
+            ...parsed,
+            siteId,
+            siteName: seed.siteName,
+            terminal: 'WEB'
+          });
+        }
+      }
+    }
+  } catch {
+    // A malformed local fixture is replaced by the deterministic seed below.
+  }
+  return seedSite(siteId);
+}
+
+function initial(): Record<DemoSiteId, SiteState> {
+  return {
+    site_atlas_demo: load('site_atlas_demo'),
+    site_atlas_mini_demo: load('site_atlas_mini_demo'),
+    site_foundry_demo: load('site_foundry_demo')
+  };
 }
 
 export interface PreviewStore {
-  workspaces: Record<WorkspaceId, WorkspaceState>;
-  updateDraft(id: WorkspaceId, update: (draft: SiteConfig) => SiteConfig): void;
-  saveDraft(id: WorkspaceId): void;
-  publish(id: WorkspaceId, label?: string, prepare?: (draft: SiteConfig) => SiteConfig): number;
-  restore(id: WorkspaceId, version: number): void;
+  sites: Record<DemoSiteId, SiteState>;
+  /** Default Web Site aliases retained for legacy Preview consumers. */
+  workspaces: Record<WorkspaceId, SiteState>;
+  site(selector: SiteSelector): SiteState;
+  workspaceSites(id: WorkspaceId): SiteState[];
+  updateDraft(selector: SiteSelector, update: (draft: SiteConfig) => SiteConfig): void;
+  saveDraft(selector: SiteSelector): void;
+  publish(
+    selector: SiteSelector,
+    label?: string,
+    prepare?: (draft: SiteConfig) => SiteConfig
+  ): number;
+  restore(selector: SiteSelector, version: number): void;
   submitLead(
-    id: WorkspaceId,
-    lead: Omit<DemoLead, 'id' | 'workspaceId' | 'siteId' | 'createdAt' | 'status'>
+    selector: SiteSelector,
+    lead: Omit<DemoLead, 'id' | 'workspaceId' | 'siteId' | 'channel' | 'createdAt' | 'status'>
   ): DemoLead;
-  updateLead(id: WorkspaceId, leadId: string, status: DemoLead['status']): void;
-  reset(id?: WorkspaceId): void;
-  setRole(id: WorkspaceId, role: WorkspaceState['role']): void;
-  resetDemoAccess(id: WorkspaceId): void;
+  updateLead(selector: SiteSelector, leadId: string, status: DemoLead['status']): void;
+  reset(selector?: SiteSelector): void;
+  setRole(selector: SiteSelector, role: SiteState['role']): void;
+  resetDemoAccess(selector: SiteSelector): void;
 }
 
 const StoreContext = createContext<PreviewStore | undefined>(undefined);
 
 export function PreviewStoreProvider({ children }: { children: ReactNode }) {
-  const [workspaces, setWorkspaces] = useState(initial);
+  const [sites, setSites] = useState(initial);
 
   const requireOwner = useCallback(
-    (id: WorkspaceId) => {
-      if (workspaces[id].role !== 'OWNER') throw new Error('SITE_PREVIEW_FORBIDDEN');
+    (selector: SiteSelector) => {
+      if (sites[selectorSiteId(selector)].role !== 'OWNER')
+        throw new Error('SITE_PREVIEW_FORBIDDEN');
     },
-    [workspaces]
+    [sites]
   );
 
-  const commit = useCallback((next: Record<WorkspaceId, WorkspaceState>) => {
-    setWorkspaces(next);
-    for (const id of workspaceIds)
-      localStorage.setItem(`${storagePrefix}${id}`, JSON.stringify(next[id]));
+  const commit = useCallback((next: Record<DemoSiteId, SiteState>) => {
+    setSites(next);
+    for (const siteId of siteIds)
+      localStorage.setItem(siteStorageKey(siteId), JSON.stringify(next[siteId]));
+    for (const workspaceId of workspaceIds) {
+      const defaultId = defaultSiteId(workspaceId);
+      localStorage.setItem(`${storagePrefix}${workspaceId}`, JSON.stringify(next[defaultId]));
+    }
   }, []);
 
-  const value = useMemo<PreviewStore>(
-    () => ({
+  const value = useMemo<PreviewStore>(() => {
+    const workspaces = {
+      atlas: sites.site_atlas_demo,
+      foundry: sites.site_foundry_demo
+    };
+    return {
+      sites,
       workspaces,
-      updateDraft(id, update) {
-        requireOwner(id);
+      site: (selector) => sites[selectorSiteId(selector)],
+      workspaceSites: (id) =>
+        workspacePortfolios[id].siteIds
+          .map((siteId) => sites[siteId])
+          .filter((site) => site.role !== 'NONE'),
+      updateDraft(selector, update) {
+        requireOwner(selector);
+        const siteId = selectorSiteId(selector);
         commit({
-          ...workspaces,
-          [id]: { ...workspaces[id], draft: update(structuredClone(workspaces[id].draft)) }
+          ...sites,
+          [siteId]: { ...sites[siteId], draft: update(structuredClone(sites[siteId].draft)) }
         });
       },
-      saveDraft(id) {
-        requireOwner(id);
-        commit({ ...workspaces, [id]: { ...workspaces[id], savedAt: new Date().toISOString() } });
+      saveDraft(selector) {
+        requireOwner(selector);
+        const siteId = selectorSiteId(selector);
+        commit({ ...sites, [siteId]: { ...sites[siteId], savedAt: new Date().toISOString() } });
       },
-      publish(id, label = 'Demo publication', prepare) {
-        requireOwner(id);
-        const workspace = workspaces[id];
-        const version = workspace.versions.length + 1;
+      publish(selector, label = 'Demo publication', prepare) {
+        requireOwner(selector);
+        const siteId = selectorSiteId(selector);
+        const site = sites[siteId];
+        const version = site.versions.length + 1;
         const publishedAt = new Date().toISOString();
-        const config = prepare
-          ? prepare(structuredClone(workspace.draft))
-          : structuredClone(workspace.draft);
+        const config = prepare ? prepare(structuredClone(site.draft)) : structuredClone(site.draft);
         commit({
-          ...workspaces,
-          [id]: {
-            ...workspace,
+          ...sites,
+          [siteId]: {
+            ...site,
             lifecycle: 'ACTIVE',
             published: config,
             publishedAt,
             savedAt: publishedAt,
             versions: [
-              ...workspace.versions,
+              ...site.versions,
               { version, publishedAt, label, config: structuredClone(config) }
             ]
           }
         });
         return version;
       },
-      restore(id, version) {
-        requireOwner(id);
-        const workspace = workspaces[id];
-        const historical = workspace.versions.find((item) => item.version === version);
+      restore(selector, version) {
+        requireOwner(selector);
+        const siteId = selectorSiteId(selector);
+        const site = sites[siteId];
+        const historical = site.versions.find((item) => item.version === version);
         if (!historical) return;
         commit({
-          ...workspaces,
-          [id]: {
-            ...workspace,
+          ...sites,
+          [siteId]: {
+            ...site,
             draft: structuredClone(historical.config),
             savedAt: new Date().toISOString()
           }
         });
       },
-      submitLead(id, input) {
-        const workspace = workspaces[id];
-        const duplicate = workspace.leads.find(
+      submitLead(selector, input) {
+        const siteId = selectorSiteId(selector);
+        const site = sites[siteId];
+        const duplicate = site.leads.find(
           (lead) =>
             lead.email === input.email &&
             lead.message === input.message &&
@@ -123,43 +208,46 @@ export function PreviewStoreProvider({ children }: { children: ReactNode }) {
         if (duplicate) return duplicate;
         const lead: DemoLead = {
           ...input,
-          id: nextLeadId(workspace.leads.length),
-          workspaceId: id,
-          siteId: workspace.siteId,
+          id: nextLeadId(site.leads.length),
+          workspaceId: site.workspaceId,
+          siteId: site.siteId,
+          channel: site.terminal,
           createdAt: new Date().toISOString(),
           status: 'NEW'
         };
-        commit({ ...workspaces, [id]: { ...workspace, leads: [lead, ...workspace.leads] } });
+        commit({ ...sites, [siteId]: { ...site, leads: [lead, ...site.leads] } });
         return lead;
       },
-      updateLead(id, leadId, status) {
-        requireOwner(id);
-        const workspace = workspaces[id];
+      updateLead(selector, leadId, status) {
+        requireOwner(selector);
+        const siteId = selectorSiteId(selector);
+        const site = sites[siteId];
         commit({
-          ...workspaces,
-          [id]: {
-            ...workspace,
-            leads: workspace.leads.map((lead) => (lead.id === leadId ? { ...lead, status } : lead))
+          ...sites,
+          [siteId]: {
+            ...site,
+            leads: site.leads.map((lead) => (lead.id === leadId ? { ...lead, status } : lead))
           }
         });
       },
-      reset(id) {
-        if (id) requireOwner(id);
-        const next = { ...workspaces };
-        for (const target of id ? [id] : workspaceIds) next[target] = seedWorkspace(target);
+      reset(selector) {
+        if (selector) requireOwner(selector);
+        const targets = selector ? [selectorSiteId(selector)] : siteIds;
+        const next = { ...sites };
+        for (const siteId of targets) next[siteId] = seedSite(siteId);
         commit(next);
       },
-      setRole(id, role) {
-        requireOwner(id);
-        commit({ ...workspaces, [id]: { ...workspaces[id], role } });
+      setRole(selector, role) {
+        requireOwner(selector);
+        const siteId = selectorSiteId(selector);
+        commit({ ...sites, [siteId]: { ...sites[siteId], role } });
       },
-      resetDemoAccess(id) {
-        const next = { ...workspaces, [id]: seedWorkspace(id) };
-        commit(next);
+      resetDemoAccess(selector) {
+        const siteId = selectorSiteId(selector);
+        commit({ ...sites, [siteId]: seedSite(siteId) });
       }
-    }),
-    [commit, requireOwner, workspaces]
-  );
+    };
+  }, [commit, requireOwner, sites]);
 
   return <StoreContext.Provider value={value}>{children}</StoreContext.Provider>;
 }
@@ -170,8 +258,9 @@ export function usePreviewStore(): PreviewStore {
   return value;
 }
 
-export function hasUnpublishedChanges(workspace: WorkspaceState): boolean {
-  return JSON.stringify(workspace.draft) !== JSON.stringify(workspace.published);
+export function hasUnpublishedChanges(site: SiteState): boolean {
+  return JSON.stringify(site.draft) !== JSON.stringify(site.published);
 }
 
 export const demoStoragePrefix = storagePrefix;
+export { siteStorageKey };

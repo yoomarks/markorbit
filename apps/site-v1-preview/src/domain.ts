@@ -1,4 +1,6 @@
 export type WorkspaceId = 'atlas' | 'foundry';
+export type DemoSiteId = 'site_atlas_demo' | 'site_atlas_mini_demo' | 'site_foundry_demo';
+export type SiteTerminal = 'WEB' | 'WECHAT_MINIPROGRAM';
 export type TemplateId = 'counsel' | 'exchange';
 export type Locale = 'zh-CN' | 'en-US';
 export type TranslationStatus = 'DRAFT' | 'REVIEW_READY' | 'PUBLISHED';
@@ -112,6 +114,7 @@ export interface DemoLead {
   id: string;
   workspaceId: WorkspaceId;
   siteId: string;
+  channel: SiteTerminal;
   createdAt: string;
   name: string;
   email: string;
@@ -125,11 +128,13 @@ export interface DemoLead {
   status: 'NEW' | 'QUALIFIED' | 'FOLLOW_UP';
 }
 
-export interface WorkspaceState {
+export interface SiteState {
   workspaceId: WorkspaceId;
   workspaceName: string;
-  siteId: string;
-  role: 'OWNER' | 'VIEWER';
+  siteId: DemoSiteId;
+  siteName: string;
+  terminal: SiteTerminal;
+  role: 'OWNER' | 'VIEWER' | 'NONE';
   lifecycle: 'DRAFT' | 'ACTIVE';
   draft: SiteConfig;
   published: SiteConfig;
@@ -138,6 +143,24 @@ export interface WorkspaceState {
   savedAt: string;
   publishedAt: string;
   analyticsPartial: boolean;
+  sharedSources: SiteSharedSourceGrant[];
+}
+
+/** @deprecated Compatibility alias for older preview tests and persisted fixtures. */
+export type WorkspaceState = SiteState;
+
+export interface DemoWorkspacePortfolio {
+  workspaceId: WorkspaceId;
+  workspaceName: string;
+  siteIds: DemoSiteId[];
+  defaultSiteId: DemoSiteId;
+}
+
+export interface SiteSharedSourceGrant {
+  kind: 'BRAND' | 'CONTENT' | 'SERVICE';
+  sourceRef: string;
+  access: 'READ';
+  updateMode: 'EXPLICIT_IMPORT';
 }
 
 const services: ServiceRecord[] = [
@@ -516,13 +539,37 @@ function config(template: TemplateId): SiteConfig {
   };
 }
 
-export function seedWorkspace(id: WorkspaceId): WorkspaceState {
-  const initial = config(id === 'foundry' ? 'exchange' : 'counsel');
-  const date = id === 'foundry' ? '2026-09-24T09:10:00.000Z' : '2026-09-25T08:30:00.000Z';
+export function seedSite(siteId: DemoSiteId): SiteState {
+  const foundry = siteId === 'site_foundry_demo';
+  const miniProgram = siteId === 'site_atlas_mini_demo';
+  const workspaceId: WorkspaceId = foundry ? 'foundry' : 'atlas';
+  const initial = config(foundry ? 'exchange' : 'counsel');
+  if (miniProgram) {
+    initial.brandName = 'Atlas 微信服务';
+    initial.domain = '微信小程序 · 演示 AppID 未配置';
+    initial.modules.assets = false;
+    initial.localized['zh-CN'].brandName = 'Atlas 微信服务';
+    initial.localized['zh-CN'].tagline = '随时查看服务、进度与消息。';
+    initial.localized['zh-CN'].blocks.hero = {
+      label: '首页欢迎区',
+      title: '商标服务，随时办理。',
+      body: '在一个入口查看服务说明、提交咨询，并进入获授权的客户进度。'
+    };
+    initial.localized['en-US'].brandName = 'Atlas WeChat Service';
+    initial.localized['en-US'].tagline = 'Services, progress, and messages in one place.';
+    initial.localized['en-US'].blocks.hero = {
+      label: 'Home welcome',
+      title: 'Trademark support, within reach.',
+      body: 'Explore services, send an inquiry, and enter authorized customer progress.'
+    };
+  }
+  const date = foundry ? '2026-09-24T09:10:00.000Z' : '2026-09-25T08:30:00.000Z';
   return {
-    workspaceId: id,
-    workspaceName: id === 'foundry' ? 'Foundry Exchange Workspace' : 'Atlas Counsel Workspace',
-    siteId: id === 'foundry' ? 'site_foundry_demo' : 'site_atlas_demo',
+    workspaceId,
+    workspaceName: foundry ? 'Foundry Exchange Workspace' : 'Atlas Counsel Workspace',
+    siteId,
+    siteName: foundry ? 'Foundry 品牌展示站' : miniProgram ? 'Atlas 微信小程序' : 'Atlas 官方网站',
+    terminal: miniProgram ? 'WECHAT_MINIPROGRAM' : 'WEB',
     role: 'OWNER',
     lifecycle: 'ACTIVE',
     draft: structuredClone(initial),
@@ -538,11 +585,59 @@ export function seedWorkspace(id: WorkspaceId): WorkspaceState {
     leads: [],
     savedAt: date,
     publishedAt: date,
-    analyticsPartial: id === 'foundry'
+    analyticsPartial: foundry,
+    sharedSources: [
+      {
+        kind: 'BRAND',
+        sourceRef: `workspace:${workspaceId}:brand-profile:v3`,
+        access: 'READ',
+        updateMode: 'EXPLICIT_IMPORT'
+      },
+      {
+        kind: 'CONTENT',
+        sourceRef: `lite:${workspaceId}:reviewed-packages`,
+        access: 'READ',
+        updateMode: 'EXPLICIT_IMPORT'
+      },
+      {
+        kind: 'SERVICE',
+        sourceRef: 'markreg:published-products',
+        access: 'READ',
+        updateMode: 'EXPLICIT_IMPORT'
+      }
+    ]
   };
 }
 
+export function seedWorkspace(id: WorkspaceId): SiteState {
+  return seedSite(id === 'foundry' ? 'site_foundry_demo' : 'site_atlas_demo');
+}
+
 export const workspaceIds: WorkspaceId[] = ['atlas', 'foundry'];
+export const siteIds: DemoSiteId[] = [
+  'site_atlas_demo',
+  'site_atlas_mini_demo',
+  'site_foundry_demo'
+];
+
+export const workspacePortfolios: Record<WorkspaceId, DemoWorkspacePortfolio> = {
+  atlas: {
+    workspaceId: 'atlas',
+    workspaceName: 'Atlas Counsel Workspace',
+    siteIds: ['site_atlas_demo', 'site_atlas_mini_demo'],
+    defaultSiteId: 'site_atlas_demo'
+  },
+  foundry: {
+    workspaceId: 'foundry',
+    workspaceName: 'Foundry Exchange Workspace',
+    siteIds: ['site_foundry_demo'],
+    defaultSiteId: 'site_foundry_demo'
+  }
+};
+
+export function defaultSiteId(id: WorkspaceId): DemoSiteId {
+  return workspacePortfolios[id].defaultSiteId;
+}
 
 export function nextLeadId(existing: number): string {
   return `DEMO-LEAD-${String(existing + 1).padStart(4, '0')}`;
