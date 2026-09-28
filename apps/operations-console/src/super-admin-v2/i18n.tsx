@@ -24,6 +24,90 @@ export type SuperAdminMessageKey = keyof typeof messages;
 
 const ENGLISH_PHRASES: readonly (readonly [string, string])[] = [
   [
+    '此档案仅展示演示管理元数据。进入 Workspace 不授予客户文件、私有知识、案件或机构内部操作权限。',
+    'This dossier shows demo administration metadata only. Entering a Workspace does not grant access to customer files, private knowledge, matters, or internal operations.'
+  ],
+  [
+    '进入 Site 专属后台仍需对应 Site 管理权限；平台元数据读取不自动授予该权限。',
+    'The Site console still requires the matching Site administration permission; platform metadata access does not grant it.'
+  ],
+  [
+    '发布状态、权益、Workspace 启用和运行健康仍是不同事实。',
+    'Release status, entitlement, Workspace enablement, and runtime health remain separate facts.'
+  ],
+  [
+    '平台目录权限不授予客户文件、私有知识、案件或机构内部操作权限；访问这些对象仍需对应 Workspace 与产品 Owner 的独立授权。',
+    'Platform directory access does not grant customer files, private knowledge, matters, or internal operations; those objects still require independent Workspace and product-owner authorization.'
+  ],
+  [
+    '只读取 Core 持有的 Workspace 身份、生命周期、版本和成员计数；所选 Workspace 不是额外权限。',
+    'Reads only Core-owned Workspace identity, lifecycle, version, and membership counts; selecting a Workspace grants no additional authority.'
+  ],
+  [
+    'Core 当前投影没有独立代理机构绑定关系。',
+    'The current Core projection has no agency binding relation.'
+  ],
+  ['没有已批准的跨产品安装组合投影。', 'No approved cross-product installation projection exists.'],
+  [
+    '不能由历史订单或支付推断当前套餐。',
+    'The current plan cannot be inferred from historical orders or payments.'
+  ],
+  [
+    '当前 Core 投影不包含 Site 清单或 siteId。',
+    'The current Core projection does not include a Site list or siteId.'
+  ],
+  [
+    'Core 成功返回 0 条匹配记录；这是有效空状态，不是读取失败。',
+    'Core returned zero matching records successfully; this is a valid empty state, not a read failure.'
+  ],
+  [
+    'Demo relationship · 不是 Workspace Owner 权限',
+    'Demo relationship · Not Workspace Owner authority'
+  ],
+  ['平台管理权限边界', 'Platform administration boundary'],
+  ['客户私有数据边界', 'Customer private-data boundary'],
+  ['Workspace 真实目录', 'Real Workspace Directory'],
+  ['真实来源', 'Authoritative source'],
+  ['Workspace 名称或 ID', 'Workspace name or ID'],
+  ['输入名称或 Workspace ID', 'Enter a name or Workspace ID'],
+  ['生命周期', 'Lifecycle'],
+  ['查询真实目录', 'Search owner directory'],
+  ['清除筛选', 'Clear filters'],
+  ['没有匹配的 Workspace', 'No matching Workspaces'],
+  ['Workspace 列表', 'Workspace list'],
+  ['条匹配', 'matches'],
+  ['位活跃成员', 'active members'],
+  ['Core 身份与生命周期', 'Core identity & lifecycle'],
+  ['成员关系', 'Memberships'],
+  ['Core 更新时间', 'Core updated at'],
+  ['尚未接入的 Workspace 事实', 'Unconnected Workspace facts'],
+  ['代理机构身份', 'Agency identity'],
+  ['机构资料', 'Organization profile'],
+  ['商业权益', 'Commercial entitlements'],
+  ['产品安装', 'Product installations'],
+  ['Site 实例', 'Site instances'],
+  ['个 Site', 'Sites'],
+  ['选择 Site', 'Select Site'],
+  ['当前 Site', 'Current Site'],
+  ['类型', 'Type'],
+  ['状态', 'Status'],
+  ['域名', 'Domain'],
+  ['暂未接入', 'Not connected'],
+  ['已绑定', 'Bound'],
+  ['未绑定', 'Unbound'],
+  ['品牌方直管 Workspace', 'Brand-managed Workspace'],
+  ['付款状态待 owner 确认', 'Payment status awaiting owner confirmation'],
+  ['已启用', 'Enabled'],
+  ['个实例', 'instances'],
+  ['已发布', 'Published'],
+  ['域名异常', 'Domain issue'],
+  ['Acme IP 官网', 'Acme IP Website'],
+  ['Acme 中国站', 'Acme China'],
+  ['全球商标活动页', 'Global Trademark Campaign'],
+  ['Global Brand 中国', 'Global Brand China'],
+  ['刷新只读目录', 'Refresh read-only directory'],
+  ['查看 Workspace', 'View Workspaces'],
+  [
     'Data Engine 的全球覆盖、流水线、质量与受控恢复',
     'Global Data Engine coverage, pipelines, quality, and controlled recovery'
   ],

@@ -52,6 +52,22 @@ interface OrgPage {
   objects: readonly OrgObject[];
 }
 
+interface WorkspaceSiteFixture {
+  siteId: string;
+  name: string;
+  type: string;
+  status: string;
+  domain: string;
+}
+
+interface WorkspaceProfileFixture {
+  agencyIdentity: string;
+  subscription: string;
+  entitlements: readonly string[];
+  products: readonly string[];
+  sites: readonly WorkspaceSiteFixture[];
+}
+
 interface OrganizationPagesProps {
   moduleId: BatchBModule;
   pageId: string;
@@ -69,6 +85,89 @@ const o = (
   fields: readonly (readonly [string, string])[],
   related: readonly string[]
 ): OrgObject => ({ id, name, kind, status, meta, fields, related });
+
+const workspaceProfiles: Record<string, WorkspaceProfileFixture> = {
+  'WSP-ACME': {
+    agencyIdentity: 'AGY-ACME-001 · Acme IP Pte. Ltd. · 已绑定',
+    subscription: 'SUB-ACME · Scale annual · Demo owner projection',
+    entitlements: ['Lite Professional', 'MarkReg Global', 'Site × 3'],
+    products: ['Lite · 已启用', 'MarkReg · 已启用', 'Site · 3 个实例'],
+    sites: [
+      {
+        siteId: 'SITE-ACME-COM',
+        name: 'Acme IP 官网',
+        type: 'Brand Site',
+        status: '已发布',
+        domain: 'acmeip.com'
+      },
+      {
+        siteId: 'SITE-ACME-CN',
+        name: 'Acme 中国站',
+        type: 'Regional Site',
+        status: '已发布',
+        domain: 'cn.acmeip.com'
+      },
+      {
+        siteId: 'SITE-ACME-CAM',
+        name: '全球商标活动页',
+        type: 'Campaign Site',
+        status: '草稿',
+        domain: '未绑定'
+      }
+    ]
+  },
+  'WSP-SUNRISE': {
+    agencyIdentity: '未绑定 · 品牌方直管 Workspace',
+    subscription: 'SUB-SUN · Pro monthly · Demo owner projection',
+    entitlements: ['Lite Team', 'MarkReg Core', 'Site × 1'],
+    products: ['Lite · 已启用', 'MarkReg · 已启用', 'Site · 1 个实例'],
+    sites: [
+      {
+        siteId: 'SITE-SUN-COM',
+        name: 'Sunrise Corporate',
+        type: 'Corporate Site',
+        status: '域名异常',
+        domain: 'sunrisetrading.com'
+      }
+    ]
+  },
+  'WSP-GLOBAL': {
+    agencyIdentity: 'AGY-GB-014 · Global Brand Operations · 已绑定',
+    subscription: 'SUB-GB · Scale annual · 付款状态待 owner 确认',
+    entitlements: ['Lite Professional', 'MarkReg Global', 'Site × 4'],
+    products: ['Lite · 已启用', 'MarkReg · 已启用', 'Site · 部分可用'],
+    sites: [
+      {
+        siteId: 'SITE-GB-COM',
+        name: 'Global Brand',
+        type: 'Brand Site',
+        status: '已发布',
+        domain: 'globalbrand.com'
+      },
+      {
+        siteId: 'SITE-GB-CN',
+        name: 'Global Brand 中国',
+        type: 'Regional Site',
+        status: '草稿',
+        domain: 'cn.globalbrand.com'
+      },
+      {
+        siteId: 'SITE-GB-EU',
+        name: 'Global Brand Europe',
+        type: 'Regional Site',
+        status: '已发布',
+        domain: 'eu.globalbrand.com'
+      },
+      {
+        siteId: 'SITE-GB-CAM',
+        name: 'Madrid 2026',
+        type: 'Campaign Site',
+        status: '暂停',
+        domain: 'madrid.globalbrand.com'
+      }
+    ]
+  }
+};
 
 const pages: Record<BatchBModule, Record<string, OrgPage>> = {
   workspaces: {
@@ -1309,7 +1408,9 @@ export function OrganizationPages({
             </button>
           ))}
         </article>
-        {selected ? (
+        {selected && page.variant === 'org-directory' ? (
+          <WorkspaceDossier workspace={selected} />
+        ) : selected ? (
           <article
             className="sa2-depth-card sa2-object-detail"
             data-testid={`${moduleId}-${pageId}-detail`}
@@ -1378,6 +1479,131 @@ export function OrganizationPages({
         onSelect={setSelectedId}
       />
     </section>
+  );
+}
+
+function WorkspaceDossier({ workspace }: { workspace: OrgObject }) {
+  const profile = workspaceProfiles[workspace.id];
+  const [selectedSiteId, setSelectedSiteId] = useState(profile?.sites[0]?.siteId ?? '');
+  useEffect(() => {
+    setSelectedSiteId(profile?.sites[0]?.siteId ?? '');
+  }, [profile, workspace.id]);
+  const selectedSite = profile?.sites.find((site) => site.siteId === selectedSiteId);
+  if (!profile) return null;
+  return (
+    <article
+      className="sa2-depth-card sa2-workspace-dossier"
+      data-testid="workspaces-directory-detail"
+    >
+      <header>
+        <div>
+          <span>SELECTED WORKSPACE · DEMO</span>
+          <h2>{workspace.name}</h2>
+          <code>{workspace.id}</code>
+        </div>
+        <b>{workspace.status}</b>
+      </header>
+      <aside className="sa2-access-boundary" role="note">
+        <strong>平台管理权限边界</strong>
+        <p>
+          此档案仅展示演示管理元数据。进入 Workspace
+          不授予客户文件、私有知识、案件或机构内部操作权限。
+        </p>
+      </aside>
+      <div className="sa2-workspace-dossier-grid">
+        <section>
+          <span>机构资料</span>
+          <dl>
+            <div>
+              <dt>Workspace ID</dt>
+              <dd>{workspace.id}</dd>
+            </div>
+            {workspace.fields.slice(0, 2).map(([label, value]) => (
+              <div key={label}>
+                <dt>{label}</dt>
+                <dd>{value}</dd>
+              </div>
+            ))}
+          </dl>
+        </section>
+        <section>
+          <span>代理机构身份</span>
+          <strong>{profile.agencyIdentity}</strong>
+          <small>Demo relationship · 不是 Workspace Owner 权限</small>
+        </section>
+        <section>
+          <span>商业权益</span>
+          <strong>{profile.subscription}</strong>
+          <ul>
+            {profile.entitlements.map((entitlement) => (
+              <li key={entitlement}>{entitlement}</li>
+            ))}
+          </ul>
+        </section>
+        <section>
+          <span>产品安装</span>
+          <ul>
+            {profile.products.map((product) => (
+              <li key={product}>{product}</li>
+            ))}
+          </ul>
+          <small>发布状态、权益、Workspace 启用和运行健康仍是不同事实。</small>
+        </section>
+      </div>
+      <section className="sa2-workspace-sites" aria-label="Workspace Site 实例">
+        <header>
+          <div>
+            <span>SITE ESTATE</span>
+            <h3>Site 实例</h3>
+          </div>
+          <b>{profile.sites.length} 个 Site</b>
+        </header>
+        <div>
+          <nav aria-label="选择 Site">
+            {profile.sites.map((site) => (
+              <button
+                key={site.siteId}
+                className={site.siteId === selectedSite?.siteId ? 'is-active' : ''}
+                onClick={() => setSelectedSiteId(site.siteId)}
+              >
+                <span>
+                  <strong>{site.name}</strong>
+                  <small>{site.siteId}</small>
+                </span>
+                <b>{site.status}</b>
+              </button>
+            ))}
+          </nav>
+          {selectedSite && (
+            <article data-testid="workspace-site-detail">
+              <span>当前 Site</span>
+              <h4>{selectedSite.name}</h4>
+              <dl>
+                <div>
+                  <dt>siteId</dt>
+                  <dd>
+                    <code>{selectedSite.siteId}</code>
+                  </dd>
+                </div>
+                <div>
+                  <dt>类型</dt>
+                  <dd>{selectedSite.type}</dd>
+                </div>
+                <div>
+                  <dt>状态</dt>
+                  <dd>{selectedSite.status}</dd>
+                </div>
+                <div>
+                  <dt>域名</dt>
+                  <dd>{selectedSite.domain}</dd>
+                </div>
+              </dl>
+              <p>进入 Site 专属后台仍需对应 Site 管理权限；平台元数据读取不自动授予该权限。</p>
+            </article>
+          )}
+        </div>
+      </section>
+    </article>
   );
 }
 

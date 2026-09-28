@@ -48,6 +48,20 @@ export const SuperAdminV2WorkspaceDirectory = () => (
   <SuperAdminV2 initialPath="/super-admin-v2/workspaces/directory" useBrowserHistory={false} />
 );
 
+export const SuperAdminV2WorkspaceDossierEnglish = () =>
+  bilingualFixture('en-US', '/super-admin-v2/workspaces/directory');
+
+export const SuperAdminV2WorkspaceDossierMobile = () =>
+  bilingualFixture('zh-CN', '/super-admin-v2/workspaces/directory');
+SuperAdminV2WorkspaceDossierMobile.parameters = { viewport: { defaultViewport: 'mobile1' } };
+
+export const SuperAdminV2RealWorkspaceUnavailable = () => (
+  <SuperAdminV2
+    initialPath="/super-admin-v2/workspaces/directory?mode=real"
+    useBrowserHistory={false}
+  />
+);
+
 export const SuperAdminV2IdentityRelationships = () => (
   <SuperAdminV2 initialPath="/super-admin-v2/users/relationships" useBrowserHistory={false} />
 );

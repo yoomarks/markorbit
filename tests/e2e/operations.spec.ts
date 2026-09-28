@@ -190,6 +190,27 @@ const workspaceOwnerPortfolio = {
     }
   ]
 };
+const workspaceOwnerPortfolioV2 = {
+  ...workspaceOwnerPortfolio,
+  observedAt: '2026-09-28T05:00:00.000Z',
+  pageSize: 50,
+  total: 2,
+  summary: { total: 2, byStatus: { ACTIVE: 1, ARCHIVED: 1 } },
+  items: [
+    workspaceOwnerPortfolio.items[0],
+    {
+      workspaceId: 'workspace-archive-002',
+      name: 'Archived Brand Workspace',
+      slug: 'archived-brand-workspace',
+      status: 'ARCHIVED',
+      version: 7,
+      createdAt: '2025-01-12T08:00:00.000Z',
+      updatedAt: '2026-09-20T04:45:00.000Z',
+      membershipCount: 2,
+      activeMembershipCount: 0
+    }
+  ]
+};
 test('MarkOrbit Super Admin exposes truthful governed operator surfaces @visual', async ({
   page
 }, testInfo) => {
@@ -524,9 +545,10 @@ test('Super Admin V2 batch B keeps Workspace, identity and product truths separa
     .getByRole('button', { name: /Global Brand LLC/ })
     .first()
     .click();
-  await expect(page.getByTestId('workspaces-directory-detail')).toContainText(
-    'Subscription SUB-GB'
-  );
+  await expect(page.getByTestId('workspaces-directory-detail')).toContainText('SUB-GB');
+  await expect(page.getByTestId('workspaces-directory-detail')).toContainText('4 个 Site');
+  await page.getByRole('button', { name: /Global Brand Europe/ }).click();
+  await expect(page.getByTestId('workspace-site-detail')).toContainText('SITE-GB-EU');
 
   await page.goto(`${urls.operations}/super-admin-v2/users/relationships`);
   await expect(page.getByTestId('users-page-relationships')).toBeVisible();
@@ -950,7 +972,110 @@ test('V2.2.3 representative workspaces remain primary at common laptop size', as
   }
 });
 
-test('V2.3 Real platform overview reads both governed owners without Demo leakage', async ({
+test('Productized Workspace dossier keeps organization, entitlement and exact Site context together', async ({
+  page
+}, testInfo) => {
+  const assertHealthy = watchPage(page);
+  await page.goto(`${urls.operations}/super-admin-v2/workspaces/directory`);
+
+  const dossier = page.getByTestId('workspaces-directory-detail');
+  await expect(dossier).toContainText('平台管理权限边界');
+  await expect(dossier).toContainText('不授予客户文件、私有知识、案件或机构内部操作权限');
+  await expect(dossier.getByRole('button')).toHaveCount(3);
+  await dossier.getByRole('button', { name: /Acme 中国站/ }).click();
+  await expect(page.getByTestId('workspace-site-detail')).toContainText('SITE-ACME-CN');
+  await expect(page.getByTestId('workspace-site-detail')).toContainText('Regional Site');
+
+  await page
+    .getByRole('button', { name: /Sunrise Trading/ })
+    .first()
+    .click();
+  await expect(dossier).toContainText('1 个 Site');
+  await expect(page.getByTestId('workspace-site-detail')).toContainText('SITE-SUN-COM');
+  await expect(page.getByTestId('workspace-site-detail')).toContainText('域名异常');
+  await expectNoHorizontalOverflow(page);
+  await capture(
+    page,
+    `super-admin-productized-workspace-${testInfo.project.name.startsWith('mobile') ? 'mobile' : 'desktop'}`
+  );
+  assertHealthy();
+});
+
+test('Real Workspace directory preserves Core owner truth and exposes integration gaps', async ({
+  page
+}, testInfo) => {
+  const observedQueries: URL[] = [];
+  await page.route('**/api/internal/super-admin/workspaces?**', async (route) => {
+    const requestUrl = new URL(route.request().url());
+    observedQueries.push(requestUrl);
+    const search = requestUrl.searchParams.get('search')?.toLowerCase();
+    const status = requestUrl.searchParams.get('status');
+    const items = workspaceOwnerPortfolioV2.items.filter(
+      (item) =>
+        (!search ||
+          item.name.toLowerCase().includes(search) ||
+          item.workspaceId.toLowerCase().includes(search)) &&
+        (!status || item.status === status)
+    );
+    await route.fulfill({
+      status: 200,
+      json: {
+        ...workspaceOwnerPortfolioV2,
+        total: items.length,
+        items
+      }
+    });
+  });
+
+  await page.goto(`${urls.operations}/super-admin-v2/workspaces/directory?mode=real`);
+  await expect(page.getByRole('heading', { level: 1, name: 'Workspace 真实目录' })).toBeVisible();
+  await expect(page.getByText('workspace-admin:read', { exact: true })).toBeVisible();
+  await expect(page.getByTestId('real-workspace-detail')).toContainText('workspace-global-001');
+  await expect(page.getByTestId('real-workspace-detail')).toContainText('客户私有数据边界');
+  await expect(page.getByTestId('real-workspace-detail').getByText('暂未接入')).toHaveCount(4);
+  await expect(page.getByText('SUB-ACME')).toHaveCount(0);
+
+  await page.getByLabel('Workspace 名称或 ID').fill('archive');
+  await page.getByRole('button', { name: '查询真实目录' }).click();
+  await expect(page.getByTestId('real-workspace-detail')).toContainText('workspace-archive-002');
+  await expect.poll(() => observedQueries.at(-1)?.searchParams.get('search')).toBe('archive');
+  await expectNoHorizontalOverflow(page);
+  await capture(
+    page,
+    `super-admin-real-workspace-${testInfo.project.name.startsWith('mobile') ? 'mobile' : 'desktop'}`
+  );
+});
+
+test('Real Workspace directory distinguishes permission failure from a valid empty result', async ({
+  page
+}) => {
+  await page.route('**/api/internal/super-admin/workspaces?**', (route) =>
+    route.fulfill({ status: 403, json: { code: 'WORKSPACE_ADMIN_READ_FORBIDDEN' } })
+  );
+  await page.goto(`${urls.operations}/super-admin-v2/workspaces/directory?mode=real&case=403`);
+  await expect(page.getByTestId('real-workspace-directory')).toContainText('无读取权限');
+  await expect(page.getByTestId('real-workspace-directory')).not.toContainText(
+    '没有匹配的 Workspace'
+  );
+
+  await page.unroute('**/api/internal/super-admin/workspaces?**');
+  await page.route('**/api/internal/super-admin/workspaces?**', (route) =>
+    route.fulfill({
+      status: 200,
+      json: {
+        ...workspaceOwnerPortfolioV2,
+        total: 0,
+        summary: { total: 0, byStatus: { ACTIVE: 0, ARCHIVED: 0 } },
+        items: []
+      }
+    })
+  );
+  await page.goto(`${urls.operations}/super-admin-v2/workspaces/directory?mode=real&case=empty`);
+  await expect(page.getByTestId('real-workspace-directory')).toContainText('没有匹配的 Workspace');
+  await expect(page.getByTestId('real-workspace-directory')).not.toContainText('Owner 暂不可用');
+});
+
+test('V2.3 Real platform overview reads three governed owners without Demo leakage', async ({
   page
 }, testInfo) => {
   await page.addInitScript(() => sessionStorage.setItem('markorbit-workspace-id', 'workspace-916'));
@@ -960,6 +1085,9 @@ test('V2.3 Real platform overview reads both governed owners without Demo leakag
   await page.route('**/api/internal/control-plane/knowledge/evidence-supply-health', (route) =>
     route.fulfill({ status: 200, json: knowledgeOwnerHealth })
   );
+  await page.route('**/api/internal/super-admin/workspaces?**', (route) =>
+    route.fulfill({ status: 200, json: workspaceOwnerPortfolioV2 })
+  );
 
   await page.goto(`${urls.operations}/super-admin-v2/overview/platform?mode=real`);
 
@@ -967,6 +1095,8 @@ test('V2.3 Real platform overview reads both governed owners without Demo leakag
   await expect(page.locator('.sa2-real-banner > span')).toHaveText('真实只读');
   await expect(page.locator('.sa2-review-tools')).toHaveCount(0);
   await expect(page.getByText('DEMO REVIEW', { exact: true })).toHaveCount(0);
+  await expect(page.getByTestId('real-owner-workspaces')).toContainText('CORE');
+  await expect(page.getByTestId('real-owner-workspaces')).toContainText('2 Workspaces');
   await expect(page.getByTestId('real-owner-data')).toContainText('MARKORBIT_DATA_ENGINE');
   await expect(page.getByTestId('real-owner-data')).toContainText('2026');
   await expect(page.getByTestId('real-owner-knowledge')).toContainText('KNOWLEDGE');
@@ -1005,10 +1135,14 @@ test('V2.3 keeps one available owner usable when its sibling is unavailable', as
   await page.route('**/api/internal/control-plane/knowledge/evidence-supply-health', (route) =>
     route.fulfill({ status: 200, json: knowledgeOwnerHealth })
   );
+  await page.route('**/api/internal/super-admin/workspaces?**', (route) =>
+    route.fulfill({ status: 200, json: workspaceOwnerPortfolioV2 })
+  );
 
   await page.goto(`${urls.operations}/super-admin-v2/overview/platform?mode=real`);
   await expect(page.getByTestId('real-owner-data')).toContainText('Owner 暂不可用');
   await expect(page.getByTestId('real-owner-data')).not.toContainText('0 个任务');
+  await expect(page.getByTestId('real-owner-workspaces')).toContainText('2 Workspaces');
   await expect(page.getByTestId('real-owner-knowledge')).toContainText('workspace-916');
   await expect(page.getByTestId('real-owner-knowledge')).toContainText('部分可用');
 });
@@ -1260,7 +1394,7 @@ for (const [moduleId, route, objectName, detailId, objectId] of v221ModuleTasks)
     await page.getByRole('button', { name: objectName }).first().click();
     await expect(page.getByTestId(detailId)).toContainText(objectId);
     await expect(
-      page.getByRole('button', { name: /预演|查看|批准|审核|处理/ }).last()
+      page.getByRole('button', { name: /预演|查看|批准|审核|处理|Sunrise Corporate/ }).last()
     ).toBeVisible();
   });
 }
@@ -1529,6 +1663,7 @@ test('Super Admin V2 bilingual representatives remain usable at desktop and 390p
   const viewport = testInfo.project.name.startsWith('mobile') ? 'mobile' : 'desktop';
   const representatives = [
     ['/super-admin-v2/overview/platform', 'overview'],
+    ['/super-admin-v2/workspaces/directory', 'workspace-directory'],
     ['/super-admin-v2/data/jobs', 'data-jobs'],
     ['/super-admin-v2/knowledge/evidence', 'knowledge-evidence']
   ] as const;
@@ -1550,10 +1685,10 @@ test('Super Admin V2 bilingual representatives remain usable at desktop and 390p
 
   if (!testInfo.project.name.startsWith('mobile')) {
     await page.setViewportSize({ width: 1366, height: 768 });
-    await page.goto(`${urls.operations}/super-admin-v2/data/jobs`);
+    await page.goto(`${urls.operations}/super-admin-v2/workspaces/directory`);
     await page.getByRole('button', { name: 'English', exact: true }).click();
     await expectNoHorizontalOverflow(page);
-    await capture(page, 'super-admin-v2-i18n-data-jobs-en-laptop');
+    await capture(page, 'super-admin-productized-workspace-en-laptop');
   }
 });
 
