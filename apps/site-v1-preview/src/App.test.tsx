@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { App } from './App.js';
@@ -69,7 +69,7 @@ describe('Site V1 interactive preview', () => {
     });
     localStorage.setItem('markorbit:site-v1-preview:atlas', JSON.stringify(atlas));
     render(<App initialPath="/admin/foundry/leads" />);
-    expect(screen.getByRole('heading', { name: 'No demo leads yet' })).toBeVisible();
+    expect(screen.getByRole('heading', { name: 'No inquiries yet' })).toBeVisible();
   });
 
   it('shows field-level validation and retains user input', async () => {
@@ -190,12 +190,12 @@ describe('Site V1 interactive preview', () => {
     localStorage.removeItem(adminLocaleStorageKey);
     const user = userEvent.setup();
     render(<App initialPath="/admin/atlas/editor" />);
-    expect(screen.getByRole('heading', { name: '可视化编辑' })).toBeVisible();
+    expect(screen.getByRole('heading', { name: '装修' })).toBeVisible();
     const heading = screen.getByLabelText('标题');
     await user.clear(heading);
     await user.type(heading, '保留中的中文草稿');
     await user.click(screen.getByRole('button', { name: 'English' }));
-    expect(screen.getByRole('heading', { name: 'Visual editor' })).toBeVisible();
+    expect(screen.getByRole('heading', { name: 'Design' })).toBeVisible();
     expect(screen.getByLabelText('Heading')).toHaveValue('保留中的中文草稿');
     expect(window.location.pathname).toBe('/');
     expect(localStorage.getItem(adminLocaleStorageKey)).toBe('en-US');
@@ -239,5 +239,49 @@ describe('Site V1 interactive preview', () => {
     await user.click(screen.getAllByRole('link', { name: 'Request a governed review →' })[0]!);
     expect(screen.getByText('asset-vera-north')).toBeVisible();
     expect(screen.getByLabelText('Service')).toHaveValue('svc-asset-review');
+  });
+
+  it('uses task-led Admin navigation while secondary pages keep stable routes', () => {
+    localStorage.removeItem(adminLocaleStorageKey);
+    const { unmount } = render(<App initialPath="/admin/atlas/overview" />);
+    const navigation = screen.getByRole('navigation', { name: '站点后台导航' });
+    for (const label of ['概况', '页面', '装修', '文章', '服务', '咨询', '数据', '设置']) {
+      expect(within(navigation).getByRole('link', { name: label })).toBeVisible();
+    }
+    expect(within(navigation).queryByRole('link', { name: '客户进度' })).not.toBeInTheDocument();
+    expect(within(navigation).queryByRole('link', { name: '域名与搜索' })).not.toBeInTheDocument();
+    unmount();
+
+    render(<App initialPath="/admin/atlas/seo" />);
+    expect(screen.getByRole('heading', { name: '域名与搜索' })).toBeVisible();
+  });
+
+  it('builds plain-language Front navigation from published Workspace modules', () => {
+    const { unmount } = render(<App initialPath="/site/atlas/zh-CN/" />);
+    const atlasNavigation = screen.getByRole('navigation', { name: '网站导航' });
+    for (const label of ['服务', '文章', '联系我们', '我的']) {
+      expect(within(atlasNavigation).getByRole('link', { name: label })).toBeVisible();
+    }
+    expect(
+      within(atlasNavigation).queryByRole('link', { name: '商标展示' })
+    ).not.toBeInTheDocument();
+    unmount();
+
+    const englishView = render(<App initialPath="/site/atlas/en-US/" />);
+    const englishNavigation = screen.getByRole('navigation', { name: 'Website navigation' });
+    for (const label of ['Services', 'Articles', 'Contact us', 'My account']) {
+      expect(within(englishNavigation).getByRole('link', { name: label })).toBeVisible();
+    }
+    englishView.unmount();
+
+    const foundry = seedWorkspace('foundry');
+    foundry.published.modules.insights = false;
+    foundry.published.modules.portal = false;
+    localStorage.setItem('markorbit:site-v1-preview:foundry', JSON.stringify(foundry));
+    render(<App initialPath="/site/foundry/zh-CN/" />);
+    const foundryNavigation = screen.getByRole('navigation', { name: '网站导航' });
+    expect(within(foundryNavigation).getByRole('link', { name: '商标展示' })).toBeVisible();
+    expect(within(foundryNavigation).queryByRole('link', { name: '文章' })).not.toBeInTheDocument();
+    expect(within(foundryNavigation).queryByRole('link', { name: '我的' })).not.toBeInTheDocument();
   });
 });

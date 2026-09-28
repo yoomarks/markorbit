@@ -210,9 +210,9 @@ function localized(template: TemplateId): Record<Locale, LocalizedSiteContent> {
     pageTitles: {
       home: 'Home',
       services: 'Services',
-      insights: 'Insights',
-      assets: 'Brand assets',
-      contact: 'Contact'
+      insights: 'Articles',
+      assets: 'Trademark showcase',
+      contact: 'Contact us'
     },
     blocks: {
       hero: {
@@ -318,10 +318,10 @@ function localized(template: TemplateId): Record<Locale, LocalizedSiteContent> {
       : '为跨市场发展的品牌提供商标专业支持。',
     pageTitles: {
       home: '首页',
-      services: '专业服务',
-      insights: '专业洞察',
-      assets: '品牌资产',
-      contact: '预约咨询'
+      services: '服务',
+      insights: '文章',
+      assets: '商标展示',
+      contact: '联系我们'
     },
     blocks: {
       hero: {

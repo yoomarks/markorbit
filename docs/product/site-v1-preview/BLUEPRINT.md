@@ -38,18 +38,23 @@ This preview does not become an owner. It uses explicit demo fixtures and per-Wo
 
 ## Site Admin information architecture
 
-| Area               | Primary question                                | Primary action                          | Owner boundary                        |
-| ------------------ | ----------------------------------------------- | --------------------------------------- | ------------------------------------- |
-| Overview           | Is my Site ready and what needs attention?      | Continue setup / inspect lead           | Aggregates demo state only            |
-| Pages & navigation | What can visitors reach?                        | Create, order, hide or preview page     | Site projection                       |
-| Visual editor      | What will this page look like?                  | Edit/reorder/hide blocks and save draft | Draft is not published                |
-| Content            | What reviewed knowledge is ready to project?    | Edit, preview and demo publish          | Mirrors Lite package boundary         |
-| Services           | Which owner-backed offers are visible?          | Toggle visibility / edit display copy   | No Quote or availability guarantee    |
-| Leads              | What did a visitor submit and from where?       | Assign demo follow-up status            | Lead is not Customer/Order            |
-| Client service     | What Site-originated requests can be displayed? | Inspect demo status                     | Read projection only                  |
-| Analytics          | Which pages/content led to demand?              | Follow attribution to a lead            | Demo metrics labelled                 |
-| Domain & SEO/GEO   | Is projection metadata complete?                | Edit preview metadata                   | No DNS/search submission              |
-| Settings           | Which modules, locale and member roles apply?   | Toggle demo modules                     | Workspace billing/team remain outside |
+The plain-language navigation, Site Front module rules, and planned Customer Portal IA are defined
+in [`NAVIGATION-IA.md`](./NAVIGATION-IA.md). Stable routes and owner boundaries below remain valid;
+the customer-facing labels are intentionally simpler than these architectural area names.
+
+| Area             | Primary question                              | Primary action                          | Owner boundary                        |
+| ---------------- | --------------------------------------------- | --------------------------------------- | ------------------------------------- |
+| 概况 / Overview  | Is my Site ready and what needs attention?    | Continue setup / inspect inquiry        | Aggregates demo state only            |
+| 页面 / Pages     | What can visitors reach?                      | Order, hide or preview page             | Site projection                       |
+| 装修 / Design    | What will this page look like?                | Edit/reorder/hide blocks and save draft | Draft is not published                |
+| 文章 / Articles  | What reviewed knowledge is ready to project?  | Edit, preview and demo publish          | Mirrors Lite package boundary         |
+| 服务 / Services  | Which owner-backed services are visible?      | Toggle visibility / edit display copy   | No Quote or availability guarantee    |
+| 咨询 / Inquiries | What did a visitor submit and from where?     | Assign demo follow-up status            | Inquiry is not Customer/Order         |
+| 数据 / Data      | Which pages/articles led to inquiries?        | Follow attribution to an inquiry        | Demo metrics labelled                 |
+| 设置 / Settings  | Which modules, locale and member roles apply? | Configure Site and related pages        | Workspace billing/team remain outside |
+
+`/client-service` is the related **客户进度 / Customer progress** page under 咨询;
+`/seo` is the related **域名与搜索 / Domain & search** page under 设置. Both stable routes remain.
 
 Desktop uses a Workspace shell and dense workbench. At 390px the primary navigation becomes a horizontal scroll strip; editor tree, canvas and properties stack in task order; sticky actions remain reachable without hiding content.
 

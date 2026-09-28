@@ -42,3 +42,5 @@ export const CounselTemplateEnglish: Story = { args: { initialPath: '/site/atlas
 export const ExchangeTemplateChinese: Story = { args: { initialPath: '/site/foundry/zh-CN/' } };
 export const ExchangeTemplateEnglish: Story = { args: { initialPath: '/site/foundry/en-US/' } };
 export const InquiryValidation: Story = { args: { initialPath: '/site/atlas/zh-CN/contact' } };
+export const CustomerCenterChinese: Story = { args: { initialPath: '/site/atlas/zh-CN/portal' } };
+export const CustomerCenterEnglish: Story = { args: { initialPath: '/site/atlas/en-US/portal' } };

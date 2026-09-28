@@ -27,52 +27,32 @@ import { useAdminI18n } from './i18n.js';
 
 const nav: { section: AdminSection; label: string; icon: string }[] = [
   { section: 'overview', label: 'Overview', icon: '⌂' },
-  { section: 'pages', label: 'Pages & navigation', icon: '▤' },
-  { section: 'editor', label: 'Visual editor', icon: '✦' },
-  { section: 'content', label: 'Content', icon: '✎' },
+  { section: 'pages', label: 'Pages', icon: '▤' },
+  { section: 'editor', label: 'Design', icon: '✦' },
+  { section: 'content', label: 'Articles', icon: '✎' },
   { section: 'services', label: 'Services', icon: '◇' },
-  { section: 'leads', label: 'Leads & inquiries', icon: '◎' },
-  { section: 'client-service', label: 'Client service', icon: '↗' },
-  { section: 'analytics', label: 'Analytics', icon: '⌁' },
-  { section: 'seo', label: 'Domain & SEO/GEO', icon: '◉' },
+  { section: 'leads', label: 'Inquiries', icon: '◎' },
+  { section: 'analytics', label: 'Data', icon: '⌁' },
   { section: 'settings', label: 'Settings', icon: '⚙' }
 ];
 
 const titles: Record<AdminSection, [string, string]> = {
-  overview: ['Site overview', 'Readiness, reach, and the work that needs attention.'],
-  pages: [
-    'Pages & navigation',
-    'Manage the routes, visibility, and hierarchy of this Site projection.'
-  ],
-  editor: [
-    'Visual editor',
-    'Shape a bounded page from blocks and compare the draft with the published demo.'
-  ],
-  content: ['Content', 'Prepare reviewed knowledge for an explicit Site demo publication.'],
-  services: [
-    'Services & offers',
-    'Choose which owner-backed service references are visible on the Site.'
-  ],
-  leads: [
-    'Leads & inquiries',
-    'Trace every demo inquiry back to its page, content, and service source.'
-  ],
+  overview: ['Overview', 'See what needs attention before you publish.'],
+  pages: ['Pages', 'Choose which pages visitors can find and the order they appear in.'],
+  editor: ['Design', 'Update the homepage, preview the draft, and publish when it is ready.'],
+  content: ['Articles', 'Write, review, preview, and publish customer-facing articles.'],
+  services: ['Services', 'Update the services visitors can see and understand.'],
+  leads: ['Inquiries', 'Read visitor questions and see exactly where each one came from.'],
   'client-service': [
-    'Client service',
-    'Preview request and progress information without creating a second order or matter truth.'
+    'Customer progress',
+    'Preview the customer progress entry without creating another order or matter record.'
   ],
-  analytics: [
-    'Operations & analytics',
-    'Connect Site attention to demo inquiries and the content that influenced them.'
-  ],
+  analytics: ['Data', 'See which pages and articles led to real browser-local inquiries.'],
   seo: [
-    'Domain & SEO/GEO',
-    'Review projection metadata and readiness without executing DNS or search submissions.'
+    'Domain & search',
+    'Check the domain and search preview without changing DNS or submitting to search engines.'
   ],
-  settings: [
-    'Site settings',
-    'Control demo modules, locale, and access without duplicating Workspace billing or identity.'
-  ]
+  settings: ['Settings', 'Manage Site features, languages, and access for this Workspace.']
 };
 
 export function AdminApp({
@@ -92,6 +72,8 @@ export function AdminApp({
   const unpublished = hasUnpublishedChanges(workspace);
   const [title, description] = titles[section];
   const readOnly = workspace.role === 'VIEWER';
+  const primarySection =
+    section === 'client-service' ? 'leads' : section === 'seo' ? 'settings' : section;
 
   return (
     <div className="admin-shell">
@@ -100,23 +82,27 @@ export function AdminApp({
           <span className="admin-brand__mark">MO</span>
           <div>
             <strong>MarkOrbit</strong>
-            <small>Workspace Console</small>
+            <small>{t('Site management')}</small>
           </div>
         </div>
         <div className="workspace-chip">
           <span>{workspace.workspaceName.slice(0, 1)}</span>
           <div>
             <strong>{workspace.workspaceName}</strong>
-            <small>Site · {workspace.lifecycle}</small>
+            <small>
+              {t('Site')} · {t(workspace.lifecycle === 'ACTIVE' ? 'Active' : 'Draft')}
+            </small>
           </div>
         </div>
-        <nav aria-label="Site Admin">
+        <nav aria-label={t('Site Admin navigation')} onClickCapture={() => setMobileNav(false)}>
           {nav.map((item) => (
             <Link
               key={item.section}
               href={`/admin/${workspaceId}/${item.section}`}
-              className={section === item.section ? 'admin-nav-link is-active' : 'admin-nav-link'}
-              aria-current={section === item.section ? 'page' : undefined}
+              className={
+                primarySection === item.section ? 'admin-nav-link is-active' : 'admin-nav-link'
+              }
+              aria-current={primarySection === item.section ? 'page' : undefined}
             >
               <span aria-hidden>{item.icon}</span>
               {t(item.label)}
@@ -134,14 +120,14 @@ export function AdminApp({
         <header className="admin-topbar">
           <button
             className="mobile-menu"
-            aria-label="Toggle navigation"
+            aria-label={t('Open navigation')}
             aria-expanded={mobileNav}
             onClick={() => setMobileNav(!mobileNav)}
           >
             ☰
           </button>
           <div>
-            <span className="topbar-context">Workspace / Site</span>
+            <span className="topbar-context">{t('Workspace / Site')}</span>
             <strong>{workspace.draft.brandName}</strong>
           </div>
           <div className="topbar-actions">
@@ -187,7 +173,7 @@ export function AdminApp({
         <main id="main" className="admin-content">
           <div className="fixture-ribbon">
             <strong>{t('INTERACTIVE PRODUCT PREVIEW')}</strong>
-            <span>No production data, publication, payment, email, or domain action</span>
+            <span>{t('No production data, publication, payment, email, or domain action')}</span>
           </div>
           <PageHeader
             title={t(title)}
@@ -197,11 +183,11 @@ export function AdminApp({
                 <Badge>
                   {unpublished
                     ? t('Unpublished draft')
-                    : `Demo published · v${workspace.versions.length}`}
+                    : `${t('Demo published')} · v${workspace.versions.length}`}
                 </Badge>
                 {section !== 'editor' && (
                   <Link className="button-link" href={`/admin/${workspaceId}/editor`}>
-                    {t('Edit Site')}
+                    {t('Design homepage')}
                   </Link>
                 )}
               </div>
@@ -209,13 +195,14 @@ export function AdminApp({
           />
           {readOnly && (
             <Alert tone="warning" title={t('View-only access')}>
-              This fixture role may inspect Site state and preview the customer experience, but
-              cannot change or publish it.
+              {t(
+                'This role can view the Site and customer experience, but cannot change or publish it.'
+              )}
             </Alert>
           )}
           {unpublished && section !== 'editor' && (
             <Alert tone="warning" title={t('Draft differs from the customer-facing demo')}>
-              Changes remain private to this Workspace until an explicit demo publication.
+              {t('Changes stay private until you review and publish them.')}
             </Alert>
           )}
           <AdminScreen
@@ -258,6 +245,28 @@ function AdminScreen(props: {
     case 'settings':
       return <Settings {...props} />;
   }
+}
+
+function AdminRelatedPages({
+  label,
+  items
+}: {
+  label: string;
+  items: { href: string; label: string; current?: boolean }[];
+}) {
+  return (
+    <nav className="admin-related-pages" aria-label={label}>
+      {items.map((item) => (
+        <Link
+          key={item.href}
+          href={item.href}
+          {...(item.current ? { className: 'is-active', 'aria-current': 'page' } : {})}
+        >
+          {item.label}
+        </Link>
+      ))}
+    </nav>
+  );
 }
 
 function Overview({ workspaceId }: { workspaceId: WorkspaceId }) {
@@ -1131,40 +1140,57 @@ function Leads({
   const { t } = useAdminI18n();
   const workspace = store.workspaces[workspaceId];
   const selected = workspace.leads.find((lead) => lead.id === itemId) ?? workspace.leads[0];
+  const relatedPages = (
+    <AdminRelatedPages
+      label={t('Inquiry views')}
+      items={[
+        { href: `/admin/${workspaceId}/leads`, label: t('Inquiries'), current: true },
+        { href: `/admin/${workspaceId}/client-service`, label: t('Customer progress') }
+      ]}
+    />
+  );
   if (!workspace.leads.length)
     return (
-      <EmptyState
-        title={t('No demo leads yet')}
-        description="Complete an inquiry on this Workspace's Site Front. The submitted demo object will appear here with the same ID and source lineage."
-        action={
-          <Link className="button-link" href={`/site/${workspaceId}/contact`}>
-            Open inquiry path
-          </Link>
-        }
-      />
+      <div className="screen-stack">
+        {relatedPages}
+        <EmptyState
+          title={t('No inquiries yet')}
+          description={t(
+            'When a visitor submits the Site form, the inquiry will appear here with its reference and exact source.'
+          )}
+          action={
+            <Link className="button-link" href={`/site/${workspaceId}/contact`}>
+              {t('Open inquiry form')}
+            </Link>
+          }
+        />
+      </div>
     );
   return (
-    <div className="leads-layout">
-      <Card className="lead-list">
-        <h2>{t('Inbox')}</h2>
-        {workspace.leads.map((lead) => (
-          <Link
-            key={lead.id}
-            href={`/admin/${workspaceId}/leads/${lead.id}`}
-            className={selected?.id === lead.id ? 'lead-row is-active' : 'lead-row'}
-          >
-            <span className="lead-avatar">{lead.name.slice(0, 1)}</span>
-            <span>
-              <strong>{lead.name}</strong>
-              <small>
-                {lead.id} · {lead.status}
-              </small>
-            </span>
-            <time>{new Date(lead.createdAt).toLocaleDateString()}</time>
-          </Link>
-        ))}
-      </Card>
-      {selected && <LeadDetail workspaceId={workspaceId} lead={selected} readOnly={readOnly} />}
+    <div className="screen-stack">
+      {relatedPages}
+      <div className="leads-layout">
+        <Card className="lead-list">
+          <h2>{t('Inbox')}</h2>
+          {workspace.leads.map((lead) => (
+            <Link
+              key={lead.id}
+              href={`/admin/${workspaceId}/leads/${lead.id}`}
+              className={selected?.id === lead.id ? 'lead-row is-active' : 'lead-row'}
+            >
+              <span className="lead-avatar">{lead.name.slice(0, 1)}</span>
+              <span>
+                <strong>{lead.name}</strong>
+                <small>
+                  {lead.id} · {lead.status}
+                </small>
+              </span>
+              <time>{new Date(lead.createdAt).toLocaleDateString()}</time>
+            </Link>
+          ))}
+        </Card>
+        {selected && <LeadDetail workspaceId={workspaceId} lead={selected} readOnly={readOnly} />}
+      </div>
     </div>
   );
 }
@@ -1260,6 +1286,17 @@ function ClientService({ workspaceId }: { workspaceId: WorkspaceId }) {
   const { t } = useAdminI18n();
   return (
     <div className="screen-stack">
+      <AdminRelatedPages
+        label={t('Inquiry views')}
+        items={[
+          { href: `/admin/${workspaceId}/leads`, label: t('Inquiries') },
+          {
+            href: `/admin/${workspaceId}/client-service`,
+            label: t('Customer progress'),
+            current: true
+          }
+        ]}
+      />
       <Alert title={t('Projection only')}>
         These demo requests illustrate a future Site view. Order, Matter, official status, payment,
         and provider truth remain with their current owners.
@@ -1372,6 +1409,13 @@ function Seo({ workspaceId, readOnly }: { workspaceId: WorkspaceId; readOnly: bo
   const [status, setStatus] = useState('');
   return (
     <div className="dashboard-grid">
+      <AdminRelatedPages
+        label={t('Settings pages')}
+        items={[
+          { href: `/admin/${workspaceId}/settings`, label: t('Settings') },
+          { href: `/admin/${workspaceId}/seo`, label: t('Domain & search'), current: true }
+        ]}
+      />
       <Card>
         <span className="eyebrow">{t('Demo domain')}</span>
         <h2>{workspace.draft.domain}</h2>
@@ -1387,7 +1431,10 @@ function Seo({ workspaceId, readOnly }: { workspaceId: WorkspaceId; readOnly: bo
           label={t('Proposed hostname')}
           value={workspace.draft.domain}
           onChange={(event) =>
-            store.updateDraft(workspaceId, (config) => ({ ...config, domain: event.target.value }))
+            store.updateDraft(workspaceId, (config) => ({
+              ...config,
+              domain: event.target.value
+            }))
           }
         />
         <Button
@@ -1435,6 +1482,13 @@ function Settings({ workspaceId, readOnly }: { workspaceId: WorkspaceId; readOnl
   const config = workspace.draft;
   return (
     <div className="dashboard-grid">
+      <AdminRelatedPages
+        label={t('Settings pages')}
+        items={[
+          { href: `/admin/${workspaceId}/settings`, label: t('Settings'), current: true },
+          { href: `/admin/${workspaceId}/seo`, label: t('Domain & search') }
+        ]}
+      />
       <Card>
         <h2>{t('Modules')}</h2>
         <p>Enable only the projections this Workspace needs.</p>

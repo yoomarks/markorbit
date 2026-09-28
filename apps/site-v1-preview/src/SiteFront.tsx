@@ -18,6 +18,15 @@ const useFrontT = () => {
   return (message: string) => frontT(locale, message);
 };
 
+function frontNavigationLabel(pageId: string, fallback: string, t: (message: string) => string) {
+  const labels: Record<string, string> = {
+    services: 'Services',
+    insights: 'Articles',
+    assets: 'Trademark showcase'
+  };
+  return t(labels[pageId] ?? fallback);
+}
+
 export function SiteFront({
   workspaceId,
   path,
@@ -83,7 +92,7 @@ export function SiteFront({
             <LocaleUnavailable workspaceId={workspaceId} defaultLocale={snapshot.defaultLocale} />
           )}
         </main>
-        <SiteFooter workspaceId={workspaceId} config={config} />
+        <SiteFooter workspaceId={workspaceId} config={config} mode={mode} />
       </div>
     </FrontLocaleContext.Provider>
   );
@@ -133,6 +142,15 @@ function SiteHeader({
     mode === 'draft'
       ? `${base}/preview/draft/${target}${path === '/' ? '/' : path}`
       : `${base}/${target}${path === '/' ? '/' : path}`;
+  const navigationPages = config.pages.filter(
+    (page) =>
+      page.id !== 'home' &&
+      page.id !== 'contact' &&
+      page.visible &&
+      (mode === 'draft' || page.status === 'PUBLISHED') &&
+      (page.id !== 'insights' || config.modules.insights) &&
+      (page.id !== 'assets' || config.modules.assets)
+  );
   return (
     <header className="site-header">
       <Link href={`${base}/`} className="site-logo">
@@ -153,19 +171,21 @@ function SiteHeader({
       >
         {t('Menu')}
       </button>
-      <nav className={open ? 'is-open' : ''} aria-label={t('Customer Site')}>
-        {config.pages
-          .filter((page) => page.visible && page.id !== 'home')
-          .map((page) => (
-            <Link key={page.id} href={`${base}${page.path}`}>
-              {page.title}
-            </Link>
-          ))}
-        {config.modules.portal && <Link href={`${base}/portal`}>{t('Client service')}</Link>}
+      <nav
+        className={open ? 'is-open' : ''}
+        aria-label={t('Website navigation')}
+        onClickCapture={() => setOpen(false)}
+      >
+        {navigationPages.map((page) => (
+          <Link key={page.id} href={`${base}${page.path}`}>
+            {frontNavigationLabel(page.id, page.title, t)}
+          </Link>
+        ))}
         <Link className="site-nav-cta" href={`${base}/contact`}>
-          {t('Start an inquiry')}
+          {t('Contact us')}
         </Link>
-        <span className="site-locale-switch" aria-label="Language">
+        {config.modules.portal && <Link href={`${base}/portal`}>{t('My account')}</Link>}
+        <span className="site-locale-switch" aria-label={t('Language')}>
           <Link aria-current={locale === 'zh-CN' ? 'page' : undefined} href={localeHref('zh-CN')}>
             中文
           </Link>
@@ -241,7 +261,9 @@ function SiteRoute({
 function Home({ workspaceId, config }: { workspaceId: WorkspaceId; config: SiteConfig }) {
   const base = `/site/${workspaceId}`;
   const t = useFrontT();
-  const blocks = config.blocks.filter((block) => block.visible);
+  const blocks = config.blocks.filter(
+    (block) => block.visible && (block.kind !== 'insights' || config.modules.insights)
+  );
   return (
     <>
       {blocks.map((block) => {
@@ -258,9 +280,11 @@ function Home({ workspaceId, config }: { workspaceId: WorkspaceId; config: SiteC
                 <h1>{block.title}</h1>
                 <p className="front-lead">{block.body}</p>
                 <div className="front-actions">
-                  <Link className="front-button" href={`${base}/assets`}>
-                    {t('Explore demo assets')}
-                  </Link>
+                  {config.modules.assets && (
+                    <Link className="front-button" href={`${base}/assets`}>
+                      {t('Explore demo assets')}
+                    </Link>
+                  )}
                   <Link className="front-button ghost" href={`${base}/services`}>
                     {t('View advisory services')}
                   </Link>
@@ -1081,16 +1105,14 @@ function Portal() {
   const [found, setFound] = useState(false);
   return (
     <section className="portal-page">
-      <p className="front-eyebrow">{t('Client service demo')}</p>
-      <h1>{t('Check a request without losing context.')}</h1>
-      <p>
-        This is a non-production demonstration. Try <code>DEMO-REQ-1027</code>.
-      </p>
+      <p className="front-eyebrow">{t('Customer center demo')}</p>
+      <h1>{t('Check progress with your reference.')}</h1>
+      <p>{t('This is a non-production demonstration. Try DEMO-REQ-1027.')}</p>
       <form
         onSubmit={(event) => {
           event.preventDefault();
           if (reference !== 'DEMO-REQ-1027') {
-            setError('That demo reference was not found.');
+            setError(t('That demo reference was not found.'));
             setFound(false);
           } else {
             setError('');
@@ -1111,8 +1133,9 @@ function Portal() {
           <span>DEMO-REQ-1027</span>
           <h2>{t('Information review')}</h2>
           <p>
-            The demo team is reviewing customer-supplied information. No official status or external
-            filing fact is represented.
+            {t(
+              'The demo team is reviewing customer-supplied information. No official status or external filing fact is represented.'
+            )}
           </p>
           <ol>
             <li className="done">{t('Request received')}</li>
@@ -1176,9 +1199,21 @@ function FrontTitle({ eyebrow, title, copy }: { eyebrow: string; title: string; 
   );
 }
 
-function SiteFooter({ workspaceId, config }: { workspaceId: WorkspaceId; config: SiteConfig }) {
+function SiteFooter({
+  workspaceId,
+  config,
+  mode
+}: {
+  workspaceId: WorkspaceId;
+  config: SiteConfig;
+  mode: 'published' | 'draft';
+}) {
   const base = `/site/${workspaceId}`;
   const t = useFrontT();
+  const mayLink = (pageId: string) => {
+    const page = config.pages.find((item) => item.id === pageId);
+    return Boolean(page?.visible && (mode === 'draft' || page.status === 'PUBLISHED'));
+  };
   return (
     <footer className="site-footer">
       <div>
@@ -1190,9 +1225,15 @@ function SiteFooter({ workspaceId, config }: { workspaceId: WorkspaceId; config:
       </div>
       <div>
         <strong>{t('Explore')}</strong>
-        <Link href={`${base}/services`}>{t('Services')}</Link>
-        <Link href={`${base}/insights`}>{t('Insights')}</Link>
-        <Link href={`${base}/contact`}>{t('Contact')}</Link>
+        {mayLink('services') && <Link href={`${base}/services`}>{t('Services')}</Link>}
+        {mayLink('insights') && config.modules.insights && (
+          <Link href={`${base}/insights`}>{t('Articles')}</Link>
+        )}
+        {mayLink('assets') && config.modules.assets && (
+          <Link href={`${base}/assets`}>{t('Trademark showcase')}</Link>
+        )}
+        {mayLink('contact') && <Link href={`${base}/contact`}>{t('Contact us')}</Link>}
+        {config.modules.portal && <Link href={`${base}/portal`}>{t('My account')}</Link>}
       </div>
       <div>
         <strong>{t('Information')}</strong>

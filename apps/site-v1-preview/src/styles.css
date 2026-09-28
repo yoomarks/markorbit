@@ -385,6 +385,34 @@ a {
   background: #28504a;
   color: white;
 }
+.admin-related-pages {
+  display: flex;
+  width: fit-content;
+  max-width: 100%;
+  gap: 4px;
+  padding: 4px;
+  overflow-x: auto;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: white;
+}
+.admin-related-pages a {
+  flex: 0 0 auto;
+  padding: 8px 12px;
+  border-radius: 6px;
+  color: #45524f;
+  text-decoration: none;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+.admin-related-pages a:hover,
+.admin-related-pages a.is-active {
+  background: #e8f1ee;
+  color: #123d35;
+}
+.dashboard-grid > .admin-related-pages {
+  grid-column: 1 / -1;
+}
 .admin-sidebar__footer {
   margin-top: auto;
   padding: 12px 8px 0;

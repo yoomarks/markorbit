@@ -4,19 +4,52 @@ import type { Locale } from './domain.js';
 const preferenceKey = 'markorbit:site-v1-preview:admin-locale';
 
 const zh = {
-  Overview: '站点总览',
+  Overview: '概况',
+  Pages: '页面',
+  Design: '装修',
+  Articles: '文章',
+  Inquiries: '咨询',
+  Data: '数据',
+  'Customer progress': '客户进度',
+  'Domain & search': '域名与搜索',
+  'Site Admin navigation': '站点后台导航',
+  'Open navigation': '打开导航',
+  'Site management': '站点管理',
+  Site: '站点',
+  Active: '已启用',
+  'Workspace / Site': '工作空间 / 站点',
+  'Inquiry views': '咨询相关页面',
+  'Settings pages': '设置相关页面',
   'Pages & navigation': '页面与导航',
   'Visual editor': '可视化编辑',
   Content: '内容管理',
-  Services: '服务展示',
+  Services: '服务',
   Insights: '专业洞察',
   Contact: '联系我们',
   'Leads & inquiries': '咨询与线索',
   'Client service': '客户服务',
   Analytics: '访问分析',
   'Domain & SEO/GEO': '域名与 SEO/GEO',
-  Settings: '站点设置',
+  Settings: '设置',
   'Site overview': '站点总览',
+  'See what needs attention before you publish.': '查看发布前需要处理的事项。',
+  'Choose which pages visitors can find and the order they appear in.':
+    '设置访客可以找到的页面及其显示顺序。',
+  'Update the homepage, preview the draft, and publish when it is ready.':
+    '修改首页、预览草稿，并在准备完成后发布。',
+  'Write, review, preview, and publish customer-facing articles.':
+    '撰写、审核、预览并发布面向客户的文章。',
+  'Update the services visitors can see and understand.': '修改访客可查看的服务介绍。',
+  'Read visitor questions and see exactly where each one came from.':
+    '查看访客提交的问题及其准确来源。',
+  'Preview the customer progress entry without creating another order or matter record.':
+    '预览客户进度入口，但不创建另一套订单或案件记录。',
+  'See which pages and articles led to real browser-local inquiries.':
+    '查看哪些页面和文章带来了当前浏览器中的真实演示咨询。',
+  'Check the domain and search preview without changing DNS or submitting to search engines.':
+    '检查域名与搜索预览，但不修改 DNS，也不向搜索引擎提交。',
+  'Manage Site features, languages, and access for this Workspace.':
+    '管理此工作空间的站点功能、语言与访问权限。',
   'Readiness, reach, and the work that needs attention.':
     '优先查看发布准备度、未发布变更与待处理线索。',
   'Manage the routes, visibility, and hierarchy of this Site projection.':
@@ -43,6 +76,7 @@ const zh = {
   Workspace: '工作空间',
   'View Site': '查看站点',
   'Edit Site': '装修站点',
+  'Design homepage': '装修首页',
   'Unpublished draft': '有未发布更改',
   'View-only access': '仅查看权限',
   'Draft differs from the customer-facing demo': '草稿与客户可见版本不同',
@@ -74,8 +108,18 @@ const zh = {
   'Reset demo access and fixtures': '重置演示权限与数据',
   'Demo fixtures only': '仅浏览器本地演示数据',
   'INTERACTIVE PRODUCT PREVIEW': '交互式产品预览',
+  'No production data, publication, payment, email, or domain action':
+    '不使用生产数据，也不会执行真实发布、付款、邮件或域名操作',
+  'Demo published': '演示已发布',
+  'This role can view the Site and customer experience, but cannot change or publish it.':
+    '当前角色可以查看站点和客户体验，但不能修改或发布。',
+  'Changes stay private until you review and publish them.':
+    '更改会保持私有，直到你完成检查并发布。',
+  'No inquiries yet': '暂无咨询',
+  'When a visitor submits the Site form, the inquiry will appear here with its reference and exact source.':
+    '访客提交网站表单后，咨询会连同编号和准确来源显示在这里。',
+  'Open inquiry form': '打开咨询表单',
   'Published version': '已发布版本',
-  Inquiries: '咨询线索',
   'Publication readiness': '发布准备度',
   'Pending leads': '待处理线索',
   'Latest content': '最新内容',

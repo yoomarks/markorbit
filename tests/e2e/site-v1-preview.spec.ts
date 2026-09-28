@@ -12,7 +12,7 @@ test('Golden A: editor draft remains private until demo publication and survives
   page
 }, testInfo) => {
   await page.goto('/admin/atlas/editor');
-  await expect(page.getByRole('heading', { name: 'Visual editor' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Design' })).toBeVisible();
   await page.getByLabel('内容语言 / Content language').selectOption('en-US');
   const heading = page.getByLabel('Heading');
   await heading.fill('A portfolio-ready trademark strategy');
@@ -55,7 +55,7 @@ test('Golden B/C: content source becomes the exact demo lead and remains tenant 
   await expect(page.getByRole('heading', { name: 'Maya Chen · Orbit Labs' })).toBeVisible();
   await expect(page.getByText('content-filing-map')).toBeVisible();
   await page.goto('/admin/foundry/leads');
-  await expect(page.getByRole('heading', { name: 'No demo leads yet' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'No inquiries yet' })).toBeVisible();
   await page.screenshot({ path: testInfo.outputPath('golden-bc-isolation.png'), fullPage: true });
 });
 
@@ -113,7 +113,71 @@ test('negative boundaries: consent, VIEWER mutation, hidden route, and Workspace
     page.getByRole('heading', { name: 'This page is outside the orbit.' })
   ).toBeVisible();
   await page.goto('/admin/foundry/leads');
-  await expect(page.getByRole('heading', { name: 'No demo leads yet' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'No inquiries yet' })).toBeVisible();
+});
+
+test('plain-language navigation reveals the expected Admin and visitor tasks', async ({
+  page
+}, testInfo) => {
+  const openAdminPage = async (label: string) => {
+    const menu = page.getByRole('button', { name: '打开导航' });
+    if (await menu.isVisible()) await menu.click();
+    await page
+      .getByRole('navigation', { name: '站点后台导航' })
+      .getByRole('link', { name: label, exact: true })
+      .click();
+  };
+  const openWebsiteMenu = async () => {
+    const menu = page.getByRole('button', { name: '菜单' });
+    if (await menu.isVisible()) await menu.click();
+  };
+
+  await page.goto('/admin/atlas/overview');
+  await page.getByRole('button', { name: '简体中文' }).click();
+  await openAdminPage('装修');
+  await expect(page.getByRole('heading', { name: '装修' })).toBeVisible();
+  await openAdminPage('文章');
+  await expect(page.getByRole('heading', { name: '文章' })).toBeVisible();
+  await openAdminPage('咨询');
+  await expect(page.getByRole('heading', { name: '咨询', exact: true })).toBeVisible();
+  const adminMenu = page.getByRole('button', { name: '打开导航' });
+  if (await adminMenu.isVisible()) {
+    await adminMenu.click();
+    await page.waitForTimeout(250);
+  }
+  await page.screenshot({
+    path: testInfo.outputPath('plain-admin-navigation.png'),
+    fullPage: true
+  });
+
+  await page.goto('/site/atlas/zh-CN/');
+  await openWebsiteMenu();
+  const atlasNavigation = page.getByRole('navigation', { name: '网站导航' });
+  await expect(atlasNavigation.getByRole('link', { name: '服务', exact: true })).toBeVisible();
+  await expect(atlasNavigation.getByRole('link', { name: '文章', exact: true })).toBeVisible();
+  await expect(atlasNavigation.getByRole('link', { name: '联系我们', exact: true })).toBeVisible();
+  await page.screenshot({
+    path: testInfo.outputPath('plain-front-navigation.png'),
+    fullPage: true
+  });
+  await atlasNavigation.getByRole('link', { name: '我的', exact: true }).click();
+  await expect(page.getByRole('heading', { name: '使用编号查询进度。' })).toBeVisible();
+  await page.screenshot({ path: testInfo.outputPath('customer-center.png'), fullPage: true });
+
+  await page.goto('/site/foundry/zh-CN/');
+  await openWebsiteMenu();
+  await expect(
+    page
+      .getByRole('navigation', { name: '网站导航' })
+      .getByRole('link', { name: '商标展示', exact: true })
+  ).toBeVisible();
+
+  await page.goto('/site/atlas/en-US/');
+  const englishMenu = page.getByRole('button', { name: 'Menu' });
+  if (await englishMenu.isVisible()) await englishMenu.click();
+  const englishNavigation = page.getByRole('navigation', { name: 'Website navigation' });
+  await expect(englishNavigation.getByRole('link', { name: 'Articles' })).toBeVisible();
+  await expect(englishNavigation.getByRole('link', { name: 'My account' })).toBeVisible();
 });
 
 for (const workspace of ['atlas', 'foundry'] as const) {
@@ -170,7 +234,7 @@ for (const workspace of ['atlas', 'foundry'] as const) {
       ).toBeVisible();
       if (locale === 'zh-CN') {
         await page.getByRole('button', { name: '简体中文' }).click();
-        await expect(page.getByRole('heading', { name: '咨询与线索' })).toBeVisible();
+        await expect(page.getByRole('heading', { name: '咨询' })).toBeVisible();
       }
       await page.screenshot({
         path: testInfo.outputPath(`${workspace}-${locale}-admin.png`),
