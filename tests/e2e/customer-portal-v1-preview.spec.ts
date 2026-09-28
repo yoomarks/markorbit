@@ -24,7 +24,7 @@ test('Web → mini → Web keeps exact object IDs and completed task state', asy
   await page.getByRole('button', { name: /切换到小程序视图/ }).click();
   await expect(page.locator('.cp-app')).toHaveAttribute('data-channel', 'mini');
   await expect(page.getByText('matter-cn-nova-2026').first()).toBeVisible();
-  await expect(page.getByText('当前无需操作')).toBeVisible();
+  await expect(page.getByRole('heading', { name: '当前无需操作' })).toBeVisible();
   await testInfo.attach('mini-continuity', {
     body: await page.screenshot({ fullPage: true }),
     contentType: 'image/png'
@@ -88,4 +88,26 @@ test('desktop and phone layouts do not overflow', async ({ page }, testInfo) => 
     body: await page.screenshot({ fullPage: true }),
     contentType: 'image/png'
   });
+});
+
+test('mature mini-program navigation exposes five complete service pages', async ({ page }) => {
+  await page.goto(`${path}?channel=mini`);
+  await page.getByRole('button', { name: '使用已绑定 Demo 身份继续' }).click();
+  const navigation = page.getByRole('navigation', { name: '小程序主导航' });
+
+  await expect(page.getByRole('heading', { name: '常用服务' })).toBeVisible();
+  await expect(page.getByText('林顾问正在为你服务')).toBeVisible();
+  await navigation.getByRole('button', { name: '办业务' }).click();
+  await expect(page.getByRole('heading', { name: '热门服务' })).toBeVisible();
+  await navigation.getByRole('button', { name: '进度' }).click();
+  await expect(page.getByText(/正式法律程序和官方期限/)).toBeVisible();
+  await navigation.getByRole('button', { name: '消息' }).click();
+  await expect(page.getByRole('button', { name: /顾 顾问消息/ })).toBeVisible();
+  await navigation.getByRole('button', { name: '我的' }).click();
+  await expect(page.getByText('我的业务与资料')).toBeVisible();
+  await expect(page.getByText('账户与服务')).toBeVisible();
+
+  expect(await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth)).toBe(
+    false
+  );
 });

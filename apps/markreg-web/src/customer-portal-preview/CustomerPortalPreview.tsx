@@ -10,9 +10,11 @@ import {
   relationshipFor,
   type Channel,
   type BusinessItem,
+  type DemoIdentity,
   type FixtureMode,
   type PortalSection,
-  type PortalState
+  type PortalState,
+  type RelationshipBinding
 } from './domain.js';
 import { getCopy } from './i18n.js';
 import './customer-portal-preview.css';
@@ -33,6 +35,7 @@ export interface CustomerPortalPreviewProps {
   fixtureMode?: FixtureMode;
   defaultChannel?: Channel;
   defaultLocale?: PortalState['locale'];
+  defaultSection?: PortalSection;
   persist?: boolean;
 }
 
@@ -41,6 +44,7 @@ export function CustomerPortalPreview({
   fixtureMode = 'success',
   defaultChannel = 'web',
   defaultLocale = 'zh-CN',
+  defaultSection,
   persist = true
 }: CustomerPortalPreviewProps) {
   const [state, setState] = useState<PortalState>(() => {
@@ -49,6 +53,7 @@ export function CustomerPortalPreview({
       ...initial,
       channel: defaultChannel,
       locale: defaultLocale,
+      section: defaultSection ?? initial.section,
       ...(fixtureMode === 'signed-out'
         ? { identityId: null, relationshipId: null }
         : !initial.identityId && !persist
@@ -424,13 +429,35 @@ function PortalSectionView({
   const copy = getCopy(state.locale);
   const identity = identityFor(state)!;
   const relationship = relationshipFor(state)!;
-  const matter = items.find((item) => item.kind === 'MATTER');
+  const documentMatter = items.find((item) => item.id === 'matter-cn-nova-2026');
   const localized = (zh: string, en: string) => (state.locale === 'zh-CN' ? zh : en);
 
-  const hasDocumentTask = Boolean(matter) && !state.documentSubmitted;
+  const hasDocumentTask = Boolean(documentMatter) && !state.documentSubmitted;
   const canAccessQuote = items.some((item) => item.id === quoteFixture.businessId);
   const hasQuoteTask = canAccessQuote && state.quoteStatus === 'PENDING';
   const pendingCount = Number(hasDocumentTask) + Number(hasQuoteTask);
+
+  if (state.channel === 'mini') {
+    return (
+      <MiniPortalPage
+        state={state}
+        items={items}
+        matter={documentMatter}
+        identity={identity}
+        relationship={relationship}
+        pendingCount={pendingCount}
+        hasDocumentTask={hasDocumentTask}
+        hasQuoteTask={hasQuoteTask}
+        canAccessQuote={canAccessQuote}
+        onSection={onSection}
+        onUpload={onUpload}
+        onQuote={onQuote}
+        onChannel={onChannel}
+        onRelationship={onRelationship}
+        onLogout={onLogout}
+      />
+    );
+  }
 
   if (state.section === 'home') {
     return (
@@ -477,7 +504,11 @@ function PortalSectionView({
                 <TaskCard
                   badge={localized('资料待补充', 'Document needed')}
                   title={copy.upload}
-                  detail={matter ? localized(matter.detail, matter.detailEn) : 'MO-CN-2026-0184'}
+                  detail={
+                    documentMatter
+                      ? localized(documentMatter.detail, documentMatter.detailEn)
+                      : 'MO-CN-2026-0184'
+                  }
                   id="matter-cn-nova-2026"
                   copy={copy}
                   onAction={onUpload}
@@ -633,10 +664,10 @@ function PortalSectionView({
           'Document requests, quotes and updates link back to the same business.'
         )}
       >
-        {matter && (
+        {documentMatter && (
           <Message
             text={copy.messageOne}
-            id={matter.id}
+            id={documentMatter.id}
             unread={!state.documentSubmitted}
             copy={copy}
             action={state.documentSubmitted ? undefined : copy.continue}
@@ -758,6 +789,828 @@ function ServiceCard({
         {action} →
       </Button>
     </article>
+  );
+}
+
+function MiniPortalPage({
+  state,
+  items,
+  matter,
+  identity,
+  relationship,
+  pendingCount,
+  hasDocumentTask,
+  hasQuoteTask,
+  canAccessQuote,
+  onSection,
+  onUpload,
+  onQuote,
+  onChannel,
+  onRelationship,
+  onLogout
+}: {
+  state: PortalState;
+  items: ReturnType<typeof authorizedItems>;
+  matter: BusinessItem | undefined;
+  identity: DemoIdentity;
+  relationship: RelationshipBinding;
+  pendingCount: number;
+  hasDocumentTask: boolean;
+  hasQuoteTask: boolean;
+  canAccessQuote: boolean;
+  onSection: (section: PortalSection) => void;
+  onUpload: () => void;
+  onQuote: () => void;
+  onChannel: () => void;
+  onRelationship: () => void;
+  onLogout: () => void;
+}) {
+  const copy = getCopy(state.locale);
+  const t = (zh: string, en: string) => (state.locale === 'zh-CN' ? zh : en);
+  const activeItems = items.filter((item) => item.kind !== 'ASSET');
+  const assets = items.filter((item) => item.kind === 'ASSET');
+
+  if (state.section === 'home') {
+    const heroAction = hasDocumentTask
+      ? onUpload
+      : hasQuoteTask
+        ? onQuote
+        : () => onSection('services');
+    return (
+      <div className="mini-page mini-home">
+        <section className="mini-welcome-hero">
+          <div className="mini-hero-glow" aria-hidden="true" />
+          <div className="mini-welcome-row">
+            <div>
+              <span>{t('上午好', 'Good morning')}</span>
+              <h1>{identity.displayName.split(' ')[0]}</h1>
+              <p>
+                {t(
+                  '让每一件商标业务，都清楚地向前一步。',
+                  'Keep every trademark matter moving with clarity.'
+                )}
+              </p>
+            </div>
+            <button
+              className="mini-assistant-orb"
+              onClick={() => onSection('messages')}
+              aria-label={t('打开 MO 办事助手', 'Open MO service assistant')}
+            >
+              MO<small>AI</small>
+            </button>
+          </div>
+          <button className="mini-identity-chip" onClick={onRelationship}>
+            <span className="mini-firm-mark">澄</span>
+            <span>
+              <small>{t('当前服务机构 · 办理身份', 'Service firm · acting identity')}</small>
+              <strong>{relationship.workspaceName}</strong>
+            </span>
+            <b>切换 ›</b>
+          </button>
+          <article className={`mini-task-hero ${pendingCount === 0 ? 'is-complete' : ''}`}>
+            <div className="mini-task-meta">
+              <span>
+                {pendingCount
+                  ? t(`${pendingCount} 项待处理`, `${pendingCount} to do`)
+                  : t('当前无需操作', 'Nothing to do')}
+              </span>
+              <small>{t('今日服务提醒', 'Today’s service update')}</small>
+            </div>
+            <h2>
+              {hasDocumentTask
+                ? copy.upload
+                : hasQuoteTask
+                  ? copy.messageTwo.replace('报价待确认：', '').replace('Quote to review: ', '')
+                  : copy.noTasks}
+            </h2>
+            <p>
+              {hasDocumentTask
+                ? t(
+                    '补充后，顾问将继续核对申请材料。',
+                    'Your advisor will continue reviewing the filing after submission.'
+                  )
+                : hasQuoteTask
+                  ? t(
+                      '查看费用和服务范围，确认后我们再继续。',
+                      'Review fees and scope before the service continues.'
+                    )
+                  : copy.noTasksHint}
+            </p>
+            <button onClick={heroAction}>
+              {pendingCount ? copy.continue : copy.startService}
+              <span>→</span>
+            </button>
+          </article>
+        </section>
+
+        <section className="mini-section mini-quick-section">
+          <MiniSectionHeading
+            title={t('常用服务', 'Quick services')}
+            action={t('全部服务', 'All services')}
+            onAction={() => onSection('services')}
+          />
+          <div className="mini-service-grid">
+            <MiniQuick
+              icon="申"
+              label={copy.startService}
+              tone="mint"
+              onClick={() => onSection('services')}
+            />
+            <MiniQuick
+              icon="进"
+              label={copy.viewProgress}
+              tone="blue"
+              onClick={() => onSection('progress')}
+            />
+            <MiniQuick
+              icon="传"
+              label={matter ? t('上传资料', 'Upload files') : copy.myFiles}
+              tone="gold"
+              onClick={matter ? onUpload : () => onSection('profile')}
+            />
+            <MiniQuick
+              icon="顾"
+              label={copy.contactAdvisor}
+              tone="rose"
+              onClick={() => onSection('messages')}
+            />
+            <MiniQuick
+              icon="标"
+              label={copy.assetsTitle}
+              tone="violet"
+              onClick={() => onSection('trademarks')}
+            />
+          </div>
+        </section>
+
+        <section className="mini-section">
+          <MiniSectionHeading
+            title={copy.activity}
+            action={copy.viewAll}
+            onAction={() => onSection('progress')}
+          />
+          <div className="mini-business-stack">
+            {activeItems.map((item) => (
+              <MiniBusinessCard
+                key={item.id}
+                state={state}
+                item={item}
+                onClick={() => onSection('progress')}
+              />
+            ))}
+          </div>
+        </section>
+
+        <section className="mini-advisor-card">
+          <div className="mini-advisor-avatar">
+            <span>林</span>
+            <i />
+          </div>
+          <div>
+            <small>{t('专属服务顾问 · Demo', 'Dedicated advisor · Demo')}</small>
+            <h2>{t('林顾问正在为你服务', 'Advisor Lin is here to help')}</h2>
+            <p>
+              {t(
+                '工作日 09:00–18:00 · 通常 10 分钟内回复',
+                'Weekdays 09:00–18:00 · usually replies within 10 min'
+              )}
+            </p>
+          </div>
+          <button onClick={() => onSection('messages')}>{t('咨询', 'Chat')}</button>
+        </section>
+
+        <section className="mini-section mini-content-section">
+          <MiniSectionHeading
+            title={t('商标服务指南', 'Trademark guides')}
+            action={t('帮助中心', 'Help center')}
+          />
+          <div className="mini-guide-grid">
+            <article className="mini-guide-feature">
+              <span>{t('申请前必读', 'Before filing')}</span>
+              <h2>{t('商标申请要准备哪些资料？', 'What should I prepare for filing?')}</h2>
+              <p>
+                {t(
+                  '用 3 分钟了解材料、流程和常见问题',
+                  'A 3-minute guide to files, process and FAQs'
+                )}
+              </p>
+              <b>了解详情 →</b>
+            </article>
+            <div className="mini-guide-list">
+              <button>
+                <span>01</span>
+                <b>{t('如何选择商品与服务类别', 'How to choose classes')}</b>
+                <i>›</i>
+              </button>
+              <button>
+                <span>02</span>
+                <b>{t('审查意见是什么，应该怎么办', 'What is an office action?')}</b>
+                <i>›</i>
+              </button>
+            </div>
+          </div>
+        </section>
+        <div className="mini-preview-switch">
+          <span>{copy.demo}</span>
+          <button onClick={onChannel}>{copy.openWeb} →</button>
+        </div>
+      </div>
+    );
+  }
+
+  if (state.section === 'services') {
+    return (
+      <div className="mini-page">
+        <MiniPageHeader
+          eyebrow={t('专业服务 · 清楚办理', 'Professional services')}
+          title={copy.servicesTitle}
+          subtitle={t(
+            '从需求出发，找到适合你的商标服务。',
+            'Start from your need and find the right trademark service.'
+          )}
+        />
+        <div className="mini-search-box">
+          <span>⌕</span>
+          <span>{t('搜索服务，如“商标申请”', 'Search services, e.g. “filing”')}</span>
+        </div>
+        <div
+          className="mini-category-scroll"
+          role="group"
+          aria-label={t('服务分类', 'Service categories')}
+        >
+          <button className="is-active">{t('热门服务', 'Popular')}</button>
+          <button>{t('申请注册', 'Filing')}</button>
+          <button>{t('商标维护', 'Maintenance')}</button>
+          <button>{t('争议应对', 'Disputes')}</button>
+        </div>
+        <section className="mini-section mini-flush">
+          <MiniSectionHeading title={t('热门服务', 'Popular services')} />
+          <div className="mini-catalog-stack">
+            <MiniServiceProduct
+              badge={t('热门', 'Popular')}
+              icon="TM"
+              title={copy.serviceRegistration}
+              description={copy.serviceRegistrationHint}
+              scene={t('适合：准备推出新品牌或新产品', 'For new brands or products')}
+              action={copy.startApplication}
+            />
+            <MiniServiceProduct
+              badge={t('申请前推荐', 'Recommended first')}
+              icon="⌕"
+              title={copy.serviceSearch}
+              description={copy.serviceSearchHint}
+              scene={t('适合：想先了解近似风险', 'For understanding similarity risk')}
+              action={copy.startApplication}
+            />
+            <MiniServiceProduct
+              badge={t('顾问协助', 'Advisor supported')}
+              icon="OA"
+              title={copy.serviceResponse}
+              description={copy.serviceResponseHint}
+              scene={t('适合：已经收到官方通知', 'For an official notice already received')}
+              action={copy.startApplication}
+            />
+          </div>
+        </section>
+        <section className="mini-service-promo">
+          <span>顾问</span>
+          <div>
+            <small>{t('不知道选哪项？', 'Not sure which service?')}</small>
+            <h2>{t('先说说你的需求，我们帮你判断', 'Tell us your need and we’ll guide you')}</h2>
+          </div>
+          <button onClick={() => onSection('messages')}>{t('免费咨询', 'Ask us')} →</button>
+        </section>
+        <section className="mini-section mini-flush">
+          <MiniSectionHeading
+            title={copy.continueExisting}
+            action={copy.viewAll}
+            onAction={() => onSection('progress')}
+          />
+          <div className="mini-business-stack">
+            {activeItems.map((item) => (
+              <MiniBusinessCard
+                compact
+                key={item.id}
+                state={state}
+                item={item}
+                onClick={() => onSection('progress')}
+              />
+            ))}
+          </div>
+        </section>
+      </div>
+    );
+  }
+
+  if (state.section === 'progress') {
+    return (
+      <div className="mini-page">
+        <MiniPageHeader
+          eyebrow={t('每一步都有记录', 'Every step recorded')}
+          title={copy.progressTitle}
+          subtitle={t(
+            '看懂当前状态，也知道下一步该做什么。',
+            'Understand the current status and what happens next.'
+          )}
+        />
+        <div className="mini-progress-summary">
+          <div>
+            <strong>{activeItems.length}</strong>
+            <span>{t('办理中', 'Active')}</span>
+          </div>
+          <i />
+          <div>
+            <strong>{pendingCount}</strong>
+            <span>{copy.filterAwaiting}</span>
+          </div>
+          <i />
+          <div>
+            <strong>0</strong>
+            <span>{copy.filterDone}</span>
+          </div>
+        </div>
+        <div className="mini-filter-tabs" role="group" aria-label={copy.progressTitle}>
+          <button className="is-active">{copy.filterActive}</button>
+          <button>
+            {copy.filterAwaiting}
+            {pendingCount > 0 && <b>{pendingCount}</b>}
+          </button>
+          <button>{copy.filterDone}</button>
+        </div>
+        <section className="mini-section mini-flush">
+          <div className="mini-progress-list">
+            {activeItems.map((item) => (
+              <MiniProgressCard
+                key={item.id}
+                state={state}
+                item={item}
+                needsAction={
+                  item.id === matter?.id
+                    ? hasDocumentTask
+                    : item.id === quoteFixture.businessId && hasQuoteTask
+                }
+                onAction={
+                  item.id === matter?.id
+                    ? onUpload
+                    : item.id === quoteFixture.businessId
+                      ? onQuote
+                      : () => undefined
+                }
+              />
+            ))}
+          </div>
+        </section>
+        <div className="mini-truth-note">
+          <span>i</span>
+          <p>
+            {t(
+              '页面显示的是服务进展；正式法律程序和官方期限以详情中的来源文件为准。',
+              'This page shows service progress. Formal procedure and official deadlines follow sourced documents in the detail view.'
+            )}
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  if (state.section === 'messages') {
+    return (
+      <div className="mini-page">
+        <MiniPageHeader
+          eyebrow={t('不错过重要进展', 'Stay on top of updates')}
+          title={copy.messagesTitle}
+          subtitle={t(
+            '资料、进度和顾问消息，都能回到对应业务。',
+            'Documents, progress and advisor messages link to the same business.'
+          )}
+        />
+        <div className="mini-message-categories">
+          <button className="is-active">
+            <span>全</span>
+            <b>{t('全部', 'All')}</b>
+            <small>{state.unreadMessages}</small>
+          </button>
+          <button>
+            <span>业</span>
+            <b>{t('业务进展', 'Progress')}</b>
+          </button>
+          <button>
+            <span>资</span>
+            <b>{t('资料补充', 'Files')}</b>
+          </button>
+          <button>
+            <span>顾</span>
+            <b>{t('顾问消息', 'Advisor')}</b>
+          </button>
+        </div>
+        <section className="mini-message-group">
+          <h2>{t('今天', 'Today')}</h2>
+          {matter && (
+            <MiniMessageCard
+              tone="gold"
+              icon="资"
+              title={
+                state.documentSubmitted
+                  ? t('资料已提交，等待顾问核对', 'File submitted; awaiting advisor review')
+                  : copy.messageOne
+              }
+              detail={t('NOVA 图形商标 · 中国申请', 'NOVA device mark · China filing')}
+              time="10:20"
+              unread={!state.documentSubmitted}
+              action={state.documentSubmitted ? undefined : copy.continue}
+              onClick={onUpload}
+            />
+          )}
+          {canAccessQuote && (
+            <MiniMessageCard
+              tone="mint"
+              icon="价"
+              title={
+                state.quoteStatus === 'PENDING'
+                  ? copy.messageTwo
+                  : state.quoteStatus === 'CONFIRMED_DEMO'
+                    ? copy.quoteConfirmed
+                    : copy.questionSent
+              }
+              detail={`${quoteFixture.number} · ${quoteFixture.id}`}
+              time="09:45"
+              unread={state.quoteStatus === 'PENDING'}
+              action={state.quoteStatus === 'PENDING' ? copy.quoteReview : undefined}
+              onClick={onQuote}
+            />
+          )}
+        </section>
+        <section className="mini-message-group">
+          <h2>{t('更早', 'Earlier')}</h2>
+          <MiniMessageCard
+            tone="blue"
+            icon="顾"
+            title={t(
+              '林顾问：申请材料清单已经为你整理好',
+              'Advisor Lin: your filing checklist is ready'
+            )}
+            detail={t('服务顾问消息 · Demo', 'Advisor message · Demo')}
+            time={t('昨天', 'Yesterday')}
+          />
+          <MiniMessageCard
+            tone="violet"
+            icon="系"
+            title={t(
+              '账号安全提醒：新设备登录验证成功',
+              'Security notice: new-device verification succeeded'
+            )}
+            detail={t('系统通知 · Demo', 'System notice · Demo')}
+            time={t('周六', 'Saturday')}
+          />
+        </section>
+      </div>
+    );
+  }
+
+  if (state.section === 'trademarks') {
+    return (
+      <div className="mini-page">
+        <button className="mini-back" onClick={() => onSection('home')}>
+          ‹ {t('返回首页', 'Back home')}
+        </button>
+        <MiniPageHeader
+          eyebrow={t('你的品牌资产', 'Your brand assets')}
+          title={copy.assetsTitle}
+          subtitle={copy.partialHint}
+        />
+        <div className="mini-business-stack">
+          {assets.map((item) => (
+            <MiniBusinessCard key={item.id} state={state} item={item} />
+          ))}
+        </div>
+        <PartialNotice copy={copy} />
+      </div>
+    );
+  }
+
+  return (
+    <div className="mini-page mini-profile-page">
+      <section className="mini-profile-hero">
+        <div className="mini-profile-orbit" aria-hidden="true" />
+        <div className="mini-profile-main">
+          <span className="mini-profile-avatar">{identity.displayName.slice(0, 1)}</span>
+          <div>
+            <h1>{identity.displayName}</h1>
+            <p>{identity.maskedMobile}</p>
+            <span>
+              {relationship.kind === 'ENTERPRISE'
+                ? t('企业授权成员', 'Authorized company member')
+                : t('个人客户', 'Individual customer')}
+            </span>
+          </div>
+        </div>
+        <button onClick={onRelationship}>
+          <small>{t('当前服务机构与办理身份', 'Current firm & acting identity')}</small>
+          <strong>{relationship.customerName}</strong>
+          <span>{relationship.workspaceName} ›</span>
+        </button>
+      </section>
+      <section className="mini-profile-service">
+        <div className="mini-advisor-avatar">
+          <span>林</span>
+          <i />
+        </div>
+        <div>
+          <small>{t('你的专属顾问 · Demo', 'Your advisor · Demo')}</small>
+          <h2>{t('有问题，随时找林顾问', 'Advisor Lin is ready to help')}</h2>
+        </div>
+        <button onClick={() => onSection('messages')}>{t('联系顾问', 'Contact')}</button>
+      </section>
+      <section className="mini-profile-group">
+        <h2>{t('我的业务与资料', 'Business & files')}</h2>
+        <MiniMenu
+          icon="标"
+          label={copy.assetsTitle}
+          meta={`${assets.length}`}
+          onClick={() => onSection('trademarks')}
+        />
+        <MiniMenu
+          icon="文"
+          label={copy.myFiles}
+          meta={state.documentSubmitted ? t('含新提交资料', 'New file added') : ''}
+        />
+        <MiniMenu icon="票" label={copy.invoices} />
+        <MiniMenu
+          icon="企"
+          label={copy.companies}
+          meta={relationship.kind === 'ENTERPRISE' ? '1' : ''}
+        />
+        <MiniMenu icon="员" label={copy.members} />
+      </section>
+      <section className="mini-profile-group">
+        <h2>{t('账户与服务', 'Account & support')}</h2>
+        <MiniMenu icon="资" label={copy.personalInfo} />
+        <MiniMenu icon="安" label={copy.accountSecurity} />
+        <MiniMenu icon="偏" label={copy.preferences} />
+        <MiniMenu icon="客" label={t('在线客服', 'Online support')} />
+        <MiniMenu icon="帮" label={copy.help} />
+      </section>
+      <Button variant="danger" className="cp-danger-button mini-logout" onClick={onLogout}>
+        {copy.logout}
+      </Button>
+      <p className="mini-version">MarkOrbit Customer Portal · Demo V1.2</p>
+    </div>
+  );
+}
+
+function MiniPageHeader({
+  eyebrow,
+  title,
+  subtitle
+}: {
+  eyebrow: string;
+  title: string;
+  subtitle: string;
+}) {
+  return (
+    <header className="mini-page-header">
+      <span>{eyebrow}</span>
+      <h1>{title}</h1>
+      <p>{subtitle}</p>
+    </header>
+  );
+}
+
+function MiniSectionHeading({
+  title,
+  action,
+  onAction
+}: {
+  title: string;
+  action?: string | undefined;
+  onAction?: (() => void) | undefined;
+}) {
+  return (
+    <div className="mini-section-heading">
+      <h2>{title}</h2>
+      {action && <button onClick={onAction}>{action} ›</button>}
+    </div>
+  );
+}
+
+function MiniQuick({
+  icon,
+  label,
+  tone,
+  onClick
+}: {
+  icon: string;
+  label: string;
+  tone: string;
+  onClick: () => void;
+}) {
+  return (
+    <button className={`mini-quick mini-tone-${tone}`} onClick={onClick}>
+      <span>{icon}</span>
+      <b>{label}</b>
+    </button>
+  );
+}
+
+function MiniBusinessCard({
+  state,
+  item,
+  compact,
+  onClick
+}: {
+  state: PortalState;
+  item: BusinessItem;
+  compact?: boolean;
+  onClick?: (() => void) | undefined;
+}) {
+  const title = state.locale === 'zh-CN' ? item.title : item.titleEn;
+  const status = state.locale === 'zh-CN' ? item.status : item.statusEn;
+  return (
+    <article className={`mini-business-card ${compact ? 'is-compact' : ''}`}>
+      <div className="mini-mark-tile">{item.title.slice(0, 1)}</div>
+      <div className="mini-business-body">
+        <div>
+          <span>
+            {item.kind === 'MATTER'
+              ? state.locale === 'zh-CN'
+                ? '商标申请'
+                : 'Trademark filing'
+              : item.kind === 'ORDER'
+                ? state.locale === 'zh-CN'
+                  ? '服务订单'
+                  : 'Service order'
+                : state.locale === 'zh-CN'
+                  ? '商标档案'
+                  : 'Trademark record'}
+          </span>
+          <small>{state.locale === 'zh-CN' ? '更新于 09-28 10:20' : 'Updated 09-28 10:20'}</small>
+        </div>
+        <h3>{title}</h3>
+        <p>{state.locale === 'zh-CN' ? item.detail : item.detailEn}</p>
+        <small className="mini-business-id">
+          {state.locale === 'zh-CN' ? '业务编号' : 'Business ID'} · {item.id}
+        </small>
+        <div className="mini-business-status">
+          <i />
+          {status}
+        </div>
+      </div>
+      {onClick && (
+        <button
+          className="mini-card-arrow"
+          onClick={onClick}
+          aria-label={`${title} ${state.locale === 'zh-CN' ? '查看详情' : 'View details'}`}
+        >
+          ›
+        </button>
+      )}
+    </article>
+  );
+}
+
+function MiniServiceProduct({
+  badge,
+  icon,
+  title,
+  description,
+  scene,
+  action
+}: {
+  badge: string;
+  icon: string;
+  title: string;
+  description: string;
+  scene: string;
+  action: string;
+}) {
+  return (
+    <article className="mini-service-product">
+      <div className="mini-product-icon">{icon}</div>
+      <div>
+        <span>{badge}</span>
+        <h2>{title}</h2>
+        <p>{description}</p>
+        <small>{scene}</small>
+      </div>
+      <button>{action} ›</button>
+    </article>
+  );
+}
+
+function MiniProgressCard({
+  state,
+  item,
+  needsAction,
+  onAction
+}: {
+  state: PortalState;
+  item: BusinessItem;
+  needsAction: boolean;
+  onAction: () => void;
+}) {
+  const t = (zh: string, en: string) => (state.locale === 'zh-CN' ? zh : en);
+  return (
+    <article className="mini-progress-card">
+      <header>
+        <div className="mini-mark-tile">{item.title.slice(0, 1)}</div>
+        <div>
+          <span>
+            {item.kind === 'ORDER'
+              ? t('美国 · 商标服务', 'United States · Trademark service')
+              : t('中国 · 商标申请', 'China · Trademark filing')}
+          </span>
+          <h2>{state.locale === 'zh-CN' ? item.title : item.titleEn}</h2>
+        </div>
+        <button onClick={onAction}>›</button>
+      </header>
+      <div className="mini-progress-line">
+        <i />
+        <i />
+        <i />
+        <i />
+      </div>
+      <div className="mini-progress-copy">
+        <strong>{state.locale === 'zh-CN' ? item.status : item.statusEn}</strong>
+        <small>
+          {t('最近更新：2026-09-28 10:20 · Demo', 'Last updated: 2026-09-28 10:20 · Demo')}
+        </small>
+        <p>
+          <b>{t('下一步', 'Next')}</b>
+          {needsAction
+            ? item.kind === 'MATTER'
+              ? t('请补充首次使用说明', 'Add the first-use statement')
+              : t('请查看并确认报价', 'Review and confirm the quote')
+            : t(
+                '服务顾问正在处理，暂时无需操作',
+                'Your advisor is handling this; no action needed'
+              )}
+        </p>
+      </div>
+      {needsAction && (
+        <Button className="cp-primary" onClick={onAction}>
+          {t('立即处理', 'Take action')}
+        </Button>
+      )}
+      <button className="mini-detail-link" onClick={onAction}>
+        {t('查看业务详情', 'View details')} →
+      </button>
+    </article>
+  );
+}
+
+function MiniMessageCard({
+  tone,
+  icon,
+  title,
+  detail,
+  time,
+  unread,
+  action,
+  onClick
+}: {
+  tone: string;
+  icon: string;
+  title: string;
+  detail: string;
+  time: string;
+  unread?: boolean;
+  action?: string | undefined;
+  onClick?: (() => void) | undefined;
+}) {
+  return (
+    <article className={`mini-message-card mini-tone-${tone}`}>
+      <span className="mini-message-icon">{icon}</span>
+      <div>
+        <header>
+          <h3>{title}</h3>
+          <time>{time}</time>
+        </header>
+        <p>{detail}</p>
+        {action && <button onClick={onClick}>{action} →</button>}
+      </div>
+      {unread && <i className="mini-unread" />}
+    </article>
+  );
+}
+
+function MiniMenu({
+  icon,
+  label,
+  meta,
+  onClick
+}: {
+  icon: string;
+  label: string;
+  meta?: string;
+  onClick?: (() => void) | undefined;
+}) {
+  return (
+    <button className="mini-menu-row" onClick={onClick}>
+      <span>{icon}</span>
+      <strong>{label}</strong>
+      {meta && <small>{meta}</small>}
+      <b>›</b>
+    </button>
   );
 }
 

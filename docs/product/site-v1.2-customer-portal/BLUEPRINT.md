@@ -202,3 +202,32 @@ The runnable entry is `apps/markreg-web/customer-portal-preview.html`:
 | Mini-program adapted / 390px | `/customer-portal-preview.html?channel=mini` | `/customer-portal-preview.html?channel=mini&locale=en-US` |
 
 The preview was visually reviewed in the standalone browser at desktop width and in the constrained mini-program shell. The Playwright matrix runs every Golden Path at desktop and 390 × 844, checks exact quote/matter IDs, verifies document and quote state across Web → mini → Web, and asserts no horizontal overflow. All four URLs are presentation adapters over the same browser-local Demo fixture; they are not evidence of server persistence, native WeChat sign-in, or cross-device session exchange.
+
+## Mini-program product-level redesign
+
+The mobile experience uses the established five-destination IA but no longer renders a compressed desktop portal. Its job is service continuity for an occasional, non-specialist customer: show what needs attention, make professional help feel available, and explain progress without weakening legal accuracy.
+
+### Five complete destinations
+
+| Destination | Product-level composition                                                                                                                                                                             |
+| ----------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 首页        | Branded welcome hero, active service-firm/identity control, one dominant next-action card, five quick services, active-business cards, dedicated-advisor card, service guides and MO assistant entry. |
+| 办业务      | Search affordance, customer-language service categories, scenario-led service cards, advisor recommendation banner and exact existing-business continuation.                                          |
+| 进度        | Active / awaiting me / completed summary and filters, branded business cards, plain-language status, Demo update time, next action, progress track and source-of-truth caveat.                        |
+| 消息        | All / business progress / documents / advisor categories, Today / Earlier grouping, unread signals, advisor and system messages, and object-linked actions for the exact matter or quote.             |
+| 我的        | Branded identity card, current service institution and acting identity, dedicated-advisor contact, business/files/trademarks/invoices/company group, account/support group and explicit sign-out.     |
+
+### Mature patterns adopted
+
+- A strong, useful first screen combines brand, identity context and the next required action instead of decorating a dashboard with KPIs.
+- A stable service-entry grid makes frequent tasks recognizable by position, icon family and short customer-language labels.
+- Operational content is bounded: service guides, FAQ links and an advisor banner create a maintained-service feeling without inventing offers, live availability or owner facts.
+- Cards use a consistent anatomy—category, customer-facing title, fact line, source-safe status, next action and detail affordance—rather than unrelated white rectangles.
+- The account area has the layered structure customers expect from a long-lived mini program: identity, provider, human support, owned records and security/help.
+- The fixed bottom bar uses five touch targets, active icon containers and an active indicator; it behaves like a primary mobile product control rather than a demo switcher.
+
+### Maturity delta from the previous preview
+
+The previous mini view proved authorization and cross-channel continuity but visually resembled a narrow back-office page. The redesign adds a branded service shell, human/AI assistance, content and FAQ surfaces, service discovery, progressive status explanations, time-grouped messages, and a durable account hub. Density is higher but remains scannable through section rhythm, restrained color roles, a shared icon/tile system, consistent 44px-or-larger actions and a single dominant action per card.
+
+These changes are presentation and fixture behavior only. “Advisor,” update times, guide content and assistant entry are labelled or bounded as Demo UI; they do not assert real staffing, SLA, official status, AI authority, native WeChat authentication or production persistence.

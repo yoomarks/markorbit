@@ -36,7 +36,7 @@ describe('Customer Portal V1.2 preview', () => {
     expect(screen.getByText(/你有 1 件事需要处理/)).toBeInTheDocument();
     unmount();
     render(<CustomerPortalPreview storageKey="channel" defaultChannel="mini" />);
-    expect(screen.getByText(/你有 1 件事需要处理/)).toBeInTheDocument();
+    expect(screen.getByText('1 项待处理')).toBeInTheDocument();
     expect(screen.getAllByText(/matter-cn-nova-2026/).length).toBeGreaterThan(0);
   });
 
@@ -94,5 +94,26 @@ describe('Customer Portal V1.2 preview', () => {
       within(main).getByRole('heading', { name: '你没有权限查看这项业务' })
     ).toBeInTheDocument();
     expect(within(main).queryByText('NOVA')).not.toBeInTheDocument();
+  });
+
+  it('presents all five mature mini-program service destinations', async () => {
+    const user = userEvent.setup();
+    render(<CustomerPortalPreview persist={false} defaultChannel="mini" />);
+    expect(screen.getByRole('heading', { name: '陈玫' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: '常用服务' })).toBeInTheDocument();
+    expect(screen.getByText('林顾问正在为你服务')).toBeInTheDocument();
+
+    const navigation = screen.getByRole('navigation', { name: '小程序主导航' });
+    await user.click(within(navigation).getByRole('button', { name: '办业务' }));
+    expect(screen.getByRole('heading', { name: '热门服务' })).toBeInTheDocument();
+    await user.click(within(navigation).getByRole('button', { name: '进度' }));
+    expect(
+      screen.getByText('页面显示的是服务进展；正式法律程序和官方期限以详情中的来源文件为准。')
+    ).toBeInTheDocument();
+    await user.click(within(navigation).getByRole('button', { name: '消息' }));
+    expect(screen.getByRole('button', { name: /顾 顾问消息/ })).toBeInTheDocument();
+    await user.click(within(navigation).getByRole('button', { name: '我的' }));
+    expect(screen.getByText('我的业务与资料')).toBeInTheDocument();
+    expect(screen.getByText('账户与服务')).toBeInTheDocument();
   });
 });

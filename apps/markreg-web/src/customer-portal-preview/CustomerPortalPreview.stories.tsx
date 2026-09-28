@@ -10,28 +10,40 @@ const meta = {
 
 export default meta;
 type Story = StoryObj<typeof meta>;
+const miniParameters = {
+  viewport: {
+    viewports: { mini390: { name: 'Mini 390', styles: { width: '390px', height: '844px' } } },
+    defaultViewport: 'mini390'
+  }
+};
 
 export const DesktopSuccess: Story = { args: { fixtureMode: 'success', defaultChannel: 'web' } };
 export const DesktopEnglish: Story = {
   args: { fixtureMode: 'success', defaultChannel: 'web', defaultLocale: 'en-US' }
 };
 export const MiniProgramAdapted: Story = {
-  args: { fixtureMode: 'success', defaultChannel: 'mini' },
-  parameters: {
-    viewport: {
-      viewports: { mini390: { name: 'Mini 390', styles: { width: '390px', height: '844px' } } },
-      defaultViewport: 'mini390'
-    }
-  }
+  args: { fixtureMode: 'success', defaultChannel: 'mini', defaultSection: 'home' },
+  parameters: miniParameters
+};
+export const MiniServices: Story = {
+  args: { fixtureMode: 'success', defaultChannel: 'mini', defaultSection: 'services' },
+  parameters: miniParameters
+};
+export const MiniProgress: Story = {
+  args: { fixtureMode: 'success', defaultChannel: 'mini', defaultSection: 'progress' },
+  parameters: miniParameters
+};
+export const MiniMessages: Story = {
+  args: { fixtureMode: 'success', defaultChannel: 'mini', defaultSection: 'messages' },
+  parameters: miniParameters
+};
+export const MiniProfile: Story = {
+  args: { fixtureMode: 'success', defaultChannel: 'mini', defaultSection: 'profile' },
+  parameters: miniParameters
 };
 export const MiniProgramEnglish: Story = {
   args: { fixtureMode: 'success', defaultChannel: 'mini', defaultLocale: 'en-US' },
-  parameters: {
-    viewport: {
-      viewports: { mini390: { name: 'Mini 390', styles: { width: '390px', height: '844px' } } },
-      defaultViewport: 'mini390'
-    }
-  }
+  parameters: miniParameters
 };
 export const SignedOut: Story = { args: { fixtureMode: 'signed-out' } };
 export const LoadingAuthorization: Story = { args: { fixtureMode: 'loading' } };
