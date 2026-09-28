@@ -2,7 +2,7 @@ import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { App } from './App.js';
-import { seedWorkspace } from './domain.js';
+import { seedSite, seedWorkspace } from './domain.js';
 import { adminLocaleStorageKey } from './i18n.js';
 
 beforeEach(() => {
@@ -338,5 +338,90 @@ describe('Site V1 interactive preview', () => {
     expect(screen.getByRole('heading', { name: '无权访问此 Site' })).toBeVisible();
     expect(screen.queryByLabelText('标题')).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: '发布内容演示' })).not.toBeInTheDocument();
+  });
+
+  it('activates only an authorized merchant relationship for the current Site', async () => {
+    localStorage.removeItem(adminLocaleStorageKey);
+    const user = userEvent.setup();
+    render(<App initialPath="/admin/site_atlas_demo/settings/payment" />);
+
+    expect(screen.getByRole('heading', { name: '收款设置' })).toBeVisible();
+    expect(screen.queryByLabelText('商户账号')).not.toBeInTheDocument();
+    await user.selectOptions(screen.getByLabelText('授权收款关系'), 'merchant_atlas_cn_wechat');
+    await user.click(screen.getByRole('button', { name: '检查并启用' }));
+    await user.click(screen.getByLabelText(/确认此配置只用于当前 Site/u));
+    await user.click(screen.getByRole('button', { name: '启用演示收款配置' }));
+
+    const website = JSON.parse(
+      localStorage.getItem('markorbit:site-v1-preview:site:site_atlas_demo') ?? '{}'
+    ) as { collection: { active: { merchantRelationshipId: string }; version: number } };
+    const mini = JSON.parse(
+      localStorage.getItem('markorbit:site-v1-preview:site:site_atlas_mini_demo') ?? '{}'
+    ) as { collection: { active: { merchantRelationshipId: string }; version: number } };
+    expect(website.collection.active.merchantRelationshipId).toBe('merchant_atlas_cn_wechat');
+    expect(website.collection.version).toBe(2);
+    expect(mini.collection.active.merchantRelationshipId).not.toBe(
+      website.collection.active.merchantRelationshipId
+    );
+    expect(
+      screen
+        .getAllByRole('status')
+        .some((element) => element.textContent?.includes('演示收款配置 v2 已启用'))
+    ).toBe(true);
+    expect(screen.queryByText('支付成功')).not.toBeInTheDocument();
+    expect(screen.queryByText('资金已结算')).not.toBeInTheDocument();
+  });
+
+  it('rejects an ungranted merchant reference and disables collection mutations for viewers', () => {
+    localStorage.removeItem(adminLocaleStorageKey);
+    const state = seedSite('site_atlas_demo') as unknown as Record<string, unknown>;
+    state.collection = {
+      authorizedRelationships: [],
+      draft: {
+        merchantRelationshipId: 'merchant_external_untrusted',
+        provider: 'UNTRUSTED'
+      },
+      active: null,
+      version: 1
+    };
+    state.role = 'VIEWER';
+    localStorage.setItem('markorbit:site-v1-preview:site:site_atlas_demo', JSON.stringify(state));
+
+    render(<App initialPath="/admin/site_atlas_demo/settings/payment" />);
+    expect(screen.getByText('当前配置引用未获授权，不能启用。')).toBeVisible();
+    expect(screen.getByRole('button', { name: '检查并启用' })).toBeDisabled();
+  });
+
+  it('applies a conversational proposal to the current draft without publishing it', async () => {
+    localStorage.removeItem(adminLocaleStorageKey);
+    const user = userEvent.setup();
+    render(<App initialPath="/admin/site_atlas_mini_demo/overview" />);
+
+    await user.click(screen.getByRole('button', { name: '运营助手' }));
+    await user.type(
+      screen.getByLabelText('这次想准备什么？'),
+      '为小程序首页准备一段强调进度查询的介绍'
+    );
+    await user.click(screen.getByRole('button', { name: '生成草稿建议' }));
+    expect(screen.getByText('待审核提案')).toBeVisible();
+    await user.click(screen.getByRole('button', { name: '应用到当前 Site 草稿' }));
+
+    const persisted = JSON.parse(
+      localStorage.getItem('markorbit:site-v1-preview:site:site_atlas_mini_demo') ?? '{}'
+    ) as ReturnType<typeof seedSite>;
+    expect(persisted.draft.localized['zh-CN'].blocks.hero?.body).toContain('进度');
+    expect(persisted.published.localized['zh-CN'].blocks.hero?.body).not.toContain(
+      '对话提案已加入草稿'
+    );
+    expect(persisted.versions).toHaveLength(1);
+  });
+
+  it('shows attributed order evidence without treating the Site as the order or payment owner', () => {
+    localStorage.removeItem(adminLocaleStorageKey);
+    render(<App initialPath="/admin/site_atlas_demo/analytics" />);
+    expect(screen.getByText('order_demo_atlas_001')).toBeVisible();
+    expect(screen.getByText('merchant_atlas_us_referral')).toBeVisible();
+    expect(screen.getByText('site_atlas_demo · WEB · /services/us-filing')).toBeVisible();
+    expect(screen.getByText('订单与支付由其权威 Owner 管理')).toBeVisible();
   });
 });

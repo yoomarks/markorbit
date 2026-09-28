@@ -8,6 +8,7 @@ import {
   workspacePortfolios,
   type DemoLead,
   type DemoSiteId,
+  type SiteCollectionSelection,
   type SiteConfig,
   type SiteState,
   type WorkspaceId
@@ -35,9 +36,24 @@ function validState(value: unknown, expectedSiteId: DemoSiteId): value is SiteSt
 }
 
 function normalizeState(state: SiteState): SiteState {
+  const seed = seedSite(state.siteId);
+  const collection = state.collection
+    ? {
+        ...seed.collection,
+        ...state.collection,
+        draft: { ...seed.collection.draft, ...state.collection.draft },
+        active: state.collection.active
+          ? { ...seed.collection.active, ...state.collection.active }
+          : seed.collection.active,
+        activatedAt: state.collection.activatedAt || seed.collection.activatedAt
+      }
+    : seed.collection;
   return {
     ...state,
-    sharedSources: state.sharedSources ?? seedSite(state.siteId).sharedSources,
+    sharedSources: state.sharedSources ?? seed.sharedSources,
+    collection,
+    promotionGrants: state.promotionGrants ?? seed.promotionGrants,
+    attributedOrders: state.attributedOrders ?? seed.attributedOrders,
     leads: state.leads.map((lead) => ({
       ...lead,
       channel: lead.channel ?? state.terminal
@@ -104,6 +120,9 @@ export interface PreviewStore {
     lead: Omit<DemoLead, 'id' | 'workspaceId' | 'siteId' | 'channel' | 'createdAt' | 'status'>
   ): DemoLead;
   updateLead(selector: SiteSelector, leadId: string, status: DemoLead['status']): void;
+  updateCollectionDraft(selector: SiteSelector, merchantRelationshipId: string): void;
+  activateCollection(selector: SiteSelector): number;
+  applyOperationsProposal(selector: SiteSelector, body: string): void;
   reset(selector?: SiteSelector): void;
   setRole(selector: SiteSelector, role: SiteState['role']): void;
   resetDemoAccess(selector: SiteSelector): void;
@@ -227,6 +246,85 @@ export function PreviewStoreProvider({ children }: { children: ReactNode }) {
           [siteId]: {
             ...site,
             leads: site.leads.map((lead) => (lead.id === leadId ? { ...lead, status } : lead))
+          }
+        });
+      },
+      updateCollectionDraft(selector, merchantRelationshipId) {
+        requireOwner(selector);
+        const siteId = selectorSiteId(selector);
+        const site = sites[siteId];
+        const relationship = site.collection.authorizedRelationships.find(
+          (item) =>
+            item.id === merchantRelationshipId && item.supportedTerminals.includes(site.terminal)
+        );
+        if (!relationship) throw new Error('SITE_COLLECTION_MERCHANT_NOT_AUTHORIZED');
+        const draft: SiteCollectionSelection = {
+          merchantRelationshipId: relationship.id,
+          provider: relationship.provider,
+          relationship: relationship.relationship
+        };
+        commit({
+          ...sites,
+          [siteId]: { ...site, collection: { ...site.collection, draft } }
+        });
+      },
+      activateCollection(selector) {
+        requireOwner(selector);
+        const siteId = selectorSiteId(selector);
+        const site = sites[siteId];
+        const relationship = site.collection.authorizedRelationships.find(
+          (item) =>
+            item.id === site.collection.draft.merchantRelationshipId &&
+            item.provider === site.collection.draft.provider &&
+            item.relationship === site.collection.draft.relationship &&
+            item.supportedTerminals.includes(site.terminal)
+        );
+        if (!relationship) throw new Error('SITE_COLLECTION_MERCHANT_NOT_AUTHORIZED');
+        const version = site.collection.version + 1;
+        commit({
+          ...sites,
+          [siteId]: {
+            ...site,
+            collection: {
+              ...site.collection,
+              active: structuredClone(site.collection.draft),
+              version,
+              activatedAt: new Date().toISOString()
+            }
+          }
+        });
+        return version;
+      },
+      applyOperationsProposal(selector, body) {
+        requireOwner(selector);
+        const siteId = selectorSiteId(selector);
+        const site = sites[siteId];
+        commit({
+          ...sites,
+          [siteId]: {
+            ...site,
+            draft: {
+              ...site.draft,
+              localized: {
+                ...site.draft.localized,
+                'zh-CN': {
+                  ...site.draft.localized['zh-CN'],
+                  blocks: {
+                    ...site.draft.localized['zh-CN'].blocks,
+                    hero: {
+                      ...(site.draft.localized['zh-CN'].blocks.hero ?? {
+                        label: '首页欢迎区',
+                        title: '欢迎',
+                        body: ''
+                      }),
+                      body: `对话提案已加入草稿：${body}`
+                    }
+                  }
+                }
+              },
+              localePublication: { ...site.draft.localePublication, 'zh-CN': 'DRAFT' }
+            },
+            savedAt: new Date().toISOString()
           }
         });
       },
