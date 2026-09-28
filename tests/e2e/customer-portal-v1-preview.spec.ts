@@ -54,6 +54,11 @@ test('same-Workspace customers and enterprise object grants fail closed', async 
   await page.getByRole('button', { name: /赵霖 · 企业成员/ }).click();
   await expect(page.getByText('NOVA 图形商标 · 中国申请').first()).toBeVisible();
   await expect(page.getByText('NOVA 美国商标检索与申请')).toHaveCount(0);
+
+  await page.getByRole('button', { name: /澄远知识产权/ }).click();
+  await page.getByRole('button', { name: /周岚 · 已撤销企业成员/ }).click();
+  await expect(page.getByRole('heading', { name: '你没有权限查看这项业务' })).toBeVisible();
+  await expect(page.getByText('NOVA 图形商标 · 中国申请')).toHaveCount(0);
 });
 
 test('lead-only consultation, rejected claim, locale stability and logout protection', async ({
@@ -110,4 +115,101 @@ test('mature mini-program navigation exposes five complete service pages', async
   expect(await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth)).toBe(
     false
   );
+});
+
+test('authorized business detail explains service progress and preserves source truth', async ({
+  page
+}) => {
+  await page.getByRole('button', { name: '使用 MO 账号登录' }).click();
+  await page.getByRole('button', { name: '去处理: matter-cn-nova-2026' }).click();
+  const detail = page.getByRole('dialog', { name: '业务详情' });
+  await expect(detail).toContainText('matter-cn-nova-2026');
+  await expect(detail).toContainText('正式程序：申请准备 · 资料收集');
+  await expect(detail).toContainText('暂无经核实的官方期限');
+  await detail.getByRole('button', { name: '提交资料' }).click();
+  await expect(page.getByRole('dialog', { name: '补充 NOVA 首次使用说明' })).toContainText(
+    'matter-cn-nova-2026'
+  );
+});
+
+test('H5 has a distinct entry, five touch destinations and no URL-ID authority', async ({
+  page
+}, testInfo) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto(`${path}?channel=h5&businessId=matter-atlas-pico-221`);
+  await expect(page.getByRole('heading', { name: '继续办理你的商标业务' })).toBeVisible();
+  await expect(page.getByText('PICO 文字商标 · 中国申请')).toHaveCount(0);
+
+  await page.getByRole('button', { name: '使用 MO 账号登录' }).click();
+  await expect(page.locator('.cp-app')).toHaveAttribute('data-channel', 'h5');
+  const navigation = page.getByRole('navigation', { name: '移动端主导航' });
+  await expect(navigation.getByRole('button')).toHaveCount(5);
+  await testInfo.attach('h5-390-home-zh', {
+    body: await page.screenshot({ fullPage: true }),
+    contentType: 'image/png'
+  });
+  if (testInfo.project.name === 'customer-portal-desktop') {
+    await page.screenshot({
+      path: 'docs/product/site-v1.2-customer-portal/evidence/h5-390-home-zh.png',
+      fullPage: true
+    });
+  }
+
+  await navigation.getByRole('button', { name: '进度' }).click();
+  await page.getByRole('button', { name: /NOVA 图形商标 · 中国申请 查看详情/ }).click();
+  await expect(page.getByRole('dialog', { name: '业务详情' })).toContainText('matter-cn-nova-2026');
+  await testInfo.attach('h5-390-business-detail-zh', {
+    body: await page.screenshot({ fullPage: true }),
+    contentType: 'image/png'
+  });
+  if (testInfo.project.name === 'customer-portal-desktop') {
+    await page.screenshot({
+      path: 'docs/product/site-v1.2-customer-portal/evidence/h5-390-business-detail-zh.png',
+      fullPage: true
+    });
+  }
+
+  expect(await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth)).toBe(
+    false
+  );
+});
+
+test('captures desktop and mini product review evidence', async ({ page }, testInfo) => {
+  await page.getByRole('button', { name: '使用 MO 账号登录' }).click();
+  await testInfo.attach('web-desktop-home-zh', {
+    body: await page.screenshot({ fullPage: true }),
+    contentType: 'image/png'
+  });
+  if (testInfo.project.name === 'customer-portal-desktop') {
+    await page.screenshot({
+      path: 'docs/product/site-v1.2-customer-portal/evidence/web-desktop-home-zh.png',
+      fullPage: true
+    });
+  }
+
+  await page.goto(`${path}?channel=mini`);
+  await page.setViewportSize({ width: 390, height: 844 });
+  const navigation = page.getByRole('navigation', { name: '小程序主导航' });
+  await navigation.getByRole('button', { name: '消息' }).click();
+  await testInfo.attach('mini-390-messages-zh', {
+    body: await page.screenshot({ fullPage: true }),
+    contentType: 'image/png'
+  });
+  if (testInfo.project.name === 'customer-portal-desktop') {
+    await page.screenshot({
+      path: 'docs/product/site-v1.2-customer-portal/evidence/mini-390-messages-zh.png',
+      fullPage: true
+    });
+  }
+  await navigation.getByRole('button', { name: '我的' }).click();
+  await testInfo.attach('mini-390-profile-zh', {
+    body: await page.screenshot({ fullPage: true }),
+    contentType: 'image/png'
+  });
+  if (testInfo.project.name === 'customer-portal-desktop') {
+    await page.screenshot({
+      path: 'docs/product/site-v1.2-customer-portal/evidence/mini-390-profile-zh.png',
+      fullPage: true
+    });
+  }
 });

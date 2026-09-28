@@ -1,5 +1,5 @@
 export type Locale = 'zh-CN' | 'en-US';
-export type Channel = 'web' | 'mini';
+export type Channel = 'web' | 'h5' | 'mini';
 export type FixtureMode =
   'success' | 'loading' | 'empty' | 'error' | 'permission' | 'partial' | 'signed-out';
 
@@ -146,6 +146,24 @@ export const identities: readonly DemoIdentity[] = [
         role: 'AUTHORIZED_MEMBER',
         objectGrants: ['matter-cn-nova-2026'],
         status: 'ACTIVE'
+      }
+    ]
+  },
+  {
+    accountId: 'acct-demo-revoked',
+    displayName: '周岚 Lan Zhou',
+    maskedMobile: '+86 137 **** 9016',
+    bindings: [
+      {
+        relationshipId: 'cr-atlas-nova-revoked',
+        workspaceId: 'ws-atlas-001',
+        workspaceName: '澄远知识产权 · Atlas IP',
+        customerId: 'enterprise-nova-labs',
+        customerName: '诺瓦实验室（上海）有限公司',
+        kind: 'ENTERPRISE',
+        role: 'AUTHORIZED_MEMBER',
+        objectGrants: ['matter-cn-nova-2026'],
+        status: 'EXPIRED'
       }
     ]
   }

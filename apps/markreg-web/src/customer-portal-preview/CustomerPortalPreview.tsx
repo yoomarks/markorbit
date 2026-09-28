@@ -62,13 +62,15 @@ export function CustomerPortalPreview({
     };
   });
   const [dialog, setDialog] = useState<
-    'relationships' | 'consult' | 'claim' | 'upload' | 'quote' | null
+    'relationships' | 'consult' | 'claim' | 'upload' | 'quote' | 'business' | null
   >(null);
+  const [selectedBusinessId, setSelectedBusinessId] = useState<string | null>(null);
   const [liveMessage, setLiveMessage] = useState('');
   const copy = getCopy(state.locale);
   const identity = identityFor(state);
   const relationship = relationshipFor(state);
   const items = useMemo(() => authorizedItems(state), [state]);
+  const selectedBusiness = items.find((item) => item.id === selectedBusinessId);
 
   useEffect(() => {
     if (persist) window.localStorage.setItem(storageKey, JSON.stringify(state));
@@ -112,6 +114,12 @@ export function CustomerPortalPreview({
     update({ identityId: null, relationshipId: null, section: 'home' });
   };
 
+  const openBusiness = (businessId: string) => {
+    if (!items.some((item) => item.id === businessId)) return;
+    setSelectedBusinessId(businessId);
+    setDialog('business');
+  };
+
   if (fixtureMode === 'loading') return <StatusScreen kind="loading" copy={copy} />;
   if (fixtureMode === 'error') return <StatusScreen kind="error" copy={copy} />;
 
@@ -145,8 +153,30 @@ export function CustomerPortalPreview({
     );
   }
 
+  if (relationship.status !== 'ACTIVE') {
+    return (
+      <div className={`cp-login cp-${state.channel}`}>
+        <DemoBanner copy={copy} />
+        <StatusScreen kind="permission" copy={copy} />
+        <div className="cp-revoked-actions">
+          <p>
+            {state.locale === 'zh-CN'
+              ? '该企业成员授权已撤销或过期。受保护的业务已隐藏，请重新登录或联系服务机构。'
+              : 'This company-member authorization was revoked or expired. Protected business is hidden; sign in again or contact the service firm.'}
+          </p>
+          <Button className="cp-primary" onClick={logout}>
+            {state.locale === 'zh-CN' ? '返回登录' : 'Back to sign in'}
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className={`cp-app cp-${state.channel}`} data-channel={state.channel}>
+    <div
+      className={`cp-app cp-${state.channel} ${state.channel === 'h5' ? 'cp-mini' : ''}`}
+      data-channel={state.channel}
+    >
       <a className="cp-skip" href="#portal-main">
         {state.locale === 'zh-CN' ? '跳到主要内容' : 'Skip to main content'}
       </a>
@@ -202,9 +232,11 @@ export function CustomerPortalPreview({
             <span className="cp-channel-tag">
               {state.channel === 'web'
                 ? 'WEB'
-                : state.locale === 'zh-CN'
-                  ? '小程序适配'
-                  : 'MINI ADAPTED'}
+                : state.channel === 'h5'
+                  ? 'H5'
+                  : state.locale === 'zh-CN'
+                    ? '小程序适配'
+                    : 'MINI ADAPTED'}
             </span>
             <button className="cp-quiet-button" onClick={switchLocale}>
               {copy.language}
@@ -232,6 +264,7 @@ export function CustomerPortalPreview({
               onSection={(section) => update({ section })}
               onUpload={() => setDialog('upload')}
               onQuote={() => setDialog('quote')}
+              onBusiness={openBusiness}
               onChannel={switchChannel}
               onRelationship={() => setDialog('relationships')}
               onLogout={logout}
@@ -241,7 +274,15 @@ export function CustomerPortalPreview({
 
         <nav
           className="cp-bottom-nav"
-          aria-label={state.locale === 'zh-CN' ? '小程序主导航' : 'Mini primary navigation'}
+          aria-label={
+            state.channel === 'h5'
+              ? state.locale === 'zh-CN'
+                ? '移动端主导航'
+                : 'Mobile primary navigation'
+              : state.locale === 'zh-CN'
+                ? '小程序主导航'
+                : 'Mini primary navigation'
+          }
         >
           {mobileSections.map((section) => (
             <button
@@ -299,6 +340,20 @@ export function CustomerPortalPreview({
             update({ quoteStatus: 'QUESTION_SENT_DEMO' }, copy.questionSent);
             setDialog(null);
           }}
+        />
+      )}
+      {dialog === 'business' && selectedBusiness && (
+        <BusinessDetailDialog
+          state={state}
+          item={selectedBusiness}
+          onClose={() => setDialog(null)}
+          onPrimary={
+            selectedBusiness.id === 'matter-cn-nova-2026' && !state.documentSubmitted
+              ? () => setDialog('upload')
+              : selectedBusiness.id === quoteFixture.businessId && state.quoteStatus === 'PENDING'
+                ? () => setDialog('quote')
+                : undefined
+          }
         />
       )}
     </div>
@@ -412,6 +467,7 @@ function PortalSectionView({
   onSection,
   onUpload,
   onQuote,
+  onBusiness,
   onChannel,
   onRelationship,
   onLogout
@@ -422,6 +478,7 @@ function PortalSectionView({
   onSection: (section: PortalSection) => void;
   onUpload: () => void;
   onQuote: () => void;
+  onBusiness: (businessId: string) => void;
   onChannel: () => void;
   onRelationship: () => void;
   onLogout: () => void;
@@ -437,7 +494,7 @@ function PortalSectionView({
   const hasQuoteTask = canAccessQuote && state.quoteStatus === 'PENDING';
   const pendingCount = Number(hasDocumentTask) + Number(hasQuoteTask);
 
-  if (state.channel === 'mini') {
+  if (state.channel !== 'web') {
     return (
       <MiniPortalPage
         state={state}
@@ -452,6 +509,7 @@ function PortalSectionView({
         onSection={onSection}
         onUpload={onUpload}
         onQuote={onQuote}
+        onBusiness={onBusiness}
         onChannel={onChannel}
         onRelationship={onRelationship}
         onLogout={onLogout}
@@ -553,7 +611,7 @@ function PortalSectionView({
             {items
               .filter((item) => item.kind !== 'ASSET')
               .map((item) => (
-                <BusinessRow key={item.id} state={state} item={item} />
+                <BusinessRow key={item.id} state={state} item={item} onOpen={onBusiness} />
               ))}
           </div>
         </section>
@@ -603,7 +661,7 @@ function PortalSectionView({
           {items
             .filter((item) => item.kind !== 'ASSET')
             .map((item) => (
-              <BusinessRow key={item.id} state={state} item={item} />
+              <BusinessRow key={item.id} state={state} item={item} onOpen={onBusiness} />
             ))}
         </section>
       </SimplePage>
@@ -637,7 +695,7 @@ function PortalSectionView({
           {items
             .filter((item) => item.kind !== 'ASSET')
             .map((item) => (
-              <BusinessRow key={item.id} state={state} item={item} />
+              <BusinessRow key={item.id} state={state} item={item} onOpen={onBusiness} />
             ))}
         </section>
       </SimplePage>
@@ -652,6 +710,7 @@ function PortalSectionView({
         state={state}
         items={items.filter((item) => item.kind === 'ASSET')}
         partial
+        onOpen={onBusiness}
       />
     );
   }
@@ -805,6 +864,7 @@ function MiniPortalPage({
   onSection,
   onUpload,
   onQuote,
+  onBusiness,
   onChannel,
   onRelationship,
   onLogout
@@ -821,6 +881,7 @@ function MiniPortalPage({
   onSection: (section: PortalSection) => void;
   onUpload: () => void;
   onQuote: () => void;
+  onBusiness: (businessId: string) => void;
   onChannel: () => void;
   onRelationship: () => void;
   onLogout: () => void;
@@ -955,7 +1016,7 @@ function MiniPortalPage({
                 key={item.id}
                 state={state}
                 item={item}
-                onClick={() => onSection('progress')}
+                onClick={() => onBusiness(item.id)}
               />
             ))}
           </div>
@@ -1093,7 +1154,7 @@ function MiniPortalPage({
                 key={item.id}
                 state={state}
                 item={item}
-                onClick={() => onSection('progress')}
+                onClick={() => onBusiness(item.id)}
               />
             ))}
           </div>
@@ -1156,6 +1217,7 @@ function MiniPortalPage({
                       ? onQuote
                       : () => undefined
                 }
+                onDetail={() => onBusiness(item.id)}
               />
             ))}
           </div>
@@ -1280,7 +1342,12 @@ function MiniPortalPage({
         />
         <div className="mini-business-stack">
           {assets.map((item) => (
-            <MiniBusinessCard key={item.id} state={state} item={item} />
+            <MiniBusinessCard
+              key={item.id}
+              state={state}
+              item={item}
+              onClick={() => onBusiness(item.id)}
+            />
           ))}
         </div>
         <PartialNotice copy={copy} />
@@ -1501,12 +1568,14 @@ function MiniProgressCard({
   state,
   item,
   needsAction,
-  onAction
+  onAction,
+  onDetail
 }: {
   state: PortalState;
   item: BusinessItem;
   needsAction: boolean;
   onAction: () => void;
+  onDetail: () => void;
 }) {
   const t = (zh: string, en: string) => (state.locale === 'zh-CN' ? zh : en);
   return (
@@ -1521,7 +1590,15 @@ function MiniProgressCard({
           </span>
           <h2>{state.locale === 'zh-CN' ? item.title : item.titleEn}</h2>
         </div>
-        <button onClick={onAction}>›</button>
+        <button
+          onClick={onDetail}
+          aria-label={`${state.locale === 'zh-CN' ? item.title : item.titleEn} ${t(
+            '查看详情',
+            'View details'
+          )}`}
+        >
+          ›
+        </button>
       </header>
       <div className="mini-progress-line">
         <i />
@@ -1551,7 +1628,7 @@ function MiniProgressCard({
           {t('立即处理', 'Take action')}
         </Button>
       )}
-      <button className="mini-detail-link" onClick={onAction}>
+      <button className="mini-detail-link" onClick={onDetail}>
         {t('查看业务详情', 'View details')} →
       </button>
     </article>
@@ -1635,7 +1712,15 @@ function PanelHeading({
   );
 }
 
-function BusinessRow({ state, item }: { state: PortalState; item: BusinessItem }) {
+function BusinessRow({
+  state,
+  item,
+  onOpen
+}: {
+  state: PortalState;
+  item: BusinessItem;
+  onOpen: (businessId: string) => void;
+}) {
   const copy = getCopy(state.locale);
   const status =
     item.id === quoteFixture.businessId && state.quoteStatus !== 'PENDING'
@@ -1668,7 +1753,11 @@ function BusinessRow({ state, item }: { state: PortalState; item: BusinessItem }
         <i aria-hidden="true" />
         {status}
       </span>
-      <button className="cp-row-action" aria-label={`${copy.continue}: ${item.id}`}>
+      <button
+        className="cp-row-action"
+        aria-label={`${copy.continue}: ${item.id}`}
+        onClick={() => onOpen(item.id)}
+      >
         →
       </button>
     </article>
@@ -1680,13 +1769,15 @@ function CollectionPage({
   subtitle,
   state,
   items,
-  partial
+  partial,
+  onOpen
 }: {
   title: string;
   subtitle: string;
   state: PortalState;
   items: readonly BusinessItem[];
   partial?: boolean;
+  onOpen: (businessId: string) => void;
 }) {
   const copy = getCopy(state.locale);
   return (
@@ -1695,7 +1786,7 @@ function CollectionPage({
       {items.length ? (
         <section className="cp-panel cp-collection">
           {items.map((item) => (
-            <BusinessRow key={item.id} state={state} item={item} />
+            <BusinessRow key={item.id} state={state} item={item} onOpen={onOpen} />
           ))}
         </section>
       ) : (
@@ -1898,11 +1989,127 @@ function RelationshipDialog({
           <Button
             variant="secondary"
             className="cp-secondary"
+            onClick={() => onScenario('acct-demo-revoked')}
+          >
+            {state.locale === 'zh-CN'
+              ? '周岚 · 已撤销企业成员'
+              : 'Lan Zhou · revoked company member'}
+          </Button>
+          <Button
+            variant="secondary"
+            className="cp-secondary"
             onClick={() => onScenario('acct-demo-mei')}
           >
             {state.locale === 'zh-CN' ? '陈玫 · 当前用户' : 'Mei Chen · current user'}
           </Button>
         </div>
+      </div>
+    </Modal>
+  );
+}
+
+function BusinessDetailDialog({
+  state,
+  item,
+  onClose,
+  onPrimary
+}: {
+  state: PortalState;
+  item: BusinessItem;
+  onClose: () => void;
+  onPrimary?: (() => void) | undefined;
+}) {
+  const t = (zh: string, en: string) => (state.locale === 'zh-CN' ? zh : en);
+  const isMatter = item.kind === 'MATTER';
+  const title = state.locale === 'zh-CN' ? item.title : item.titleEn;
+  const status = state.locale === 'zh-CN' ? item.status : item.statusEn;
+  return (
+    <Modal title={t('业务详情', 'Business details')} onClose={onClose}>
+      <article className="cp-detail-hero">
+        <div className="cp-detail-mark">{item.title.slice(0, 1)}</div>
+        <div>
+          <span>
+            {isMatter ? t('商标申请', 'Trademark filing') : t('服务订单', 'Service order')}
+          </span>
+          <h2>{title}</h2>
+          <p>{state.locale === 'zh-CN' ? item.detail : item.detailEn}</p>
+          <code>{item.id}</code>
+        </div>
+      </article>
+      <section className="cp-detail-status">
+        <span>{t('当前进度', 'Current status')}</span>
+        <h3>{status}</h3>
+        <p>
+          {isMatter
+            ? t(
+                '资料齐全后，服务顾问会继续核对申请内容；当前显示为服务进展。',
+                'Once files are complete, your advisor will continue checking the filing. This is service progress.'
+              )
+            : t(
+                '请先核对费用和服务范围；确认 Demo 报价不会发起真实付款。',
+                'Review fees and scope first. Confirming the Demo quote does not start a real payment.'
+              )}
+        </p>
+      </section>
+      <ol className="cp-detail-timeline">
+        <li className="is-done">
+          <i />
+          <div>
+            <strong>{t('需求已登记', 'Request recorded')}</strong>
+            <small>{t('2026-09-26 · Demo 服务记录', '2026-09-26 · Demo service record')}</small>
+          </div>
+        </li>
+        <li className="is-current">
+          <i />
+          <div>
+            <strong>{status}</strong>
+            <small>{t('2026-09-28 10:20 · 最近更新', '2026-09-28 10:20 · latest update')}</small>
+          </div>
+        </li>
+        <li>
+          <i />
+          <div>
+            <strong>{t('机构继续办理', 'Service team continues')}</strong>
+            <small>
+              {t(
+                '完成当前步骤后进入；未承诺完成日期',
+                'Begins after this step; no completion date promised'
+              )}
+            </small>
+          </div>
+        </li>
+      </ol>
+      <section className="cp-detail-evidence">
+        <div>
+          <span>{t('正式程序', 'Formal procedure')}</span>
+          <strong>
+            {item.formalStage
+              ? state.locale === 'zh-CN'
+                ? item.formalStage
+                : item.formalStageEn
+              : t('尚未进入官方程序', 'Not yet in an official procedure')}
+          </strong>
+        </div>
+        <div>
+          <span>{t('期限与依据', 'Deadline & source')}</span>
+          <strong>{t('暂无经核实的官方期限', 'No verified official deadline')}</strong>
+        </div>
+        <p>
+          {t(
+            '正式程序、期限和官方事实以服务机构提供的来源文件为准。原始文件及编号不会因语言切换而改变。',
+            'Formal procedure, deadlines and official facts follow sourced documents from the service firm. Original files and identifiers do not change with language.'
+          )}
+        </p>
+      </section>
+      <div className="cp-modal-actions">
+        <Button variant="secondary" className="cp-secondary" onClick={onClose}>
+          {t('返回', 'Back')}
+        </Button>
+        {onPrimary && (
+          <Button className="cp-primary" onClick={onPrimary}>
+            {isMatter ? t('提交资料', 'Submit files') : t('确认报价', 'Review quote')}
+          </Button>
+        )}
       </div>
     </Modal>
   );

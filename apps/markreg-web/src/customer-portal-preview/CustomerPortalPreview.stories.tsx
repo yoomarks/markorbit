@@ -21,6 +21,19 @@ export const DesktopSuccess: Story = { args: { fixtureMode: 'success', defaultCh
 export const DesktopEnglish: Story = {
   args: { fixtureMode: 'success', defaultChannel: 'web', defaultLocale: 'en-US' }
 };
+export const H5Chinese: Story = {
+  args: { fixtureMode: 'success', defaultChannel: 'h5', defaultSection: 'home' },
+  parameters: miniParameters
+};
+export const H5English: Story = {
+  args: {
+    fixtureMode: 'success',
+    defaultChannel: 'h5',
+    defaultSection: 'home',
+    defaultLocale: 'en-US'
+  },
+  parameters: miniParameters
+};
 export const MiniProgramAdapted: Story = {
   args: { fixtureMode: 'success', defaultChannel: 'mini', defaultSection: 'home' },
   parameters: miniParameters

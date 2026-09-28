@@ -199,9 +199,10 @@ The runnable entry is `apps/markreg-web/customer-portal-preview.html`:
 | Surface                      | Simplified Chinese                           | English                                                   |
 | ---------------------------- | -------------------------------------------- | --------------------------------------------------------- |
 | Desktop Web                  | `/customer-portal-preview.html`              | `/customer-portal-preview.html?locale=en-US`              |
+| Mobile Web / H5 / 390px      | `/customer-portal-preview.html?channel=h5`   | `/customer-portal-preview.html?channel=h5&locale=en-US`   |
 | Mini-program adapted / 390px | `/customer-portal-preview.html?channel=mini` | `/customer-portal-preview.html?channel=mini&locale=en-US` |
 
-The preview was visually reviewed in the standalone browser at desktop width and in the constrained mini-program shell. The Playwright matrix runs every Golden Path at desktop and 390 × 844, checks exact quote/matter IDs, verifies document and quote state across Web → mini → Web, and asserts no horizontal overflow. All four URLs are presentation adapters over the same browser-local Demo fixture; they are not evidence of server persistence, native WeChat sign-in, or cross-device session exchange.
+The preview was visually reviewed in the standalone browser at desktop width and in the constrained H5 and mini-program shells. The Playwright matrix runs every Golden Path at desktop and 390 × 844, checks exact quote/matter IDs, verifies document and quote state across Web → mini → Web, and asserts no horizontal overflow. All six URLs are presentation adapters over the same browser-local Demo fixture; they are not evidence of server persistence, native WeChat sign-in, or cross-device session exchange. H5 uses the mobile information architecture with MO account login truth; the mini-program adapter uses a separately labelled pre-bound Demo identity and does not claim native WeChat login.
 
 ## Mini-program product-level redesign
 
