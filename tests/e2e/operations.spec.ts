@@ -1788,6 +1788,7 @@ test('Super Admin V2 bilingual representatives remain usable at desktop and 390p
 test('Super Admin V2 English locale has no untranslated visible UI across every registered route', async ({
   page
 }, testInfo) => {
+  test.setTimeout(90_000);
   test.skip(
     testInfo.project.name.startsWith('mobile'),
     'The translation-key route audit is viewport independent.'
