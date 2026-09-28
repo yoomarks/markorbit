@@ -1,0 +1,14 @@
+{
+  "compilerOptions": {
+    "allowJs": true,
+    "checkJs": false,
+    "lib": ["ES2023", "DOM"],
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "noEmit": true,
+    "strict": true,
+    "target": "ES2023",
+    "types": ["node", "@playwright/test"]
+  },
+  "include": ["app.js", "server.mjs", "playwright.config.ts", "workspace-console-preview.spec.ts"]
+}
