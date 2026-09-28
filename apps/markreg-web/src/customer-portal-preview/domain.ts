@@ -4,7 +4,7 @@ export type FixtureMode =
   'success' | 'loading' | 'empty' | 'error' | 'permission' | 'partial' | 'signed-out';
 
 export type PortalSection =
-  'overview' | 'business' | 'assets' | 'orders' | 'files' | 'messages' | 'account';
+  'home' | 'services' | 'progress' | 'trademarks' | 'messages' | 'profile';
 
 export interface RelationshipBinding {
   relationshipId: string;
@@ -36,9 +36,38 @@ export interface BusinessItem {
   statusEn: string;
   detail: string;
   detailEn: string;
+  formalStage?: string;
+  formalStageEn?: string;
   nextAction?: string;
   nextActionEn?: string;
 }
+
+export const quoteFixture = {
+  id: 'quote-us-nova-318',
+  businessId: 'order-us-nova-042',
+  number: 'QT-2026-0318',
+  title: 'NOVA 美国商标检索与申请',
+  titleEn: 'NOVA US search and filing',
+  currency: 'CNY',
+  totalMinor: 1280000,
+  validUntil: '2026-10-08',
+  lines: [
+    {
+      label: '商标近似检索与分析',
+      labelEn: 'Clearance search and analysis',
+      amountMinor: 320000
+    },
+    {
+      label: '申请准备与代理服务',
+      labelEn: 'Application preparation and agency service',
+      amountMinor: 560000
+    },
+    { label: '官方费用预估', labelEn: 'Estimated official fees', amountMinor: 400000 }
+  ],
+  scope: '含 1 件文字商标、1 个类别的检索、申请准备和递交协调；不含后续审查意见答复。',
+  scopeEn:
+    'Includes search, application preparation and filing coordination for one word mark in one class; later office-action responses are excluded.'
+} as const;
 
 export interface PortalState {
   locale: Locale;
@@ -51,6 +80,7 @@ export interface PortalState {
   unreadMessages: number;
   consultationReference: string | null;
   claimStatus: 'IDLE' | 'REJECTED';
+  quoteStatus: 'PENDING' | 'CONFIRMED_DEMO' | 'QUESTION_SENT_DEMO';
 }
 
 export const identities: readonly DemoIdentity[] = [
@@ -129,10 +159,12 @@ export const businessItems: readonly BusinessItem[] = [
     title: 'NOVA 图形商标 · 中国申请',
     titleEn: 'NOVA device mark · China filing',
     kind: 'MATTER',
-    status: '待补充使用证据',
-    statusEn: 'Evidence requested',
+    status: '等待你补充资料',
+    statusEn: 'Waiting for your documents',
     detail: '第 9、42 类 · 案件 MO-CN-2026-0184',
     detailEn: 'Classes 9 & 42 · Matter MO-CN-2026-0184',
+    formalStage: '正式程序：申请准备 · 资料收集',
+    formalStageEn: 'Formal stage: application preparation · evidence collection',
     nextAction: '上传首次使用说明',
     nextActionEn: 'Upload first-use statement'
   },
@@ -143,8 +175,8 @@ export const businessItems: readonly BusinessItem[] = [
     title: 'NOVA 美国商标检索与申请',
     titleEn: 'NOVA US search and filing',
     kind: 'ORDER',
-    status: '订单已确认 · 履约准备中',
-    statusEn: 'Order confirmed · preparing service',
+    status: '报价待确认 · 尚未付款',
+    statusEn: 'Quote awaiting review · not paid',
     detail: '订单 OR-2026-0042 · 报价 QT-2026-0318',
     detailEn: 'Order OR-2026-0042 · Quote QT-2026-0318'
   },
@@ -191,12 +223,13 @@ export const defaultState: PortalState = {
   channel: 'web',
   identityId: null,
   relationshipId: null,
-  section: 'overview',
+  section: 'home',
   documentSubmitted: false,
   taskConfirmed: false,
   unreadMessages: 2,
   consultationReference: null,
-  claimStatus: 'IDLE'
+  claimStatus: 'IDLE',
+  quoteStatus: 'PENDING'
 };
 
 export function identityFor(state: PortalState): DemoIdentity | undefined {
@@ -223,10 +256,26 @@ export function authorizedItems(state: PortalState): readonly BusinessItem[] {
 export function readStoredState(storageKey: string): PortalState {
   try {
     const stored = window.localStorage.getItem(storageKey);
-    return stored
-      ? { ...defaultState, ...(JSON.parse(stored) as Partial<PortalState>) }
-      : defaultState;
+    if (!stored) return defaultState;
+    const parsed = JSON.parse(stored) as Partial<PortalState> & { section?: string };
+    const legacySections: Record<string, PortalSection> = {
+      overview: 'home',
+      business: 'progress',
+      assets: 'trademarks',
+      orders: 'progress',
+      files: 'progress',
+      account: 'profile'
+    };
+    const candidateSection = parsed.section
+      ? (legacySections[parsed.section] ?? parsed.section)
+      : defaultState.section;
+    const section = isPortalSection(candidateSection) ? candidateSection : defaultState.section;
+    return { ...defaultState, ...parsed, section };
   } catch {
     return defaultState;
   }
+}
+
+function isPortalSection(value: string): value is PortalSection {
+  return ['home', 'services', 'progress', 'trademarks', 'messages', 'profile'].includes(value);
 }

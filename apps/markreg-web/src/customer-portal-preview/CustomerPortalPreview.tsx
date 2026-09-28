@@ -5,6 +5,7 @@ import {
   defaultState,
   identities,
   identityFor,
+  quoteFixture,
   readStoredState,
   relationshipFor,
   type Channel,
@@ -17,21 +18,21 @@ import { getCopy } from './i18n.js';
 import './customer-portal-preview.css';
 
 const icons: Record<PortalSection, string> = {
-  overview: '⌂',
-  business: '◫',
-  assets: '◇',
-  orders: '◎',
-  files: '▤',
+  home: '⌂',
+  services: '＋',
+  progress: '◫',
+  trademarks: '◇',
   messages: '◌',
-  account: '○'
+  profile: '○'
 };
-
-const sections = Object.keys(icons) as PortalSection[];
+const desktopSections: PortalSection[] = ['home', 'progress', 'trademarks', 'messages', 'profile'];
+const mobileSections: PortalSection[] = ['home', 'services', 'progress', 'messages', 'profile'];
 
 export interface CustomerPortalPreviewProps {
   storageKey?: string;
   fixtureMode?: FixtureMode;
   defaultChannel?: Channel;
+  defaultLocale?: PortalState['locale'];
   persist?: boolean;
 }
 
@@ -39,6 +40,7 @@ export function CustomerPortalPreview({
   storageKey = 'markorbit.customer-portal-v12.demo',
   fixtureMode = 'success',
   defaultChannel = 'web',
+  defaultLocale = 'zh-CN',
   persist = true
 }: CustomerPortalPreviewProps) {
   const [state, setState] = useState<PortalState>(() => {
@@ -46,6 +48,7 @@ export function CustomerPortalPreview({
     return {
       ...initial,
       channel: defaultChannel,
+      locale: defaultLocale,
       ...(fixtureMode === 'signed-out'
         ? { identityId: null, relationshipId: null }
         : !initial.identityId && !persist
@@ -53,9 +56,9 @@ export function CustomerPortalPreview({
           : {})
     };
   });
-  const [dialog, setDialog] = useState<'relationships' | 'consult' | 'claim' | 'upload' | null>(
-    null
-  );
+  const [dialog, setDialog] = useState<
+    'relationships' | 'consult' | 'claim' | 'upload' | 'quote' | null
+  >(null);
   const [liveMessage, setLiveMessage] = useState('');
   const copy = getCopy(state.locale);
   const identity = identityFor(state);
@@ -77,7 +80,7 @@ export function CustomerPortalPreview({
       {
         identityId,
         relationshipId: nextIdentity.bindings[0]?.relationshipId ?? null,
-        section: 'overview',
+        section: 'home',
         claimStatus: 'IDLE'
       },
       state.locale === 'zh-CN' ? '已验证 Demo 登录' : 'Demo sign-in verified'
@@ -92,8 +95,16 @@ export function CustomerPortalPreview({
     window.history.replaceState({}, '', url);
   };
 
+  const switchLocale = () => {
+    const locale = state.locale === 'zh-CN' ? 'en-US' : 'zh-CN';
+    update({ locale });
+    const url = new URL(window.location.href);
+    url.searchParams.set('locale', locale);
+    window.history.replaceState({}, '', url);
+  };
+
   const logout = () => {
-    update({ identityId: null, relationshipId: null, section: 'overview' });
+    update({ identityId: null, relationshipId: null, section: 'home' });
   };
 
   if (fixtureMode === 'loading') return <StatusScreen kind="loading" copy={copy} />;
@@ -103,7 +114,7 @@ export function CustomerPortalPreview({
     return (
       <LoginScreen
         state={state}
-        onLocale={() => update({ locale: state.locale === 'zh-CN' ? 'en-US' : 'zh-CN' })}
+        onLocale={switchLocale}
         onLogin={() => login()}
         onConsult={() => setDialog('consult')}
         onClaim={() => setDialog('claim')}
@@ -143,7 +154,7 @@ export function CustomerPortalPreview({
       >
         <Brand copy={copy} />
         <nav>
-          {sections.map((section) => (
+          {desktopSections.map((section) => (
             <button
               className={state.section === section ? 'is-active' : ''}
               key={section}
@@ -151,7 +162,7 @@ export function CustomerPortalPreview({
               aria-current={state.section === section ? 'page' : undefined}
             >
               <span aria-hidden="true">{icons[section]}</span>
-              {copy.nav[section]}
+              {section === 'progress' ? copy.desktopBusiness : copy.nav[section]}
               {section === 'messages' && state.unreadMessages > 0 && (
                 <b className="cp-count">{state.unreadMessages}</b>
               )}
@@ -170,7 +181,7 @@ export function CustomerPortalPreview({
       <div className="cp-workspace">
         <DemoBanner copy={copy} />
         <header className="cp-topbar">
-          <button className="cp-mobile-brand" onClick={() => update({ section: 'overview' })}>
+          <button className="cp-mobile-brand" onClick={() => update({ section: 'home' })}>
             <span className="cp-mark">M</span>
             <span>{copy.product}</span>
           </button>
@@ -190,15 +201,12 @@ export function CustomerPortalPreview({
                   ? '小程序适配'
                   : 'MINI ADAPTED'}
             </span>
-            <button
-              className="cp-quiet-button"
-              onClick={() => update({ locale: state.locale === 'zh-CN' ? 'en-US' : 'zh-CN' })}
-            >
+            <button className="cp-quiet-button" onClick={switchLocale}>
               {copy.language}
             </button>
             <button
               className="cp-user-button"
-              onClick={() => update({ section: 'account' })}
+              onClick={() => update({ section: 'profile' })}
               aria-label={copy.accountTitle}
             >
               {identity.displayName.slice(0, 1)}
@@ -218,6 +226,7 @@ export function CustomerPortalPreview({
               items={items}
               onSection={(section) => update({ section })}
               onUpload={() => setDialog('upload')}
+              onQuote={() => setDialog('quote')}
               onChannel={switchChannel}
               onRelationship={() => setDialog('relationships')}
               onLogout={logout}
@@ -229,7 +238,7 @@ export function CustomerPortalPreview({
           className="cp-bottom-nav"
           aria-label={state.locale === 'zh-CN' ? '小程序主导航' : 'Mini primary navigation'}
         >
-          {(['overview', 'business', 'files', 'account'] as PortalSection[]).map((section) => (
+          {mobileSections.map((section) => (
             <button
               key={section}
               className={state.section === section ? 'is-active' : ''}
@@ -248,7 +257,7 @@ export function CustomerPortalPreview({
           state={state}
           onClose={() => setDialog(null)}
           onSelect={(relationshipId) => {
-            update({ relationshipId, section: 'overview' });
+            update({ relationshipId, section: 'home' });
             setDialog(null);
           }}
           onScenario={(identityId) => {
@@ -266,6 +275,23 @@ export function CustomerPortalPreview({
               { documentSubmitted: true, taskConfirmed: true, unreadMessages: 1 },
               copy.submitted
             );
+            setDialog(null);
+          }}
+        />
+      )}
+      {dialog === 'quote' && (
+        <QuoteDialog
+          state={state}
+          onClose={() => setDialog(null)}
+          onConfirm={() => {
+            update(
+              { quoteStatus: 'CONFIRMED_DEMO', unreadMessages: state.documentSubmitted ? 0 : 1 },
+              copy.quoteConfirmed
+            );
+            setDialog(null);
+          }}
+          onQuestion={() => {
+            update({ quoteStatus: 'QUESTION_SENT_DEMO' }, copy.questionSent);
             setDialog(null);
           }}
         />
@@ -324,17 +350,17 @@ function LoginScreen({
       </div>
       <main className="cp-login-layout">
         <section className="cp-login-story">
-          <span className="cp-eyebrow">ONE ACCOUNT · MANY WORKSPACE RELATIONSHIPS</span>
+          <span className="cp-eyebrow">ONE ACCOUNT · VERIFIED CUSTOMER ACCESS</span>
           <h1>{copy.loginTitle}</h1>
           <p>{copy.loginSubtitle}</p>
           <div className="cp-trust-diagram" aria-label={copy.relationshipHint}>
-            <span>MO ID</span>
+            <span>{state.locale === 'zh-CN' ? '统一账号' : 'MO account'}</span>
             <i aria-hidden="true" />
-            <span>Workspace</span>
+            <span>{state.locale === 'zh-CN' ? '服务机构' : 'Service firm'}</span>
             <i aria-hidden="true" />
-            <span>Customer</span>
+            <span>{state.locale === 'zh-CN' ? '办理身份' : 'Acting identity'}</span>
             <i aria-hidden="true" />
-            <span>Object grant</span>
+            <span>{state.locale === 'zh-CN' ? '业务授权' : 'Business access'}</span>
           </div>
         </section>
         <section className="cp-login-card" aria-label={copy.loginTitle}>
@@ -380,6 +406,7 @@ function PortalSectionView({
   items,
   onSection,
   onUpload,
+  onQuote,
   onChannel,
   onRelationship,
   onLogout
@@ -389,6 +416,7 @@ function PortalSectionView({
   items: ReturnType<typeof authorizedItems>;
   onSection: (section: PortalSection) => void;
   onUpload: () => void;
+  onQuote: () => void;
   onChannel: () => void;
   onRelationship: () => void;
   onLogout: () => void;
@@ -399,7 +427,12 @@ function PortalSectionView({
   const matter = items.find((item) => item.kind === 'MATTER');
   const localized = (zh: string, en: string) => (state.locale === 'zh-CN' ? zh : en);
 
-  if (state.section === 'overview') {
+  const hasDocumentTask = Boolean(matter) && !state.documentSubmitted;
+  const canAccessQuote = items.some((item) => item.id === quoteFixture.businessId);
+  const hasQuoteTask = canAccessQuote && state.quoteStatus === 'PENDING';
+  const pendingCount = Number(hasDocumentTask) + Number(hasQuoteTask);
+
+  if (state.section === 'home') {
     return (
       <>
         <header className="cp-page-heading">
@@ -408,7 +441,7 @@ function PortalSectionView({
             <h1>
               {copy.welcome}，{identity.displayName.split(' ')[0]}
             </h1>
-            <p>{copy.today}</p>
+            <p>{pendingCount ? copy.today.replace('2', String(pendingCount)) : copy.noTasksHint}</p>
           </div>
           <Button
             variant="secondary"
@@ -418,70 +451,72 @@ function PortalSectionView({
             {copy.switch} {copy.relationship}
           </Button>
         </header>
-        <section className="cp-metrics" aria-label={copy.activity}>
-          <Metric value={state.taskConfirmed ? '0' : '1'} label={copy.tasks} accent />
-          <Metric
-            value={String(items.filter((item) => item.kind === 'MATTER').length)}
-            label={copy.businessTitle}
-          />
-          <Metric
-            value={String(items.filter((item) => item.kind === 'ASSET').length)}
-            label={copy.assetsTitle}
-          />
-          <Metric value={String(state.unreadMessages)} label={copy.messagesTitle} />
-        </section>
-        <div className="cp-dashboard-grid">
-          <section className="cp-panel cp-task-panel">
-            <PanelHeading
-              title={copy.tasks}
-              action={copy.viewAll}
-              onAction={() => onSection('files')}
-            />
-            {state.taskConfirmed ? (
-              <div className="cp-complete-state">
-                <span>✓</span>
-                <strong>{localized('当前没有待办', 'You are all caught up')}</strong>
-                <p>
-                  {localized(
-                    '已提交的 Demo 资料在网站与小程序视图保持一致。',
-                    'The submitted Demo document is consistent across Web and mini views.'
-                  )}
-                </p>
-              </div>
-            ) : (
-              <article className="cp-task-card">
-                <div className="cp-task-icon">DOC</div>
-                <div>
-                  <span className="cp-pill cp-pill-warm">{localized('今天到期', 'Due today')}</span>
-                  <h2>{copy.upload}</h2>
-                  <p>{matter ? localized(matter.detail, matter.detailEn) : 'MO-CN-2026-0184'}</p>
-                  <small>{copy.stableId}: matter-cn-nova-2026</small>
-                </div>
-                <Button className="cp-primary" onClick={onUpload}>
-                  {copy.continue}
+        <section className="cp-panel cp-task-panel">
+          <PanelHeading title={copy.tasks} />
+          {pendingCount === 0 ? (
+            <div className="cp-complete-state">
+              <span>✓</span>
+              <strong>{copy.noTasks}</strong>
+              <p>{copy.noTasksHint}</p>
+              <div className="cp-inline-actions">
+                <Button className="cp-primary" onClick={() => onSection('progress')}>
+                  {copy.viewProgress}
                 </Button>
-              </article>
-            )}
-          </section>
-          <section className="cp-panel cp-channel-panel">
-            <span className="cp-orbit-art" aria-hidden="true">
-              <i />
-              <i />
-              <b>M</b>
-            </span>
-            <span className="cp-eyebrow">{copy.crossChannel}</span>
-            <h2>{localized('随时换设备，业务不换轨', 'Change channel, keep the same work')}</h2>
-            <p>{copy.sameObjects}</p>
-            <button className="cp-inverse" onClick={onChannel}>
-              {state.channel === 'web' ? copy.openMini : copy.openWeb} →
-            </button>
-          </section>
-        </div>
+                <Button
+                  variant="secondary"
+                  className="cp-secondary"
+                  onClick={() => onSection('services')}
+                >
+                  {copy.startService}
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <div className="cp-task-list">
+              {hasDocumentTask && (
+                <TaskCard
+                  badge={localized('资料待补充', 'Document needed')}
+                  title={copy.upload}
+                  detail={matter ? localized(matter.detail, matter.detailEn) : 'MO-CN-2026-0184'}
+                  id="matter-cn-nova-2026"
+                  copy={copy}
+                  onAction={onUpload}
+                />
+              )}
+              {hasQuoteTask && (
+                <TaskCard
+                  badge={copy.quotePending}
+                  title={copy.messageTwo
+                    .replace('报价待确认：', '')
+                    .replace('Quote to review: ', '')}
+                  detail={`${copy.quoteTotal} ¥12,800 · ${copy.quoteValidUntil} ${quoteFixture.validUntil}`}
+                  id={quoteFixture.id}
+                  copy={copy}
+                  onAction={onQuote}
+                />
+              )}
+            </div>
+          )}
+        </section>
+        <section className="cp-quick-actions" aria-label={localized('常用入口', 'Quick actions')}>
+          <button onClick={() => onSection('services')}>
+            <b>＋</b>
+            <span>{copy.startService}</span>
+          </button>
+          <button onClick={() => onSection('progress')}>
+            <b>↗</b>
+            <span>{copy.viewProgress}</span>
+          </button>
+          <button onClick={() => onSection('messages')}>
+            <b>◌</b>
+            <span>{copy.contactAdvisor}</span>
+          </button>
+        </section>
         <section className="cp-panel cp-activity-panel">
           <PanelHeading
             title={copy.activity}
             action={copy.viewAll}
-            onAction={() => onSection('business')}
+            onAction={() => onSection('progress')}
           />
           <div className="cp-business-list">
             {items
@@ -491,22 +526,94 @@ function PortalSectionView({
               ))}
           </div>
         </section>
+        <section className="cp-continuity-note">
+          <div>
+            <strong>{copy.crossChannel}</strong>
+            <p>{copy.sameObjects}</p>
+          </div>
+          <button onClick={onChannel}>
+            {state.channel === 'web' ? copy.openMini : copy.openWeb} →
+          </button>
+        </section>
         {fixtureMode === 'partial' && <PartialNotice copy={copy} />}
       </>
     );
   }
 
-  if (state.section === 'business') {
+  if (state.section === 'services') {
     return (
-      <CollectionPage
-        title={copy.businessTitle}
-        subtitle={copy.businessSubtitle}
-        state={state}
-        items={items.filter((item) => item.kind === 'MATTER')}
-      />
+      <SimplePage title={copy.servicesTitle} subtitle={copy.servicesSubtitle}>
+        <section className="cp-service-grid">
+          <ServiceCard
+            icon="TM"
+            title={copy.serviceRegistration}
+            hint={copy.serviceRegistrationHint}
+            action={copy.startApplication}
+          />
+          <ServiceCard
+            icon="⌕"
+            title={copy.serviceSearch}
+            hint={copy.serviceSearchHint}
+            action={copy.startApplication}
+          />
+          <ServiceCard
+            icon="↗"
+            title={copy.serviceResponse}
+            hint={copy.serviceResponseHint}
+            action={copy.startApplication}
+          />
+        </section>
+        <section className="cp-panel cp-collection">
+          <PanelHeading
+            title={copy.continueExisting}
+            onAction={() => onSection('progress')}
+            action={copy.viewAll}
+          />
+          {items
+            .filter((item) => item.kind !== 'ASSET')
+            .map((item) => (
+              <BusinessRow key={item.id} state={state} item={item} />
+            ))}
+        </section>
+      </SimplePage>
     );
   }
-  if (state.section === 'assets') {
+
+  if (state.section === 'progress') {
+    return (
+      <SimplePage title={copy.progressTitle} subtitle={copy.progressSubtitle}>
+        <div className="cp-filters" role="group" aria-label={copy.progressTitle}>
+          <button className="is-active">{copy.filterActive}</button>
+          <button>{copy.filterAwaiting}</button>
+          <button>{copy.filterDone}</button>
+        </div>
+        <section className="cp-panel cp-collection">
+          {hasQuoteTask && (
+            <article className="cp-quote-summary">
+              <div>
+                <span className="cp-pill cp-pill-warm">{copy.quotePending}</span>
+                <h2>{localized(quoteFixture.title, quoteFixture.titleEn)}</h2>
+                <p>{quoteFixture.number} · ¥12,800</p>
+                <small>
+                  {copy.stableId}: {quoteFixture.id}
+                </small>
+              </div>
+              <Button className="cp-primary" onClick={onQuote}>
+                {copy.quoteReview}
+              </Button>
+            </article>
+          )}
+          {items
+            .filter((item) => item.kind !== 'ASSET')
+            .map((item) => (
+              <BusinessRow key={item.id} state={state} item={item} />
+            ))}
+        </section>
+      </SimplePage>
+    );
+  }
+
+  if (state.section === 'trademarks') {
     return (
       <CollectionPage
         title={copy.assetsTitle}
@@ -517,129 +624,79 @@ function PortalSectionView({
       />
     );
   }
-  if (state.section === 'orders') {
-    return (
-      <CollectionPage
-        title={copy.ordersTitle}
-        subtitle={copy.paymentTruth}
-        state={state}
-        items={items.filter((item) => item.kind === 'ORDER')}
-      />
-    );
-  }
-  if (state.section === 'files') {
-    return (
-      <SimplePage
-        title={copy.filesTitle}
-        subtitle={localized(
-          '按业务对象归档，并逐项校验访问授权。',
-          'Filed by business object with access checked for each item.'
-        )}
-      >
-        <article className="cp-file-card">
-          <span className="cp-file-type">PDF</span>
-          <div>
-            <h2>{localized('商标申请委托确认书', 'Trademark filing instruction confirmation')}</h2>
-            <p>matter-cn-nova-2026 · 2026-09-26</p>
-            <small>{copy.source}: MarkReg Document Package · Demo</small>
-          </div>
-          <span className="cp-pill">{localized('已签署', 'Signed')}</span>
-        </article>
-        <article className="cp-file-card">
-          <span className="cp-file-type cp-file-type-upload">↑</span>
-          <div>
-            <h2>{copy.upload}</h2>
-            <p>
-              {state.documentSubmitted
-                ? localized(
-                    '已提交 Demo 文件 · first-use-statement.pdf',
-                    'Demo file submitted · first-use-statement.pdf'
-                  )
-                : copy.uploadHint}
-            </p>
-            <small>{copy.stableId}: matter-cn-nova-2026</small>
-          </div>
-          <Button
-            variant={state.documentSubmitted ? 'secondary' : 'primary'}
-            className={state.documentSubmitted ? 'cp-secondary' : 'cp-primary'}
-            onClick={onUpload}
-          >
-            {state.documentSubmitted ? copy.submitted : copy.continue}
-          </Button>
-        </article>
-      </SimplePage>
-    );
-  }
   if (state.section === 'messages') {
     return (
       <SimplePage
         title={copy.messagesTitle}
         subtitle={localized(
-          '通知与业务对象关联；送达不等于接受或完成。',
-          'Notifications are linked to objects; delivery is not acceptance or completion.'
+          '资料要求、报价和业务通知都可回到对应业务。',
+          'Document requests, quotes and updates link back to the same business.'
         )}
       >
-        <Message
-          text={copy.messageOne}
-          id="matter-cn-nova-2026"
-          unread={!state.documentSubmitted}
-          copy={copy}
-        />
-        <Message text={copy.messageTwo} id="order-us-nova-042" unread={false} copy={copy} />
+        {matter && (
+          <Message
+            text={copy.messageOne}
+            id={matter.id}
+            unread={!state.documentSubmitted}
+            copy={copy}
+            action={state.documentSubmitted ? undefined : copy.continue}
+            onAction={onUpload}
+          />
+        )}
+        {canAccessQuote && (
+          <Message
+            text={
+              state.quoteStatus === 'PENDING'
+                ? copy.messageTwo
+                : state.quoteStatus === 'CONFIRMED_DEMO'
+                  ? copy.quoteConfirmed
+                  : copy.questionSent
+            }
+            id={quoteFixture.id}
+            unread={state.quoteStatus === 'PENDING'}
+            copy={copy}
+            action={state.quoteStatus === 'PENDING' ? copy.quoteReview : undefined}
+            onAction={onQuote}
+          />
+        )}
       </SimplePage>
     );
   }
   return (
     <SimplePage title={copy.accountTitle} subtitle={copy.relationshipHint}>
-      <div className="cp-account-grid">
-        <section className="cp-panel cp-account-card">
+      <section className="cp-panel cp-active-identity">
+        <div className="cp-account-card">
           <span className="cp-avatar cp-avatar-large">{identity.displayName.slice(0, 1)}</span>
           <div>
-            <span className="cp-eyebrow">{copy.identity}</span>
-            <h2>{identity.displayName}</h2>
-            <p>{identity.maskedMobile}</p>
-            <small>accountId · {identity.accountId}</small>
-          </div>
-        </section>
-        <section className="cp-panel">
-          <span className="cp-eyebrow">{copy.relationship}</span>
-          <h2>{relationship.customerName}</h2>
-          <p>{relationship.workspaceName}</p>
-          <dl>
-            <div>
-              <dt>ID</dt>
-              <dd>{relationship.relationshipId}</dd>
-            </div>
-            <div>
-              <dt>{copy.represented}</dt>
-              <dd>
-                {relationship.kind === 'ENTERPRISE'
-                  ? relationship.customerName
-                  : localized('本人', 'Self')}
-              </dd>
-            </div>
-          </dl>
-          <Button variant="secondary" className="cp-secondary" onClick={onRelationship}>
-            {copy.switch}
-          </Button>
-        </section>
-      </div>
-      <section className="cp-panel cp-member-panel">
-        <PanelHeading title={copy.members} />
-        <div className="cp-member-row">
-          <span className="cp-avatar">陈</span>
-          <div>
-            <strong>{copy.memberMei}</strong>
-            <small>ACTIVE · relationship owner verified</small>
+            <span className="cp-eyebrow">{copy.activeIdentity}</span>
+            <h2>{relationship.customerName}</h2>
+            <p>{relationship.workspaceName}</p>
+            <small>
+              {identity.displayName} · {identity.maskedMobile}
+            </small>
           </div>
         </div>
-        <div className="cp-member-row">
-          <span className="cp-avatar cp-avatar-teal">赵</span>
-          <div>
-            <strong>{copy.memberZhao}</strong>
-            <small>{copy.noGrant}</small>
-          </div>
-        </div>
+        <Button variant="secondary" className="cp-secondary" onClick={onRelationship}>
+          {copy.switch}
+        </Button>
+      </section>
+      <section className="cp-profile-menu">
+        {[
+          copy.personalInfo,
+          copy.accountSecurity,
+          copy.companies,
+          copy.members,
+          copy.preferences,
+          copy.myFiles,
+          copy.invoices,
+          copy.help
+        ].map((label, index) => (
+          <button key={label}>
+            <span aria-hidden="true">{['○', '⌾', '▣', '♙', '◇', '▤', '¥', '?'][index]}</span>
+            <strong>{label}</strong>
+            <b>›</b>
+          </button>
+        ))}
       </section>
       <Button variant="danger" className="cp-danger-button" onClick={onLogout}>
         {copy.logout}
@@ -648,13 +705,59 @@ function PortalSectionView({
   );
 }
 
-function Metric({ value, label, accent }: { value: string; label: string; accent?: boolean }) {
+function TaskCard({
+  badge,
+  title,
+  detail,
+  id,
+  copy,
+  onAction
+}: {
+  badge: string;
+  title: string;
+  detail: string;
+  id: string;
+  copy: ReturnType<typeof getCopy>;
+  onAction: () => void;
+}) {
   return (
-    <div className={`cp-metric ${accent ? 'is-accent' : ''}`}>
-      <strong>{value}</strong>
-      <span>{label}</span>
-      <i aria-hidden="true" />
-    </div>
+    <article className="cp-task-card">
+      <div className="cp-task-icon">!</div>
+      <div>
+        <span className="cp-pill cp-pill-warm">{badge}</span>
+        <h2>{title}</h2>
+        <p>{detail}</p>
+        <small>
+          {copy.stableId}: {id}
+        </small>
+      </div>
+      <Button className="cp-primary" onClick={onAction}>
+        {copy.continue}
+      </Button>
+    </article>
+  );
+}
+
+function ServiceCard({
+  icon,
+  title,
+  hint,
+  action
+}: {
+  icon: string;
+  title: string;
+  hint: string;
+  action: string;
+}) {
+  return (
+    <article className="cp-service-card">
+      <span>{icon}</span>
+      <h2>{title}</h2>
+      <p>{hint}</p>
+      <Button variant="secondary" className="cp-secondary">
+        {action} →
+      </Button>
+    </article>
   );
 }
 
@@ -664,7 +767,7 @@ function PanelHeading({
   onAction
 }: {
   title: string;
-  action?: string;
+  action?: string | undefined;
   onAction?: () => void;
 }) {
   return (
@@ -681,6 +784,18 @@ function PanelHeading({
 
 function BusinessRow({ state, item }: { state: PortalState; item: BusinessItem }) {
   const copy = getCopy(state.locale);
+  const status =
+    item.id === quoteFixture.businessId && state.quoteStatus !== 'PENDING'
+      ? state.quoteStatus === 'CONFIRMED_DEMO'
+        ? state.locale === 'zh-CN'
+          ? 'Demo 报价已确认 · 等待机构继续办理'
+          : 'Demo quote confirmed · waiting for service team'
+        : state.locale === 'zh-CN'
+          ? '已提出报价问题 · 等待回复'
+          : 'Quote question sent · awaiting reply'
+      : state.locale === 'zh-CN'
+        ? item.status
+        : item.statusEn;
   return (
     <article className="cp-business-row">
       <span className={`cp-object-icon cp-object-${item.kind.toLowerCase()}`}>
@@ -689,13 +804,16 @@ function BusinessRow({ state, item }: { state: PortalState; item: BusinessItem }
       <div>
         <h3>{state.locale === 'zh-CN' ? item.title : item.titleEn}</h3>
         <p>{state.locale === 'zh-CN' ? item.detail : item.detailEn}</p>
+        {item.formalStage && (
+          <em>{state.locale === 'zh-CN' ? item.formalStage : item.formalStageEn}</em>
+        )}
         <small>
           {copy.stableId}: {item.id}
         </small>
       </div>
       <span className="cp-status">
         <i aria-hidden="true" />
-        {state.locale === 'zh-CN' ? item.status : item.statusEn}
+        {status}
       </span>
       <button className="cp-row-action" aria-label={`${copy.continue}: ${item.id}`}>
         →
@@ -773,12 +891,16 @@ function Message({
   text,
   id,
   unread,
-  copy
+  copy,
+  action,
+  onAction
 }: {
   text: string;
   id: string;
   unread: boolean;
   copy: ReturnType<typeof getCopy>;
+  action?: string | undefined;
+  onAction?: () => void;
 }) {
   return (
     <article className={`cp-message ${unread ? 'is-unread' : ''}`}>
@@ -790,6 +912,11 @@ function Message({
         </p>
         <small>{copy.latest}</small>
       </div>
+      {action && onAction && (
+        <Button variant="secondary" className="cp-secondary" onClick={onAction}>
+          {action}
+        </Button>
+      )}
     </article>
   );
 }
@@ -892,11 +1019,13 @@ function RelationshipDialog({
         ))}
       </div>
       <div className="cp-scenario-lab">
-        <span className="cp-eyebrow">DEMO ISOLATION LAB</span>
+        <span className="cp-eyebrow">
+          {state.locale === 'zh-CN' ? '安全演示场景' : 'SAFE DEMO SCENARIOS'}
+        </span>
         <p>
           {state.locale === 'zh-CN'
-            ? '切换主体以验证同 Workspace 客户隔离与企业对象授权。'
-            : 'Switch subject to verify same-Workspace customer isolation and enterprise object grants.'}
+            ? '切换演示用户，验证不同客户隔离和企业成员授权。'
+            : 'Switch Demo users to verify customer isolation and company-member access.'}
         </p>
         <div>
           <Button
@@ -904,21 +1033,21 @@ function RelationshipDialog({
             className="cp-secondary"
             onClick={() => onScenario('acct-demo-liuya')}
           >
-            刘娅 · other customer
+            {state.locale === 'zh-CN' ? '刘娅 · 另一位客户' : 'Liu Ya · other customer'}
           </Button>
           <Button
             variant="secondary"
             className="cp-secondary"
             onClick={() => onScenario('acct-demo-zhaolin')}
           >
-            赵霖 · enterprise grant
+            {state.locale === 'zh-CN' ? '赵霖 · 企业成员' : 'Zhao Lin · company member'}
           </Button>
           <Button
             variant="secondary"
             className="cp-secondary"
             onClick={() => onScenario('acct-demo-mei')}
           >
-            陈玫 · primary
+            {state.locale === 'zh-CN' ? '陈玫 · 当前用户' : 'Mei Chen · current user'}
           </Button>
         </div>
       </div>
@@ -955,6 +1084,73 @@ function UploadDialog({
       <Button className="cp-primary cp-full" onClick={onSubmit}>
         {copy.confirmTask}
       </Button>
+    </Modal>
+  );
+}
+
+function QuoteDialog({
+  state,
+  onClose,
+  onConfirm,
+  onQuestion
+}: {
+  state: PortalState;
+  onClose: () => void;
+  onConfirm: () => void;
+  onQuestion: () => void;
+}) {
+  const copy = getCopy(state.locale);
+  const money = (minor: number) =>
+    new Intl.NumberFormat(state.locale, {
+      style: 'currency',
+      currency: quoteFixture.currency
+    }).format(minor / 100);
+  return (
+    <Modal title={copy.quoteReview} onClose={onClose}>
+      <div className="cp-quote-head">
+        <div>
+          <span className="cp-pill cp-pill-warm">{copy.quotePending}</span>
+          <h2>{state.locale === 'zh-CN' ? quoteFixture.title : quoteFixture.titleEn}</h2>
+          <p>
+            {quoteFixture.number} · {copy.stableId}: {quoteFixture.id}
+          </p>
+        </div>
+        <div>
+          <small>{copy.quoteTotal}</small>
+          <strong>{money(quoteFixture.totalMinor)}</strong>
+          <span>
+            {copy.quoteValidUntil} {quoteFixture.validUntil}
+          </span>
+        </div>
+      </div>
+      <section className="cp-quote-section">
+        <h3>{copy.feeDetails}</h3>
+        <dl>
+          {quoteFixture.lines.map((line) => (
+            <div key={line.label}>
+              <dt>{state.locale === 'zh-CN' ? line.label : line.labelEn}</dt>
+              <dd>{money(line.amountMinor)}</dd>
+            </div>
+          ))}
+        </dl>
+      </section>
+      <section className="cp-quote-section">
+        <h3>{copy.serviceScope}</h3>
+        <p>{state.locale === 'zh-CN' ? quoteFixture.scope : quoteFixture.scopeEn}</p>
+      </section>
+      <div className="cp-modal-actions">
+        <Button variant="secondary" className="cp-secondary" onClick={onQuestion}>
+          {copy.askQuestion}
+        </Button>
+        <Button className="cp-primary" onClick={onConfirm}>
+          {copy.confirmQuote}
+        </Button>
+      </div>
+      <p className="cp-inline-warning">
+        {state.locale === 'zh-CN'
+          ? '确认仅更新 Demo 状态，不会付款，也不代表真实订单已履约。'
+          : 'Confirmation updates Demo state only. It does not charge payment or mean real service has been performed.'}
+      </p>
     </Modal>
   );
 }

@@ -12,8 +12,20 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 export const DesktopSuccess: Story = { args: { fixtureMode: 'success', defaultChannel: 'web' } };
+export const DesktopEnglish: Story = {
+  args: { fixtureMode: 'success', defaultChannel: 'web', defaultLocale: 'en-US' }
+};
 export const MiniProgramAdapted: Story = {
   args: { fixtureMode: 'success', defaultChannel: 'mini' },
+  parameters: {
+    viewport: {
+      viewports: { mini390: { name: 'Mini 390', styles: { width: '390px', height: '844px' } } },
+      defaultViewport: 'mini390'
+    }
+  }
+};
+export const MiniProgramEnglish: Story = {
+  args: { fixtureMode: 'success', defaultChannel: 'mini', defaultLocale: 'en-US' },
   parameters: {
     viewport: {
       viewports: { mini390: { name: 'Mini 390', styles: { width: '390px', height: '844px' } } },

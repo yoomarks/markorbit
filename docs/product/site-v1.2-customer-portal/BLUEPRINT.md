@@ -61,18 +61,56 @@ The platform account is reusable across Workspaces; the relationship and every o
 | Site/channel                       | Site runtime + renderer adapter                                                       | Web/mini presentation only                              |
 | WeChat identity                    | future supported official credential adapter and verified account linking             | explicitly absent; “bound Demo identity” only           |
 
-## Information architecture
+## Direct-customer information architecture
 
-1. **Authentication and relationship gate:** sign in/register, trusted invitation or relationship claim, select Workspace relationship, optionally select enterprise representation.
-2. **Overview and tasks:** answers “what needs my attention?” with exact object IDs and owner-labelled status.
-3. **My business:** list/detail projection of authorized matters with stage, next step, jurisdiction, and responsible service team.
-4. **Trademark assets:** portfolio projection with official-source freshness warnings.
-5. **Quotes and orders:** commercial object lineage; payment state is separate from performance/completion.
-6. **Documents and files:** requested items, provenance and controlled submission.
-7. **Messages:** object-linked notifications without treating delivery as acceptance.
-8. **Account and company members:** login subject, relationship bindings, enterprise members, grants, language, security, and logout.
+The portal vocabulary is customer-owned language. `Workspace`, `Customer Relationship`, `Matter`, `Intake`, lifecycle codes, and service projections remain implementation concepts and may appear only in bounded provenance/help details when necessary. The persistent header instead says which **service institution** and **customer/company identity** are active.
 
-Desktop uses a persistent side rail, compact top context bar, two-column task/dashboard composition, and detailed data tables. At phone/mini widths, relationship context stays in the header, primary destinations move to a bottom tab bar, secondary sections use a More sheet, tables become labelled cards, and the primary task action remains thumb-reachable.
+### Navigation freeze
+
+| Surface                             | Primary navigation                       | Why                                                                                                                                      |
+| ----------------------------------- | ---------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| Desktop Web                         | 首页 · 我的业务 · 我的商标 · 消息 · 我的 | Five familiar destinations; quotes, orders, progress, files, and invoices are grouped by the customer task instead of owner object type. |
+| Mobile Web / H5                     | 首页 · 办业务 · 进度 · 消息 · 我的       | Thumb-reachable and task-led; mirrors the mini-program mental model while retaining Web session truth.                                   |
+| WeChat mini-program-adapted preview | 首页 · 办业务 · 进度 · 消息 · 我的       | Short labels and 44px touch targets. This is a renderer arrangement, not a mini-program business store.                                  |
+
+### Old-to-new vocabulary
+
+| Previous preview label      | Final customer label   | Placement / rule                                                                        |
+| --------------------------- | ---------------------- | --------------------------------------------------------------------------------------- |
+| 总览与待办                  | 首页                   | The page itself does not repeat “客户中心”.                                             |
+| 我的业务                    | 我的业务 / 进度        | Desktop / mobile label; groups in progress, awaiting me, and completed.                 |
+| 商标资产                    | 我的商标               | Uses “商标档案” and official-source freshness in detail.                                |
+| 报价与订单                  | No primary destination | Quote confirmation is a Home task; history sits under 我的业务 or 我的.                 |
+| 资料与文件                  | No primary destination | Required upload is a Home/message action; all files sit under 我的.                     |
+| 消息通知                    | 消息                   | Object-linked notices and confirmations.                                                |
+| 账号与企业成员              | 我的                   | Personal details, security, companies, members, files, invoices, preferences, and help. |
+| Customer Relationship       | 服务机构与办理身份     | The internal relationship ID stays in a technical detail only.                          |
+| Action Required             | 待我处理               | Always says what action is required and for which business.                             |
+| Matter / Application Status | 业务 / 办理进度        | Formal legal procedure name remains in the detail explanation.                          |
+
+### Page hierarchy
+
+1. **Authentication and identity gate:** register/sign in, trusted invitation or existing-customer claim, choose a service institution and customer/company identity. The UI never asks a customer to choose a Workspace or Customer Relationship.
+2. **首页:** answers only “我正在办理什么、现在需要我做什么、哪里看进度/联系服务人员?” The first block is `待我处理`; then `正在办理`; then common actions and service contact. It has no traffic, decorative KPI, or raw status-code dashboard.
+3. **办业务 (mobile/H5):** customer-readable service catalogue plus “继续办理” entries. Catalogue visibility is not a quote or provider-availability guarantee.
+4. **我的业务 / 进度:** `待我处理 / 办理中 / 已完成` list and object detail. Quote, order, matter, official procedure, documents, and messages are related sections of one customer business, not separate top-level products.
+5. **我的商标 (desktop):** authorized portfolio with plain-language status and owner-source timestamp. Mobile reaches it from Home and 我的.
+6. **消息:** material requirements, quote notices, business updates, and confirmation requests. Each actionable message deep-links to the exact same object and action used by Home.
+7. **我的:** profile/security, active institution and company identity, other authorized identities, company members, preferences, files, invoices, and help. It is grouped, not a miscellaneous feature dump.
+
+Desktop uses a persistent five-item side rail, compact institution/identity context bar, and high-density business detail. Mobile Web and mini-program use the same five-item task model with a bottom bar, labelled cards instead of tables, and thumb-reachable actions. They share IDs and authorization but need not share pixel-identical layouts.
+
+## Home task model
+
+Home prioritizes exact actionable records, in this order:
+
+1. requested document with due date/source and `提交资料`;
+2. pending quote with fee breakdown/service scope and `确认报价` / `有疑问`;
+3. payment task only when Payment owner truth exists (fixture not active in this preview);
+4. important official deadline with source/currentness;
+5. in-progress business summaries and service-team contact.
+
+An empty task state says `目前没有需要你处理的事项`, then offers `查看办理进度` and `发起新申请`. A formal stage is paired with a plain-language phrase—for example `收到审查意见，等待处理`, with `正式程序：Office Action / 审查意见通知书` and the exact official deadline in detail. Estimated service time is labelled as an estimate and never presented as an official deadline.
 
 ## End-to-end journeys
 
@@ -95,6 +133,10 @@ Desktop uses a persistent side rail, compact top context bar, two-column task/da
 ### Cross-channel continuation
 
 `Web exact object -> submit Demo document -> mini view reads same object ID/state -> mini completes remaining task -> Web reads same state`. Production requires a server session/owner API; this preview shares browser-local Demo state only.
+
+### Quote review
+
+`quote notice/home task -> exact Quote fixture -> fee lines + currency + service scope + exclusions -> CONFIRM_DEMO | QUESTION_SENT_DEMO`. Confirmation updates the same quote object and related business activity. Asking a question creates a local Demo communication state, not acceptance. A displayed price is not a final governed Quote unless it is the exact Quote owner projection.
 
 ### Logout
 
@@ -149,3 +191,14 @@ Simplified Chinese is default; English covers every preview route and state. Loc
 - owner-backed locale projections that preserve original facts.
 
 No production Auth refactor, new Customer owner, real payment, unreviewed WeChat binding, or protected action is part of V1.2 preview.
+
+## Preview and responsive acceptance record
+
+The runnable entry is `apps/markreg-web/customer-portal-preview.html`:
+
+| Surface                      | Simplified Chinese                           | English                                                   |
+| ---------------------------- | -------------------------------------------- | --------------------------------------------------------- |
+| Desktop Web                  | `/customer-portal-preview.html`              | `/customer-portal-preview.html?locale=en-US`              |
+| Mini-program adapted / 390px | `/customer-portal-preview.html?channel=mini` | `/customer-portal-preview.html?channel=mini&locale=en-US` |
+
+The preview was visually reviewed in the standalone browser at desktop width and in the constrained mini-program shell. The Playwright matrix runs every Golden Path at desktop and 390 × 844, checks exact quote/matter IDs, verifies document and quote state across Web → mini → Web, and asserts no horizontal overflow. All four URLs are presentation adapters over the same browser-local Demo fixture; they are not evidence of server persistence, native WeChat sign-in, or cross-device session exchange.
