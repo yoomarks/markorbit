@@ -97,6 +97,24 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 export const Ready: Story = { args: { client: client() } };
+export const MultipleSites: Story = {
+  args: {
+    client: client({
+      list: () =>
+        Promise.resolve([
+          installation,
+          {
+            ...installation,
+            siteId: 'site_regional_cn',
+            version: 1,
+            currentConfigurationVersion: 1,
+            lifecycle: 'DRAFT',
+            sourceRef: 'story:site:regional-cn'
+          }
+        ])
+    })
+  }
+};
 export const Empty: Story = {
   args: { client: client({ list: () => Promise.resolve([]) }) }
 };

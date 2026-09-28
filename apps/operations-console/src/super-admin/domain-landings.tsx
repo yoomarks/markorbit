@@ -1,4 +1,3 @@
-import { Alert, PageHeader } from '@markorbit/ui';
 import { CoreAdminWorkspace } from './core-admin.js';
 import { BrainAdminWorkspace } from './brain-admin.js';
 import { CapabilityAdminWorkspace } from './capability-admin.js';
@@ -17,28 +16,31 @@ export type SuperAdminDomainLanding = Readonly<{
   boundary: string;
 }>;
 
-export function SuperAdminDomainLandings() {
-  return (
-    <section aria-label="Super Admin domains">
-      <PageHeader
-        title="Platform domains"
-        description="Navigation is global; domain truth remains distributed and owner-routed."
-      />
-      <Alert tone="info" title="No synthetic platform truth">
-        A domain landing is a navigation boundary, not evidence that its owner read is connected.
-      </Alert>
-      <CoreAdminWorkspace />
-      <BrainAdminWorkspace />
-      <CapabilityAdminWorkspace />
-      <MarkRegAdminWorkspace />
-      <LiteAdminWorkspace />
-      <MgsnAdminWorkspace />
-      <KnowledgeAdminWorkspace />
-      <ExecutionAdminWorkspace />
-      <SystemAdminWorkspace />
-      <GovernanceAdminWorkspace />
-    </section>
-  );
+export function SuperAdminDomainLandings({ activeId }: { activeId: string }) {
+  switch (activeId) {
+    case 'super-admin-core':
+      return <CoreAdminWorkspace />;
+    case 'super-admin-brain':
+      return <BrainAdminWorkspace />;
+    case 'super-admin-capability':
+      return <CapabilityAdminWorkspace />;
+    case 'super-admin-markreg':
+      return <MarkRegAdminWorkspace />;
+    case 'super-admin-lite':
+      return <LiteAdminWorkspace />;
+    case 'super-admin-mgsn':
+      return <MgsnAdminWorkspace />;
+    case 'super-admin-knowledge':
+      return <KnowledgeAdminWorkspace />;
+    case 'super-admin-execution':
+      return <ExecutionAdminWorkspace />;
+    case 'super-admin-system':
+      return <SystemAdminWorkspace />;
+    case 'super-admin-governance':
+      return <GovernanceAdminWorkspace />;
+    default:
+      return null;
+  }
 }
 
 export const superAdminDomainLandings: readonly SuperAdminDomainLanding[] = [];

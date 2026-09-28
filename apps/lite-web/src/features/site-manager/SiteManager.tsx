@@ -42,6 +42,7 @@ type ReadyState = Readonly<{
 type ViewState =
   | { kind: 'LOADING' }
   | { kind: 'EMPTY' }
+  | { kind: 'INDEX'; sites: readonly SiteInstallationV1[] }
   | { kind: 'ERROR'; error: SiteManagerHttpError }
   | ({ kind: 'READY' } & ReadyState);
 
@@ -114,6 +115,11 @@ export function SiteManager({ workspaceId, client }: SiteManagerProps) {
         const sites = await activeClient.list();
         if (!sites.length) {
           setState({ kind: 'EMPTY' });
+          setDraft(undefined);
+          return;
+        }
+        if (!preferredSiteId && sites.length > 1) {
+          setState({ kind: 'INDEX', sites });
           setDraft(undefined);
           return;
         }
@@ -197,6 +203,38 @@ export function SiteManager({ workspaceId, client }: SiteManagerProps) {
       />
     );
   }
+  if (state.kind === 'INDEX')
+    return (
+      <div className="site-manager site-manager--index">
+        <PageHeader
+          title="My Sites"
+          description="Choose a Site to open its dedicated configuration workspace. Site records remain owned by the Site service."
+          actions={<Badge>{state.sites.length} Sites</Badge>}
+        />
+        <Alert title="Site list boundary">
+          This list is a Workspace projection. Opening a Site does not publish content, verify a
+          domain, authorize Payment, or change fulfillment ownership.
+        </Alert>
+        <div className="site-manager__site-list" role="list">
+          {state.sites.map((site) => (
+            <Card key={site.siteId} className="site-manager__site-row">
+              <div>
+                <span className="site-manager__kicker">Site</span>
+                <h2>{site.siteId}</h2>
+                <p>
+                  {site.kind === 'MARKREG_REFERENCE' ? 'MarkReg reference' : 'Workspace branded'} ·
+                  configuration v{site.currentConfigurationVersion}
+                </p>
+              </div>
+              <div className="site-manager__site-row-actions">
+                <Badge>{site.lifecycle}</Badge>
+                <Button onClick={() => void load(site.siteId)}>Open Site settings</Button>
+              </div>
+            </Card>
+          ))}
+        </div>
+      </div>
+    );
 
   const { installation, configuration, bindings, sites } = state;
   const activeBinding = bindings.find((binding) => binding.status === 'ACTIVE');
@@ -245,6 +283,11 @@ export function SiteManager({ workspaceId, client }: SiteManagerProps) {
             <Button variant="secondary" onClick={() => setPreviewOpen((value) => !value)}>
               {previewOpen ? 'Hide projection preview' : 'Preview current projection'}
             </Button>
+            {sites.length > 1 ? (
+              <Button variant="secondary" onClick={() => void load()}>
+                Back to Sites
+              </Button>
+            ) : null}
             {installation.lifecycle === 'ACTIVE' && activeBinding ? (
               <a
                 className="site-manager__open-link"
@@ -327,20 +370,6 @@ export function SiteManager({ workspaceId, client }: SiteManagerProps) {
             </p>
           </div>
         </Card>
-      ) : null}
-
-      {sites.length > 1 ? (
-        <Select
-          label="Site installation"
-          value={installation.siteId}
-          onChange={(event) => void load(event.target.value)}
-        >
-          {sites.map((site) => (
-            <option key={site.siteId} value={site.siteId}>
-              {site.siteId} / {site.lifecycle}
-            </option>
-          ))}
-        </Select>
       ) : null}
 
       <div className="site-manager__summary-grid">

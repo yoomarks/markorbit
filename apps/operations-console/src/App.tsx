@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Alert, Button, Card, DataList, PageHeader } from '@markorbit/ui';
 import { CommercialAdminWorkspace } from './commercial-admin.js';
 import { CognitivePlatformWorkspace } from './cognitive-platform.js';
@@ -30,6 +30,9 @@ type LifecycleState =
   | 'CORRECTION_OR_REVIEW_ISSUE';
 
 export function OperationsApp() {
+  const [activeSection, setActiveSection] = useState(
+    () => window.location.hash.slice(1) || 'overview'
+  );
   const [formalMatterId, setFormalMatterId] = useState('');
   const [provenance, setProvenance] = useState<OperationsLifecycleProvenance | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -162,9 +165,15 @@ export function OperationsApp() {
       setFormalMatterId(admission.admission.formalMatter.id);
     });
 
+  useEffect(() => {
+    const followNavigation = () => setActiveSection(window.location.hash.slice(1) || 'overview');
+    window.addEventListener('hashchange', followNavigation);
+    return () => window.removeEventListener('hashchange', followNavigation);
+  }, []);
+
   return (
     <SuperAdminShell>
-      <section id="overview">
+      <section id="overview" hidden={activeSection !== 'overview'}>
         <PageHeader
           title="Super admin overview"
           description="Internal platform administration entry point for governed operations and owner-routed inspection. Missing sources are never inferred as healthy or empty."
@@ -226,11 +235,14 @@ export function OperationsApp() {
         </div>
       </section>
 
-      <SuperAdminDomainLandings />
+      <SuperAdminDomainLandings activeId={activeSection} />
 
-      <WorkspacePlatformWorkspace />
+      {activeSection === 'super-admin-workspace' ? <WorkspacePlatformWorkspace /> : null}
 
-      <section id="evidence-review">
+      <section
+        id="evidence-review"
+        hidden={!['evidence-review', 'lifecycle-review'].includes(activeSection)}
+      >
         <PageHeader
           title="Evidence review"
           description="Review exact PENDING_REVIEW evidence, record an explicit decision and, only when admitted, project bounded lifecycle state."
@@ -591,13 +603,13 @@ export function OperationsApp() {
         )}
       </section>
 
-      <CognitivePlatformWorkspace />
+      {activeSection === 'cognitive-platform' ? <CognitivePlatformWorkspace /> : null}
 
-      <KnowledgePlatformWorkspace />
+      {activeSection === 'knowledge-platform' ? <KnowledgePlatformWorkspace /> : null}
 
-      <DataPlatformWorkspace />
+      {activeSection === 'data-platform' ? <DataPlatformWorkspace /> : null}
 
-      <CommercialAdminWorkspace />
+      {activeSection === 'commercial-admin' ? <CommercialAdminWorkspace /> : null}
     </SuperAdminShell>
   );
 }
