@@ -606,14 +606,12 @@ test('Super Admin V2 batch D preserves financial owners and protects risky actio
 }) => {
   const assertHealthy = watchPage(page);
   await page.goto(`${urls.operations}/super-admin-v2/billing/payments`);
-  await page
-    .getByRole('button', { name: /Acme annual payment/ })
-    .first()
-    .click();
-  const payment = page.getByTestId('billing-payments-detail');
-  await expect(payment).toContainText('Payment');
-  await expect(payment).toContainText('payment.record:read');
-  await expect(payment).toContainText('Payment 不是履约、权威、接受或完成');
+  await page.getByRole('button', { name: /Site 演示支付/ }).click();
+  const payment = page.getByTestId('commercial-object-detail');
+  await expect(payment).toContainText('payment_demo_failed');
+  await expect(payment).toContainText('Payment Owner 边界');
+  await expect(payment).toContainText('commercial-admin:read · READ ONLY');
+  await expect(payment).toContainText('不执行收款、退款、提现、资金划拨或对账处置');
 
   await page.goto(`${urls.operations}/super-admin-v2/governance/risk`);
   await page
@@ -630,6 +628,100 @@ test('Super Admin V2 batch D preserves financial owners and protects risky actio
   await page.getByRole('button', { name: '取消' }).click();
   await expectNoHorizontalOverflow(page);
   assertHealthy();
+});
+
+test('commercial offer-version draft is structured, bilingual and remains local', async ({
+  page
+}) => {
+  const assertHealthy = watchPage(page);
+  const writes: string[] = [];
+  page.on('request', (request) => {
+    if (!['GET', 'HEAD'].includes(request.method()))
+      writes.push(`${request.method()} ${request.url()}`);
+  });
+  await page.goto(`${urls.operations}/super-admin-v2/billing/plans`);
+  await page.getByRole('button', { name: '新建版本草稿' }).click();
+  const draft = page.getByTestId('commercial-offer-draft');
+  await draft.getByLabel('显示名称').fill('Lite Growth 2027');
+  await draft.getByLabel('币种').selectOption('USD');
+  await draft.getByLabel('计费周期').selectOption('YEAR');
+  await draft.getByLabel('金额（主单位）').fill('1299');
+  await page.getByRole('button', { name: 'English', exact: true }).click();
+  await expect(draft.getByLabel('Display name')).toHaveValue('Lite Growth 2027');
+  await expect(draft.getByLabel('Currency')).toHaveValue('USD');
+  await draft.getByRole('button', { name: 'Save local draft only' }).click();
+  await expect(page.getByRole('status')).toContainText('Local Demo draft saved');
+  await draft.getByRole('button', { name: 'Request Demo review' }).click();
+  await expect(page.getByRole('dialog')).toContainText('PROTECTED ACTION · DEMO');
+  await expect(page.getByRole('dialog')).toContainText(
+    'This preview will not perform production operations'
+  );
+  await page.keyboard.press('Escape');
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+  expect(writes).toEqual([]);
+  assertHealthy();
+});
+
+test('commercial promotion and coupon decisions expose deterministic eligibility reasons', async ({
+  page
+}) => {
+  await page.goto(`${urls.operations}/super-admin-v2/billing/promotions`);
+  const eligibility = page.getByTestId('promotion-eligibility');
+  await expect(eligibility).toContainText('符合条件');
+  await eligibility.getByLabel('评估 Workspace').selectOption('WSP-SUNRISE');
+  await expect(eligibility).toContainText('不符合条件');
+  await expect(eligibility).toContainText('MARKET_NOT_APPLICABLE');
+  await expect(eligibility).toContainText('不会生成折扣或核销记录');
+
+  await page.goto(`${urls.operations}/super-admin-v2/billing/coupons`);
+  const outcome = page.getByTestId('coupon-outcome');
+  const scenario = outcome.getByLabel('演示场景');
+  for (const [value, reason] of [
+    ['EXPIRED', 'COUPON_EXPIRED'],
+    ['DUPLICATE', 'COUPON_ALREADY_REDEEMED'],
+    ['EXHAUSTED', 'COUPON_CAPACITY_EXHAUSTED'],
+    ['PERMISSION', 'COMMERCIAL_PERMISSION_DENIED']
+  ] as const) {
+    await scenario.selectOption(value);
+    await expect(outcome).toContainText(reason);
+  }
+  await expect(outcome).toContainText('不创建 Coupon Redemption');
+});
+
+test('commercial order preserves the exact offer, promotion, coupon and final-price snapshot', async ({
+  page
+}) => {
+  await page.goto(`${urls.operations}/super-admin-v2/billing/orders`);
+  await page.getByRole('button', { name: /Lite Pro 新购演示/ }).click();
+  const snapshot = page.getByTestId('commercial-price-snapshot');
+  await expect(snapshot).toContainText('OFFER-LITE-PRO v4');
+  await expect(snapshot).toContainText('PROMO-Q4-LITE v1');
+  await expect(snapshot).toContainText('COUPON-WELCOME-100 v1');
+  await expect(snapshot).toContainText('¥169 CNY');
+  await expect(snapshot).toContainText('后续调价不会追溯修改');
+});
+
+test('commercial workspaces remain usable in Chinese and English at review viewports', async ({
+  page
+}, testInfo) => {
+  const mobile = testInfo.project.name.startsWith('mobile');
+  await page.goto(`${urls.operations}/super-admin-v2/billing/promotions`);
+  await expect(page.getByRole('heading', { level: 1, name: '营销活动' })).toBeVisible();
+  await expectNoHorizontalOverflow(page);
+  await capture(page, `super-admin-v2-commercial-promotions-zh-${mobile ? '390' : '1440'}`);
+
+  await page.getByRole('button', { name: 'English', exact: true }).click();
+  await expect(page.getByRole('heading', { level: 1, name: 'Promotions' })).toBeVisible();
+  await expect(page.getByTestId('promotion-eligibility')).toContainText('Workspace eligibility');
+  await expectNoHorizontalOverflow(page);
+  await capture(page, `super-admin-v2-commercial-promotions-en-${mobile ? '390' : '1440'}`);
+
+  if (!mobile) {
+    await page.setViewportSize({ width: 1366, height: 768 });
+    await page.goto(`${urls.operations}/super-admin-v2/billing/orders`);
+    await expectNoHorizontalOverflow(page);
+    await capture(page, 'super-admin-v2-commercial-order-en-1366');
+  }
 });
 
 test('V2.2.1 keeps Data task selection, filters and deterministic query results aligned', async ({
@@ -1285,9 +1377,9 @@ test('V2.2.1 filters invalidate hidden selections across every page renderer fam
     ['/super-admin-v2/brain/runs', /Trademark classification/, 'BRUN-8821', 'brain-runs-detail'],
     [
       '/super-admin-v2/billing/payments',
-      /Sunrise renewal auth/,
-      'PAY-4482',
-      'billing-payments-detail'
+      /Site 演示支付/,
+      'payment_demo_failed',
+      'commercial-object-detail'
     ]
   ] as const;
   for (const [route, selectedName, visibleId, detailId] of families) {
@@ -1297,7 +1389,7 @@ test('V2.2.1 filters invalidate hidden selections across every page renderer fam
     await expect(page.getByTestId(detailId)).toContainText(visibleId);
     await page.getByLabel('搜索当前模块').fill('NO-SUCH-OBJECT');
     await expect(page.getByTestId(detailId)).toHaveCount(0);
-    await expect(page.locator('.sa2-inline-empty')).toContainText('没有匹配');
+    await expect(page.locator('.sa2-inline-empty, .sa2-commerce-empty')).toContainText('没有匹配');
   }
 
   await page.goto(`${urls.operations}/super-admin-v2/data/packages`);
@@ -1375,9 +1467,9 @@ const v221ModuleTasks = [
   [
     'billing',
     '/super-admin-v2/billing/payments',
-    /Global Brand renewal/,
-    'billing-payments-detail',
-    'PAY-4518'
+    /Site 演示支付/,
+    'commercial-object-detail',
+    'payment_demo_failed'
   ],
   [
     'governance',
@@ -1692,7 +1784,7 @@ test('Super Admin V2 bilingual representatives remain usable at desktop and 390p
   }
 });
 
-test('Super Admin V2 English locale has no untranslated visible UI across all 90 routes', async ({
+test('Super Admin V2 English locale has no untranslated visible UI across every registered route', async ({
   page
 }, testInfo) => {
   test.skip(

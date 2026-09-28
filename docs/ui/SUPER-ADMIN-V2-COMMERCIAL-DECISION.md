@@ -32,29 +32,29 @@ The current **账单 / Billing** navigation is renamed **商业 / Commercial**. 
 
 ## Three-director record
 
-| Role | Decision | Rationale |
-| --- | --- | --- |
-| Product director | Treat product/SKU, offer version, agreement/entitlement, order snapshot and payment lifecycle as separate objects. | A product configuration, a customer's commercial agreement and a financial event answer different questions. |
-| Design director | Use object list + detail, structured pricing forms, eligibility explainers, immutable price formula and audit timeline. No JSON editor, chat UI or decorative revenue dashboard. | Commercial operators need reproducible decisions and explicit risk, not generic KPIs. |
-| Technical director | Reuse owner contracts and Gateway authority. Promotion/Coupon remain `DEPENDENCY_REQUIRED`; the preview is local Demo only. | No approved Promotion/Coupon owner, lifecycle, persistence, API or audit receipt currently exists. |
+| Role               | Decision                                                                                                                                                                         | Rationale                                                                                                    |
+| ------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------ |
+| Product director   | Treat product/SKU, offer version, agreement/entitlement, order snapshot and payment lifecycle as separate objects.                                                               | A product configuration, a customer's commercial agreement and a financial event answer different questions. |
+| Design director    | Use object list + detail, structured pricing forms, eligibility explainers, immutable price formula and audit timeline. No JSON editor, chat UI or decorative revenue dashboard. | Commercial operators need reproducible decisions and explicit risk, not generic KPIs.                        |
+| Technical director | Reuse owner contracts and Gateway authority. Promotion/Coupon remain `DEPENDENCY_REQUIRED`; the preview is local Demo only.                                                      | No approved Promotion/Coupon owner, lifecycle, persistence, API or audit receipt currently exists.           |
 
 ## Current owner map
 
-| Object / question | Owner and current truth | Availability to Super Admin | Decision |
-| --- | --- | --- | --- |
-| MO service Product/Price for the accepted MarkReg direct flow | MarkReg `CommercialProduct` + `CommercialPrice` | `commercial-admin:read` catalog read, active channel/relationship query | Reuse as a bounded MarkReg catalog, not as the universal MO SKU registry. |
-| Workspace/User offer version | Core `CommercialOfferVersionV1` | Durable model and exact `commercial-admin:operate` record route; no approved global admin list projection | UI models versions truthfully in Demo; Real list remains not connected. |
-| Commercial Agreement | Core `CommercialAgreementV1` | Durable owner model; no global Super Admin read portfolio | Do not derive it from orders or payments. |
-| Product installation | Core `WorkspaceProductInstallationV1` | Workspace-scoped read with `workspace:read` | Platform selection does not grant customer Workspace authority. |
-| Entitlement | Core grant/resolve model | Workspace/User-scoped resolution; no global grant portfolio | Entitlement != permission and grant != protected-action authority. |
-| Rate Policy | Core `RatePolicyVersionV1` | Exact operate route and bounded resolution for supported policy kinds | Service/commission economics stay independent from product prices and discounts. |
-| Checkout, Order, Matter | MarkReg | Workspace-scoped `commercial-admin:read` inspection | Order != Payment != Matter. No global client-side fan-out. |
-| Payment lifecycle | Payment | Exact Workspace + Payment ID inspection via `commercial-admin:read` | Includes attempts, provider receipts, refunds and reconciliation observations. No list portfolio and no command. |
-| Invoice / tax/accounting | Not modeled as a canonical owner in the audited surface | Not connected | Do not claim invoice issuance, tax calculation or ledger truth. |
-| Promotion | No canonical contract/owner | Not developed | Product and technical decision dependency required. |
-| Coupon / redemption | No canonical contract/owner | Not developed | Product and technical decision dependency required. |
-| Workspace current paid plan | Not available as a bounded portfolio projection | Explicit `NOT_YET_MODELED` conclusion in `#968` | Never infer “paid” from prior order/payment. |
-| Institution service price sold through Site | Workspace/Site/MarkReg business flow, not MO offer administration | Outside this surface | MO offer changes never overwrite institution-owned service pricing or final Quote. |
+| Object / question                                             | Owner and current truth                                           | Availability to Super Admin                                                                               | Decision                                                                                                         |
+| ------------------------------------------------------------- | ----------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
+| MO service Product/Price for the accepted MarkReg direct flow | MarkReg `CommercialProduct` + `CommercialPrice`                   | `commercial-admin:read` catalog read, active channel/relationship query                                   | Reuse as a bounded MarkReg catalog, not as the universal MO SKU registry.                                        |
+| Workspace/User offer version                                  | Core `CommercialOfferVersionV1`                                   | Durable model and exact `commercial-admin:operate` record route; no approved global admin list projection | UI models versions truthfully in Demo; Real list remains not connected.                                          |
+| Commercial Agreement                                          | Core `CommercialAgreementV1`                                      | Durable owner model; no global Super Admin read portfolio                                                 | Do not derive it from orders or payments.                                                                        |
+| Product installation                                          | Core `WorkspaceProductInstallationV1`                             | Workspace-scoped read with `workspace:read`                                                               | Platform selection does not grant customer Workspace authority.                                                  |
+| Entitlement                                                   | Core grant/resolve model                                          | Workspace/User-scoped resolution; no global grant portfolio                                               | Entitlement != permission and grant != protected-action authority.                                               |
+| Rate Policy                                                   | Core `RatePolicyVersionV1`                                        | Exact operate route and bounded resolution for supported policy kinds                                     | Service/commission economics stay independent from product prices and discounts.                                 |
+| Checkout, Order, Matter                                       | MarkReg                                                           | Workspace-scoped `commercial-admin:read` inspection                                                       | Order != Payment != Matter. No global client-side fan-out.                                                       |
+| Payment lifecycle                                             | Payment                                                           | Exact Workspace + Payment ID inspection via `commercial-admin:read`                                       | Includes attempts, provider receipts, refunds and reconciliation observations. No list portfolio and no command. |
+| Invoice / tax/accounting                                      | Not modeled as a canonical owner in the audited surface           | Not connected                                                                                             | Do not claim invoice issuance, tax calculation or ledger truth.                                                  |
+| Promotion                                                     | No canonical contract/owner                                       | Not developed                                                                                             | Product and technical decision dependency required.                                                              |
+| Coupon / redemption                                           | No canonical contract/owner                                       | Not developed                                                                                             | Product and technical decision dependency required.                                                              |
+| Workspace current paid plan                                   | Not available as a bounded portfolio projection                   | Explicit `NOT_YET_MODELED` conclusion in `#968`                                                           | Never infer “paid” from prior order/payment.                                                                     |
+| Institution service price sold through Site                   | Workspace/Site/MarkReg business flow, not MO offer administration | Outside this surface                                                                                      | MO offer changes never overwrite institution-owned service pricing or final Quote.                               |
 
 ## Commercial object relationship
 
@@ -122,36 +122,36 @@ No negative total is allowed. Currency conversion is not implicit. A coupon in a
 
 The following is a UI/approval design proposal. It does not add capabilities to the repository.
 
-| Task | Current authority | Proposed production split | UI behavior now |
-| --- | --- | --- | --- |
-| Read MarkReg catalog/order/payment detail | `commercial-admin:read` | Keep | Real owner read where an exact route exists; otherwise not connected. |
-| Record Core Offer/Rate Policy | exact `commercial-admin:operate` internal route | Split future draft/review/publish capabilities before broad UI mutation | No command; local Demo draft only. |
-| Create promotion/coupon draft | none | `commercial-promotion:draft` / `commercial-coupon:draft` | Demo only, labelled proposed model. |
-| Approve/publish price, promotion or coupon | none | independent reviewer + publish authority, version/currentness checks | Protected Demo confirmation only. |
-| Inspect Payment | `commercial-admin:read` | Keep | Read-only exact Payment aggregate. |
-| Refund/reconcile | domain commands exist below Payment in some flows, but no approved Super Admin mutation boundary | separate exact Payment authorities, idempotency and durable receipt | No real action; investigation and simulated outcome only. |
-| Change customer service price/final Quote | Product/Workspace-specific authority | Never granted by MO catalog administration | Explicitly out of scope. |
+| Task                                       | Current authority                                                                                | Proposed production split                                               | UI behavior now                                                       |
+| ------------------------------------------ | ------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------- | --------------------------------------------------------------------- |
+| Read MarkReg catalog/order/payment detail  | `commercial-admin:read`                                                                          | Keep                                                                    | Real owner read where an exact route exists; otherwise not connected. |
+| Record Core Offer/Rate Policy              | exact `commercial-admin:operate` internal route                                                  | Split future draft/review/publish capabilities before broad UI mutation | No command; local Demo draft only.                                    |
+| Create promotion/coupon draft              | none                                                                                             | `commercial-promotion:draft` / `commercial-coupon:draft`                | Demo only, labelled proposed model.                                   |
+| Approve/publish price, promotion or coupon | none                                                                                             | independent reviewer + publish authority, version/currentness checks    | Protected Demo confirmation only.                                     |
+| Inspect Payment                            | `commercial-admin:read`                                                                          | Keep                                                                    | Read-only exact Payment aggregate.                                    |
+| Refund/reconcile                           | domain commands exist below Payment in some flows, but no approved Super Admin mutation boundary | separate exact Payment authorities, idempotency and durable receipt     | No real action; investigation and simulated outcome only.             |
+| Change customer service price/final Quote  | Product/Workspace-specific authority                                                             | Never granted by MO catalog administration                              | Explicitly out of scope.                                              |
 
 Interface hiding is not authorization. Every future command must be enforced by Gateway and owner services.
 
 ## Complete UI state matrix
 
-| State | Required representation |
-| --- | --- |
-| Loading | skeleton tied to the requested owner/object; no zero totals |
-| Empty | valid, successful zero result with active filters shown |
-| Authentication | sign-in required; no fixture fallback in Real mode |
-| Permission | exact required capability and selected scope; no disabled-looking fake success |
-| Partial | available owner sections render; unavailable owner sections name the gap |
-| Error / timeout | owner-specific retry and correlation context |
-| Stale version | block publish/redeem; show expected/current versions |
-| Ineligible Workspace | reason codes such as market, offer version or subject mismatch |
-| Expired promotion/coupon | no discount; exact expiry shown |
-| Duplicate redemption | reject replay except the exact idempotent replay |
-| Capacity exhausted | reject without decrementing below zero |
-| Payment failed | retain order and price snapshot; do not infer entitlement |
-| Refund | show Payment-owned refund status and original snapshot; do not rewrite Order price |
-| Success | Demo receipt clearly says no production mutation; Real success requires owner receipt |
+| State                    | Required representation                                                               |
+| ------------------------ | ------------------------------------------------------------------------------------- |
+| Loading                  | skeleton tied to the requested owner/object; no zero totals                           |
+| Empty                    | valid, successful zero result with active filters shown                               |
+| Authentication           | sign-in required; no fixture fallback in Real mode                                    |
+| Permission               | exact required capability and selected scope; no disabled-looking fake success        |
+| Partial                  | available owner sections render; unavailable owner sections name the gap              |
+| Error / timeout          | owner-specific retry and correlation context                                          |
+| Stale version            | block publish/redeem; show expected/current versions                                  |
+| Ineligible Workspace     | reason codes such as market, offer version or subject mismatch                        |
+| Expired promotion/coupon | no discount; exact expiry shown                                                       |
+| Duplicate redemption     | reject replay except the exact idempotent replay                                      |
+| Capacity exhausted       | reject without decrementing below zero                                                |
+| Payment failed           | retain order and price snapshot; do not infer entitlement                             |
+| Refund                   | show Payment-owned refund status and original snapshot; do not rewrite Order price    |
+| Success                  | Demo receipt clearly says no production mutation; Real success requires owner receipt |
 
 ## Desktop and mobile IA
 

@@ -13,6 +13,7 @@ import { BATCH_A_PAGE_IDS } from './ControlPlanePages.js';
 import { BATCH_B_PAGE_IDS } from './OrganizationPages.js';
 import { BATCH_C_PAGE_IDS } from './IntelligencePages.js';
 import { BATCH_D_PAGE_IDS } from './TrustPages.js';
+import { COMMERCIAL_PAGE_IDS } from './CommercialManagementPages.js';
 
 describe('Super Admin V2 navigation catalog', () => {
   it('freezes twelve unique first-level modules with addressable secondary pages', () => {
@@ -86,11 +87,12 @@ describe('Super Admin V2 navigation catalog', () => {
     }
   });
 
-  it('has a dedicated V2.2 batch D definition for every billing and governance page', () => {
-    for (const moduleId of ['billing', 'governance'] as const) {
-      expect(BATCH_D_PAGE_IDS[moduleId]).toEqual(
-        adminModules.find((module) => module.id === moduleId)?.pages.map((page) => page.id)
-      );
-    }
+  it('has dedicated commercial and governance definitions for every page', () => {
+    expect(COMMERCIAL_PAGE_IDS).toEqual(
+      adminModules.find((module) => module.id === 'billing')?.pages.map((page) => page.id)
+    );
+    expect(BATCH_D_PAGE_IDS.governance).toEqual(
+      adminModules.find((module) => module.id === 'governance')?.pages.map((page) => page.id)
+    );
   });
 });

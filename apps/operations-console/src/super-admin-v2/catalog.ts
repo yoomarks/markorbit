@@ -228,19 +228,25 @@ export const adminModules: readonly AdminModule[] = [
   {
     id: 'billing',
     number: '11',
-    label: '账单',
-    shortLabel: '账单',
-    description: '订阅、订单、支付、发票与争议的 owner 视图',
+    label: '商业',
+    shortLabel: '商业',
+    description: '产品、套餐、活动、权益、订单与支付 Owner 视图',
     accent: '#c96f23',
     icon: 'card',
     pages: [
       page('revenue', '收入总览'),
-      page('plans', '套餐'),
+      page('catalog', '产品与 SKU'),
+      page('plans', '套餐与价格'),
+      page('promotions', '营销活动'),
+      page('coupons', '优惠券'),
+      page('agreements', '套餐与权益'),
       page('orders', '订单'),
       page('payments', '支付'),
       page('invoices', '发票'),
       page('usage', '用量'),
-      page('disputes', '退款与争议')
+      page('reconciliation', '对账'),
+      page('disputes', '退款与争议'),
+      page('audit', '商业审计')
     ]
   },
   {

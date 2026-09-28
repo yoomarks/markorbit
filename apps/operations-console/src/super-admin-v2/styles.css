@@ -2499,6 +2499,333 @@
   }
 }
 
+/* Commercial management keeps MO offers, institution service prices and
+   immutable order/payment records visibly separate. */
+.sa2-commerce-boundaries {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 14px;
+}
+.sa2-commerce-boundaries span {
+  display: flex;
+  min-width: 0;
+  padding: 10px 12px;
+  border: 1px solid #d9e4f2;
+  border-radius: 10px;
+  background: #f7faff;
+  color: #52647d;
+  flex-direction: column;
+  font-size: 13px;
+  line-height: 1.45;
+}
+.sa2-commerce-boundaries b {
+  color: #183258;
+}
+.sa2-commerce-workbench {
+  display: grid;
+  grid-template-columns: minmax(280px, 0.82fr) minmax(420px, 1.18fr);
+  gap: 14px;
+  align-items: start;
+}
+.sa2-commerce-browser,
+.sa2-commerce-detail,
+.sa2-commerce-draft {
+  padding: 16px;
+}
+.sa2-commerce-browser > header,
+.sa2-commerce-detail > header,
+.sa2-commerce-draft > header,
+.sa2-commerce-evaluator > header,
+.sa2-commerce-price > header {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  justify-content: space-between;
+}
+.sa2-commerce-browser header span,
+.sa2-commerce-detail header span,
+.sa2-commerce-draft header span,
+.sa2-commerce-evaluator header span,
+.sa2-commerce-price header span {
+  color: #657995;
+  font-size: 12px;
+  font-weight: 750;
+  letter-spacing: 0.06em;
+}
+.sa2-commerce-browser h2,
+.sa2-commerce-detail h2,
+.sa2-commerce-draft h2,
+.sa2-commerce-evaluator h3,
+.sa2-commerce-price h3 {
+  margin: 3px 0 0;
+  color: #102852;
+  font-size: 18px;
+}
+.sa2-commerce-filters,
+.sa2-commerce-form-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(130px, 0.42fr);
+  gap: 10px;
+  margin-top: 14px;
+}
+.sa2-commerce-filters :where(input, select),
+.sa2-commerce-form-grid :where(input, select),
+.sa2-commerce-evaluator select {
+  width: 100%;
+  min-height: 42px;
+  padding: 8px 10px;
+  border: 1px solid #c8d5e5;
+  border-radius: 8px;
+  background: #fff;
+  color: #172c4c;
+  font: inherit;
+}
+.sa2-commerce-object-list {
+  display: grid;
+  gap: 8px;
+  margin-top: 12px;
+}
+.sa2-commerce-object-list > button {
+  display: grid;
+  width: 100%;
+  min-height: 68px;
+  padding: 11px;
+  border: 1px solid #d8e1ed;
+  border-radius: 10px;
+  background: #fff;
+  color: #253d60;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 4px 10px;
+  text-align: left;
+  cursor: pointer;
+}
+.sa2-commerce-object-list > button:hover,
+.sa2-commerce-object-list > button.is-active {
+  border-color: #3479dd;
+  background: #f2f7ff;
+  box-shadow: inset 3px 0 #3479dd;
+}
+.sa2-commerce-object-list button > span {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+}
+.sa2-commerce-object-list strong {
+  color: #112b52;
+  font-size: 14px;
+}
+.sa2-commerce-object-list small {
+  color: #667995;
+  overflow-wrap: anywhere;
+}
+.sa2-commerce-object-list button > small {
+  grid-column: 1 / -1;
+}
+.sa2-commerce-empty {
+  margin-top: 12px;
+  padding: 18px;
+  border: 1px dashed #bdcbdd;
+  border-radius: 10px;
+  text-align: center;
+}
+.sa2-commerce-empty h3,
+.sa2-commerce-empty p {
+  margin: 0 0 6px;
+}
+.sa2-commerce-owner {
+  display: grid;
+  margin: 14px 0;
+  padding: 11px 12px;
+  border-left: 3px solid #3479dd;
+  border-radius: 4px 9px 9px 4px;
+  background: #f3f7fc;
+}
+.sa2-commerce-owner span,
+.sa2-commerce-detail dt,
+.sa2-commerce-form-grid label > span,
+.sa2-commerce-evaluator label > span {
+  color: #60738d;
+  font-size: 12px;
+  font-weight: 700;
+}
+.sa2-commerce-owner small {
+  margin-top: 2px;
+  color: #6a7a91;
+}
+.sa2-commerce-detail > dl {
+  display: grid;
+  margin: 0;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+.sa2-commerce-detail > dl > div {
+  min-width: 0;
+  padding: 10px;
+  border: 1px solid #e0e7f0;
+  border-radius: 8px;
+}
+.sa2-commerce-detail dd {
+  margin: 3px 0 0;
+  color: #193354;
+  overflow-wrap: anywhere;
+}
+.sa2-commerce-detail > section:not(.sa2-commerce-lineage) {
+  margin-top: 14px;
+}
+.sa2-commerce-detail > section > h3 {
+  margin: 0 0 5px;
+  color: #183258;
+  font-size: 15px;
+}
+.sa2-commerce-detail > section > p {
+  margin: 0;
+  color: #52647d;
+}
+.sa2-commerce-detail > footer,
+.sa2-commerce-draft > footer {
+  display: flex;
+  gap: 8px;
+  margin-top: 16px;
+  justify-content: flex-end;
+}
+.sa2-commerce-form-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+.sa2-commerce-form-grid label,
+.sa2-commerce-evaluator label {
+  display: grid;
+  gap: 5px;
+}
+.sa2-commerce-draft aside {
+  margin-top: 12px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: #fff8e8;
+  color: #70521d;
+}
+.sa2-commerce-evaluator,
+.sa2-commerce-price,
+.sa2-commerce-payment-boundary,
+.sa2-commerce-lineage {
+  margin-top: 14px;
+  padding: 13px;
+  border: 1px solid #dbe5f1;
+  border-radius: 10px;
+  background: #f8faff;
+}
+.sa2-commerce-evaluator label {
+  margin-top: 10px;
+}
+.sa2-commerce-evaluator ul,
+.sa2-commerce-lineage ol,
+.sa2-commerce-price ol {
+  margin: 10px 0 0;
+  padding: 0;
+  list-style: none;
+}
+.sa2-commerce-evaluator li {
+  margin-top: 5px;
+  color: #485f7d;
+}
+.sa2-commerce-evaluator output {
+  display: block;
+  margin-top: 10px;
+  padding: 10px;
+  border-radius: 8px;
+  font-weight: 750;
+}
+.sa2-commerce-evaluator .is-ok,
+.sa2-commerce-evaluator output.is-ok {
+  background: #eaf8ef;
+  color: #177040;
+}
+.sa2-commerce-evaluator .is-denied,
+.sa2-commerce-evaluator output.is-denied {
+  background: #fff0ee;
+  color: #9d362d;
+}
+.sa2-commerce-price li {
+  display: flex;
+  padding: 7px 0;
+  border-bottom: 1px solid #dfe7f0;
+  gap: 12px;
+  justify-content: space-between;
+}
+.sa2-commerce-price li.total {
+  color: #123a77;
+  font-size: 16px;
+}
+.sa2-commerce-price p,
+.sa2-commerce-evaluator p,
+.sa2-commerce-payment-boundary p {
+  margin: 9px 0 0;
+  color: #52647d;
+}
+.sa2-commerce-payment-boundary {
+  border-color: #f0d7ab;
+  background: #fff9ee;
+}
+.sa2-commerce-payment-boundary strong {
+  color: #724713;
+}
+.sa2-commerce-payment-boundary code {
+  display: inline-block;
+  margin-top: 8px;
+  color: #7e531d;
+}
+.sa2-commerce-lineage li {
+  display: flex;
+  margin-top: 7px;
+  gap: 8px;
+  align-items: center;
+}
+.sa2-commerce-lineage li span {
+  display: grid;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: #dceafe;
+  color: #1c5fb9;
+  place-items: center;
+  flex: 0 0 auto;
+}
+
+@media (max-width: 760px) {
+  .sa2-commerce-boundaries,
+  .sa2-commerce-workbench,
+  .sa2-commerce-form-grid,
+  .sa2-commerce-detail > dl {
+    grid-template-columns: 1fr;
+  }
+  .sa2-commerce-workbench {
+    gap: 10px;
+  }
+  .sa2-commerce-boundaries {
+    gap: 6px;
+  }
+  .sa2-commerce-boundaries span {
+    padding: 8px 10px;
+  }
+  .sa2-commerce-browser,
+  .sa2-commerce-detail,
+  .sa2-commerce-draft {
+    padding: 13px;
+  }
+  .sa2-commerce-filters {
+    grid-template-columns: 1fr;
+  }
+  .sa2-commerce-detail > footer,
+  .sa2-commerce-draft > footer {
+    flex-direction: column;
+  }
+  .sa2-commerce-detail > footer .sa2-button,
+  .sa2-commerce-draft > footer .sa2-button {
+    width: 100%;
+    min-height: 44px;
+  }
+}
+
 /* Productization: one Workspace dossier, exact Site identity and privacy boundary. */
 .sa2-workspace-dossier {
   display: grid;

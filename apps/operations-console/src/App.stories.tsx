@@ -82,6 +82,22 @@ export const SuperAdminV2PaymentOwnerRecord = () => (
   <SuperAdminV2 initialPath="/super-admin-v2/billing/payments" useBrowserHistory={false} />
 );
 
+export const SuperAdminV2CommercialOfferVersion = () =>
+  bilingualFixture('zh-CN', '/super-admin-v2/billing/plans');
+
+export const SuperAdminV2CommercialPromotionEligibility = () =>
+  bilingualFixture('zh-CN', '/super-admin-v2/billing/promotions');
+
+export const SuperAdminV2CommercialCouponOutcomesEnglish = () =>
+  bilingualFixture('en-US', '/super-admin-v2/billing/coupons');
+
+export const SuperAdminV2CommercialOrderSnapshot = () =>
+  bilingualFixture('zh-CN', '/super-admin-v2/billing/orders');
+
+export const SuperAdminV2CommercialMobile = () =>
+  bilingualFixture('zh-CN', '/super-admin-v2/billing/promotions');
+SuperAdminV2CommercialMobile.parameters = { viewport: { defaultViewport: 'mobile1' } };
+
 export const SuperAdminV2ProtectedRiskOperation = () => (
   <SuperAdminV2 initialPath="/super-admin-v2/governance/risk" useBrowserHistory={false} />
 );

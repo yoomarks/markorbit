@@ -14,6 +14,7 @@ import { ControlPlanePages } from './ControlPlanePages.js';
 import { OrganizationPages } from './OrganizationPages.js';
 import { IntelligencePages } from './IntelligencePages.js';
 import { TrustPages } from './TrustPages.js';
+import { CommercialManagementPages } from './CommercialManagementPages.js';
 import { RealControlPlane } from './RealControlPlane.js';
 import {
   LanguageSwitcher,
@@ -796,7 +797,17 @@ interface WorkbenchProps {
 }
 
 function ModuleWorkbench(props: WorkbenchProps) {
-  if (props.module.id === 'billing' || props.module.id === 'governance') {
+  if (props.module.id === 'billing') {
+    return (
+      <CommercialManagementPages
+        pageId={props.pageId}
+        query={props.query}
+        setQuery={props.setQuery}
+        onAction={props.onAction}
+      />
+    );
+  }
+  if (props.module.id === 'governance') {
     return (
       <TrustPages
         moduleId={props.module.id}
