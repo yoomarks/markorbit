@@ -152,22 +152,109 @@
   background: #42d7b3;
   box-shadow: 0 0 0 4px #42d7b321;
 }
+.sa2-task-menu {
+  position: relative;
+  z-index: 2;
+  margin: 0 8px 6px;
+  border: 1px solid #ffffff1c;
+  border-radius: 9px;
+  background: #ffffff08;
+}
+.sa2-task-menu summary {
+  min-height: 38px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 10px;
+  color: #d7e4f7;
+  font-size: 12px;
+  font-weight: 750;
+  cursor: pointer;
+  list-style: none;
+}
+.sa2-task-menu summary::-webkit-details-marker {
+  display: none;
+}
+.sa2-task-menu summary::before {
+  content: '⌕';
+  color: #8db2e7;
+  font-size: 15px;
+}
+.sa2-task-menu summary::after {
+  content: '⌄';
+  margin-left: auto;
+  color: #7f98bc;
+}
+.sa2-task-menu[open] summary::after {
+  transform: rotate(180deg);
+}
+.sa2-task-menu summary small {
+  min-width: 20px;
+  padding: 2px 5px;
+  border-radius: 999px;
+  background: #ffffff12;
+  color: #9eb4d5;
+  text-align: center;
+  font-size: 12px;
+}
+.sa2-task-menu nav {
+  max-height: 250px;
+  display: grid;
+  gap: 2px;
+  overflow-y: auto;
+  padding: 0 6px 7px;
+}
+.sa2-task-menu nav a {
+  min-height: 34px;
+  display: flex;
+  align-items: center;
+  padding: 0 9px;
+  border-radius: 7px;
+  color: #b9cce6;
+  font-size: 12px;
+  font-weight: 650;
+  text-decoration: none;
+}
+.sa2-task-menu nav a:hover,
+.sa2-task-menu nav a:focus-visible {
+  background: #ffffff10;
+  color: #fff;
+}
 .sa2-primary-nav {
   position: relative;
   z-index: 1;
   min-height: 0;
   flex: 1;
   overflow-y: auto;
-  padding: 4px 0;
+  padding: 2px 0 8px;
   scrollbar-width: thin;
   scrollbar-color: #3d5576 transparent;
 }
+.sa2-nav-group {
+  display: grid;
+  gap: 1px;
+  margin-top: 7px;
+}
+.sa2-nav-group:first-child {
+  margin-top: 0;
+}
+.sa2-nav-group > p {
+  margin: 0;
+  padding: 4px 11px 2px;
+  color: #7890b4;
+  font-size: 12px;
+  font-weight: 750;
+  letter-spacing: 0.08em;
+}
+.sa2-nav-group[data-active='true'] > p {
+  color: #a9c4ec;
+}
 .sa2-primary-nav a {
   display: grid;
-  grid-template-columns: 30px 1fr auto;
+  grid-template-columns: 30px 1fr;
   align-items: center;
   gap: 5px;
-  min-height: 43px;
+  min-height: 40px;
   margin: 2px 0;
   padding: 0 10px;
   border-radius: 9px;
@@ -2165,6 +2252,11 @@
   }
   .sa2-close-nav {
     display: block;
+  }
+  .sa2-primary-nav a,
+  .sa2-task-menu summary,
+  .sa2-task-menu nav a {
+    min-height: 44px;
   }
   .sa2-body {
     margin-left: 0;

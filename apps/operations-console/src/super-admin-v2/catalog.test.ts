@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { adminModules, DEFAULT_ROUTE, resolveRoute, routeFor } from './catalog.js';
+import {
+  adminModules,
+  adminNavigationGroups,
+  DEFAULT_ROUTE,
+  resolveRoute,
+  routeFor
+} from './catalog.js';
 import { DEMO_FIXTURE_NOTICE, demoRecords, moduleMetrics } from './fixtures.js';
 import { DATA_ENGINE_PAGE_IDS } from './DataEnginePages.js';
 import { KNOWLEDGE_PAGE_IDS } from './KnowledgePages.js';
@@ -22,6 +28,13 @@ describe('Super Admin V2 navigation catalog', () => {
       const resolved = resolveRoute(path);
       expect(routeFor(resolved.module, resolved.page)).toBe(path);
     }
+  });
+
+  it('places every owner module in exactly one task-oriented navigation group', () => {
+    const groupedModuleIds = adminNavigationGroups.flatMap((group) => group.moduleIds);
+    expect(adminNavigationGroups).toHaveLength(5);
+    expect(groupedModuleIds).toHaveLength(adminModules.length);
+    expect(new Set(groupedModuleIds)).toEqual(new Set(adminModules.map((module) => module.id)));
   });
 
   it('marks unknown paths invalid while retaining a safe navigation fallback', () => {

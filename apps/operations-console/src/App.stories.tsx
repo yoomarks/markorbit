@@ -146,3 +146,13 @@ export const SuperAdminV2EnglishDataJobsFixture = () =>
 export const SuperAdminV2ChineseMobileFixture = () =>
   bilingualFixture('zh-CN', '/super-admin-v2/data/jobs');
 SuperAdminV2ChineseMobileFixture.parameters = { viewport: { defaultViewport: 'mobile1' } };
+
+export const SuperAdminV2SimplifiedNavigation = () =>
+  bilingualFixture('zh-CN', '/super-admin-v2/overview/platform');
+
+export const SuperAdminV2SimplifiedNavigationEnglish = () =>
+  bilingualFixture('en-US', '/super-admin-v2/overview/platform');
+
+export const SuperAdminV2SimplifiedNavigationMobile = () =>
+  bilingualFixture('zh-CN', '/super-admin-v2/overview/platform');
+SuperAdminV2SimplifiedNavigationMobile.parameters = { viewport: { defaultViewport: 'mobile1' } };

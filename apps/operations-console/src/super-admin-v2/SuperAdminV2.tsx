@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import {
   adminModules,
+  adminNavigationGroups,
   resolveRoute,
   routeFor,
   type AdminModule,
@@ -36,6 +37,17 @@ const GLYPHS: Record<string, string> = {
   card: '▰',
   shield: '⬡'
 };
+
+const COMMON_TASK_LINKS = [
+  ['系统状态', '/super-admin-v2/overview/health'],
+  ['查找工作空间', '/super-admin-v2/workspaces/directory'],
+  ['查看用户权限', '/super-admin-v2/users/roles'],
+  ['处理失败任务', '/super-admin-v2/operations/recovery'],
+  ['检查数据源', '/super-admin-v2/data/sources'],
+  ['管理产品', '/super-admin-v2/products/portfolio'],
+  ['查看 API 状态', '/super-admin-v2/integrations/health'],
+  ['查询审计日志', '/super-admin-v2/governance/audit']
+] as const;
 
 const stateCopy: Record<ReviewState, [string, string]> = {
   success: ['已载入演示数据', '当前工作区使用明确标记的评审 fixture。'],
@@ -267,23 +279,56 @@ function SuperAdminV2Content({
         <div className="sa2-demo-pill">
           <span /> {isRealMode ? 'REAL READ ONLY' : 'DEMO REVIEW'}
         </div>
+        <details className="sa2-task-menu">
+          <summary>
+            <span>常用任务</span>
+            <small>{COMMON_TASK_LINKS.length}</small>
+          </summary>
+          <nav aria-label="常用任务">
+            {COMMON_TASK_LINKS.map(([label, target]) => (
+              <a
+                key={target}
+                href={addressForMode(target, isRealMode)}
+                onClick={(event) => {
+                  event.preventDefault();
+                  navigateRoute(target);
+                }}
+              >
+                {label}
+              </a>
+            ))}
+          </nav>
+        </details>
         <nav aria-label="全局一级导航" className="sa2-primary-nav">
-          {adminModules.map((module) => (
-            <a
-              key={module.id}
-              href={addressForMode(routeFor(module), isRealMode)}
-              aria-current={route.module.id === module.id ? 'page' : undefined}
-              onClick={(event) => {
-                event.preventDefault();
-                navigateRoute(routeFor(module));
-              }}
+          {adminNavigationGroups.map((group) => (
+            <section
+              key={group.id}
+              className="sa2-nav-group"
+              aria-labelledby={`sa2-nav-group-${group.id}`}
+              data-active={group.moduleIds.includes(route.module.id) ? 'true' : undefined}
             >
-              <span className="sa2-nav-icon" aria-hidden="true">
-                {GLYPHS[module.icon]}
-              </span>
-              <span>{module.shortLabel}</span>
-              <small>{module.number}</small>
-            </a>
+              <p id={`sa2-nav-group-${group.id}`}>{group.label}</p>
+              {group.moduleIds.map((moduleId) => {
+                const module = adminModules.find((candidate) => candidate.id === moduleId);
+                if (!module) return null;
+                return (
+                  <a
+                    key={module.id}
+                    href={addressForMode(routeFor(module), isRealMode)}
+                    aria-current={route.module.id === module.id ? 'page' : undefined}
+                    onClick={(event) => {
+                      event.preventDefault();
+                      navigateRoute(routeFor(module));
+                    }}
+                  >
+                    <span className="sa2-nav-icon" aria-hidden="true">
+                      {GLYPHS[module.icon]}
+                    </span>
+                    <span>{module.shortLabel}</span>
+                  </a>
+                );
+              })}
+            </section>
           ))}
         </nav>
         <div className="sa2-operator">

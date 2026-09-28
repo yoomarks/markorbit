@@ -414,11 +414,11 @@ test('Super Admin V2 preview is complete, refresh-safe and truthfully interactiv
   }
   const primary = page.getByRole('navigation', { name: '全局一级导航' });
   await expect(primary.getByRole('link')).toHaveCount(12);
-  await primary.getByRole('link', { name: /^Data Engine/ }).click();
+  await primary.getByRole('link', { name: '数据', exact: true }).click();
   await expect(page).toHaveURL(/\/super-admin-v2\/data\/overview$/);
   await expect(page.getByTestId('data-page-overview')).toBeVisible();
 
-  await page.getByRole('link', { name: '任务与调度', exact: true }).click();
+  await page.getByRole('link', { name: '采集任务', exact: true }).click();
   await expect(page).toHaveURL(/\/super-admin-v2\/data\/jobs$/);
   await page.reload();
   await expect(page.getByTestId('data-page-jobs')).toBeVisible();
@@ -1112,7 +1112,7 @@ test('V2.3 renders a successful empty Knowledge owner result without a failure f
 
 test('V2.3 Real mode never backfills unconnected pages with Demo fixtures', async ({ page }) => {
   await page.goto(`${urls.operations}/super-admin-v2/data/jobs?mode=real`);
-  await expect(page.getByRole('heading', { level: 1, name: '任务与调度' })).toBeVisible();
+  await expect(page.getByRole('heading', { level: 1, name: '采集任务' })).toBeVisible();
   await expect(page.getByText('暂未接入', { exact: true })).toBeVisible();
   await expect(page.getByText('CNIPA 公告增量', { exact: true })).toHaveCount(0);
   await expect(page.locator('.sa2-review-tools')).toHaveCount(0);
@@ -1348,6 +1348,96 @@ test('every Super Admin V2 first and second-level route is directly reviewable',
   }
 
   assertHealthy();
+});
+
+const simplifiedNavigationTasks = [
+  ['系统状态', '/super-admin-v2/overview/health'],
+  ['查找工作空间', '/super-admin-v2/workspaces/directory'],
+  ['查看用户权限', '/super-admin-v2/users/roles'],
+  ['处理失败任务', '/super-admin-v2/operations/recovery'],
+  ['检查数据源', '/super-admin-v2/data/sources'],
+  ['管理产品', '/super-admin-v2/products/portfolio'],
+  ['查看 API 状态', '/super-admin-v2/integrations/health'],
+  ['查询审计日志', '/super-admin-v2/governance/audit']
+] as const;
+
+test('Super Admin V2 groups modules by operator task and keeps exact owner routes', async ({
+  page
+}, testInfo) => {
+  const mobile = testInfo.project.name.startsWith('mobile');
+  await page.goto(`${urls.operations}/super-admin-v2/overview/platform`);
+  if (mobile) await page.getByRole('button', { name: '打开导航' }).click();
+
+  const primary = page.getByRole('navigation', { name: '全局一级导航' });
+  for (const group of ['工作台', '业务管理', '数据与智能', 'AI 与能力', '平台运维']) {
+    await expect(primary.getByText(group, { exact: true })).toBeVisible();
+  }
+  await expect(primary.getByRole('link')).toHaveCount(12);
+  await expect(primary.getByRole('link', { name: 'AI 编排', exact: true })).toHaveAttribute(
+    'href',
+    '/super-admin-v2/brain/overview'
+  );
+  await expect(primary.getByRole('link', { name: '能力目录', exact: true })).toHaveAttribute(
+    'href',
+    '/super-admin-v2/capabilities/overview'
+  );
+  await capture(page, `super-admin-v2-simplified-navigation-zh-${mobile ? 'mobile' : 'desktop'}`);
+
+  await page.locator('.sa2-task-menu').getByText('常用任务', { exact: true }).click();
+  const taskNav = page.getByRole('navigation', { name: '常用任务' });
+  await expect(taskNav.getByRole('link')).toHaveCount(simplifiedNavigationTasks.length);
+  for (const [label, route] of simplifiedNavigationTasks) {
+    await expect(taskNav.getByRole('link', { name: label, exact: true })).toHaveAttribute(
+      'href',
+      route
+    );
+  }
+  if (mobile) {
+    const governanceLink = primary.getByRole('link', { name: '安全与审计', exact: true });
+    await governanceLink.scrollIntoViewIfNeeded();
+    await expect(governanceLink).toBeVisible();
+  }
+  await capture(page, `super-admin-v2-common-tasks-zh-${mobile ? 'mobile' : 'desktop'}`);
+
+  await taskNav.getByRole('link', { name: '处理失败任务', exact: true }).click();
+  await expect(page).toHaveURL(/\/super-admin-v2\/operations\/recovery$/);
+  await expect(page.getByTestId('operations-page-recovery')).toBeVisible();
+
+  await page.goto(`${urls.operations}/super-admin-v2/overview/platform?mode=real`);
+  if (mobile) await page.getByRole('button', { name: '打开导航' }).click();
+  await page.locator('.sa2-task-menu').getByText('常用任务', { exact: true }).click();
+  await expect(
+    page.getByRole('navigation', { name: '常用任务' }).getByRole('link', {
+      name: '检查数据源',
+      exact: true
+    })
+  ).toHaveAttribute('href', '/super-admin-v2/data/sources?mode=real');
+
+  if (mobile) await page.locator('.sa2-close-nav').click();
+  await page.getByRole('button', { name: 'English', exact: true }).click();
+  await page.goto(`${urls.operations}/super-admin-v2/overview/platform`);
+  if (mobile) await page.getByRole('button', { name: 'Open navigation' }).click();
+  const englishPrimary = page.getByRole('navigation', { name: 'Primary navigation' });
+  await page.evaluate(() => window.scrollTo(0, 0));
+  await englishPrimary.evaluate((element) => element.scrollTo(0, 0));
+  for (const group of [
+    'Workspace',
+    'Business Management',
+    'Data & Intelligence',
+    'AI & Capabilities',
+    'Platform Operations'
+  ]) {
+    await expect(englishPrimary.getByText(group, { exact: true })).toBeVisible();
+  }
+  await expect(englishPrimary.getByRole('link', { name: 'AI Orchestration' })).toHaveAttribute(
+    'href',
+    '/super-admin-v2/brain/overview'
+  );
+  await expect(englishPrimary.getByRole('link', { name: 'Capability Catalog' })).toHaveAttribute(
+    'href',
+    '/super-admin-v2/capabilities/overview'
+  );
+  await capture(page, `super-admin-v2-simplified-navigation-en-${mobile ? 'mobile' : 'desktop'}`);
 });
 
 test('Super Admin V2 defaults to Chinese and restores an English preference without losing task context', async ({

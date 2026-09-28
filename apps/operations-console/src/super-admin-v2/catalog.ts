@@ -30,6 +30,12 @@ export interface AdminModule {
   pages: readonly SecondaryPage[];
 }
 
+export interface AdminNavigationGroup {
+  id: 'workspace' | 'business' | 'data-intelligence' | 'ai-capability' | 'platform-ops';
+  label: string;
+  moduleIds: readonly ModuleId[];
+}
+
 const page = (id: string, label: string): SecondaryPage => ({ id, label });
 
 export const adminModules: readonly AdminModule[] = [
@@ -42,29 +48,29 @@ export const adminModules: readonly AdminModule[] = [
     accent: '#3977f6',
     icon: 'grid',
     pages: [
-      page('platform', '平台总览'),
-      page('health', '运行健康'),
-      page('alerts', '实时告警'),
-      page('usage', '使用情况'),
-      page('attention', '待处理事项')
+      page('platform', '运营总览'),
+      page('health', '系统状态'),
+      page('alerts', '告警'),
+      page('usage', '平台用量'),
+      page('attention', '待办')
     ]
   },
   {
     id: 'workspaces',
     number: '02',
-    label: 'Workspace 管理',
-    shortLabel: 'Workspace',
+    label: '工作空间',
+    shortLabel: '工作空间',
     description: '组织、订阅、配额、产品与站点的全局管理',
     accent: '#2e68d9',
     icon: 'building',
     pages: [
-      page('directory', '全部 Workspace'),
-      page('plans', '订阅与套餐'),
-      page('members', '成员概况'),
-      page('quotas', '资源配额'),
+      page('directory', '工作空间'),
+      page('plans', '订阅'),
+      page('members', '成员'),
+      page('quotas', '配额'),
       page('products', '产品启用'),
       page('sites', '站点'),
-      page('audit', '审计')
+      page('audit', '变更记录')
     ]
   },
   {
@@ -76,27 +82,27 @@ export const adminModules: readonly AdminModule[] = [
     accent: '#147d62',
     icon: 'users',
     pages: [
-      page('directory', '全部用户'),
+      page('directory', '用户'),
       page('roles', '角色与权限'),
-      page('relationships', '组织关系'),
+      page('relationships', '工作空间关系'),
       page('invitations', '邀请'),
-      page('security', '登录与安全'),
-      page('activity', '操作记录')
+      page('security', '登录安全'),
+      page('activity', '用户操作')
     ]
   },
   {
     id: 'products',
     number: '04',
-    label: '产品管理',
-    shortLabel: '产品管理',
+    label: '产品',
+    shortLabel: '产品',
     description: '产品、模块、权益与发布状态分层管理',
     accent: '#7a55d9',
     icon: 'cube',
     pages: [
-      page('portfolio', '产品总览'),
-      page('switches', '模块启停'),
-      page('entitlements', '套餐与权益'),
-      page('usage', '使用情况'),
+      page('portfolio', '产品'),
+      page('switches', '全局可用性'),
+      page('entitlements', '套餐权益'),
+      page('usage', '产品用量'),
       page('features', '功能配置'),
       page('releases', '版本发布')
     ]
@@ -104,136 +110,136 @@ export const adminModules: readonly AdminModule[] = [
   {
     id: 'data',
     number: '05',
-    label: 'Data Engine',
-    shortLabel: 'Data Engine',
-    description: '全球数据覆盖、流水线、质量与受控恢复',
+    label: '数据',
+    shortLabel: '数据',
+    description: 'Data Engine 的全球覆盖、流水线、质量与受控恢复',
     accent: '#0786a7',
     icon: 'database',
     pages: [
-      page('overview', '总览'),
+      page('overview', '数据概览'),
       page('coverage', '数据覆盖'),
       page('sources', '数据源'),
       page('packages', '数据包'),
-      page('jobs', '任务与调度'),
+      page('jobs', '采集任务'),
       page('query', '数据查询'),
-      page('storage', '存储'),
-      page('settings', '系统设置')
+      page('storage', '存储管理'),
+      page('settings', '数据设置')
     ]
   },
   {
     id: 'knowledge',
     number: '06',
-    label: 'Knowledge',
-    shortLabel: 'Knowledge',
+    label: '知识',
+    shortLabel: '知识',
     description: '来源到证据、审核与 Ready Package 的供应链',
     accent: '#d46824',
     icon: 'book',
     pages: [
-      page('overview', '总览'),
-      page('sources', '来源管理'),
+      page('overview', '知识概览'),
+      page('sources', '来源'),
       page('plans', '采集计划'),
-      page('runs', '执行任务'),
+      page('runs', '采集运行'),
       page('workers', 'Workers'),
-      page('raw-files', '原始文件'),
-      page('transforms', '转换处理'),
+      page('raw-files', '原始产物'),
+      page('transforms', '转换'),
       page('evidence', '证据审核'),
-      page('search', '知识检索'),
+      page('search', '检索'),
       page('packages', 'Ready Packages'),
-      page('supply-health', '供应健康')
+      page('supply-health', '供应状态')
     ]
   },
   {
     id: 'brain',
     number: '07',
-    label: 'Brain',
-    shortLabel: 'Brain',
+    label: 'AI 编排',
+    shortLabel: 'AI 编排',
     description: '模型路由、智能编排、质量、延迟与成本',
     accent: '#7653df',
     icon: 'brain',
     pages: [
-      page('overview', '总览'),
-      page('models', '模型管理'),
-      page('orchestration', '智能编排'),
-      page('routing', '路由策略'),
+      page('overview', 'AI 概览'),
+      page('models', '模型'),
+      page('orchestration', '编排'),
+      page('routing', '模型路由'),
       page('prompts', 'Prompt'),
       page('runs', '执行记录'),
-      page('quality', '质量评估'),
-      page('cost', '成本分析'),
-      page('settings', '系统设置')
+      page('quality', '质量'),
+      page('cost', '成本'),
+      page('settings', 'AI 设置')
     ]
   },
   {
     id: 'capabilities',
     number: '08',
-    label: 'Capability',
-    shortLabel: 'Capability',
+    label: '能力目录',
+    shortLabel: '能力目录',
     description: '稳定结果契约、版本谱系、实现与证据',
     accent: '#7450d5',
     icon: 'spark',
     pages: [
-      page('overview', '总览'),
+      page('overview', '能力概览'),
       page('catalog', '能力目录'),
       page('skills', 'Skills'),
       page('agents', 'Agents'),
-      page('tools', '工具集成'),
+      page('tools', '工具'),
       page('evaluation', '测试与评估'),
-      page('runs', '执行记录'),
-      page('versions', '版本管理'),
-      page('permissions', '权限配置')
+      page('runs', '调用记录'),
+      page('versions', '版本'),
+      page('permissions', '调用权限')
     ]
   },
   {
     id: 'integrations',
     number: '09',
-    label: '外部 API 与集成',
-    shortLabel: '外部 API',
+    label: '集成',
+    shortLabel: '集成',
     description: '服务开关、授权、健康、限流与失败隔离',
     accent: '#256cc9',
     icon: 'link',
     pages: [
-      page('directory', '全部集成'),
-      page('switches', 'API 开关'),
-      page('credentials', '密钥与凭证'),
+      page('directory', '集成目录'),
+      page('switches', '服务开关'),
+      page('credentials', '凭证'),
       page('authorizations', 'Workspace 授权'),
-      page('health', '健康监测'),
-      page('usage', '调用统计'),
-      page('limits', '限流配置'),
+      page('health', '运行状态'),
+      page('usage', '调用量'),
+      page('limits', '限流'),
       page('failures', '失败记录')
     ]
   },
   {
     id: 'operations',
     number: '10',
-    label: '运行与任务',
-    shortLabel: '运行与任务',
+    label: '运行',
+    shortLabel: '运行',
     description: 'Owner 任务、执行、Worker、日志与受控恢复',
     accent: '#e05b35',
     icon: 'pulse',
     pages: [
-      page('overview', '任务总览'),
+      page('overview', '运行概览'),
       page('queue', '任务队列'),
       page('runs', '执行记录'),
       page('workers', 'Workers'),
-      page('schedules', '调度计划'),
+      page('schedules', '调度'),
       page('recovery', '失败与恢复'),
-      page('logs', '系统日志')
+      page('logs', '日志')
     ]
   },
   {
     id: 'billing',
     number: '11',
-    label: '商业与支付',
-    shortLabel: '商业与支付',
+    label: '账单',
+    shortLabel: '账单',
     description: '订阅、订单、支付、发票与争议的 owner 视图',
     accent: '#c96f23',
     icon: 'card',
     pages: [
       page('revenue', '收入总览'),
-      page('plans', '套餐管理'),
-      page('orders', '订单管理'),
-      page('payments', '支付记录'),
-      page('invoices', '发票管理'),
-      page('usage', '使用统计'),
+      page('plans', '套餐'),
+      page('orders', '订单'),
+      page('payments', '支付'),
+      page('invoices', '发票'),
+      page('usage', '用量'),
       page('disputes', '退款与争议')
     ]
   },
@@ -246,14 +252,30 @@ export const adminModules: readonly AdminModule[] = [
     accent: '#bd3f65',
     icon: 'shield',
     pages: [
-      page('overview', '安全总览'),
+      page('overview', '安全概览'),
       page('audit', '审计日志'),
       page('policies', '权限策略'),
       page('login', '登录安全'),
-      page('configuration', '系统配置'),
-      page('compliance', '合规管理'),
+      page('configuration', '安全配置'),
+      page('compliance', '合规'),
       page('risk', '风险操作')
     ]
+  }
+] as const;
+
+export const adminNavigationGroups: readonly AdminNavigationGroup[] = [
+  { id: 'workspace', label: '工作台', moduleIds: ['overview'] },
+  {
+    id: 'business',
+    label: '业务管理',
+    moduleIds: ['workspaces', 'users', 'products', 'billing']
+  },
+  { id: 'data-intelligence', label: '数据与智能', moduleIds: ['data', 'knowledge'] },
+  { id: 'ai-capability', label: 'AI 与能力', moduleIds: ['brain', 'capabilities'] },
+  {
+    id: 'platform-ops',
+    label: '平台运维',
+    moduleIds: ['integrations', 'operations', 'governance']
   }
 ] as const;
 
