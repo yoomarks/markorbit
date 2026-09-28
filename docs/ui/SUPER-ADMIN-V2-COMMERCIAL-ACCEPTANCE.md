@@ -1,7 +1,9 @@
 # Super Admin V2 商业管理验收记录
 
-任务：`MO-SUPER-ADMIN-V2-COMMERCIAL-001`  
-基线：`origin/main@e44470ea8` + 现有 Super Admin V2 设计分支  
+任务：`MO-SUPER-ADMIN-V2-COMMERCIAL-001`
+
+基线：`origin/main@e44470ea8` + 现有 Super Admin V2 设计分支
+
 日期：2026-09-28
 
 ## 交付范围
