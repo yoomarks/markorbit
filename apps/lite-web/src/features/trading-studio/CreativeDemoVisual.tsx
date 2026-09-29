@@ -144,7 +144,7 @@ export function CreativeDemoVisual({
       <g transform="translate(486 362)">
         <rect width="116" height="30" rx="15" fill={colors[0]} opacity=".9" />
         <text x="58" y="20" textAnchor="middle" fill={colors[3]} fontSize="12" fontWeight="700">
-          DEMO · V{version}
+          SVG LAYOUT · V{version}
         </text>
       </g>
     </svg>
@@ -155,19 +155,32 @@ export function DirectionPreviewPair({
   role,
   title,
   directionId,
-  directionVersion
+  directionVersion,
+  locale
 }: {
   role: DirectionRole;
   title: string;
   directionId: string;
   directionVersion: number;
+  locale: 'zh-CN' | 'en';
 }) {
   return (
     <figure className="trading-studio__direction-media" data-direction-id={directionId}>
-      <CreativeDemoVisual role={role} kind="HERO" label={`${title} Demo hero visual`} />
-      <CreativeDemoVisual role={role} kind="BOARD" label={`${title} Demo asset board`} />
+      <CreativeDemoVisual
+        role={role}
+        kind="HERO"
+        label={`${title} · ${locale === 'zh-CN' ? 'SVG 主视觉布局示意' : 'SVG hero layout illustration'}`}
+      />
+      <CreativeDemoVisual
+        role={role}
+        kind="BOARD"
+        label={`${title} · ${locale === 'zh-CN' ? 'SVG 资产拼图布局示意' : 'SVG asset-board layout illustration'}`}
+      />
       <figcaption>
-        Demo visual set · {directionId} · v{directionVersion}
+        {locale === 'zh-CN'
+          ? '确定性 SVG 布局示意 · 未渲染原始商标'
+          : 'Deterministic SVG layout set · source trademark not rendered'}{' '}
+        · {directionId} · v{directionVersion}
       </figcaption>
     </figure>
   );

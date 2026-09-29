@@ -21,6 +21,8 @@ import {
 import {
   TradingSellerValidationFlow,
   type CreativePilotScenario,
+  type CreativeLocale,
+  type DemoDraftStorage,
   type TradingSellerValidationModel
 } from './TradingSellerValidationFlow.js';
 import { DirectionPreviewPair } from './CreativeDemoVisual.js';
@@ -32,6 +34,8 @@ export interface TradingStudioProps {
   client?: TradingStudioClient;
   sellerValidationPrototype?: boolean;
   sellerValidationScenario?: CreativePilotScenario;
+  sellerValidationTrustedPrincipalId?: string | undefined;
+  sellerValidationStorage?: DemoDraftStorage | undefined;
 }
 
 const roleLabel = {
@@ -46,20 +50,34 @@ const personaLabel = {
   TRADEMARK_BUYER: 'Trademark buyer'
 } as const;
 
-function CommercialValueMap({ profile }: { profile: Readonly<TradingAiProfileV1> | null }) {
+function CommercialValueMap({
+  profile,
+  locale
+}: {
+  profile: Readonly<TradingAiProfileV1> | null;
+  locale: CreativeLocale;
+}) {
+  const zh = locale === 'zh-CN';
   const insights = profile?.commercialInsights;
   if (!profile)
     return (
-      <Alert tone="info" title="Commercial Value Map is not ready">
-        Generate the AI Profile checkpoint to create a current, evidence-bounded commercial
-        interpretation.
+      <Alert tone="info" title={zh ? '商业价值图尚未准备' : 'Commercial Value Map is not ready'}>
+        {zh
+          ? '请先生成 AI Profile 检查点，以形成当前且有证据边界的商业解读。'
+          : 'Generate the AI Profile checkpoint to create a current, evidence-bounded commercial interpretation.'}
       </Alert>
     );
   if (!insights)
     return (
-      <Alert tone="warning" title="Commercial Value Map is unavailable for this profile">
-        This earlier AI Profile remains readable, but it does not contain the newer structured
-        commercial insights.
+      <Alert
+        tone="warning"
+        title={
+          zh ? '此 Profile 暂无商业价值图' : 'Commercial Value Map is unavailable for this profile'
+        }
+      >
+        {zh
+          ? '该早期 AI Profile 仍可阅读，但不包含新版结构化商业洞察。'
+          : 'This earlier AI Profile remains readable, but it does not contain the newer structured commercial insights.'}
       </Alert>
     );
 
@@ -67,25 +85,43 @@ function CommercialValueMap({ profile }: { profile: Readonly<TradingAiProfileV1>
     <section className="trading-studio__value-map" aria-labelledby="commercial-value-map-title">
       <div className="trading-studio__section-heading">
         <div>
-          <p className="trading-studio__eyebrow">AI inference · Version {profile.version}</p>
-          <h2 id="commercial-value-map-title">Commercial Value Map</h2>
+          <p className="trading-studio__eyebrow">
+            {zh ? 'AI 推断' : 'AI inference'} · {zh ? '版本' : 'Version'} {profile.version}
+          </p>
+          <h2 id="commercial-value-map-title">{zh ? '商业价值图' : 'Commercial Value Map'}</h2>
           <p>
-            A qualitative view of who may value this Trademark Asset, what could matter to them, and
-            which evidence or assumptions support the interpretation.
+            {zh
+              ? '定性展示谁可能重视该商标资产、他们可能关心什么，以及解读所依据的证据或假设。'
+              : 'A qualitative view of who may value this Trademark Asset, what could matter to them, and which evidence or assumptions support the interpretation.'}
           </p>
         </div>
-        <Badge>Evidence coverage: {insights.evidenceCoverage.toLowerCase()}</Badge>
+        <Badge>
+          {zh ? '证据覆盖' : 'Evidence coverage'}: {insights.evidenceCoverage.toLowerCase()}
+        </Badge>
       </div>
 
-      <div className="trading-studio__persona-grid" aria-label="Commercial audiences">
+      <div
+        className="trading-studio__persona-grid"
+        aria-label={zh ? '商业受众' : 'Commercial audiences'}
+      >
         {insights.personas.map((persona) => (
           <Card key={persona.commercialPersonaId} className="trading-studio__insight-card">
-            <Badge>{personaLabel[persona.kind]}</Badge>
+            <Badge>
+              {zh
+                ? (
+                    {
+                      END_CONSUMER: '终端消费者',
+                      BUSINESS_OPERATOR: '业务经营者',
+                      TRADEMARK_BUYER: '商标买家'
+                    } as const
+                  )[persona.kind]
+                : personaLabel[persona.kind]}
+            </Badge>
             <h3>{persona.label}</h3>
             <p>{persona.summary}</p>
             {persona.desiredOutcomes?.length ? (
               <>
-                <h4>Desired outcomes</h4>
+                <h4>{zh ? '期望结果' : 'Desired outcomes'}</h4>
                 <ul>
                   {persona.desiredOutcomes.map((item) => (
                     <li key={item}>{item}</li>
@@ -99,7 +135,7 @@ function CommercialValueMap({ profile }: { profile: Readonly<TradingAiProfileV1>
 
       <div className="trading-studio__map-columns">
         <section aria-labelledby="selling-points-title">
-          <h3 id="selling-points-title">Selling points</h3>
+          <h3 id="selling-points-title">{zh ? '卖点' : 'Selling points'}</h3>
           {insights.sellingPoints.length ? (
             <ul className="trading-studio__detail-list">
               {insights.sellingPoints.map((point) => (
@@ -111,11 +147,13 @@ function CommercialValueMap({ profile }: { profile: Readonly<TradingAiProfileV1>
               ))}
             </ul>
           ) : (
-            <p>No supported selling points were produced.</p>
+            <p>
+              {zh ? '尚未产生有支持依据的卖点。' : 'No supported selling points were produced.'}
+            </p>
           )}
         </section>
         <section aria-labelledby="buying-points-title">
-          <h3 id="buying-points-title">Buying points</h3>
+          <h3 id="buying-points-title">{zh ? '购买理由' : 'Buying points'}</h3>
           {insights.buyingPoints.length ? (
             <ul className="trading-studio__detail-list">
               {insights.buyingPoints.map((point) => (
@@ -126,11 +164,13 @@ function CommercialValueMap({ profile }: { profile: Readonly<TradingAiProfileV1>
               ))}
             </ul>
           ) : (
-            <p>No supported buying points were produced.</p>
+            <p>
+              {zh ? '尚未产生有支持依据的购买理由。' : 'No supported buying points were produced.'}
+            </p>
           )}
         </section>
         <section aria-labelledby="scenarios-title">
-          <h3 id="scenarios-title">Commercial scenarios</h3>
+          <h3 id="scenarios-title">{zh ? '商业场景' : 'Commercial scenarios'}</h3>
           {insights.scenarios.length ? (
             <ul className="trading-studio__detail-list">
               {insights.scenarios.map((scenario) => (
@@ -141,14 +181,14 @@ function CommercialValueMap({ profile }: { profile: Readonly<TradingAiProfileV1>
               ))}
             </ul>
           ) : (
-            <p>No supported scenarios were produced.</p>
+            <p>{zh ? '尚未产生有支持依据的场景。' : 'No supported scenarios were produced.'}</p>
           )}
         </section>
       </div>
 
       <div className="trading-studio__evidence">
         <section aria-labelledby="evidence-title">
-          <h3 id="evidence-title">Evidence basis</h3>
+          <h3 id="evidence-title">{zh ? '证据依据' : 'Evidence basis'}</h3>
           {insights.evidenceBasis.length ? (
             <ul>
               {insights.evidenceBasis.map((evidence) => (
@@ -159,11 +199,11 @@ function CommercialValueMap({ profile }: { profile: Readonly<TradingAiProfileV1>
               ))}
             </ul>
           ) : (
-            <p>No direct evidence basis was supplied.</p>
+            <p>{zh ? '未提供直接证据依据。' : 'No direct evidence basis was supplied.'}</p>
           )}
         </section>
         <section aria-labelledby="assumptions-title">
-          <h3 id="assumptions-title">Assumptions and limits</h3>
+          <h3 id="assumptions-title">{zh ? '假设与限制' : 'Assumptions and limits'}</h3>
           {insights.assumptions.length || insights.limits?.length ? (
             <ul>
               {insights.assumptions.map((assumption) => (
@@ -176,13 +216,16 @@ function CommercialValueMap({ profile }: { profile: Readonly<TradingAiProfileV1>
               ))}
             </ul>
           ) : (
-            <p>No additional assumptions or limits were supplied.</p>
+            <p>
+              {zh ? '未提供其他假设或限制。' : 'No additional assumptions or limits were supplied.'}
+            </p>
           )}
         </section>
       </div>
       <p className="trading-studio__boundary">
-        This map is AI inference, not Trademark Truth, verified market demand, valuation, or a
-        probability of commercial success.
+        {zh
+          ? '此图是 AI 推断，不是商标官方事实、经验证的市场需求、估值或商业成功概率。'
+          : 'This map is AI inference, not Trademark Truth, verified market demand, valuation, or a probability of commercial success.'}
       </p>
     </section>
   );
@@ -190,11 +233,14 @@ function CommercialValueMap({ profile }: { profile: Readonly<TradingAiProfileV1>
 
 function DirectionCommercialSummary({
   direction,
-  profile
+  profile,
+  locale
 }: {
   direction: Readonly<TradingCommercialDirectionVersionV1>;
   profile: Readonly<TradingAiProfileV1> | null;
+  locale: CreativeLocale;
 }) {
+  const zh = locale === 'zh-CN';
   const insights = profile?.commercialInsights;
   const personaRefs = [
     ...(direction.targetConsumerRefs ?? []),
@@ -218,9 +264,9 @@ function DirectionCommercialSummary({
   if (!enriched)
     return (
       <>
-        <h3>Why it could work</h3>
+        <h3>{zh ? '为什么可行' : 'Why it could work'}</h3>
         <p>{direction.rationale}</p>
-        <h3>Constraints</h3>
+        <h3>{zh ? '限制' : 'Constraints'}</h3>
         <ul>
           {direction.constraints.map((constraint) => (
             <li key={constraint}>{constraint}</li>
@@ -233,11 +279,14 @@ function DirectionCommercialSummary({
     <div className="trading-studio__direction-value">
       <p className="trading-studio__thesis">{direction.thesis}</p>
       <section>
-        <h3>WHO</h3>
-        <p>{personas?.map((item) => item.label).join(' · ') || 'No audience reference'}</p>
+        <h3>{zh ? '适合谁' : 'WHO'}</h3>
+        <p>
+          {personas?.map((item) => item.label).join(' · ') ||
+            (zh ? '无受众引用' : 'No audience reference')}
+        </p>
       </section>
       <section>
-        <h3>WHY</h3>
+        <h3>{zh ? '为什么' : 'WHY'}</h3>
         <p>
           {buyingPoints
             ?.slice(0, 2)
@@ -246,20 +295,20 @@ function DirectionCommercialSummary({
         </p>
       </section>
       <section>
-        <h3>WHERE</h3>
+        <h3>{zh ? '用在哪里' : 'WHERE'}</h3>
         <p>
           {scenarios
             ?.slice(0, 2)
             .map((item) => item.label)
-            .join(' · ') || 'No scenario reference'}
+            .join(' · ') || (zh ? '无场景引用' : 'No scenario reference')}
         </p>
       </section>
       <details>
-        <summary>Why this direction?</summary>
+        <summary>{zh ? '为什么选这个方向？' : 'Why this direction?'}</summary>
         {direction.valueProposition ? <p>{direction.valueProposition}</p> : null}
         {sellingPoints?.length ? (
           <>
-            <h4>Selling points</h4>
+            <h4>{zh ? '卖点' : 'Selling points'}</h4>
             <ul>
               {sellingPoints.map((item) => (
                 <li key={item.sellingPointId}>{item.label}</li>
@@ -269,7 +318,7 @@ function DirectionCommercialSummary({
         ) : null}
         {buyingPoints?.length ? (
           <>
-            <h4>Buying points</h4>
+            <h4>{zh ? '购买理由' : 'Buying points'}</h4>
             <ul>
               {buyingPoints.map((item) => (
                 <li key={item.buyingPointId}>{item.description}</li>
@@ -279,7 +328,7 @@ function DirectionCommercialSummary({
         ) : null}
         {direction.riskNotes?.length ? (
           <>
-            <h4>Risks and limits</h4>
+            <h4>{zh ? '风险与限制' : 'Risks and limits'}</h4>
             <ul>
               {direction.riskNotes.map((item) => (
                 <li key={item}>{item}</li>
@@ -292,22 +341,30 @@ function DirectionCommercialSummary({
   );
 }
 
-function failureMessage(error: unknown): { title: string; description: string } {
+function failureMessage(
+  error: unknown,
+  locale: CreativeLocale = 'en'
+): { title: string; description: string } {
+  const zh = locale === 'zh-CN';
   if (error instanceof TradingStudioHttpError && (error.status === 401 || error.status === 403))
     return {
-      title: 'Studio access unavailable',
-      description:
-        'Your current session does not have permission to view or select these directions.'
+      title: zh ? 'Studio 访问不可用' : 'Studio access unavailable',
+      description: zh
+        ? '当前会话无权查看或选择这些方向。'
+        : 'Your current session does not have permission to view or select these directions.'
     };
   if (error instanceof TradingStudioHttpError && error.status === 409)
     return {
-      title: 'Studio state changed',
-      description: 'Reload current Studio truth before making a selection.'
+      title: zh ? 'Studio 状态已变化' : 'Studio state changed',
+      description: zh
+        ? '选择前请重新加载当前 Studio 真实状态。'
+        : 'Reload current Studio truth before making a selection.'
     };
   return {
-    title: 'Studio unavailable',
-    description:
-      'The current Studio state could not be loaded. Your existing work has not been changed.'
+    title: zh ? 'Studio 不可用' : 'Studio unavailable',
+    description: zh
+      ? '无法加载当前 Studio 状态。现有工作未被修改。'
+      : 'The current Studio state could not be loaded. Your existing work has not been changed.'
   };
 }
 
@@ -316,13 +373,18 @@ export function TradingStudio({
   studioRunId,
   client,
   sellerValidationPrototype = false,
-  sellerValidationScenario = 'CAPABILITY_UNAVAILABLE'
+  sellerValidationScenario = 'CAPABILITY_UNAVAILABLE',
+  sellerValidationTrustedPrincipalId,
+  sellerValidationStorage
 }: TradingStudioProps) {
   const api = client ?? createTradingStudioClient(workspaceId);
   const [state, setState] = useState<TradingStudioState>();
   const [error, setError] = useState<unknown>();
   const [selecting, setSelecting] = useState<string>();
   const [validationOpen, setValidationOpen] = useState(false);
+  const [creativeLocale, setCreativeLocale] = useState<CreativeLocale>('zh-CN');
+  const locale: CreativeLocale = sellerValidationPrototype ? creativeLocale : 'en';
+  const zh = locale === 'zh-CN';
   const selectionKeys = useRef(new Map<string, string>());
 
   const load = async () => {
@@ -375,9 +437,12 @@ export function TradingStudio({
     }
   };
 
-  if (!state && !error) return <LoadingState label="Loading current Studio directions" />;
+  if (!state && !error)
+    return (
+      <LoadingState label={zh ? '正在加载当前 Studio 方向' : 'Loading current Studio directions'} />
+    );
   if (!state && error) {
-    const message = failureMessage(error);
+    const message = failureMessage(error, locale);
     return <ErrorState {...message} onRetry={() => void load()} />;
   }
   if (!state) return null;
@@ -385,15 +450,19 @@ export function TradingStudio({
   if (state.directionSet && state.directionSet.directions.length !== 3)
     return (
       <ErrorState
-        title="Incomplete direction set"
-        description="The owner returned partial direction data. No selection can be made until all three roles are available."
+        title={zh ? '方向集不完整' : 'Incomplete direction set'}
+        description={
+          zh
+            ? 'Owner 返回了不完整的方向数据。三个角色全部可用前不能选择。'
+            : 'The owner returned partial direction data. No selection can be made until all three roles are available.'
+        }
         onRetry={() => void load()}
       />
     );
 
   const selected = state.selection?.selectedDirection;
   const stale = state.run.currentness === 'STALE';
-  const mutationError = error ? failureMessage(error) : undefined;
+  const mutationError = error ? failureMessage(error, locale) : undefined;
   const selectedDirectionRecord = state.directionSet?.directions.find(
     (direction) =>
       direction.commercialDirectionId === selected?.id && direction.version === selected.version
@@ -404,8 +473,8 @@ export function TradingStudio({
           ? `${selectedDirectionRecord.title} — ${state.brandDna.brandPromise}`
           : selectedDirectionRecord.title,
         workspaceFacts: [
-          `Trademark record version: ${state.run.trademarkAsset.version}`,
-          `Source status: ${state.run.currentness === 'CURRENT' ? 'Up to date' : 'Needs refresh'}`
+          `${zh ? '商标记录版本' : 'Trademark record version'}: ${state.run.trademarkAsset.version}`,
+          `${zh ? '来源状态' : 'Source status'}: ${state.run.currentness === 'CURRENT' ? (zh ? '最新' : 'Up to date') : zh ? '需要刷新' : 'Needs refresh'}`
         ],
         aiInterpretations: [
           selectedDirectionRecord.thesis ?? selectedDirectionRecord.summary,
@@ -422,18 +491,48 @@ export function TradingStudio({
   return (
     <main className="trading-studio">
       <PageHeader
-        title="Orbit Studio directions"
-        description="Compare three AI concepts for this exact Trademark Asset version. Only your explicit choice creates a Selection."
+        title={zh ? 'Orbit Studio 方向' : 'Orbit Studio directions'}
+        description={
+          zh
+            ? '比较当前商标资产版本的三个 AI 商业概念。只有你的明确选择才会创建 Selection。'
+            : 'Compare three AI concepts for this exact Trademark Asset version. Only your explicit choice creates a Selection.'
+        }
         actions={
-          <Badge>
-            {stale ? 'Source changed' : selected ? 'Direction selected' : 'Awaiting your choice'}
-          </Badge>
+          <div className="creative-workbench__header">
+            <Badge>
+              {stale
+                ? zh
+                  ? '来源已变化'
+                  : 'Source changed'
+                : selected
+                  ? zh
+                    ? '已选方向'
+                    : 'Direction selected'
+                  : zh
+                    ? '等待选择'
+                    : 'Awaiting your choice'}
+            </Badge>
+            {sellerValidationPrototype ? (
+              <div
+                className="creative-workbench__locale"
+                aria-label={zh ? '界面语言' : 'Interface language'}
+              >
+                <button type="button" aria-pressed={zh} onClick={() => setCreativeLocale('zh-CN')}>
+                  中文
+                </button>
+                <button type="button" aria-pressed={!zh} onClick={() => setCreativeLocale('en')}>
+                  English
+                </button>
+              </div>
+            ) : null}
+          </div>
         }
       />
       {stale && (
-        <Alert tone="warning" title="Source version is stale">
-          These concepts remain visible for reference, but selection is locked until current owner
-          truth is loaded.
+        <Alert tone="warning" title={zh ? '来源版本已过期' : 'Source version is stale'}>
+          {zh
+            ? '这些概念仍可供参考，但在加载当前 Owner 真实状态前无法选择。'
+            : 'These concepts remain visible for reference, but selection is locked until current owner truth is loaded.'}
         </Alert>
       )}
       {mutationError && (
@@ -441,14 +540,21 @@ export function TradingStudio({
           {mutationError.description}
         </Alert>
       )}
-      <CommercialValueMap profile={state.aiProfile ?? null} />
+      <CommercialValueMap profile={state.aiProfile ?? null} locale={locale} />
       {!state.directionSet ? (
         <EmptyState
-          title="Directions are not ready"
-          description="This run has not produced a complete current Direction Set. Resume remains unavailable on this screen."
+          title={zh ? '方向尚未准备' : 'Directions are not ready'}
+          description={
+            zh
+              ? '此 Run 尚未产生完整且当前有效的 Direction Set，此页暂无法继续。'
+              : 'This run has not produced a complete current Direction Set. Resume remains unavailable on this screen.'
+          }
         />
       ) : (
-        <div className="trading-studio__directions" aria-label="Commercial directions">
+        <div
+          className="trading-studio__directions"
+          aria-label={zh ? '商业方向' : 'Commercial directions'}
+        >
           {state.directionSet.directions.map((direction) => {
             const isSelected =
               selected?.id === direction.commercialDirectionId &&
@@ -461,8 +567,20 @@ export function TradingStudio({
                 }
               >
                 <div className="trading-studio__direction-heading">
-                  <Badge>{roleLabel[direction.role]}</Badge>
-                  <span>Version {direction.version}</span>
+                  <Badge>
+                    {zh
+                      ? (
+                          {
+                            BEST_FIT: '最佳匹配',
+                            VALUE_UP: '价值提升',
+                            POSSIBILITY: '可能性'
+                          } as const
+                        )[direction.role]
+                      : roleLabel[direction.role]}
+                  </Badge>
+                  <span>
+                    {zh ? '版本' : 'Version'} {direction.version}
+                  </span>
                 </div>
                 <h2>{direction.title}</h2>
                 <p>{direction.summary}</p>
@@ -472,19 +590,28 @@ export function TradingStudio({
                     title={direction.title}
                     directionId={direction.commercialDirectionId}
                     directionVersion={direction.version}
+                    locale={locale}
                   />
                 ) : null}
-                <DirectionCommercialSummary direction={direction} profile={state.aiProfile} />
+                <DirectionCommercialSummary
+                  direction={direction}
+                  profile={state.aiProfile}
+                  locale={locale}
+                />
                 <Button
                   variant={isSelected ? 'secondary' : 'primary'}
                   disabled={stale || Boolean(selecting) || isSelected}
                   onClick={() => void choose(direction)}
                 >
                   {isSelected
-                    ? 'Selected'
+                    ? zh
+                      ? '已选择'
+                      : 'Selected'
                     : selecting === direction.commercialDirectionId
-                      ? 'Recording choice…'
-                      : `Choose ${roleLabel[direction.role]}`}
+                      ? zh
+                        ? '正在记录选择…'
+                        : 'Recording choice…'
+                      : `${zh ? '选择' : 'Choose'} ${zh ? ({ BEST_FIT: '最佳匹配', VALUE_UP: '价值提升', POSSIBILITY: '可能性' } as const)[direction.role] : roleLabel[direction.role]}`}
                 </Button>
               </Card>
             );
@@ -494,19 +621,26 @@ export function TradingStudio({
       {sellerValidationPrototype && selectedDirectionRecord && sellerValidationModel ? (
         <section
           className="trading-studio__seller-validation-entry"
-          aria-label="Seller validation entry"
+          aria-label={zh ? '卖家验证入口' : 'Seller validation entry'}
         >
           <Card className="trading-studio__seller-validation-card">
             <div>
-              <Badge>Selected direction ready for validation</Badge>
-              <h2>Build this direction</h2>
+              <Badge>{zh ? '已选方向可开始验证' : 'Selected direction ready for validation'}</Badge>
+              <h2>{zh ? '制作此方向' : 'Build this direction'}</h2>
               <p>
-                Inspect Deep Build readiness, a seller-facing listing story, and destination gaps
-                without enabling publication.
+                {zh
+                  ? '检查深度美化准备状态、面向卖家的商业说明与发布目的地缺口，不会开启发布。'
+                  : 'Inspect Deep Build readiness, a seller-facing listing story, and destination gaps without enabling publication.'}
               </p>
             </div>
             <Button disabled={stale} onClick={() => setValidationOpen((open) => !open)}>
-              {validationOpen ? 'Close seller validation' : 'Build this direction'}
+              {validationOpen
+                ? zh
+                  ? '关闭创作工作台'
+                  : 'Close creative workbench'
+                : zh
+                  ? '制作此方向'
+                  : 'Build this direction'}
             </Button>
           </Card>
           {validationOpen ? (
@@ -515,13 +649,18 @@ export function TradingStudio({
               model={sellerValidationModel}
               sourceIsCurrent={!stale}
               scenario={sellerValidationScenario}
+              locale={locale}
+              trustedPrincipalId={sellerValidationTrustedPrincipalId}
+              demoStorage={sellerValidationStorage}
             />
           ) : null}
         </section>
       ) : null}
       <p className="trading-studio__boundary">
         {sellerValidationPrototype
-          ? 'Directions are AI concepts, not official trademark records. Seller validation is a read-only prototype and does not publish anything.'
+          ? zh
+            ? '方向是 AI 商业概念，不是官方商标记录。当前视觉图为未渲染原始商标的确定性 SVG 布局示意，不会发布任何内容。'
+            : 'Directions are AI commercial concepts, not official trademark records. Current visuals are deterministic SVG layout illustrations that do not render the source trademark, and nothing is published.'
           : 'Directions are AI concepts, not Trademark Truth. Selection does not start Deep Build or create a Listing. Refinement is not yet available through a governed execution boundary.'}
       </p>
     </main>

@@ -180,11 +180,12 @@ export const Selected: Story = {
 export const SellerValidationPrototype: Story = {
   args: {
     ...Selected.args,
-    sellerValidationPrototype: true
+    sellerValidationPrototype: true,
+    sellerValidationTrustedPrincipalId: 'storybook-person-a'
   },
   play: ({ canvasElement }) => {
     Array.from(canvasElement.querySelectorAll('button'))
-      .find((button) => button.textContent === 'Build this direction')
+      .find((button) => button.textContent === '制作此方向')
       ?.click();
   }
 };
@@ -213,9 +214,42 @@ export const CreativeQaFailed: Story = {
   ...SellerValidationPrototype,
   args: { ...SellerValidationPrototype.args, sellerValidationScenario: 'QA_FAILED' }
 };
-export const CreativeSaveFailure: Story = {
+const unavailableStorage = {
+  getItem(): string | null {
+    throw new Error('Demo storage unavailable');
+  },
+  setItem(): void {
+    throw new Error('Demo storage unavailable');
+  },
+  removeItem(): void {
+    throw new Error('Demo storage unavailable');
+  }
+};
+
+export const CreativeStorageUnavailable: Story = {
   ...SellerValidationPrototype,
-  args: { ...SellerValidationPrototype.args, sellerValidationScenario: 'SAVE_FAILURE' }
+  args: { ...SellerValidationPrototype.args, sellerValidationStorage: unavailableStorage }
+};
+export const CreativeSessionOnlyDraft: Story = {
+  ...SellerValidationPrototype,
+  args: {
+    ...SellerValidationPrototype.args,
+    sellerValidationTrustedPrincipalId: undefined
+  }
+};
+export const CreativeUserA: Story = {
+  ...SellerValidationPrototype,
+  args: {
+    ...SellerValidationPrototype.args,
+    sellerValidationTrustedPrincipalId: 'storybook-person-a'
+  }
+};
+export const CreativeUserB: Story = {
+  ...SellerValidationPrototype,
+  args: {
+    ...SellerValidationPrototype.args,
+    sellerValidationTrustedPrincipalId: 'storybook-person-b'
+  }
 };
 export const CreativeSavedAndRestored: Story = {
   ...SellerValidationPrototype,
