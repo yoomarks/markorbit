@@ -21,6 +21,11 @@ test('exact context supports two source issues, clarification, review, Demo save
   await page.getByLabel('专业意见').first().fill('需与现有商品服务清单逐项核对。');
   await page.getByRole('button', { name: '准备 Demo 解读' }).click();
   const reviewOutput = page.getByRole('region', { name: '待审核成果' });
+  const citedSource = reviewOutput.getByText('查看引用原文').first();
+  await expect(citedSource).toBeVisible();
+  await citedSource.click();
+  await expect(reviewOutput.getByText(/Applicant must clarify whether/u)).toBeVisible();
+  await citedSource.click();
   await reviewOutput.getByLabel('专业意见').first().fill('审阅时补充的专业说明。');
   await expect(reviewOutput.getByLabel('专业意见').first()).toHaveValue('审阅时补充的专业说明。');
   await page.getByLabel('专业审核确认').first().check();
@@ -44,6 +49,7 @@ test('exact context supports two source issues, clarification, review, Demo save
   await expect(page.getByText('Demo 草稿已保存并可恢复')).toBeVisible();
 
   await page.getByRole('button', { name: 'English' }).click();
+  await expect(page.getByText('View cited source text').first()).toBeVisible();
   await expect(page.getByText('MOKI 小莫')).toBeVisible();
   await expect(page.getByText('DEMO_Office_Action_2026-07-18.pdf')).toBeVisible();
   await expect(

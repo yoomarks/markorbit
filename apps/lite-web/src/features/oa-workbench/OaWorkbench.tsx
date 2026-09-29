@@ -34,6 +34,7 @@ const copy = {
     review: '专业审核确认',
     deadline: '答复期限：待核对（未从获准官方来源证实）',
     original: '官方文件原文（不受信输入）',
+    citedSource: '查看引用原文',
     assumption: 'MO 待核对解读 · Fixture 假设',
     userFacts: '用户提供的信息',
     note: '专业意见',
@@ -61,6 +62,7 @@ const copy = {
     deadline:
       'Response deadline: verification required (not established by an admitted official source)',
     original: 'Official-document text (untrusted input)',
+    citedSource: 'View cited source text',
     assumption: 'MO interpretation to verify · Fixture assumption',
     userFacts: 'User-provided information',
     note: 'Professional opinion',
@@ -536,9 +538,10 @@ function OaWorkbenchSession({
                     <h3>
                       0{index + 1} · {item.locator}
                     </h3>
-                    <p>
-                      <strong>{t.original}:</strong> <span lang="en">{item.original}</span>
-                    </p>
+                    <details className="oa-output-source">
+                      <summary>{t.citedSource}</summary>
+                      <p lang="en">{item.original}</p>
+                    </details>
                     <p>
                       <strong>{t.userFacts}:</strong> {answer.facts || t.unknown}
                     </p>

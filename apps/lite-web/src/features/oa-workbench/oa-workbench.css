@@ -56,6 +56,10 @@
   background: transparent;
   color: inherit;
 }
+.oa-quiet:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
 .oa-language {
   background: #f1d2bd;
   color: #122d27;
@@ -261,6 +265,21 @@
 .oa-output-card p {
   overflow-wrap: anywhere;
   line-height: 1.45;
+}
+.oa-output-source {
+  margin: 8px 0 14px;
+  padding: 10px 12px;
+  border: 1px solid #d8e1dd;
+  border-radius: 8px;
+  background: #f5f9f7;
+}
+.oa-output-source summary {
+  color: #225848;
+  cursor: pointer;
+  font-weight: 700;
+}
+.oa-output-source p {
+  margin-bottom: 0;
 }
 .oa-empty-result {
   min-height: 150px;
