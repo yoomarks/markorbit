@@ -20,12 +20,21 @@ test('exact context supports two source issues, clarification, review, Demo save
   await page.getByLabel('用户提供的信息').fill('客户确认目前仅通过网页提供服务。');
   await page.getByLabel('专业意见').first().fill('需与现有商品服务清单逐项核对。');
   await page.getByRole('button', { name: '准备 Demo 解读' }).click();
+  const reviewOutput = page.getByRole('region', { name: '待审核成果' });
+  await reviewOutput.getByLabel('专业意见').first().fill('审阅时补充的专业说明。');
+  await expect(reviewOutput.getByLabel('专业意见').first()).toHaveValue('审阅时补充的专业说明。');
   await page.getByLabel('专业审核确认').first().check();
 
   if (testInfo.project.name === 'mobile-390') {
     await page.getByRole('button', { name: '问题' }).click();
   }
   await page.getByRole('button', { name: /服务范围具体化/u }).click();
+  await expect(page.getByLabel('选择结构化事实').locator('option[value="reports"]')).toHaveText(
+    '制作和提供分析报告'
+  );
+  await expect(page.getByLabel('选择结构化事实').locator('option[value="download"]')).toHaveCount(
+    0
+  );
   await page.getByLabel('选择结构化事实').selectOption('both');
   await page.getByLabel('用户提供的信息').fill('客户提供分析报告与在线仪表板。');
   await page.getByLabel('专业意见').first().fill('需确认最终限定用语。');
@@ -60,7 +69,14 @@ test('ambiguous match requires confirmation and direct unauthorized links fail c
   await page.goto(story('products-lite-oa-conversational-workbench--ambiguous-match'));
   await expect(page.getByText(/找到两个候选案件/u)).toBeVisible();
   await expect(page.getByText(/Applicant must clarify/u)).toHaveCount(0);
-  await page.getByRole('button', { name: '确认此 Demo 匹配' }).click();
+  const confirmMatch = page.getByRole('button', { name: '确认此 Demo 匹配' });
+  await expect(confirmMatch).toBeDisabled();
+  await page.getByLabel(/formal-matter_demo-archive@2/u).check();
+  await expect(confirmMatch).toBeDisabled();
+  await expect(page.getByText(/历史候选案件不属于当前 Demo 文件/u)).toBeVisible();
+  await page.getByLabel(/formal-matter_demo-oa-2407@7/u).check();
+  await expect(confirmMatch).toBeEnabled();
+  await confirmMatch.click();
   await expect(page.getByRole('heading', { name: '问题 · 2' })).toBeVisible();
 
   await page.goto(story('products-lite-oa-conversational-workbench--permission-revoked'));

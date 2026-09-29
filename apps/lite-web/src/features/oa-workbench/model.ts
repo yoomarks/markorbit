@@ -24,6 +24,7 @@ export type OaIssue = Readonly<{
   original: string;
   explanation: Readonly<Record<Locale, string>>;
   question: Readonly<Record<Locale, string>>;
+  options: readonly Readonly<{ value: string; label: Readonly<Record<Locale, string>> }>[];
 }>;
 
 export const demoContext = Object.freeze({
@@ -54,7 +55,19 @@ export const demoIssues: readonly OaIssue[] = Object.freeze([
     question: {
       zh: '客户当前实际提供的是可下载软件、在线服务，还是两者都有？',
       en: 'Does the client currently provide downloadable software, online services, or both?'
-    }
+    },
+    options: [
+      { value: 'download', label: { zh: '可下载软件', en: 'Downloadable software' } },
+      { value: 'online', label: { zh: '在线服务', en: 'Online service' } },
+      {
+        value: 'both',
+        label: { zh: '两者都有 / 需进一步拆分', en: 'Both / further distinction needed' }
+      },
+      {
+        value: 'needs-client',
+        label: { zh: '尚不明确，需向客户核实', en: 'Unknown; ask the client' }
+      }
+    ]
   },
   {
     id: 'issue-specification',
@@ -68,7 +81,25 @@ export const demoIssues: readonly OaIssue[] = Object.freeze([
     question: {
       zh: '哪些具体活动最准确地描述客户已经提供的服务？',
       en: 'Which specific activities most accurately describe the services already provided?'
-    }
+    },
+    options: [
+      {
+        value: 'reports',
+        label: { zh: '制作和提供分析报告', en: 'Prepare and provide analytical reports' }
+      },
+      {
+        value: 'dashboards',
+        label: { zh: '提供在线数据仪表板', en: 'Provide online data dashboards' }
+      },
+      {
+        value: 'both',
+        label: { zh: '报告与在线仪表板均有', en: 'Both reports and online dashboards' }
+      },
+      {
+        value: 'needs-client',
+        label: { zh: '尚不明确，需向客户核实', en: 'Unknown; ask the client' }
+      }
+    ]
   }
 ]);
 
@@ -124,8 +155,11 @@ export function invalidateAnswer(answer: IssueAnswer, patch: Partial<IssueAnswer
 
 export function hasExactSource(draft: Draft): boolean {
   return (
+    draft.source.workspaceId === demoContext.workspaceId &&
+    draft.source.actorId === demoContext.actorId &&
     draft.source.matterId === demoContext.matterId &&
     draft.source.matterVersion === demoContext.matterVersion &&
+    draft.source.trademarkId === demoContext.trademarkId &&
     draft.source.documentId === demoContext.documentId &&
     draft.source.documentVersion === demoContext.documentVersion
   );

@@ -142,19 +142,28 @@ function BoundaryState({ scenario, locale }: { scenario: WorkbenchScenario; loca
   );
 }
 
-export function OaWorkbench({
-  scenario = 'READY',
-  initialLocale = 'zh',
-  trustedPrincipalId = 'professional_demo-lin',
-  storage = typeof window === 'undefined' ? undefined : window.localStorage
-}: {
+type WorkbenchProps = {
   scenario?: WorkbenchScenario;
   initialLocale?: Locale;
   trustedPrincipalId?: string;
   storage?: StorageLike;
-}) {
+  onBack?: () => void;
+};
+
+export function OaWorkbench(props: WorkbenchProps) {
+  return <OaWorkbenchSession key={props.trustedPrincipalId || 'session-only'} {...props} />;
+}
+
+function OaWorkbenchSession({
+  scenario = 'READY',
+  initialLocale = 'zh',
+  trustedPrincipalId = '',
+  storage = typeof window === 'undefined' ? undefined : window.localStorage,
+  onBack
+}: WorkbenchProps) {
   const [locale, setLocale] = useState<Locale>(initialLocale);
   const [confirmed, setConfirmed] = useState(scenario !== 'AMBIGUOUS_MATCH');
+  const [candidateSelection, setCandidateSelection] = useState<'current' | 'historical' | ''>('');
   const [selectedIssue, setSelectedIssue] = useState<IssueId>('issue-identification');
   const [view, setView] = useState<View>('issues');
   const [draft, setDraft] = useState<Draft>(() => initialDraft(scenario));
@@ -200,9 +209,8 @@ export function OaWorkbench({
     setDraft((current) => ({
       ...current,
       prepared:
-        current.prepared && !Object.keys(patch).some((keyName) => keyName !== 'reviewed')
-          ? true
-          : false,
+        current.prepared &&
+        !Object.keys(patch).some((field) => field !== 'reviewed' && field !== 'professionalNote'),
       savedAt: undefined,
       answers: { ...current.answers, [id]: invalidateAnswer(current.answers[id], patch) }
     }));
@@ -233,7 +241,11 @@ export function OaWorkbench({
     }
   };
 
-  const allReviewed = demoIssues.every((item) => draft.answers[item.id].reviewed);
+  const hasClarification = (answer: IssueAnswer) =>
+    Boolean(answer.selection || answer.facts.trim() || answer.professionalNote.trim());
+  const allReviewed = demoIssues.every(
+    (item) => draft.answers[item.id].reviewed && hasClarification(draft.answers[item.id])
+  );
 
   return (
     <div className="oa-shell">
@@ -243,7 +255,19 @@ export function OaWorkbench({
           <h1>{t.title}</h1>
         </div>
         <div className="oa-top-actions">
-          <button className="oa-quiet" type="button">
+          <button
+            className="oa-quiet"
+            type="button"
+            disabled={!onBack}
+            title={
+              !onBack
+                ? locale === 'zh'
+                  ? '隔离 Demo 未连接案件路由'
+                  : 'This isolated Demo has no matter route'
+                : undefined
+            }
+            onClick={onBack}
+          >
             ← {t.back}
           </button>
           <button
@@ -268,9 +292,15 @@ export function OaWorkbench({
           <small>{demoContext.workspaceId}</small>
         </div>
         <div>
-          <span>{locale === 'zh' ? '可信当前用户' : 'Trusted actor'}</span>
-          <strong>{demoContext.actorName}</strong>
-          <small>{demoContext.actorId}</small>
+          <span>{locale === 'zh' ? '当前用户' : 'Current actor'}</span>
+          <strong>
+            {trustedPrincipalId
+              ? demoContext.actorName
+              : locale === 'zh'
+                ? '未提供可信主体 · 仅页面内存草稿'
+                : 'No trusted principal · Page-memory draft only'}
+          </strong>
+          <small>{trustedPrincipalId || (locale === 'zh' ? '未绑定' : 'Not bound')}</small>
         </div>
         <div>
           <span>Formal Matter / Trademark</span>
@@ -300,15 +330,39 @@ export function OaWorkbench({
           <fieldset>
             <legend>{locale === 'zh' ? '候选案件' : 'Candidate matters'}</legend>
             <label>
-              <input defaultChecked name="matter" type="radio" /> {demoContext.matterId}@7 ·{' '}
-              {demoContext.trademarkName}
+              <input
+                checked={candidateSelection === 'current'}
+                name="matter"
+                type="radio"
+                onChange={() => setCandidateSelection('current')}
+              />{' '}
+              {demoContext.matterId}@{demoContext.matterVersion} · {demoContext.trademarkName}
             </label>
             <label>
-              <input name="matter" type="radio" /> formal-matter_demo-archive@2 · MOKI archive
-              (historical)
+              <input
+                checked={candidateSelection === 'historical'}
+                name="matter"
+                type="radio"
+                onChange={() => setCandidateSelection('historical')}
+              />{' '}
+              formal-matter_demo-archive@2 · MOKI archive (historical)
             </label>
+            {candidateSelection === 'historical' && (
+              <div className="oa-alert" role="alert">
+                {locale === 'zh'
+                  ? '历史候选案件不属于当前 Demo 文件；请核对并选择匹配的当前案件。'
+                  : 'The historical candidate does not match this Demo document; verify and select the current matter.'}
+              </div>
+            )}
           </fieldset>
-          <button className="oa-primary" type="button" onClick={() => setConfirmed(true)}>
+          <button
+            className="oa-primary"
+            type="button"
+            disabled={candidateSelection !== 'current'}
+            onClick={() => {
+              if (candidateSelection === 'current') setConfirmed(true);
+            }}
+          >
             {t.confirm}
           </button>
         </main>
@@ -408,15 +462,11 @@ export function OaWorkbench({
                   onChange={(event) => updateAnswer(issue.id, { selection: event.target.value })}
                 >
                   <option value="">{t.unknown}</option>
-                  <option value="download">
-                    {locale === 'zh' ? '可下载软件' : 'Downloadable software'}
-                  </option>
-                  <option value="online">{locale === 'zh' ? '在线服务' : 'Online service'}</option>
-                  <option value="both">
-                    {locale === 'zh'
-                      ? '两者都有 / 需进一步拆分'
-                      : 'Both / further distinction needed'}
-                  </option>
+                  {issue.options.map((option) => (
+                    <option value={option.value} key={option.value}>
+                      {option.label[locale]}
+                    </option>
+                  ))}
                 </select>
               </label>
               <label>
@@ -454,7 +504,9 @@ export function OaWorkbench({
             <button
               className="oa-primary"
               type="button"
+              disabled={!hasClarification(draft.answers[issue.id])}
               onClick={() => {
+                if (!hasClarification(draft.answers[issue.id])) return;
                 setDraft((current) => ({ ...current, prepared: true, savedAt: undefined }));
                 setView('result');
                 setNotice('');
@@ -515,6 +567,7 @@ export function OaWorkbench({
                       <input
                         checked={answer.reviewed}
                         type="checkbox"
+                        disabled={!hasClarification(answer)}
                         onChange={(event) =>
                           updateAnswer(item.id, { reviewed: event.target.checked })
                         }

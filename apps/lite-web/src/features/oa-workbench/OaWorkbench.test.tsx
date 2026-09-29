@@ -4,7 +4,14 @@ import { cleanup, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { OaWorkbench } from './OaWorkbench.js';
-import { demoContext, draftStorageKey, invalidateAnswer, sourceLocatorFor } from './model.js';
+import {
+  demoContext,
+  draftStorageKey,
+  emptyAnswers,
+  hasExactSource,
+  invalidateAnswer,
+  sourceLocatorFor
+} from './model.js';
 
 afterEach(() => {
   cleanup();
@@ -73,6 +80,87 @@ describe('Lite OA conversational workbench', () => {
   it('keeps a partial file from being saved as complete', () => {
     render(<OaWorkbench scenario="PARTIAL_FILE" trustedPrincipalId="test-partial" />);
     expect(screen.getByText(/源文件缺少第 3 页/u)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '保存 Demo 工作草稿' })).toBeDisabled();
+  });
+
+  it('requires a real candidate choice and never maps a historical choice to the current matter', async () => {
+    render(<OaWorkbench scenario="AMBIGUOUS_MATCH" trustedPrincipalId="test-match" />);
+    const confirm = screen.getByRole('button', { name: '确认此 Demo 匹配' });
+    expect(confirm).toBeDisabled();
+    await userEvent.click(screen.getByLabelText(/formal-matter_demo-archive@2/u));
+    expect(confirm).toBeDisabled();
+    expect(screen.getByText(/历史候选案件不属于当前 Demo 文件/u)).toBeInTheDocument();
+    await userEvent.click(screen.getByLabelText(/formal-matter_demo-oa-2407@7/u));
+    expect(confirm).toBeEnabled();
+    await userEvent.click(confirm);
+    expect(screen.getByRole('heading', { name: '问题 · 2' })).toBeInTheDocument();
+  });
+
+  it('uses issue-specific factual choices and requires a clarification before professional review', async () => {
+    render(<OaWorkbench trustedPrincipalId="test-options" />);
+    await userEvent.click(screen.getByRole('button', { name: /商品\/服务描述澄清/u }));
+    expect(screen.getByRole('option', { name: '可下载软件' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '准备 Demo 解读' })).toBeDisabled();
+    await userEvent.click(screen.getByRole('button', { name: /服务范围具体化/u }));
+    expect(screen.getByRole('option', { name: '制作和提供分析报告' })).toBeInTheDocument();
+    expect(screen.queryByRole('option', { name: '可下载软件' })).not.toBeInTheDocument();
+    await userEvent.selectOptions(screen.getByLabelText('选择结构化事实'), 'reports');
+    await userEvent.click(screen.getByRole('button', { name: '准备 Demo 解读' }));
+    expect(screen.getAllByLabelText('专业审核确认')[0]).toBeDisabled();
+    expect(screen.getAllByLabelText('专业审核确认')[1]).toBeEnabled();
+    expect(screen.getByRole('button', { name: '保存 Demo 工作草稿' })).toBeDisabled();
+  });
+
+  it('rejects a draft bound to another Workspace or trademark even if matter/document IDs match', () => {
+    const draft = { source: demoContext, answers: emptyAnswers(), prepared: false };
+    expect(hasExactSource(draft)).toBe(true);
+    expect(
+      hasExactSource({
+        ...draft,
+        source: { ...demoContext, workspaceId: 'different' } as unknown as typeof demoContext
+      })
+    ).toBe(false);
+    expect(
+      hasExactSource({
+        ...draft,
+        source: { ...demoContext, trademarkId: 'other' } as unknown as typeof demoContext
+      })
+    ).toBe(false);
+  });
+
+  it('does not carry one trusted person’s in-memory edits into another principal', async () => {
+    const { rerender } = render(<OaWorkbench trustedPrincipalId="person-a" />);
+    await userEvent.click(screen.getByRole('button', { name: /商品\/服务描述澄清/u }));
+    await userEvent.type(screen.getByLabelText('用户提供的信息'), 'Private note for A');
+    expect(screen.getByDisplayValue('Private note for A')).toBeInTheDocument();
+    rerender(<OaWorkbench trustedPrincipalId="person-b" />);
+    await userEvent.click(screen.getByRole('button', { name: /商品\/服务描述澄清/u }));
+    expect(screen.getByLabelText('用户提供的信息')).toHaveValue('');
+  });
+
+  it('does not pretend an isolated Demo has a matter route', async () => {
+    const { rerender } = render(<OaWorkbench />);
+    expect(screen.getByRole('button', { name: /返回原案件/u })).toBeDisabled();
+    const onBack = vi.fn();
+    rerender(<OaWorkbench onBack={onBack} />);
+    await userEvent.click(screen.getByRole('button', { name: /返回原案件/u }));
+    expect(onBack).toHaveBeenCalledOnce();
+  });
+
+  it('keeps the prepared output editable while a reviewer amends an opinion', async () => {
+    render(<OaWorkbench trustedPrincipalId="test-review-editor" />);
+    await userEvent.click(screen.getByRole('button', { name: /商品\/服务描述澄清/u }));
+    await userEvent.selectOptions(screen.getByLabelText('选择结构化事实'), 'online');
+    await userEvent.click(screen.getByRole('button', { name: '准备 Demo 解读' }));
+    const editor = screen.getAllByLabelText('专业意见')[1]!;
+    await userEvent.type(editor, 'Reviewed note');
+    expect(editor).toHaveValue('Reviewed note');
+    const reviewed = screen.getAllByLabelText('专业审核确认')[0]!;
+    await userEvent.click(reviewed);
+    expect(reviewed).toBeChecked();
+    await userEvent.type(editor, ' updated');
+    expect(editor).toHaveValue('Reviewed note updated');
+    expect(reviewed).not.toBeChecked();
     expect(screen.getByRole('button', { name: '保存 Demo 工作草稿' })).toBeDisabled();
   });
 });
