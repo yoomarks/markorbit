@@ -19,6 +19,8 @@ const commercialDirectionContext = {
 const state = {
   run: {
     studioRunId: 'standard-studio-run_story',
+    workspaceId: '81818181-8181-4818-8818-818181818181',
+    version: 3,
     currentness: 'CURRENT',
     status: 'COMPLETED',
     trademarkAsset: { id: 'trademark-asset_story', version: 4 }
@@ -158,6 +160,9 @@ const base = {
 };
 
 export const ReadyToChoose: Story = { args: { ...base, client: client(state) } };
+export const CreativeDirectionsWithVisuals: Story = {
+  args: { ...base, client: client(state), sellerValidationPrototype: true }
+};
 export const Selected: Story = {
   args: {
     ...base,
@@ -175,11 +180,12 @@ export const Selected: Story = {
 export const SellerValidationPrototype: Story = {
   args: {
     ...Selected.args,
-    sellerValidationPrototype: true
+    sellerValidationPrototype: true,
+    sellerValidationTrustedPrincipalId: 'storybook-person-a'
   },
   play: ({ canvasElement }) => {
     Array.from(canvasElement.querySelectorAll('button'))
-      .find((button) => button.textContent === 'Build this direction')
+      .find((button) => button.textContent === '制作此方向')
       ?.click();
   }
 };
@@ -191,6 +197,63 @@ export const SellerValidationPrototypeMobile390: Story = {
       viewports: { mobile1: { name: '390px mobile', styles: { width: '390px', height: '844px' } } }
     }
   }
+};
+export const CreativeNoMaterials: Story = {
+  ...SellerValidationPrototype,
+  args: { ...SellerValidationPrototype.args, sellerValidationScenario: 'NO_MATERIALS' }
+};
+export const CreativePartialOutput: Story = {
+  ...SellerValidationPrototype,
+  args: { ...SellerValidationPrototype.args, sellerValidationScenario: 'PARTIAL' }
+};
+export const CreativeRunning: Story = {
+  ...SellerValidationPrototype,
+  args: { ...SellerValidationPrototype.args, sellerValidationScenario: 'RUNNING' }
+};
+export const CreativeQaFailed: Story = {
+  ...SellerValidationPrototype,
+  args: { ...SellerValidationPrototype.args, sellerValidationScenario: 'QA_FAILED' }
+};
+const unavailableStorage = {
+  getItem(): string | null {
+    throw new Error('Demo storage unavailable');
+  },
+  setItem(): void {
+    throw new Error('Demo storage unavailable');
+  },
+  removeItem(): void {
+    throw new Error('Demo storage unavailable');
+  }
+};
+
+export const CreativeStorageUnavailable: Story = {
+  ...SellerValidationPrototype,
+  args: { ...SellerValidationPrototype.args, sellerValidationStorage: unavailableStorage }
+};
+export const CreativeSessionOnlyDraft: Story = {
+  ...SellerValidationPrototype,
+  args: {
+    ...SellerValidationPrototype.args,
+    sellerValidationTrustedPrincipalId: undefined
+  }
+};
+export const CreativeUserA: Story = {
+  ...SellerValidationPrototype,
+  args: {
+    ...SellerValidationPrototype.args,
+    sellerValidationTrustedPrincipalId: 'storybook-person-a'
+  }
+};
+export const CreativeUserB: Story = {
+  ...SellerValidationPrototype,
+  args: {
+    ...SellerValidationPrototype.args,
+    sellerValidationTrustedPrincipalId: 'storybook-person-b'
+  }
+};
+export const CreativeSavedAndRestored: Story = {
+  ...SellerValidationPrototype,
+  args: { ...SellerValidationPrototype.args, sellerValidationScenario: 'SAVED' }
 };
 export const Empty: Story = { args: { ...base, client: client({ ...state, directionSet: null }) } };
 export const Stale: Story = {
