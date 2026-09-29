@@ -38,6 +38,8 @@ function state(selected = false): TradingStudioState {
   return {
     run: {
       studioRunId,
+      workspaceId,
+      version: 3,
       currentness: 'CURRENT',
       status: 'COMPLETED',
       trademarkAsset: { id: 'trademark-asset_ui', version: 4 }
@@ -133,7 +135,10 @@ function client(initial: TradingStudioState) {
   return { api: { loadState, selectDirection }, loadState, selectDirection };
 }
 
-afterEach(cleanup);
+afterEach(() => {
+  cleanup();
+  window.localStorage.clear();
+});
 
 describe('Orbit Trading Studio direction comparison', () => {
   it('renders exactly the three semantic roles and the authority boundary', async () => {
@@ -159,7 +164,7 @@ describe('Orbit Trading Studio direction comparison', () => {
     expect(screen.queryByRole('button', { name: 'Build this direction' })).not.toBeInTheDocument();
   });
 
-  it('opens a read-only seller validation flow from durable selection without implying publication', async () => {
+  it('opens a visual workbench, creates a visible revision, compares, saves, restores and never implies production execution', async () => {
     render(
       <TradingStudio
         workspaceId={workspaceId}
@@ -170,24 +175,34 @@ describe('Orbit Trading Studio direction comparison', () => {
     );
 
     await userEvent.click(await screen.findByRole('button', { name: 'Build this direction' }));
-    expect(await screen.findByText('Seller validation flow')).toBeInTheDocument();
-    expect(screen.getByText('Nothing here publishes the trademark')).toBeInTheDocument();
-    expect(screen.getByText(/Brand DNA available/u)).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: 'Visual build slots' })).toBeInTheDocument();
-    expect(screen.getByText('Hero visual')).toBeInTheDocument();
-    await userEvent.click(screen.getAllByRole('button', { name: 'Pin' })[0]!);
-    expect(screen.getByText('Pinned locally')).toBeInTheDocument();
+    expect(await screen.findByText('商标视觉美化工作台')).toBeInTheDocument();
+    expect(screen.getByText('原始商标不会被修改')).toBeInTheDocument();
+    expect(screen.getByText('trademark-asset_ui@4')).toBeInTheDocument();
+    expect(screen.getByText('demo-visual@1')).toBeInTheDocument();
     expect(
-      screen.getByText('Prototype pin state changed locally. No saved creative asset was created.')
+      screen.getByRole('img', { name: /Focused operator PACKAGING Demo version 1/u })
     ).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: '生成 Demo 调整版' }));
+    expect(screen.getByText('demo-visual@2')).toBeInTheDocument();
+    expect(screen.getByRole('img', { name: /Demo version 2/u })).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: '版本对比' }));
+    expect(screen.getByLabelText('Demo version comparison')).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: '保存 Demo 草稿' }));
+    expect(screen.getByText(/Demo 草稿已保存在此浏览器/u)).toBeInTheDocument();
+    expect(screen.getByText(/未调用模型/u)).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: 'English' }));
+    expect(screen.getByText('Trademark creative workbench')).toBeInTheDocument();
+    expect(screen.getByText('trademark-asset_ui@4')).toBeInTheDocument();
+    expect(screen.getByText('demo-visual@2')).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: '中文' }));
 
-    await userEvent.click(screen.getByRole('button', { name: 'Listing preview' }));
+    await userEvent.click(screen.getByRole('button', { name: '商业说明' }));
     expect(screen.getByRole('heading', { name: /Focused operator —/u })).toBeInTheDocument();
     expect(screen.getByText('Workspace facts')).toBeInTheDocument();
     expect(screen.getByText('AI interpretation')).toBeInTheDocument();
     expect(screen.getByText('Not published')).toBeInTheDocument();
 
-    await userEvent.click(screen.getByRole('button', { name: 'Destination readiness' }));
+    await userEvent.click(screen.getByRole('button', { name: '发布边界' }));
     expect(screen.getByText('Needs attention — no destination is connected')).toBeInTheDocument();
     expect(screen.getByText('Not published yet')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Publication not enabled' })).toBeDisabled();

@@ -20,8 +20,10 @@ import {
 } from '../../api/trading-studio.js';
 import {
   TradingSellerValidationFlow,
+  type CreativePilotScenario,
   type TradingSellerValidationModel
 } from './TradingSellerValidationFlow.js';
+import { DirectionPreviewPair } from './CreativeDemoVisual.js';
 import './trading-studio.css';
 
 export interface TradingStudioProps {
@@ -29,6 +31,7 @@ export interface TradingStudioProps {
   studioRunId: TradingStudioRunV1['studioRunId'];
   client?: TradingStudioClient;
   sellerValidationPrototype?: boolean;
+  sellerValidationScenario?: CreativePilotScenario;
 }
 
 const roleLabel = {
@@ -312,7 +315,8 @@ export function TradingStudio({
   workspaceId,
   studioRunId,
   client,
-  sellerValidationPrototype = false
+  sellerValidationPrototype = false,
+  sellerValidationScenario = 'CAPABILITY_UNAVAILABLE'
 }: TradingStudioProps) {
   const api = client ?? createTradingStudioClient(workspaceId);
   const [state, setState] = useState<TradingStudioState>();
@@ -462,6 +466,14 @@ export function TradingStudio({
                 </div>
                 <h2>{direction.title}</h2>
                 <p>{direction.summary}</p>
+                {sellerValidationPrototype ? (
+                  <DirectionPreviewPair
+                    role={direction.role}
+                    title={direction.title}
+                    directionId={direction.commercialDirectionId}
+                    directionVersion={direction.version}
+                  />
+                ) : null}
                 <DirectionCommercialSummary direction={direction} profile={state.aiProfile} />
                 <Button
                   variant={isSelected ? 'secondary' : 'primary'}
@@ -502,6 +514,7 @@ export function TradingStudio({
               state={state}
               model={sellerValidationModel}
               sourceIsCurrent={!stale}
+              scenario={sellerValidationScenario}
             />
           ) : null}
         </section>
