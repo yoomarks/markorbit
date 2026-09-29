@@ -164,7 +164,7 @@ describe('Orbit Trading Studio direction comparison', () => {
     expect(screen.queryByRole('button', { name: 'Build this direction' })).not.toBeInTheDocument();
   });
 
-  it('opens a visual workbench, creates a visible revision, compares, saves, restores and never implies production execution', async () => {
+  it('opens a visual workbench, creates a visible revision and compares versions', async () => {
     render(
       <TradingStudio
         workspaceId={workspaceId}
@@ -183,21 +183,55 @@ describe('Orbit Trading Studio direction comparison', () => {
     expect(
       screen.getByRole('img', { name: /Focused operator · SVG 布局示意/u })
     ).toBeInTheDocument();
+
     await userEvent.click(screen.getByRole('button', { name: '应用结构化 Demo 调整' }));
     expect(screen.getByText('demo-visual@2')).toBeInTheDocument();
     expect(screen.getByRole('img', { name: /Demo v2/u })).toBeInTheDocument();
     await userEvent.click(screen.getByRole('button', { name: '版本对比' }));
     expect(screen.getByLabelText('Demo 版本对比')).toBeInTheDocument();
+  });
+
+  it('saves a personal Demo draft and preserves source identity across locale changes', async () => {
+    render(
+      <TradingStudio
+        workspaceId={workspaceId}
+        studioRunId={studioRunId}
+        client={client(state(true)).api}
+        sellerValidationPrototype
+        sellerValidationTrustedPrincipalId="person-a"
+      />
+    );
+
+    await userEvent.click(await screen.findByRole('button', { name: '制作此方向' }));
+    expect(await screen.findByText('商标视觉美化工作台')).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: '应用结构化 Demo 调整' }));
+    expect(screen.getByText('demo-visual@2')).toBeInTheDocument();
     await userEvent.click(screen.getByRole('button', { name: '保存 Demo 草稿' }));
     expect(screen.getByText(/个人 Demo 草稿/u)).toBeInTheDocument();
     expect(screen.getByText(/未调用模型/u)).toBeInTheDocument();
+
     await userEvent.click(screen.getByRole('button', { name: 'English' }));
     expect(screen.getByText('Trademark creative workbench')).toBeInTheDocument();
     expect(screen.getByText('trademark-asset_ui@4')).toBeInTheDocument();
     expect(screen.getByText('demo-visual@2')).toBeInTheDocument();
     expect(screen.getByText(/Personal Demo draft saved/u)).toBeInTheDocument();
     await userEvent.click(screen.getByRole('button', { name: '中文' }));
+    expect(screen.getByText('商标视觉美化工作台')).toBeInTheDocument();
+  });
 
+  it('keeps seller listing and publication boundaries distinct from Demo creative work', async () => {
+    render(
+      <TradingStudio
+        workspaceId={workspaceId}
+        studioRunId={studioRunId}
+        client={client(state(true)).api}
+        sellerValidationPrototype
+        sellerValidationTrustedPrincipalId="person-a"
+      />
+    );
+
+    await userEvent.click(await screen.findByRole('button', { name: '制作此方向' }));
+    expect(await screen.findByText('商标视觉美化工作台')).toBeInTheDocument();
     await userEvent.click(screen.getByRole('button', { name: '商业说明' }));
     expect(screen.getByRole('heading', { name: /Focused operator —/u })).toBeInTheDocument();
     expect(screen.getByText('Workspace 事实')).toBeInTheDocument();
@@ -221,8 +255,9 @@ describe('Orbit Trading Studio direction comparison', () => {
       />
     );
     await userEvent.click(await screen.findByRole('button', { name: '制作此方向' }));
-    await userEvent.type(screen.getByLabelText('待处理修改意见'), '让图形旋转并加入动画');
-    await userEvent.selectOptions(screen.getByLabelText('使用场景'), 'WEB');
+    expect(await screen.findByText('商标视觉美化工作台')).toBeInTheDocument();
+    await userEvent.type(await screen.findByLabelText('待处理修改意见'), '让图形旋转并加入动画');
+    await userEvent.selectOptions(await screen.findByLabelText('使用场景'), 'WEB');
     await userEvent.selectOptions(screen.getByLabelText('颜色气质'), 'WARM');
     expect(screen.getByRole('img', { name: /WEB · Demo v2/u })).toBeInTheDocument();
     await userEvent.click(screen.getByRole('button', { name: '应用结构化 Demo 调整' }));
