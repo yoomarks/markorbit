@@ -97,3 +97,107 @@ export function materializeCaseEvidenceBinderV1(input: {
     evidence
   };
 }
+
+export const WORKSPACE_PRIVATE_CASE_EVIDENCE_READ_GRANT_PROTOCOL_VERSION = '1.0' as const;
+
+export type WorkspacePrivateCaseEvidenceReadGrantV1 = Readonly<{
+  protocolVersion: typeof WORKSPACE_PRIVATE_CASE_EVIDENCE_READ_GRANT_PROTOCOL_VERSION;
+  objectType: 'WORKSPACE_PRIVATE_CASE_EVIDENCE_READ_GRANT';
+  bindingId: string;
+  bindingVersion: number;
+  workspaceId: string;
+  userId: string;
+  membershipId: string;
+  knowledgeWorkspaceId: string;
+  readyPackageId: string;
+  readyPackageDigest: string;
+  coreIntakeId: string;
+  contentExportSha256: string;
+  stagingDocumentId: string;
+  stagingSha256: string;
+  rawArtifactId: string;
+  rawArtifactSha256: string;
+  caseId: string;
+  caseVersion: number;
+  caseSnapshotSha256: string;
+  sourceLocators: readonly string[];
+  authoritySnapshot: Readonly<{
+    workspaceVersion: number;
+    userVersion: number;
+    membershipVersion: number;
+  }>;
+  currentness: Readonly<{
+    workspaceAuthority: 'CURRENT';
+    formalMatter: 'CURRENT';
+    coreKnowledgeEvidence: 'CURRENT';
+    knowledgeRetrieval: 'MUST_VERIFY';
+  }>;
+  consequences: Readonly<{
+    officialTruthCreated: false;
+    filingAuthorized: false;
+    externalActionAuthorized: false;
+  }>;
+  verifiedAt: string;
+  expiresAt: string;
+}>;
+
+const canonicalUuid = (value: unknown): value is string =>
+  typeof value === 'string' &&
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/iu.test(value);
+const sha256 = (value: unknown): value is string =>
+  typeof value === 'string' && /^[0-9a-f]{64}$/u.test(value);
+const positiveVersion = (value: unknown): value is number =>
+  typeof value === 'number' && Number.isSafeInteger(value) && value >= 1;
+const rfc3339 = (value: unknown): value is string =>
+  typeof value === 'string' && Number.isFinite(Date.parse(value));
+
+export function assertWorkspacePrivateCaseEvidenceReadGrantV1(
+  value: unknown
+): asserts value is WorkspacePrivateCaseEvidenceReadGrantV1 {
+  if (!value || typeof value !== 'object' || Array.isArray(value))
+    throw new TypeError('Invalid WorkspacePrivateCaseEvidenceReadGrantV1');
+  const item = value as Record<string, unknown>;
+  const authority = item.authoritySnapshot as Record<string, unknown> | undefined;
+  const currentness = item.currentness as Record<string, unknown> | undefined;
+  const consequences = item.consequences as Record<string, unknown> | undefined;
+  if (
+    item.protocolVersion !== WORKSPACE_PRIVATE_CASE_EVIDENCE_READ_GRANT_PROTOCOL_VERSION ||
+    item.objectType !== 'WORKSPACE_PRIVATE_CASE_EVIDENCE_READ_GRANT' ||
+    !canonicalUuid(item.bindingId) ||
+    !positiveVersion(item.bindingVersion) ||
+    !canonicalUuid(item.workspaceId) ||
+    !canonicalUuid(item.userId) ||
+    !canonicalUuid(item.membershipId) ||
+    !nonEmpty(item.knowledgeWorkspaceId) ||
+    !nonEmpty(item.readyPackageId) ||
+    !sha256(item.readyPackageDigest) ||
+    !nonEmpty(item.coreIntakeId) ||
+    !sha256(item.contentExportSha256) ||
+    !nonEmpty(item.stagingDocumentId) ||
+    !sha256(item.stagingSha256) ||
+    !nonEmpty(item.rawArtifactId) ||
+    !sha256(item.rawArtifactSha256) ||
+    !nonEmpty(item.caseId) ||
+    !positiveVersion(item.caseVersion) ||
+    !sha256(item.caseSnapshotSha256) ||
+    !Array.isArray(item.sourceLocators) ||
+    !item.sourceLocators.every(nonEmpty) ||
+    !authority ||
+    !positiveVersion(authority.workspaceVersion) ||
+    !positiveVersion(authority.userVersion) ||
+    !positiveVersion(authority.membershipVersion) ||
+    !currentness ||
+    currentness.workspaceAuthority !== 'CURRENT' ||
+    currentness.formalMatter !== 'CURRENT' ||
+    currentness.coreKnowledgeEvidence !== 'CURRENT' ||
+    currentness.knowledgeRetrieval !== 'MUST_VERIFY' ||
+    !consequences ||
+    consequences.officialTruthCreated !== false ||
+    consequences.filingAuthorized !== false ||
+    consequences.externalActionAuthorized !== false ||
+    !rfc3339(item.verifiedAt) ||
+    !rfc3339(item.expiresAt) ||
+    Date.parse(item.expiresAt) <= Date.parse(item.verifiedAt)
+  )
+    throw new TypeError('Workspace private Case evidence read grant is invalid.');
+}

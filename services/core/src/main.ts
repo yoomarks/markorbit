@@ -39,6 +39,11 @@ import { PostgresWorkspaceAdminManagementServiceV1 } from './workspace-admin-man
 import { PostgresKnowledgeIntakeRepository } from './knowledge-intake.js';
 import { PostgresKnowledgeV2DeliveryRepository } from './knowledge-v2-delivery.js';
 import {
+  HttpFormalMatterCurrentnessSource,
+  PostgresWorkspacePrivateCaseEvidenceBindingRepository,
+  WorkspacePrivateCaseEvidenceService
+} from './workspace-private-case-evidence.js';
+import {
   MethodImprovementAdmissionServiceV1,
   PostgresMethodImprovementAdmissionRepositoryV1
 } from './method-improvement.js';
@@ -158,6 +163,18 @@ const currentWorkspaceAuthority = Object.assign(currentWorkspaceAuthorityService
       governedHumanActionReceipts
     )
 });
+const knowledgeIntakes = new PostgresKnowledgeIntakeRepository(query);
+const knowledgeContents = new PostgresKnowledgeReadyPackageContentRepository(query);
+const workspacePrivateCaseEvidence = new WorkspacePrivateCaseEvidenceService({
+  repository: new PostgresWorkspacePrivateCaseEvidenceBindingRepository(query),
+  currentWorkspaceAuthority: currentWorkspaceAuthorityService,
+  knowledgeIntakes,
+  knowledgeContents,
+  formalMatters: new HttpFormalMatterCurrentnessSource(
+    process.env.MARKREG_URL ?? 'http://127.0.0.1:4105',
+    secret
+  )
+});
 const accountAccess = new AccountAccessService(
   new PostgresAccountAccessStore(database),
   authentication
@@ -201,8 +218,9 @@ const runtime = createRuntime({
   workspaces,
   currentWorkspaceAuthority,
   workspaceCommercial,
-  knowledgeIntakes: new PostgresKnowledgeIntakeRepository(query),
-  knowledgeContents: new PostgresKnowledgeReadyPackageContentRepository(query),
+  knowledgeIntakes,
+  knowledgeContents,
+  workspacePrivateCaseEvidence,
   knowledgeV2Deliveries: new PostgresKnowledgeV2DeliveryRepository(query),
   brainCognitiveRead: createPostgresBrainCognitiveReadServiceV1(database),
   internalOperatorPrincipalResolver,
