@@ -33,6 +33,8 @@ import type { PostgresWorkspaceAdminManagementServiceV1 } from './workspace-admi
 import type { BrainCognitiveReadServiceV1 } from './brain-cognitive-read.js';
 import { createCurrentWorkspaceAuthorityRoutes } from './current-workspace-authority-http.js';
 import type { CurrentWorkspaceAuthorityService } from './current-workspace-authority.js';
+import { createWorkspacePrivateCaseEvidenceRoutes } from './workspace-private-case-evidence-http.js';
+import type { WorkspacePrivateCaseEvidenceService } from './workspace-private-case-evidence.js';
 import { createWorkspaceCommercialRoutesV1 } from './workspace-commercial-http.js';
 import type { WorkspaceCommercialServiceV1 } from './workspace-commercial.js';
 import { createOAuthCredentialCurrentnessRoutesV1 } from './oauth-credential-currentness-http.js';
@@ -104,6 +106,10 @@ export interface CoreRuntimeOptions {
     Partial<Pick<WorkspaceCommercialServiceV1, 'resolveRatePolicy'>>;
   knowledgeIntakes?: KnowledgeIntakeRepository;
   knowledgeContents?: KnowledgeReadyPackageContentRepository;
+  workspacePrivateCaseEvidence?: Pick<
+    WorkspacePrivateCaseEvidenceService,
+    'suggest' | 'decide' | 'readGrant'
+  >;
   knowledgeV2Deliveries?: KnowledgeV2DeliveryRepository;
   brainCognitiveRead?: Pick<BrainCognitiveReadServiceV1, 'read'>;
   internalOperatorPrincipalResolver?: Pick<InternalOperatorPrincipalResolverV1, 'resolve'>;
@@ -183,6 +189,10 @@ export function createRuntime(options: CoreRuntimeOptions = {}) {
   if (options.currentWorkspaceAuthority && !secret)
     throw new Error(
       'internalServiceSecret is required for current Workspace authority validation.'
+    );
+  if (options.workspacePrivateCaseEvidence && !secret)
+    throw new Error(
+      'internalServiceSecret is required for Workspace-private Case evidence routes.'
     );
   if (options.workspaceCommercial && (!secret || !options.currentWorkspaceAuthority))
     throw new Error(
@@ -276,6 +286,13 @@ export function createRuntime(options: CoreRuntimeOptions = {}) {
     options.currentWorkspaceAuthority && secret
       ? createCurrentWorkspaceAuthorityRoutes({
           service: options.currentWorkspaceAuthority,
+          internalServiceSecret: secret
+        })
+      : [];
+  const workspacePrivateCaseEvidenceRoutes =
+    options.workspacePrivateCaseEvidence && secret
+      ? createWorkspacePrivateCaseEvidenceRoutes({
+          service: options.workspacePrivateCaseEvidence,
           internalServiceSecret: secret
         })
       : [];
@@ -815,6 +832,7 @@ export function createRuntime(options: CoreRuntimeOptions = {}) {
     : [];
   routes.push(
     ...currentWorkspaceAuthorityRoutes,
+    ...workspacePrivateCaseEvidenceRoutes,
     ...workspaceCommercialRoutes,
     ...oauthCredentialCurrentnessRoutes,
     ...externalCredentialCurrentnessRoutes,
@@ -853,6 +871,8 @@ export * from './account-access.js';
 export * from './account-onboarding.js';
 export * from './knowledge-intake.js';
 export * from './knowledge-content.js';
+export * from './workspace-private-case-evidence.js';
+export * from './workspace-private-case-evidence-http.js';
 export * from './knowledge-daily-source.js';
 export * from './knowledge-v2-delivery.js';
 export * from './knowledge-v2-ingress.js';
