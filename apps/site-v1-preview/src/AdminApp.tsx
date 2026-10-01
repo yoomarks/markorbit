@@ -69,6 +69,7 @@ export function AdminApp({
   const workspace = store.site(workspaceId);
   const router = useRouter();
   const [mobileNav, setMobileNav] = useState(false);
+  const [assistantOpen, setAssistantOpen] = useState(false);
   const { locale, setLocale, t } = useAdminI18n();
   const unpublished = hasUnpublishedChanges(workspace);
   const [title, description] = titles[section];
@@ -160,6 +161,9 @@ export function AdminApp({
             <small className="topbar-site-id">{workspace.siteId}</small>
           </div>
           <div className="topbar-actions">
+            <Button variant="secondary" onClick={() => setAssistantOpen(true)}>
+              {t('Operations assistant')}
+            </Button>
             <div
               className="admin-locale-switch"
               role="group"
@@ -245,6 +249,13 @@ export function AdminApp({
           />
         </main>
       </div>
+      {assistantOpen && (
+        <OperationsAssistant
+          workspaceId={workspaceId}
+          readOnly={readOnly}
+          onClose={() => setAssistantOpen(false)}
+        />
+      )}
     </div>
   );
 }
@@ -423,6 +434,41 @@ function Overview({ workspaceId }: { workspaceId: SiteSelector }) {
           </p>
         </Card>
       </div>
+      <Card className="order-attribution-card">
+        <div className="section-heading">
+          <div>
+            <span className="eyebrow">{t('Owner-backed commerce evidence')}</span>
+            <h2>{t('Attributed orders')}</h2>
+            <p>{t('Orders and payments remain managed by their authoritative owners.')}</p>
+          </div>
+          <Badge>{t('Read-only evidence')}</Badge>
+        </div>
+        {workspace.attributedOrders.length ? (
+          <div className="order-evidence-list">
+            {workspace.attributedOrders.map((order) => (
+              <article key={order.orderId}>
+                <div>
+                  <strong>{order.orderId}</strong>
+                  <Badge>{order.status}</Badge>
+                </div>
+                <code>{order.merchantRelationshipId}</code>
+                <span>
+                  {order.siteId} · {order.channel} · {order.sourcePage}
+                </span>
+                <small>
+                  {order.campaign} · {order.orderOwnerRef}
+                </small>
+                <p>{order.amountLabel}</p>
+              </article>
+            ))}
+          </div>
+        ) : (
+          <EmptyState
+            title={t('No attributed order evidence')}
+            description={t('No owner order reference is attributed to this Site fixture.')}
+          />
+        )}
+      </Card>
     </div>
   );
 }
@@ -1265,6 +1311,41 @@ function Services({ workspaceId, readOnly }: { workspaceId: SiteSelector; readOn
           <option value="en-US">English</option>
         </Select>
       </Card>
+      <section className="price-boundary-grid" aria-label={t('Price authority boundaries')}>
+        <div>
+          <span>01</span>
+          <strong>{t('MO product plans')}</strong>
+          <small>{t('Managed outside Site Admin and never editable here.')}</small>
+        </div>
+        <div>
+          <span>02</span>
+          <strong>{t('Site display price')}</strong>
+          <small>{t('Localized guidance for visitors; not a binding Quote.')}</small>
+        </div>
+        <div>
+          <span>03</span>
+          <strong>{t('Final Quote or Order')}</strong>
+          <small>{t('Owned by the governed commercial workflow and exact versions.')}</small>
+        </div>
+        <div>
+          <span>04</span>
+          <strong>{t('Promotions')}</strong>
+          <small>{t('Only authorized rule references may be displayed.')}</small>
+        </div>
+      </section>
+      <Card className="promotion-strip">
+        <div>
+          <span className="eyebrow">{t('Authorized promotion')}</span>
+          <h2>{workspace.promotionGrants[0]?.title ?? t('No authorized promotion')}</h2>
+          <p>{workspace.promotionGrants[0]?.ruleSummary}</p>
+        </div>
+        {workspace.promotionGrants[0] ? (
+          <div>
+            <Badge>{workspace.promotionGrants[0].status}</Badge>
+            <code>{workspace.promotionGrants[0].ownerRef}</code>
+          </div>
+        ) : null}
+      </Card>
       <div className="service-admin-grid">
         {filteredServices.map((service) => (
           <Card key={service.id} className="service-admin-card">
@@ -1603,6 +1684,41 @@ function Analytics({ workspaceId }: { workspaceId: SiteSelector }) {
           ))}
         </Card>
       </div>
+      <Card className="order-attribution-card">
+        <div className="section-heading">
+          <div>
+            <span className="eyebrow">{t('Owner-backed commerce evidence')}</span>
+            <h2>{t('Attributed orders')}</h2>
+            <p>{t('Orders and payments remain managed by their authoritative owners.')}</p>
+          </div>
+          <Badge>{t('Read-only evidence')}</Badge>
+        </div>
+        {workspace.attributedOrders.length ? (
+          <div className="order-evidence-list">
+            {workspace.attributedOrders.map((order) => (
+              <article key={order.orderId}>
+                <div>
+                  <strong>{order.orderId}</strong>
+                  <Badge>{order.status}</Badge>
+                </div>
+                <code>{order.merchantRelationshipId}</code>
+                <span>
+                  {order.siteId} · {order.channel} · {order.sourcePage}
+                </span>
+                <small>
+                  {order.campaign} · {order.orderOwnerRef}
+                </small>
+                <p>{order.amountLabel}</p>
+              </article>
+            ))}
+          </div>
+        ) : (
+          <EmptyState
+            title={t('No attributed order evidence')}
+            description={t('No owner order reference is attributed to this Site fixture.')}
+          />
+        )}
+      </Card>
     </div>
   );
 }
@@ -1680,17 +1796,28 @@ function Seo({ workspaceId, readOnly }: { workspaceId: SiteSelector; readOnly: b
   );
 }
 
-function Settings({ workspaceId, readOnly }: { workspaceId: SiteSelector; readOnly: boolean }) {
+function Settings({
+  workspaceId,
+  itemId,
+  readOnly
+}: {
+  workspaceId: SiteSelector;
+  itemId?: string;
+  readOnly: boolean;
+}) {
   const store = usePreviewStore();
   const { t } = useAdminI18n();
   const workspace = store.site(workspaceId);
   const config = workspace.draft;
+  if (itemId === 'payment')
+    return <CollectionSettings workspaceId={workspaceId} readOnly={readOnly} />;
   return (
     <div className="dashboard-grid">
       <AdminRelatedPages
         label={t('Settings pages')}
         items={[
           { href: `/admin/${workspaceId}/settings`, label: t('Settings'), current: true },
+          { href: `/admin/${workspaceId}/settings/payment`, label: t('Collection') },
           { href: `/admin/${workspaceId}/seo`, label: t('Domain & search') }
         ]}
       />
@@ -1848,5 +1975,283 @@ function Settings({ workspaceId, readOnly }: { workspaceId: SiteSelector; readOn
         )}
       </Card>
     </div>
+  );
+}
+
+function CollectionSettings({
+  workspaceId,
+  readOnly
+}: {
+  workspaceId: SiteSelector;
+  readOnly: boolean;
+}) {
+  const store = usePreviewStore();
+  const { t, formatDate } = useAdminI18n();
+  const site = store.site(workspaceId);
+  const [reviewing, setReviewing] = useState(false);
+  const [confirmed, setConfirmed] = useState(false);
+  const [status, setStatus] = useState('');
+  const selected = site.collection.authorizedRelationships.find(
+    (item) =>
+      item.id === site.collection.draft.merchantRelationshipId &&
+      item.provider === site.collection.draft.provider &&
+      item.relationship === site.collection.draft.relationship &&
+      item.supportedTerminals.includes(site.terminal)
+  );
+  const active = site.collection.authorizedRelationships.find(
+    (item) => item.id === site.collection.active.merchantRelationshipId
+  );
+  const invalid = !selected;
+
+  return (
+    <div className="screen-stack collection-settings">
+      <AdminRelatedPages
+        label={t('Settings pages')}
+        items={[
+          { href: `/admin/${workspaceId}/settings`, label: t('Settings') },
+          {
+            href: `/admin/${workspaceId}/settings/payment`,
+            label: t('Collection'),
+            current: true
+          },
+          { href: `/admin/${workspaceId}/seo`, label: t('Domain & search') }
+        ]}
+      />
+      <section className="collection-hero">
+        <div>
+          <span className="eyebrow">{t('Site collection configuration')}</span>
+          <h2>{t('Collection settings')}</h2>
+          <p>
+            {t(
+              'Choose only a merchant relationship authorized by Workspace and Payment. Site never stores credentials.'
+            )}
+          </p>
+        </div>
+        <div className="collection-version">
+          <span>{t('Active demo configuration')}</span>
+          <strong>v{site.collection.version}</strong>
+          <small>{formatDate(site.collection.activatedAt)}</small>
+        </div>
+      </section>
+
+      <div className="collection-layout">
+        <Card className="collection-current">
+          <div className="section-heading">
+            <div>
+              <span className="eyebrow">{t('Current relationship')}</span>
+              <h2>{active?.merchantName ?? t('Unavailable')}</h2>
+            </div>
+            <Badge>{active?.status ?? 'INVALID'}</Badge>
+          </div>
+          {active ? (
+            <dl className="commerce-facts">
+              <div>
+                <dt>{t('Merchant owner')}</dt>
+                <dd>{active.merchantOwnerRef}</dd>
+              </div>
+              <div>
+                <dt>{t('Payment channel')}</dt>
+                <dd>{active.provider}</dd>
+              </div>
+              <div>
+                <dt>{t('Service fulfiller')}</dt>
+                <dd>{active.fulfillmentOwnerRef}</dd>
+              </div>
+              <div>
+                <dt>{t('Contract relationship')}</dt>
+                <dd>{active.contractRef}</dd>
+              </div>
+            </dl>
+          ) : null}
+          <Alert tone="warning" title={t('No payment status is created')}>
+            {t(
+              'This browser-local configuration does not create checkout, payment success, settlement, refund, or provider credentials.'
+            )}
+          </Alert>
+        </Card>
+
+        <Card className="collection-picker">
+          <span className="eyebrow">{t('Authorized options')}</span>
+          <h2>{t('Select a collection relationship')}</h2>
+          <Select
+            label={t('Authorized collection relationship')}
+            disabled={readOnly || !site.collection.authorizedRelationships.length}
+            value={site.collection.draft.merchantRelationshipId}
+            onChange={(event) => {
+              store.updateCollectionDraft(workspaceId, event.target.value);
+              setReviewing(false);
+              setConfirmed(false);
+              setStatus('');
+            }}
+          >
+            {invalid && (
+              <option value={site.collection.draft.merchantRelationshipId}>
+                {site.collection.draft.merchantRelationshipId} · {t('Unauthorized reference')}
+              </option>
+            )}
+            {site.collection.authorizedRelationships
+              .filter((item) => item.supportedTerminals.includes(site.terminal))
+              .map((item) => (
+                <option key={item.id} value={item.id}>
+                  {item.merchantName} · {item.provider}
+                </option>
+              ))}
+          </Select>
+          {invalid ? (
+            <Alert tone="warning" title={t('Authorization required')}>
+              {t(
+                'The current configuration references an unauthorized relationship and cannot be activated.'
+              )}
+            </Alert>
+          ) : selected ? (
+            <div className="merchant-option-detail">
+              <Badge>{selected.relationship}</Badge>
+              <strong>{selected.id}</strong>
+              <span>{selected.merchantOwnerRef}</span>
+              <span>{selected.contractRef}</span>
+              <small>
+                {selected.status === 'DEMO_ONLY'
+                  ? t('Demo channel only — no real provider connection')
+                  : t('Authorized reference — owner verification still required at runtime')}
+              </small>
+            </div>
+          ) : (
+            <EmptyState
+              title={t('No authorized collection relationship')}
+              description={t(
+                'Ask a Workspace payment administrator to authorize a merchant relationship. Site cannot create one.'
+              )}
+            />
+          )}
+          <Button disabled={readOnly || invalid} onClick={() => setReviewing(true)}>
+            {t('Review and activate')}
+          </Button>
+        </Card>
+      </div>
+
+      {reviewing && selected && (
+        <Card className="collection-confirmation">
+          <div>
+            <span className="eyebrow">{t('Structured confirmation')}</span>
+            <h2>{t('Activate for this Site only?')}</h2>
+            <p>
+              {site.siteName} · {site.siteId} · {selected.merchantName} · {selected.provider}
+            </p>
+          </div>
+          <Checkbox
+            label={t(
+              'I confirm this configuration applies only to the current Site and does not prove a payment or settlement.'
+            )}
+            checked={confirmed}
+            onChange={(event) => setConfirmed(event.target.checked)}
+          />
+          <div className="card-actions">
+            <Button
+              disabled={!confirmed || readOnly}
+              onClick={() => {
+                const version = store.activateCollection(workspaceId);
+                setStatus(`${t('Demo collection configuration')} v${version} ${t('Activated')}`);
+                setReviewing(false);
+                setConfirmed(false);
+              }}
+            >
+              {t('Activate demo collection configuration')}
+            </Button>
+            <Button variant="secondary" onClick={() => setReviewing(false)}>
+              {t('Keep editing')}
+            </Button>
+          </div>
+        </Card>
+      )}
+      {status && (
+        <p role="status" className="success-note">
+          ✓ {status}
+        </p>
+      )}
+    </div>
+  );
+}
+
+function OperationsAssistant({
+  workspaceId,
+  readOnly,
+  onClose
+}: {
+  workspaceId: SiteSelector;
+  readOnly: boolean;
+  onClose: () => void;
+}) {
+  const store = usePreviewStore();
+  const { t } = useAdminI18n();
+  const site = store.site(workspaceId);
+  const [goal, setGoal] = useState('');
+  const [proposal, setProposal] = useState('');
+  const [applied, setApplied] = useState(false);
+  return (
+    <aside className="operations-assistant" aria-label={t('Operations assistant')}>
+      <div className="assistant-head">
+        <div>
+          <span className="eyebrow">{site.siteName}</span>
+          <h2>{t('Operations assistant')}</h2>
+          <small>
+            {site.siteId} · {site.draft.defaultLocale}
+          </small>
+        </div>
+        <button aria-label={t('Close assistant')} onClick={onClose}>
+          ×
+        </button>
+      </div>
+      <Alert title={t('Draft preparation only')}>
+        {t(
+          'The assistant can prepare a reviewable draft. Publishing, collection changes and customer messages always use structured confirmation.'
+        )}
+      </Alert>
+      <div className="assistant-suggestions" aria-label={t('Suggested tasks')}>
+        {[
+          t('Prepare homepage copy'),
+          t('Organize service content'),
+          t('Draft a campaign brief')
+        ].map((label) => (
+          <button key={label} onClick={() => setGoal(label)}>
+            {label}
+          </button>
+        ))}
+      </div>
+      <TextArea
+        label={t('What would you like to prepare?')}
+        rows={5}
+        value={goal}
+        onChange={(event) => setGoal(event.target.value)}
+      />
+      <Button
+        disabled={!goal.trim()}
+        onClick={() => {
+          setProposal(
+            `${goal.trim()}。建议在首页首屏说明可查看服务、查询进度，并明确所有正式报价与办理状态需经审核确认。`
+          );
+          setApplied(false);
+        }}
+      >
+        {t('Generate draft proposal')}
+      </Button>
+      {proposal && (
+        <div className="assistant-proposal">
+          <Badge>{t('Proposal pending review')}</Badge>
+          <p>{proposal}</p>
+          <Button
+            disabled={readOnly || applied}
+            onClick={() => {
+              store.applyOperationsProposal(workspaceId, proposal);
+              setApplied(true);
+            }}
+          >
+            {applied ? t('Applied to draft') : t('Apply to current Site draft')}
+          </Button>
+          <Link className="text-link" href={`/admin/${workspaceId}/editor`}>
+            {t('Open visual editor to review')} →
+          </Link>
+        </div>
+      )}
+    </aside>
   );
 }
