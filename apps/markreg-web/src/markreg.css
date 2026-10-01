@@ -31,6 +31,56 @@
   display: grid;
   gap: var(--mo-space-md);
 }
+.markreg-record-card {
+  display: grid;
+  gap: var(--mo-space-md);
+}
+.markreg-record-card__heading,
+.markreg-record-card__meta {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--mo-space-md);
+}
+.markreg-record-card__heading h3,
+.markreg-record-card__heading p,
+.markreg-record-card__source p {
+  margin-block: 0;
+  overflow-wrap: anywhere;
+}
+.markreg-record-card__heading p,
+.markreg-record-card__meta,
+.markreg-record-card__source {
+  color: var(--mo-muted);
+  font-size: 0.88rem;
+}
+.markreg-record-card__kicker {
+  color: var(--mo-brand);
+  font-size: 0.76rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.markreg-record-card__status {
+  flex: 0 0 auto;
+  padding: 0.25rem 0.6rem;
+  border-radius: 999px;
+  background: var(--mo-background);
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+.markreg-record-card__meta {
+  justify-content: flex-start;
+  flex-wrap: wrap;
+}
+.markreg-record-card__meta span + span::before {
+  content: '·';
+  margin-inline-end: var(--mo-space-md);
+}
+.markreg-record-card__source summary {
+  cursor: pointer;
+  font-weight: 700;
+}
 .markreg-workspace-primary-actions,
 .markreg-workspace-order-actions,
 .markreg-workspace-pagination,
@@ -126,6 +176,23 @@
   }
   .markreg-workspace-pagination {
     justify-content: flex-start;
+  }
+  .markreg-record-card__heading,
+  .markreg-record-card__meta {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+  .markreg-record-card__meta {
+    gap: var(--mo-space-xs);
+  }
+  .markreg-record-card__meta span + span::before {
+    display: none;
+  }
+  .markreg-workspace-order-actions a {
+    display: block;
+    width: 100%;
+    min-height: 44px;
+    padding-block: var(--mo-space-sm);
   }
   .markreg-workspace-planning-nav {
     padding: var(--mo-space-md) var(--mo-space-md) 0;

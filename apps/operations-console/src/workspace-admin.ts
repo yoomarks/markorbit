@@ -1,3 +1,5 @@
+import { OwnerReadError, ownerReadHttpError } from './owner-read-error.js';
+
 export type WorkspaceAdminStatus = 'ACTIVE' | 'ARCHIVED';
 export type WorkspaceAdminSort = 'NAME' | 'CREATED_AT' | 'UPDATED_AT' | 'MEMBERS';
 export type WorkspaceAdminDirection = 'ASC' | 'DESC';
@@ -158,18 +160,21 @@ export async function loadWorkspaceAdminPortfolio(
     headers: { accept: 'application/json' }
   });
   const value: unknown = await response.json().catch(() => undefined);
-  if (!response.ok)
-    throw new Error(`Workspace portfolio unavailable (${response.status}${failureCode(value)}).`);
+  if (!response.ok) throw ownerReadHttpError('Workspace portfolio', response.status, value);
   const parsed = parseWorkspaceAdminPortfolio(value);
   if (!parsed)
-    throw new Error('Workspace portfolio owner response is malformed and cannot be trusted.');
+    throw new OwnerReadError(
+      'contract',
+      'Workspace portfolio owner response is malformed and cannot be trusted.'
+    );
   if (
     parsed.page !== query.page ||
     parsed.pageSize !== query.pageSize ||
     parsed.sort !== query.sort ||
     parsed.direction !== query.direction
   )
-    throw new Error(
+    throw new OwnerReadError(
+      'contract',
       'Workspace portfolio owner response does not match the requested page or sort.'
     );
   return parsed;
