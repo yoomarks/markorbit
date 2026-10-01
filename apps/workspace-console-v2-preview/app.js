@@ -67,7 +67,7 @@ const btn = (label, action, kind = '') =>
   `<button class="btn ${kind}" data-action="${action}">${label}</button>`;
 function shell(content) {
   const c = copy[state.lang];
-  return `<div class="shell"><aside class="rail"><div class="brand">MarkOrbit<small>${c.preview}</small></div><div class="workspace-switch"><b>${t('澄知知识产权', 'ClearMark IP')}</b><span>${t('机构 Workspace · Owner', 'Organization Workspace · Owner')}</span></div><nav class="nav" aria-label="${t('主导航', 'Primary')}">${c.nav.map((n, i) => `<button data-page="${c.pages[i]}" class="${state.page === c.pages[i] ? 'active' : ''}">${n}</button>`).join('')}</nav><div class="rail-foot">${t('当前行事主体', 'Acting entity')}<br><b>${t('上海澄知知识产权代理有限公司', 'Shanghai ClearMark IP Agency Co., Ltd.')}</b></div></aside><main class="main"><header class="topbar"><span class="mobile-title">${c.nav[c.pages.indexOf(state.page)]}</span><button class="btn" data-action="locale">${c.locale}</button></header><div id="content" class="content" tabindex="-1">${content}</div></main></div><div class="assistant"><button data-action="chat">${c.assistant}</button>${state.chat ? chat() : ''}</div>${state.modal ? modal() : ''}`;
+  return `<div class="shell"><aside class="rail"><div class="brand">MarkOrbit<small>${c.preview}</small></div><div class="workspace-switch"><b>${t('澄知知识产权', 'ClearMark IP')}</b><span>${t('机构 Workspace · Owner', 'Organization Workspace · Owner')}</span></div><nav class="nav" aria-label="${t('主导航', 'Primary')}">${c.nav.map((n, i) => `<button data-page="${c.pages[i]}" class="${state.page === c.pages[i] ? 'active' : ''}"${state.page === c.pages[i] ? ' aria-current="page"' : ''}>${n}</button>`).join('')}</nav><div class="rail-foot">${t('当前行事主体', 'Acting entity')}<br><b>${t('上海澄知知识产权代理有限公司', 'Shanghai ClearMark IP Agency Co., Ltd.')}</b></div></aside><main class="main"><header class="topbar"><span class="mobile-title">${c.nav[c.pages.indexOf(state.page)]}</span><button class="btn" data-action="locale">${c.locale}</button></header><div id="content" class="content" tabindex="-1">${content}</div></main></div><div class="assistant"><button data-action="chat">${c.assistant}</button>${state.chat ? chat() : ''}</div>${state.modal ? modal() : ''}`;
 }
 const head = (ey, title, desc, actions = '') =>
   `<div class="headline"><div><div class="eyebrow">${ey}</div><h1>${title}</h1><p>${desc}</p></div>${actions ? `<div class="actions">${actions}</div>` : ''}</div>`;
@@ -109,7 +109,7 @@ function finance() {
     ['docs', t('对账与票据', 'Reconciliation')],
     ['collection', t('收款配置', 'Collection config')]
   ];
-  return `${head(t('证据化资金视图', 'Evidence-based money views'), t('财务', 'Finance'), t('统一查看，不形成一个“可用余额”。每笔记录保留订单、业务、双方主体、币种、渠道、状态与证据来源。', 'One place to inspect, never one available balance. Every row keeps order, business, entities, currency, channel, status and evidence source.'))}<div class="notice warn">${t('本轮不提供充值、转账或提现。Stripe 的 requires_capture 当前被映射为 PROCESSING，不能在界面声称“已预授权/已冻结”。', 'No top-up, transfer or withdrawal in this release. Stripe requires_capture currently maps to PROCESSING, so the UI cannot claim “preauthorized/held”.')}</div><div class="tabs">${tabs.map((x) => `<button data-finance="${x[0]}" class="${state.financeTab === x[0] ? 'active' : ''}">${x[1]}</button>`).join('')}</div>${financeBody()}`;
+  return `${head(t('证据化资金视图', 'Evidence-based money views'), t('财务', 'Finance'), t('统一查看，不形成一个“可用余额”。每笔记录保留订单、业务、双方主体、币种、渠道、状态与证据来源。', 'One place to inspect, never one available balance. Every row keeps order, business, entities, currency, channel, status and evidence source.'))}<div class="notice warn">${t('本轮不提供充值、转账或提现。Stripe 的 requires_capture 当前被映射为 PROCESSING，不能在界面声称“已预授权/已冻结”。', 'No top-up, transfer or withdrawal in this release. Stripe requires_capture currently maps to PROCESSING, so the UI cannot claim “preauthorized/held”.')}</div><div class="tabs">${tabs.map((x) => `<button data-finance="${x[0]}" class="${state.financeTab === x[0] ? 'active' : ''}" aria-pressed="${state.financeTab === x[0]}">${x[1]}</button>`).join('')}</div>${financeBody()}`;
 }
 function financeBody() {
   if (state.financeTab === 'collection') return collection();
@@ -214,11 +214,22 @@ function render() {
   el('app').innerHTML = shell(pages[state.page]());
   bind();
 }
+function syncRoute(mode = 'push') {
+  const params = new URLSearchParams(location.search.replaceAll(';', '&'));
+  params.set('page', state.page);
+  state.lang === 'en' ? params.set('lang', 'en') : params.delete('lang');
+  state.page === 'finance' && state.financeTab !== 'mo'
+    ? params.set('tab', state.financeTab)
+    : params.delete('tab');
+  params.delete('modal');
+  history[`${mode}State`]({}, '', `${location.pathname}?${params.toString()}`);
+}
 function bind() {
   document.querySelectorAll('[data-page]').forEach(
     (x) =>
       (x.onclick = () => {
         state.page = x.dataset.page;
+        syncRoute();
         render();
       })
   );
@@ -226,6 +237,7 @@ function bind() {
     (x) =>
       (x.onclick = () => {
         state.financeTab = x.dataset.finance;
+        syncRoute();
         render();
       })
   );
@@ -236,10 +248,12 @@ function bind() {
 function action(a) {
   if (a === 'locale') {
     state.lang = state.lang === 'zh' ? 'en' : 'zh';
+    syncRoute('replace');
   } else if (a === 'chat') {
     state.chat = !state.chat;
   } else if (a === 'go-products') {
     state.page = 'products';
+    syncRoute();
   } else if (a === 'buy-site') {
     state.modal = 'buy';
   } else if (a === 'confirm-buy') {
@@ -278,4 +292,17 @@ function action(a) {
   }
   render();
 }
+addEventListener('popstate', () => {
+  const params = new URLSearchParams(location.search.replaceAll(';', '&'));
+  state.lang = params.get('lang') === 'en' ? 'en' : 'zh';
+  state.page = copy.zh.pages.includes(params.get('page')) ? params.get('page') : 'overview';
+  state.financeTab = ['mo', 'receivable', 'payable', 'commission', 'docs', 'collection'].includes(
+    params.get('tab')
+  )
+    ? params.get('tab')
+    : 'mo';
+  state.modal = null;
+  state.chat = false;
+  render();
+});
 render();

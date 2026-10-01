@@ -57,3 +57,33 @@ test('English is complete and mobile has no horizontal page overflow', async ({
     expect(overflow).toBe(false);
   }
 });
+
+test('navigation keeps URL, refresh and browser history aligned with the visible surface', async ({
+  page
+}) => {
+  await page.goto('/');
+  const navigation = page.getByRole('navigation');
+  await navigation.getByRole('button', { name: '财务' }).click();
+  await expect(page).toHaveURL(/[?&]page=finance(?:&|$)/);
+  await expect(navigation.getByRole('button', { name: '财务' })).toHaveAttribute(
+    'aria-current',
+    'page'
+  );
+
+  await page.getByRole('button', { name: '收款配置' }).click();
+  await expect(page).toHaveURL(/[?&]tab=collection(?:&|$)/);
+  await page.reload();
+  await expect(page.getByRole('heading', { name: '财务' })).toBeVisible();
+  await expect(page.getByRole('button', { name: '收款配置' })).toHaveAttribute(
+    'aria-pressed',
+    'true'
+  );
+
+  await page.goBack();
+  await expect(page.getByRole('button', { name: 'MO 订阅' })).toHaveAttribute(
+    'aria-pressed',
+    'true'
+  );
+  await page.goBack();
+  await expect(page.getByRole('heading', { name: '今天需要你决定什么' })).toBeVisible();
+});
