@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Alert, Button, Card, DataList, PageHeader } from '@markorbit/ui';
+import { OwnerReadError, ownerReadHttpError } from './owner-read-error.js';
 
 export const KNOWLEDGE_PLATFORM_UNAVAILABLE_TEXT =
   'Unavailable is not the same as healthy, empty, zero, COMPLETE, or UNKNOWN owner evidence. No fallback state is inferred.';
@@ -210,14 +211,14 @@ export async function loadKnowledgeOwnerHealth(
     headers: { accept: 'application/json', 'X-MarkOrbit-Workspace-Id': workspaceId }
   });
   const value: unknown = await response.json().catch(() => undefined);
-  if (!response.ok) {
-    const failure = record(value);
-    const code = typeof failure?.code === 'string' ? ` | ${failure.code}` : '';
-    throw new Error(`Knowledge owner health unavailable (${response.status}${code}).`);
-  }
+  if (!response.ok)
+    throw ownerReadHttpError('Knowledge owner health', response.status, value, ' | ');
   const parsed = parseKnowledgeOwnerHealth(value);
   if (!parsed || parsed.workspaceId !== workspaceId)
-    throw new Error('Knowledge owner health is malformed and cannot be trusted.');
+    throw new OwnerReadError(
+      'contract',
+      'Knowledge owner health is malformed and cannot be trusted.'
+    );
   return parsed;
 }
 

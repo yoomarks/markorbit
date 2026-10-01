@@ -3,7 +3,7 @@ import { defineConfig } from '@playwright/test';
 // Storybook-only responsive and visual evidence for the bounded UX trust/state lane.
 export default defineConfig({
   testDir: './tests',
-  testMatch: '**/ux-trust-visual.pw.ts',
+  testMatch: ['**/ux-trust-visual.pw.ts', '**/trading-creative.pw.ts'],
   outputDir: './test-results/ux-trust-visual',
   forbidOnly: Boolean(process.env.CI),
   retries: 0,

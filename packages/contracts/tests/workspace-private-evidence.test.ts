@@ -36,14 +36,41 @@ describe('workspace private evidence', () => {
         provenanceClass: 'INFERRED_CANDIDATE'
       })
     ).toThrow(/require review/));
-  it('materializes accepted evidence by reference without copying content', () => {
+  it('materializes only evidence explicitly accepted for the exact case by reference', () => {
+    const caseEvidence: WorkspacePrivateDocumentBindingV1 = {
+      ...base,
+      bindingId: 'case-evidence',
+      targetKind: 'CASE',
+      targetId: 'case_1'
+    };
     const binder = materializeCaseEvidenceBinderV1({
       workspaceId: 'workspace-a',
       caseId: 'case_1',
-      bindings: [base, { ...base, bindingId: 'wpe_2', workspaceId: 'workspace-b' }],
+      bindings: [
+        caseEvidence,
+        base,
+        { ...base, bindingId: 'entity-evidence', targetKind: 'ENTITY', targetId: 'entity_1' },
+        { ...caseEvidence, bindingId: 'other-case', targetId: 'case_2' },
+        { ...caseEvidence, bindingId: 'other-workspace', workspaceId: 'workspace-b' },
+        { ...caseEvidence, bindingId: 'suggestion', status: 'SUGGESTED', reviewRequired: true },
+        { ...caseEvidence, bindingId: 'rejected', status: 'REJECTED' }
+      ],
       materializedAt: '2026-09-22T01:00:00Z'
     });
-    expect(binder.evidence).toEqual([base]);
+    expect(binder.evidence).toEqual([caseEvidence]);
     expect(JSON.stringify(binder)).not.toContain('content');
+  });
+
+  it('does not treat a Workspace-wide trademark or entity binding as proof of case membership', () => {
+    const binder = materializeCaseEvidenceBinderV1({
+      workspaceId: 'workspace-a',
+      caseId: 'case_2',
+      bindings: [
+        base,
+        { ...base, bindingId: 'wpe_entity', targetKind: 'ENTITY', targetId: 'entity_1' }
+      ],
+      materializedAt: '2026-09-22T01:00:00Z'
+    });
+    expect(binder.evidence).toEqual([]);
   });
 });
