@@ -134,7 +134,7 @@ integration('PostgreSQL ReadyPackage V2 delivery ledger', () => {
     await database
       .getPool()
       .query(
-        'DROP TABLE IF EXISTS knowledge_v2_deliveries,knowledge_intake_contents,knowledge_intakes,password_credentials,account_profiles,sessions,workspace_memberships,workspaces,users CASCADE; DROP FUNCTION IF EXISTS protect_knowledge_v2_delivery_immutable_evidence() CASCADE; DROP SCHEMA IF EXISTS markorbit_persistence CASCADE'
+        'DROP TABLE IF EXISTS core_workspace_private_case_evidence_bindings,knowledge_v2_deliveries,knowledge_intake_contents,knowledge_intakes,password_credentials,account_profiles,sessions,workspace_memberships,workspaces,users CASCADE; DROP FUNCTION IF EXISTS protect_knowledge_v2_delivery_immutable_evidence() CASCADE; DROP SCHEMA IF EXISTS markorbit_persistence CASCADE'
       );
     await migrate(database.getPool(), 'core_knowledge_v2_delivery', await migrations());
     await new PostgresWorkspaceRepository(database.getPool()).create({
