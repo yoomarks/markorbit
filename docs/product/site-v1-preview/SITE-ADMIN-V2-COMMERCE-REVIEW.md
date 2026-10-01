@@ -1,7 +1,9 @@
 # Site Admin V2：单 Site 经营与收款配置审议
 
-状态：**三总监批准进入 fixture-only Preview 实现**  
-Task ID：`MO-SITE-ADMIN-V2-COMMERCE-PREVIEW`  
+状态：**三总监批准进入 fixture-only Preview 实现**
+
+Task ID：`MO-SITE-ADMIN-V2-COMMERCE-PREVIEW`
+
 预期 PR：`feat(site): add site commerce and payment configuration preview`
 
 ## 1. 范围与产品真相
