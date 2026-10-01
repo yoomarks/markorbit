@@ -38,6 +38,8 @@ function state(selected = false): TradingStudioState {
   return {
     run: {
       studioRunId,
+      workspaceId,
+      version: 3,
       currentness: 'CURRENT',
       status: 'COMPLETED',
       trademarkAsset: { id: 'trademark-asset_ui', version: 4 }
@@ -133,7 +135,10 @@ function client(initial: TradingStudioState) {
   return { api: { loadState, selectDirection }, loadState, selectDirection };
 }
 
-afterEach(cleanup);
+afterEach(() => {
+  cleanup();
+  window.localStorage.clear();
+});
 
 describe('Orbit Trading Studio direction comparison', () => {
   it('renders exactly the three semantic roles and the authority boundary', async () => {
@@ -159,38 +164,182 @@ describe('Orbit Trading Studio direction comparison', () => {
     expect(screen.queryByRole('button', { name: 'Build this direction' })).not.toBeInTheDocument();
   });
 
-  it('opens a read-only seller validation flow from durable selection without implying publication', async () => {
+  it('opens a visual workbench, creates a visible revision and compares versions', async () => {
     render(
       <TradingStudio
         workspaceId={workspaceId}
         studioRunId={studioRunId}
         client={client(state(true)).api}
         sellerValidationPrototype
+        sellerValidationTrustedPrincipalId="person-a"
       />
     );
 
-    await userEvent.click(await screen.findByRole('button', { name: 'Build this direction' }));
-    expect(await screen.findByText('Seller validation flow')).toBeInTheDocument();
-    expect(screen.getByText('Nothing here publishes the trademark')).toBeInTheDocument();
-    expect(screen.getByText(/Brand DNA available/u)).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: 'Visual build slots' })).toBeInTheDocument();
-    expect(screen.getByText('Hero visual')).toBeInTheDocument();
-    await userEvent.click(screen.getAllByRole('button', { name: 'Pin' })[0]!);
-    expect(screen.getByText('Pinned locally')).toBeInTheDocument();
+    await userEvent.click(await screen.findByRole('button', { name: '制作此方向' }));
+    expect(await screen.findByText('商标视觉美化工作台')).toBeInTheDocument();
+    expect(screen.getByText('原始商标不会被修改')).toBeInTheDocument();
+    expect(screen.getByText('trademark-asset_ui@4')).toBeInTheDocument();
+    expect(screen.getByText('demo-visual@1')).toBeInTheDocument();
     expect(
-      screen.getByText('Prototype pin state changed locally. No saved creative asset was created.')
+      screen.getByRole('img', { name: /Focused operator · SVG 布局示意/u })
     ).toBeInTheDocument();
 
-    await userEvent.click(screen.getByRole('button', { name: 'Listing preview' }));
-    expect(screen.getByRole('heading', { name: /Focused operator —/u })).toBeInTheDocument();
-    expect(screen.getByText('Workspace facts')).toBeInTheDocument();
-    expect(screen.getByText('AI interpretation')).toBeInTheDocument();
-    expect(screen.getByText('Not published')).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: '应用结构化 Demo 调整' }));
+    expect(screen.getByText('demo-visual@2')).toBeInTheDocument();
+    expect(screen.getByRole('img', { name: /Demo v2/u })).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: '版本对比' }));
+    expect(screen.getByLabelText('Demo 版本对比')).toBeInTheDocument();
+  });
 
-    await userEvent.click(screen.getByRole('button', { name: 'Destination readiness' }));
-    expect(screen.getByText('Needs attention — no destination is connected')).toBeInTheDocument();
-    expect(screen.getByText('Not published yet')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Publication not enabled' })).toBeDisabled();
+  it('saves a personal Demo draft and preserves source identity across locale changes', async () => {
+    render(
+      <TradingStudio
+        workspaceId={workspaceId}
+        studioRunId={studioRunId}
+        client={client(state(true)).api}
+        sellerValidationPrototype
+        sellerValidationTrustedPrincipalId="person-a"
+      />
+    );
+
+    await userEvent.click(await screen.findByRole('button', { name: '制作此方向' }));
+    expect(await screen.findByText('商标视觉美化工作台')).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: '应用结构化 Demo 调整' }));
+    expect(screen.getByText('demo-visual@2')).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: '保存 Demo 草稿' }));
+    expect(screen.getByText(/个人 Demo 草稿/u)).toBeInTheDocument();
+    expect(screen.getByText(/未调用模型/u)).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole('button', { name: 'English' }));
+    expect(screen.getByText('Trademark creative workbench')).toBeInTheDocument();
+    expect(screen.getByText('trademark-asset_ui@4')).toBeInTheDocument();
+    expect(screen.getByText('demo-visual@2')).toBeInTheDocument();
+    expect(screen.getByText(/Personal Demo draft saved/u)).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: '中文' }));
+    expect(screen.getByText('商标视觉美化工作台')).toBeInTheDocument();
+  });
+
+  it('keeps seller listing and publication boundaries distinct from Demo creative work', async () => {
+    render(
+      <TradingStudio
+        workspaceId={workspaceId}
+        studioRunId={studioRunId}
+        client={client(state(true)).api}
+        sellerValidationPrototype
+        sellerValidationTrustedPrincipalId="person-a"
+      />
+    );
+
+    await userEvent.click(await screen.findByRole('button', { name: '制作此方向' }));
+    expect(await screen.findByText('商标视觉美化工作台')).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: '商业说明' }));
+    expect(screen.getByRole('heading', { name: /Focused operator —/u })).toBeInTheDocument();
+    expect(screen.getByText('Workspace 事实')).toBeInTheDocument();
+    expect(screen.getByText('AI 解读')).toBeInTheDocument();
+    expect(screen.getByText('未发布')).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole('button', { name: '发布边界' }));
+    expect(screen.getByText('需要处理——未连接发布目的地')).toBeInTheDocument();
+    expect(screen.getByText('尚未发布')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '未开启发布' })).toBeDisabled();
+  });
+
+  it('keeps unsupported language as a pending note while structured controls deterministically change the Demo', async () => {
+    render(
+      <TradingStudio
+        workspaceId={workspaceId}
+        studioRunId={studioRunId}
+        client={client(state(true)).api}
+        sellerValidationPrototype
+        sellerValidationTrustedPrincipalId="person-a"
+      />
+    );
+    await userEvent.click(await screen.findByRole('button', { name: '制作此方向' }));
+    expect(await screen.findByText('商标视觉美化工作台')).toBeInTheDocument();
+    await userEvent.type(await screen.findByLabelText('待处理修改意见'), '让图形旋转并加入动画');
+    await userEvent.selectOptions(await screen.findByLabelText('使用场景'), 'WEB');
+    await userEvent.selectOptions(screen.getByLabelText('颜色气质'), 'WARM');
+    expect(screen.getByRole('img', { name: /WEB · Demo v2/u })).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: '应用结构化 Demo 调整' }));
+    expect(screen.getByText(/修改意见已作为待处理文本保存/u)).toBeInTheDocument();
+    expect(screen.getAllByText('让图形旋转并加入动画')).toHaveLength(2);
+    expect(screen.getAllByText(/网站首页 · 温暖质感/u)).toHaveLength(2);
+  });
+
+  it('isolates browser drafts by trusted principal and restores only the matching person', async () => {
+    const first = render(
+      <TradingStudio
+        workspaceId={workspaceId}
+        studioRunId={studioRunId}
+        client={client(state(true)).api}
+        sellerValidationPrototype
+        sellerValidationTrustedPrincipalId="person-a"
+      />
+    );
+    await userEvent.click(await screen.findByRole('button', { name: '制作此方向' }));
+    await userEvent.type(screen.getByLabelText('待处理修改意见'), '仅属于 A 的修改意见');
+    await userEvent.selectOptions(screen.getByLabelText('颜色气质'), 'RESTRAINED');
+    await userEvent.click(screen.getByRole('button', { name: '保存 Demo 草稿' }));
+    first.unmount();
+
+    const second = render(
+      <TradingStudio
+        workspaceId={workspaceId}
+        studioRunId={studioRunId}
+        client={client(state(true)).api}
+        sellerValidationPrototype
+        sellerValidationTrustedPrincipalId="person-b"
+      />
+    );
+    await userEvent.click(await screen.findByRole('button', { name: '制作此方向' }));
+    expect(screen.queryByText('仅属于 A 的修改意见')).not.toBeInTheDocument();
+    expect(screen.getByText('demo-visual@1')).toBeInTheDocument();
+    second.unmount();
+
+    render(
+      <TradingStudio
+        workspaceId={workspaceId}
+        studioRunId={studioRunId}
+        client={client(state(true)).api}
+        sellerValidationPrototype
+        sellerValidationTrustedPrincipalId="person-a"
+      />
+    );
+    await userEvent.click(await screen.findByRole('button', { name: '制作此方向' }));
+    expect(await screen.findAllByText('仅属于 A 的修改意见')).toHaveLength(2);
+    expect(screen.getByText('demo-visual@2')).toBeInTheDocument();
+  });
+
+  it('keeps memory state usable when browser storage reads and writes fail', async () => {
+    const storage = {
+      getItem: vi.fn(() => {
+        throw new Error('read failed');
+      }),
+      setItem: vi.fn(() => {
+        throw new Error('write failed');
+      }),
+      removeItem: vi.fn(() => {
+        throw new Error('remove failed');
+      })
+    };
+    render(
+      <TradingStudio
+        workspaceId={workspaceId}
+        studioRunId={studioRunId}
+        client={client(state(true)).api}
+        sellerValidationPrototype
+        sellerValidationTrustedPrincipalId="person-a"
+        sellerValidationStorage={storage}
+      />
+    );
+    await userEvent.click(await screen.findByRole('button', { name: '制作此方向' }));
+    expect(await screen.findByText(/无法读取浏览器草稿/u)).toBeInTheDocument();
+    await userEvent.type(screen.getByLabelText('待处理修改意见'), '存储失败后仍可编辑');
+    await userEvent.selectOptions(screen.getByLabelText('颜色气质'), 'WARM');
+    await userEvent.click(screen.getByRole('button', { name: '保存 Demo 草稿' }));
+    expect(screen.getByText(/浏览器存储不可用/u)).toBeInTheDocument();
+    expect(screen.getAllByText('存储失败后仍可编辑')).toHaveLength(2);
+    expect(screen.getByText('demo-visual@2')).toBeInTheDocument();
   });
 
   it('records one explicit exact-version choice and reloads durable owner state', async () => {

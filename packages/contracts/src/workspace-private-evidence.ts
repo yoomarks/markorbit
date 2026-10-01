@@ -81,10 +81,13 @@ export function materializeCaseEvidenceBinderV1(input: {
 }): CaseEvidenceBinderV1 {
   const evidence = input.bindings.filter((binding) => {
     assertWorkspacePrivateDocumentBindingV1(binding);
+    // A Workspace-wide TRADEMARK/ENTITY acceptance is not evidence of case membership.
+    // The owning product must first accept an explicit binding to this exact case.
     return (
       binding.workspaceId === input.workspaceId &&
       binding.status === 'ACCEPTED' &&
-      (binding.targetKind !== 'CASE' || binding.targetId === input.caseId)
+      binding.targetKind === 'CASE' &&
+      binding.targetId === input.caseId
     );
   });
   return {

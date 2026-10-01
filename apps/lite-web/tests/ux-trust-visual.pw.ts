@@ -72,3 +72,58 @@ test('disabled and final-confirmation actions explain their safety conditions', 
   await expect(release).toBeEnabled();
   await capture(page, testInfo, 'execution-release-final-confirmation-ready');
 });
+
+test('list and detail layouts stay distinct across the five product surfaces', async ({
+  page
+}, testInfo) => {
+  await page.goto('/iframe.html?id=products-operations-console--overview&viewMode=story');
+  await expect(page.getByRole('heading', { name: 'Super admin overview' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Platform domains' })).toHaveCount(0);
+  await capture(page, testInfo, 'super-admin-summary-only');
+
+  await page.goto('/iframe.html?id=products-workspace-console--workspace-list&viewMode=story');
+  await expect(page.getByRole('heading', { name: 'All Workspaces' })).toBeVisible();
+  await page.getByRole('button', { name: 'View' }).first().click();
+  await expect(page.getByRole('heading', { name: 'Orbit IP Partners' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'All Workspaces' })).toHaveCount(0);
+  await page.getByRole('button', { name: 'Back to Workspaces' }).click();
+  await expect(page.getByRole('heading', { name: 'All Workspaces' })).toBeVisible();
+  await capture(page, testInfo, 'workspace-list-restored');
+
+  await page.goto('/iframe.html?id=products-lite-workspace--customer-list&viewMode=story');
+  await page.getByLabel('Search customers').fill('Northwind');
+  await page.getByRole('button', { name: 'View customer preview' }).click();
+  await expect(page.getByRole('heading', { name: 'Northwind Outdoor' })).toBeVisible();
+  await page.getByRole('button', { name: '← Back to customers' }).click();
+  await expect(page.getByLabel('Search customers')).toHaveValue('Northwind');
+  await capture(page, testInfo, 'lite-customer-query-restored');
+
+  await page.goto('/iframe.html?id=lite-site-manager--multiple-sites&viewMode=story');
+  await expect(page.getByRole('heading', { name: 'My Sites' })).toBeVisible();
+  await page.getByRole('button', { name: 'Open Site settings' }).first().click();
+  await expect(page.getByRole('heading', { name: 'Site Manager' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'My Sites' })).toHaveCount(0);
+  await capture(page, testInfo, 'site-dedicated-settings');
+
+  await page.goto('/iframe.html?id=markreg-workspace-home--with-independent-matter&viewMode=story');
+  await expect(page.getByText('ORBIT MARK', { exact: true }).last()).toBeVisible();
+  await expect(page.locator('.markreg-record-card')).toHaveCount(2);
+  await capture(page, testInfo, 'customer-portal-business-cards');
+});
+
+test('quota review supports truthful small, scalable and English modes', async ({
+  page
+}, testInfo) => {
+  await page.goto(
+    '/iframe.html?id=reviews-quota-list-and-detail--three-quota-master-detail&viewMode=story'
+  );
+  await expect(page.getByRole('heading', { name: '配额' })).toBeVisible();
+  await expect(page.getByText('Workspace 成员席位')).toHaveCount(2);
+  await expect(page.locator('canvas, svg')).toHaveCount(0);
+  await page.getByRole('button', { name: 'English' }).click();
+  await expect(page.getByRole('heading', { name: 'Quotas' })).toBeVisible();
+  await page.getByRole('button', { name: 'Large-list mode' }).click();
+  await expect(page.getByRole('table')).toBeVisible();
+  await expect(page.getByLabel('Search quotas')).toBeVisible();
+  await capture(page, testInfo, 'quota-large-list-english');
+});

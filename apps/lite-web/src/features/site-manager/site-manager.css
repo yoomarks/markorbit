@@ -27,6 +27,31 @@
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: var(--mo-space-lg);
 }
+.site-manager__site-list {
+  display: grid;
+  gap: var(--mo-space-md);
+}
+.site-manager__site-row,
+.site-manager__site-row-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--mo-space-lg);
+}
+.site-manager__site-row h2,
+.site-manager__site-row p {
+  margin-block: 0 var(--mo-space-xs);
+}
+.site-manager__site-row-actions {
+  flex: 0 0 auto;
+}
+.site-manager__kicker {
+  color: var(--mo-secondary);
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
 .site-manager__configuration,
 .site-manager__services,
 .site-manager__binding-list {
@@ -89,5 +114,13 @@
   }
   .site-manager__section-heading {
     flex-direction: column;
+  }
+  .site-manager__site-row,
+  .site-manager__site-row-actions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+  .site-manager__site-row-actions .mo-button {
+    width: 100%;
   }
 }

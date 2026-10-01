@@ -5,7 +5,6 @@ import {
   Button,
   Card,
   ErrorState,
-  KeyValueList,
   LoadingState,
   PageHeader,
   Select,
@@ -382,21 +381,23 @@ export function MarkregWorkspaceHome({
           orderState.result.items.map((order) => {
             const matterRoute = linkedMatterRoute(order);
             return (
-              <Card key={order.orderId}>
-                <KeyValueList
-                  items={[
-                    { key: 'Order ID', value: order.orderId },
-                    { key: 'Status', value: order.status },
-                    { key: 'Version', value: order.version },
-                    { key: 'Updated', value: order.updatedAt },
-                    {
-                      key: 'Formal Matter',
-                      value: order.matter
-                        ? `${order.matter.formalMatterId} · version ${order.matter.formalMatterVersion}`
-                        : 'Not created'
-                    }
-                  ]}
-                />
+              <Card key={order.orderId} className="markreg-record-card">
+                <div className="markreg-record-card__heading">
+                  <div>
+                    <span className="markreg-record-card__kicker">Service Order</span>
+                    <h3>{order.orderId}</h3>
+                    <p>Updated {order.updatedAt}</p>
+                  </div>
+                  <span className="markreg-record-card__status">{order.status}</span>
+                </div>
+                <div className="markreg-record-card__meta">
+                  <span>Version {order.version}</span>
+                  <span>
+                    {order.matter
+                      ? `Matter ${order.matter.formalMatterId} · v${order.matter.formalMatterVersion}`
+                      : 'Matter not created'}
+                  </span>
+                </div>
                 <div className="markreg-workspace-order-actions">
                   <a href={orderRoute(order)}>Open Order</a>
                   {matterRoute && <a href={matterRoute}>Open linked Formal Matter</a>}
@@ -511,27 +512,31 @@ export function MarkregWorkspaceHome({
         )}
         {matterState.kind === 'READY' &&
           matterState.result.items.map((matter) => (
-            <Card key={matter.formalMatterId}>
-              <KeyValueList
-                items={[
-                  { key: 'Matter ID', value: matter.formalMatterId },
-                  { key: 'Status', value: matter.status },
-                  { key: 'Type', value: matter.type },
-                  { key: 'Version', value: matter.version },
-                  { key: 'Applicant', value: matter.applicant ?? 'Not recorded' },
-                  { key: 'Trademark', value: matter.trademark ?? 'Not recorded' },
-                  { key: 'Jurisdiction', value: matter.jurisdiction ?? 'Not recorded' },
-                  {
-                    key: 'Classes',
-                    value: matter.classes.length ? matter.classes.join(', ') : 'Not recorded'
-                  },
-                  {
-                    key: 'Source Matter Draft',
-                    value: `${matter.sourceMatterDraftId} · version ${matter.sourceMatterDraftVersion}`
-                  },
-                  { key: 'Created', value: matter.createdAt }
-                ]}
-              />
+            <Card key={matter.formalMatterId} className="markreg-record-card">
+              <div className="markreg-record-card__heading">
+                <div>
+                  <span className="markreg-record-card__kicker">Formal Matter</span>
+                  <h3>{matter.trademark ?? matter.applicant ?? matter.formalMatterId}</h3>
+                  <p>{matter.formalMatterId}</p>
+                </div>
+                <span className="markreg-record-card__status">{matter.status}</span>
+              </div>
+              <div className="markreg-record-card__meta">
+                <span>{matter.applicant ?? 'Applicant not recorded'}</span>
+                <span>{matter.jurisdiction ?? 'Jurisdiction not recorded'}</span>
+                <span>
+                  {matter.classes.length ? matter.classes.join(', ') : 'Classes not recorded'}
+                </span>
+                <span>{matter.type.replaceAll('_', ' ')}</span>
+              </div>
+              <details className="markreg-record-card__source">
+                <summary>Record source</summary>
+                <p>
+                  Source Matter Draft {matter.sourceMatterDraftId} · version{' '}
+                  {matter.sourceMatterDraftVersion} · Matter version {matter.version} · Created{' '}
+                  {matter.createdAt}
+                </p>
+              </details>
               <div className="markreg-workspace-order-actions">
                 <a href={formalMatterRoute(matter)}>Open Matter</a>
               </div>
