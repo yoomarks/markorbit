@@ -144,6 +144,9 @@ export interface SiteState {
   publishedAt: string;
   analyticsPartial: boolean;
   sharedSources: SiteSharedSourceGrant[];
+  collection: SiteCollectionState;
+  promotionGrants: SitePromotionGrant[];
+  attributedOrders: AttributedOrderEvidence[];
 }
 
 /** @deprecated Compatibility alias for older preview tests and persisted fixtures. */
@@ -161,6 +164,107 @@ export interface SiteSharedSourceGrant {
   sourceRef: string;
   access: 'READ';
   updateMode: 'EXPLICIT_IMPORT';
+}
+
+export interface AuthorizedMerchantRelationship {
+  id: string;
+  merchantName: string;
+  merchantOwnerRef: string;
+  fulfillmentOwnerRef: string;
+  provider: 'STRIPE' | 'WECHAT_PAY' | 'OFFLINE_REFERRAL';
+  relationship: 'DIRECT' | 'REFERRAL';
+  contractRef: string;
+  status: 'AUTHORIZED' | 'DEMO_ONLY';
+  supportedTerminals: SiteTerminal[];
+}
+
+export interface SiteCollectionSelection {
+  merchantRelationshipId: string;
+  provider: AuthorizedMerchantRelationship['provider'];
+  relationship: AuthorizedMerchantRelationship['relationship'];
+}
+
+export interface SiteCollectionState {
+  authorizedRelationships: AuthorizedMerchantRelationship[];
+  draft: SiteCollectionSelection;
+  active: SiteCollectionSelection;
+  version: number;
+  activatedAt: string;
+}
+
+export interface SitePromotionGrant {
+  id: string;
+  ownerRef: string;
+  title: string;
+  ruleSummary: string;
+  status: 'AUTHORIZED' | 'EXPIRED';
+}
+
+export interface AttributedOrderEvidence {
+  orderId: string;
+  orderOwnerRef: string;
+  merchantRelationshipId: string;
+  siteId: DemoSiteId;
+  channel: SiteTerminal;
+  sourcePage: string;
+  campaign: string;
+  amountLabel: string;
+  status: 'QUOTE_REVIEW' | 'ORDER_CONFIRMED';
+}
+
+function collectionSeed(siteId: DemoSiteId, at: string): SiteCollectionState {
+  const atlasRelationships: AuthorizedMerchantRelationship[] = [
+    {
+      id: 'merchant_atlas_us_referral',
+      merchantName: 'Atlas Counsel LLC',
+      merchantOwnerRef: 'workspace:atlas:merchant-owner:v2',
+      fulfillmentOwnerRef: 'workspace:atlas:professional-services:v4',
+      provider: 'OFFLINE_REFERRAL',
+      relationship: 'REFERRAL',
+      contractRef: 'contract:atlas-referral-us:v3',
+      status: 'AUTHORIZED',
+      supportedTerminals: ['WEB', 'WECHAT_MINIPROGRAM']
+    },
+    {
+      id: 'merchant_atlas_cn_wechat',
+      merchantName: 'Atlas China Service Partner',
+      merchantOwnerRef: 'workspace:atlas-cn-partner:merchant-owner:v1',
+      fulfillmentOwnerRef: 'workspace:atlas:professional-services:v4',
+      provider: 'WECHAT_PAY',
+      relationship: 'DIRECT',
+      contractRef: 'contract:atlas-cn-collection:v1',
+      status: 'DEMO_ONLY',
+      supportedTerminals: ['WEB', 'WECHAT_MINIPROGRAM']
+    }
+  ];
+  const foundryRelationships: AuthorizedMerchantRelationship[] = [
+    {
+      id: 'merchant_foundry_referral',
+      merchantName: 'Foundry Exchange Referral Desk',
+      merchantOwnerRef: 'workspace:foundry:merchant-owner:v1',
+      fulfillmentOwnerRef: 'network:foundry-reviewed-provider:v2',
+      provider: 'OFFLINE_REFERRAL',
+      relationship: 'REFERRAL',
+      contractRef: 'contract:foundry-referral:v2',
+      status: 'AUTHORIZED',
+      supportedTerminals: ['WEB']
+    }
+  ];
+  const authorizedRelationships =
+    siteId === 'site_foundry_demo' ? foundryRelationships : atlasRelationships;
+  const initial = authorizedRelationships[0]!;
+  const active = {
+    merchantRelationshipId: initial.id,
+    provider: initial.provider,
+    relationship: initial.relationship
+  };
+  return {
+    authorizedRelationships,
+    draft: { ...active },
+    active: { ...active },
+    version: 1,
+    activatedAt: at
+  };
 }
 
 const services: ServiceRecord[] = [
@@ -586,6 +690,42 @@ export function seedSite(siteId: DemoSiteId): SiteState {
     savedAt: date,
     publishedAt: date,
     analyticsPartial: foundry,
+    collection: collectionSeed(siteId, date),
+    promotionGrants: foundry
+      ? [
+          {
+            id: 'campaign_foundry_review_week',
+            ownerRef: 'workspace:foundry:marketing-policy:v2',
+            title: 'Review week consultation credit',
+            ruleSummary: 'Display only; eligibility is checked before any governed Quote.',
+            status: 'AUTHORIZED'
+          }
+        ]
+      : [
+          {
+            id: 'campaign_atlas_first_review',
+            ownerRef: 'workspace:atlas:marketing-policy:v5',
+            title: '首次需求梳理活动',
+            ruleSummary: '仅展示活动说明；最终适用范围由 Quote 审核确认。',
+            status: 'AUTHORIZED'
+          }
+        ],
+    attributedOrders:
+      siteId === 'site_atlas_demo'
+        ? [
+            {
+              orderId: 'order_demo_atlas_001',
+              orderOwnerRef: 'order:markreg:demo-owner:v1',
+              merchantRelationshipId: 'merchant_atlas_us_referral',
+              siteId,
+              channel: 'WEB',
+              sourcePage: '/services/us-filing',
+              campaign: 'campaign_atlas_first_review',
+              amountLabel: 'USD 680 display reference; governed Quote required',
+              status: 'QUOTE_REVIEW'
+            }
+          ]
+        : [],
     sharedSources: [
       {
         kind: 'BRAND',

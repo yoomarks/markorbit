@@ -54,6 +54,31 @@ export const SiteAccessDenied: Story = {
     }
   ]
 };
+export const CollectionSettings: Story = {
+  args: { initialPath: '/admin/site_atlas_demo/settings/payment' }
+};
+export const CollectionSettingsViewer: Story = {
+  args: { initialPath: '/admin/site_atlas_demo/settings/payment' },
+  decorators: [
+    (Story) => {
+      const state = seedSite('site_atlas_demo');
+      state.role = 'VIEWER';
+      localStorage.setItem(siteStorageKey(state.siteId), JSON.stringify(state));
+      return <Story />;
+    }
+  ]
+};
+export const CollectionSettingsEmpty: Story = {
+  args: { initialPath: '/admin/site_atlas_mini_demo/settings/payment' },
+  decorators: [
+    (Story) => {
+      const state = seedSite('site_atlas_mini_demo');
+      state.collection.authorizedRelationships = [];
+      localStorage.setItem(siteStorageKey(state.siteId), JSON.stringify(state));
+      return <Story />;
+    }
+  ]
+};
 export const AnalyticsPartial: Story = { args: { initialPath: '/admin/foundry/analytics' } };
 export const CounselTemplateChinese: Story = { args: { initialPath: '/site/atlas/zh-CN/' } };
 export const CounselTemplateEnglish: Story = { args: { initialPath: '/site/atlas/en-US/' } };

@@ -179,6 +179,66 @@ test('one Workspace operates isolated Web and mini-program Sites', async ({ page
   await page.screenshot({ path: testInfo.outputPath('site-access-denied-zh.png'), fullPage: true });
 });
 
+test('Site Admin V2 isolates services, collection configuration, and conversational drafts', async ({
+  page
+}, testInfo) => {
+  await page.goto('/admin/site_atlas_demo/settings/payment');
+  await expect(page.getByRole('heading', { name: 'Collection settings' })).toBeVisible();
+  await page.screenshot({ path: testInfo.outputPath('collection-en.png'), fullPage: true });
+
+  await page.getByRole('button', { name: '简体中文' }).click();
+  await expect(page.getByRole('heading', { name: '收款设置' })).toBeVisible();
+  await page.screenshot({ path: testInfo.outputPath('collection-zh.png'), fullPage: true });
+  if (testInfo.project.name === 'site-v1-mobile-390') {
+    const width = await page.evaluate(() => ({
+      viewport: document.documentElement.clientWidth,
+      document: document.documentElement.scrollWidth
+    }));
+    expect(width.document).toBeLessThanOrEqual(width.viewport);
+  }
+  await page.getByLabel('授权收款关系').selectOption('merchant_atlas_cn_wechat');
+  await page.getByRole('button', { name: '检查并启用' }).click();
+  await page.getByLabel(/确认此配置只用于当前 Site/u).check();
+  await page.getByRole('button', { name: '启用演示收款配置' }).click();
+  await expect(page.getByText(/演示收款配置 v2 已启用/u)).toBeVisible();
+  await expect(page.getByText('支付成功', { exact: true })).toHaveCount(0);
+
+  await page.goto('/admin/site_atlas_mini_demo/settings/payment');
+  await expect(page.getByText('v1', { exact: true })).toBeVisible();
+  await expect(page.locator('.collection-current').getByText('Atlas Counsel LLC')).toBeVisible();
+  await expect(
+    page.locator('.collection-current').getByText('Atlas China Service Partner')
+  ).toHaveCount(0);
+
+  await page.goto('/admin/site_atlas_demo/services');
+  await expect(page.getByText('MO 产品套餐')).toBeVisible();
+  await expect(page.getByText('正式 Quote / Order')).toBeVisible();
+  await page.screenshot({ path: testInfo.outputPath('services-commerce-zh.png'), fullPage: true });
+
+  await page.goto('/admin/site_atlas_mini_demo/overview');
+  await page.getByRole('button', { name: '运营助手' }).click();
+  await page.getByLabel('这次想准备什么？').fill('为小程序首页准备一段强调查询进度的说明');
+  await page.getByRole('button', { name: '生成草稿建议' }).click();
+  await expect(page.getByText('待审核提案')).toBeVisible();
+  await page.screenshot({
+    path: testInfo.outputPath('operations-assistant-zh.png'),
+    fullPage: true
+  });
+  await page.getByRole('button', { name: '应用到当前 Site 草稿' }).click();
+  await page.getByRole('link', { name: /进入可视化编辑器审核/u }).click();
+  await expect(page.getByText('草稿有未发布更改')).toBeVisible();
+  await expect(page.getByRole('button', { name: '已发布 v1' })).toBeVisible();
+
+  await page.evaluate(() => {
+    const key = 'markorbit:site-v1-preview:site:site_atlas_demo';
+    const state = JSON.parse(localStorage.getItem(key) ?? '{}');
+    state.role = 'VIEWER';
+    localStorage.setItem(key, JSON.stringify(state));
+  });
+  await page.goto('/admin/site_atlas_demo/settings/payment');
+  await expect(page.getByRole('button', { name: '检查并启用' })).toBeDisabled();
+});
+
 test('plain-language navigation reveals the expected Admin and visitor tasks', async ({
   page
 }, testInfo) => {
