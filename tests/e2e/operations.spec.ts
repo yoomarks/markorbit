@@ -351,6 +351,10 @@ test('MarkOrbit Super Admin exposes truthful governed operator surfaces @visual'
   ).toBeVisible();
   await expect(knowledgeAdmin.getByText('NOT_YET_MODELED')).toBeVisible();
   expect(knowledgeOwnerReads).toBe(0);
+  await knowledgeAdmin
+    .getByRole('link', { name: 'Open Workspace-scoped evidence inspection' })
+    .click();
+  await expect(page).toHaveURL(/#knowledge-platform$/);
   await expect(page.locator('#knowledge-platform')).toBeVisible();
   const loadKnowledgeOwnerHealth = page.locator('#knowledge-platform').getByRole('button', {
     name: 'Load owner health'
@@ -398,6 +402,8 @@ test('MarkOrbit Super Admin exposes truthful governed operator surfaces @visual'
   await loadOwnerSummary.click();
   await expect(page.getByText('Data Engine owner-reported dependency health')).toBeVisible();
   expect(dataOwnerReads).toBe(1);
+  await primaryNavigation.getByRole('link', { name: 'Commercial / Payment' }).click();
+  await expect(page).toHaveURL(/#commercial-admin$/);
   await expect(page.getByRole('heading', { name: 'Commercial / Payment' })).toBeVisible();
   for (const staleHeading of [
     'Service health',
@@ -408,6 +414,8 @@ test('MarkOrbit Super Admin exposes truthful governed operator surfaces @visual'
     await expect(page.getByRole('heading', { name: staleHeading })).toHaveCount(0);
   }
   await expect(page.getByText('1,248')).toHaveCount(0);
+  await primaryNavigation.getByRole('link', { name: 'Workspace', exact: true }).click();
+  await expect(page).toHaveURL(/#super-admin-workspace$/);
   await expect(
     page.locator('#super-admin-workspace').getByRole('heading', { name: 'Workspace', exact: true })
   ).toBeVisible();
