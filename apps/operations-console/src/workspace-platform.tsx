@@ -18,6 +18,7 @@ import {
   type WorkspaceAdminSort,
   type WorkspaceAdminStatus
 } from './workspace-admin.js';
+import './super-admin/styles.css';
 
 const unavailableTruth =
   'No accepted owner projection is connected for this fact yet. It is not treated as empty, zero or healthy.';
@@ -33,7 +34,15 @@ function StatusPill({ status }: { status: WorkspaceAdminStatus }) {
     </span>
   );
 }
-export function WorkspacePlatformWorkspace() {
+export function WorkspacePlatformWorkspace({
+  loadPortfolio = loadWorkspaceAdminPortfolio,
+  renameWorkspace = renameWorkspaceDisplayName,
+  initialWorkspaceId
+}: {
+  loadPortfolio?: typeof loadWorkspaceAdminPortfolio;
+  renameWorkspace?: typeof renameWorkspaceDisplayName;
+  initialWorkspaceId?: string;
+} = {}) {
   const [snapshot, setSnapshot] = useState<WorkspaceAdminPortfolio | null>(null);
   const [selected, setSelected] = useState<WorkspaceAdminItem | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -68,15 +77,19 @@ export function WorkspacePlatformWorkspace() {
     setLoading(true);
     setError(null);
     setSnapshot(null);
-    void loadWorkspaceAdminPortfolio(query)
+    void loadPortfolio(query)
       .then((result) => {
         if (!active) return;
         setSnapshot(result);
-        setSelected((current) =>
-          current
-            ? (result.items.find((item) => item.workspaceId === current.workspaceId) ?? null)
-            : null
-        );
+        setSelected((current) => {
+          const requestedId =
+            initialWorkspaceId ??
+            new URLSearchParams(window.location.search).get('adminWorkspaceId');
+          const workspaceId = current?.workspaceId ?? requestedId;
+          return workspaceId
+            ? (result.items.find((item) => item.workspaceId === workspaceId) ?? null)
+            : null;
+        });
       })
       .catch((cause) => {
         if (!active) return;
@@ -89,7 +102,7 @@ export function WorkspacePlatformWorkspace() {
     return () => {
       active = false;
     };
-  }, [query]);
+  }, [initialWorkspaceId, loadPortfolio, query]);
 
   const submitSearch = (event: FormEvent) => {
     event.preventDefault();
@@ -110,7 +123,34 @@ export function WorkspacePlatformWorkspace() {
     setRenameReason('');
     setRenameError(null);
     setRenameStatus(null);
+    const url = new URL(window.location.href);
+    url.searchParams.set('adminWorkspaceId', item.workspaceId);
+    window.history.pushState(null, '', url);
   };
+
+  const closeWorkspace = () => {
+    setSelected(null);
+    const url = new URL(window.location.href);
+    url.searchParams.delete('adminWorkspaceId');
+    window.history.pushState(null, '', url);
+  };
+
+  useEffect(() => {
+    const followHistory = () => {
+      const workspaceId = new URLSearchParams(window.location.search).get('adminWorkspaceId');
+      if (!workspaceId) {
+        setSelected(null);
+        return;
+      }
+      setSelected((current) =>
+        current?.workspaceId === workspaceId
+          ? current
+          : (snapshot?.items.find((item) => item.workspaceId === workspaceId) ?? null)
+      );
+    };
+    window.addEventListener('popstate', followHistory);
+    return () => window.removeEventListener('popstate', followHistory);
+  }, [snapshot]);
 
   const renameSelected = async () => {
     if (!selected) return;
@@ -118,7 +158,7 @@ export function WorkspacePlatformWorkspace() {
     setRenameError(null);
     setRenameStatus(null);
     try {
-      const updated = await renameWorkspaceDisplayName(
+      const updated = await renameWorkspace(
         selected.workspaceId,
         selected.version,
         renameName.trim(),
@@ -154,7 +194,11 @@ export function WorkspacePlatformWorkspace() {
         title="Workspace"
         description="Platform-wide Workspace administration backed by Core owner truth. This is not the currently selected Workspace view."
       />
-      <nav className="mo-domain-tabs" aria-label="Workspace administration">
+      <nav
+        className="mo-domain-tabs"
+        aria-label="Workspace administration"
+        hidden={Boolean(selected)}
+      >
         <a href="#workspace-overview">Overview</a>
         <a href="#workspace-directory">All Workspaces</a>
         <button disabled title="Owner contract not connected">
@@ -179,7 +223,7 @@ export function WorkspacePlatformWorkspace() {
         usage facts stay unavailable.
       </Alert>
 
-      <div id="workspace-overview" className="mo-workspace-metrics">
+      <div id="workspace-overview" className="mo-workspace-metrics" hidden={Boolean(selected)}>
         <Card>
           <span className="mo-metric-label">All Workspaces</span>
           <strong className="mo-metric-value">{snapshot ? snapshot.summary.total : '—'}</strong>
@@ -206,17 +250,17 @@ export function WorkspacePlatformWorkspace() {
         </Card>
       </div>
 
-      {loading && (
+      {!selected && loading && (
         <Alert tone="info" title="Loading Workspace portfolio">
           Reading the global Core-owned Workspace portfolio through the governed Gateway.
         </Alert>
       )}
-      {!loading && error && (
+      {!selected && !loading && error && (
         <Alert tone="warning" title="Workspace portfolio unavailable">
           {error} {unavailableTruth}
         </Alert>
       )}
-      <Card className="mo-workspace-directory-card">
+      <Card className={`mo-workspace-directory-card${selected ? ' is-hidden' : ''}`}>
         <div id="workspace-directory" className="mo-workspace-directory-header">
           <div>
             <h2>All Workspaces</h2>
@@ -303,25 +347,20 @@ export function WorkspacePlatformWorkspace() {
               </thead>
               <tbody>
                 {snapshot.items.map((item) => (
-                  <tr
-                    key={item.workspaceId}
-                    className={
-                      selected?.workspaceId === item.workspaceId ? 'is-selected' : undefined
-                    }
-                  >
-                    <td>
+                  <tr key={item.workspaceId}>
+                    <td data-label="Workspace">
                       <strong>{item.name}</strong>
                       <small>{item.workspaceId}</small>
                     </td>
-                    <td>
+                    <td data-label="Status">
                       <StatusPill status={item.status} />
                     </td>
-                    <td>
+                    <td data-label="Members">
                       {item.activeMembershipCount} active / {item.membershipCount} total
                     </td>
-                    <td>{displayTime(item.updatedAt)}</td>
-                    <td>v{item.version}</td>
-                    <td>
+                    <td data-label="Updated">{displayTime(item.updatedAt)}</td>
+                    <td data-label="Version">v{item.version}</td>
+                    <td data-label="Actions">
                       <Button variant="secondary" onClick={() => openWorkspace(item)}>
                         View
                       </Button>
@@ -370,8 +409,8 @@ export function WorkspacePlatformWorkspace() {
               <h2>{selected.name}</h2>
               <p>{selected.workspaceId}</p>
             </div>
-            <Button variant="secondary" onClick={() => setSelected(null)}>
-              Close
+            <Button variant="secondary" onClick={closeWorkspace}>
+              Back to Workspaces
             </Button>
           </div>
           <div className="mo-workspace-detail-grid">

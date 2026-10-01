@@ -142,7 +142,7 @@ export function KnowledgeAdminWorkspace() {
         This surface cannot enable or disable sources, trigger acquisition, change connector
         configuration, retry jobs, mutate documents, promote or publish evidence, or perform
         external actions. Deeper Workspace-scoped evidence inspection remains a separate owner
-        surface.
+        surface. <a href="#knowledge-platform">Open Workspace-scoped evidence inspection</a>.
       </Alert>
     </section>
   );

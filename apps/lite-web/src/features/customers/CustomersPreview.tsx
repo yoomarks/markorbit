@@ -141,11 +141,32 @@ export function CustomersPreview({
   setState: (state: FixtureState) => void;
   initialSelected?: string | undefined;
 }) {
-  const [search, setSearch] = useState('');
-  const [status, setStatus] = useState('ALL');
-  const [region, setRegion] = useState('ALL');
-  const [selected, setSelected] = useState<string | undefined>(initialSelected);
+  const initialQuery = new URLSearchParams(window.location.search);
+  const [search, setSearch] = useState(initialQuery.get('customerSearch') ?? '');
+  const [status, setStatus] = useState(initialQuery.get('customerStatus') ?? 'ALL');
+  const [region, setRegion] = useState(initialQuery.get('customerRegion') ?? 'ALL');
+  const [selected, setSelected] = useState<string | undefined>(
+    initialSelected ?? initialQuery.get('customerId') ?? undefined
+  );
+  const [view, setView] = useState<'rows' | 'cards'>(() =>
+    localStorage.getItem('lite-customers-view') === 'cards' ? 'cards' : 'rows'
+  );
   const originId = useRef<string>();
+  const originScroll = useRef(0);
+
+  const updateQuery = (
+    changes: Partial<
+      Record<'customerSearch' | 'customerStatus' | 'customerRegion' | 'customerId', string>
+    >,
+    mode: 'push' | 'replace' = 'replace'
+  ) => {
+    const url = new URL(window.location.href);
+    for (const [key, value] of Object.entries(changes)) {
+      if (value && value !== 'ALL') url.searchParams.set(key, value);
+      else url.searchParams.delete(key);
+    }
+    window.history[mode === 'push' ? 'pushState' : 'replaceState'](null, '', url);
+  };
 
   useEffect(() => {
     if (!selected && originId.current) {
@@ -153,8 +174,22 @@ export function CustomersPreview({
         .querySelector<HTMLButtonElement>(`[data-customer-id="${originId.current}"]`)
         ?.focus();
       originId.current = undefined;
+      if (!navigator.userAgent.includes('jsdom'))
+        requestAnimationFrame(() => window.scrollTo({ top: originScroll.current }));
     }
   }, [selected]);
+
+  useEffect(() => {
+    const followHistory = () => {
+      const query = new URLSearchParams(window.location.search);
+      setSearch(query.get('customerSearch') ?? '');
+      setStatus(query.get('customerStatus') ?? 'ALL');
+      setRegion(query.get('customerRegion') ?? 'ALL');
+      setSelected(query.get('customerId') ?? undefined);
+    };
+    window.addEventListener('popstate', followHistory);
+    return () => window.removeEventListener('popstate', followHistory);
+  }, []);
 
   const rows = useMemo(
     () =>
@@ -172,7 +207,15 @@ export function CustomersPreview({
   );
   const customer = customerFixtures.find((item) => item.id === selected);
   if (customer)
-    return <CustomerDetailView customer={customer} onBack={() => setSelected(undefined)} />;
+    return (
+      <CustomerDetailView
+        customer={customer}
+        onBack={() => {
+          setSelected(undefined);
+          updateQuery({ customerId: '' }, 'push');
+        }}
+      />
+    );
 
   return (
     <StateGate state={state} subject="customers" onReady={() => setState('ready')}>
@@ -189,12 +232,18 @@ export function CustomersPreview({
         <TextInput
           label="Search customers"
           value={search}
-          onChange={(event) => setSearch(event.target.value)}
+          onChange={(event) => {
+            setSearch(event.target.value);
+            updateQuery({ customerSearch: event.target.value });
+          }}
         />
         <Select
           label="Customer status"
           value={status}
-          onChange={(event) => setStatus(event.target.value)}
+          onChange={(event) => {
+            setStatus(event.target.value);
+            updateQuery({ customerStatus: event.target.value });
+          }}
         >
           <option value="ALL">All statuses</option>
           <option>Active</option>
@@ -203,15 +252,46 @@ export function CustomersPreview({
         <Select
           label="Country / region"
           value={region}
-          onChange={(event) => setRegion(event.target.value)}
+          onChange={(event) => {
+            setRegion(event.target.value);
+            updateQuery({ customerRegion: event.target.value });
+          }}
         >
           <option value="ALL">All countries / regions</option>
           <option value="US">United States</option>
           <option value="EU">European Union</option>
         </Select>
       </div>
+      <div className="lite-view-controls" aria-label="Customer display">
+        <span>{rows.length} matching fixture customers</span>
+        <div role="group" aria-label="View">
+          <Button
+            variant={view === 'rows' ? 'primary' : 'secondary'}
+            aria-pressed={view === 'rows'}
+            onClick={() => {
+              setView('rows');
+              localStorage.setItem('lite-customers-view', 'rows');
+            }}
+          >
+            Compact rows
+          </Button>
+          <Button
+            variant={view === 'cards' ? 'primary' : 'secondary'}
+            aria-pressed={view === 'cards'}
+            onClick={() => {
+              setView('cards');
+              localStorage.setItem('lite-customers-view', 'cards');
+            }}
+          >
+            Cards
+          </Button>
+        </div>
+      </div>
       {rows.length ? (
-        <div className="lite-list" aria-live="polite">
+        <div
+          className={`lite-list lite-customer-list lite-customer-list--${view}`}
+          aria-live="polite"
+        >
           {rows.map((item) => (
             <Card key={item.id}>
               <div className="lite-row">
@@ -228,7 +308,9 @@ export function CustomersPreview({
                 data-customer-id={item.id}
                 onClick={() => {
                   originId.current = item.id;
+                  originScroll.current = window.scrollY;
                   setSelected(item.id);
+                  updateQuery({ customerId: item.id }, 'push');
                 }}
               >
                 View customer preview
@@ -247,6 +329,7 @@ export function CustomersPreview({
                 setSearch('');
                 setStatus('ALL');
                 setRegion('ALL');
+                updateQuery({ customerSearch: '', customerStatus: '', customerRegion: '' });
               }}
             >
               Clear filters

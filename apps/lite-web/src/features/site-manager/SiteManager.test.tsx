@@ -107,6 +107,31 @@ function client(overrides: Partial<SiteManagerClient> = {}): SiteManagerClient {
 afterEach(() => cleanup());
 
 describe('Site Manager', () => {
+  it('keeps multiple Sites in a dedicated list before opening one settings workspace', async () => {
+    const second: SiteInstallationV1 = {
+      ...installation,
+      siteId: 'site_manager_cn',
+      lifecycle: 'DRAFT' as const,
+      currentConfigurationVersion: 1
+    };
+    const configurationRead = vi.fn(() => Promise.resolve(configuration));
+    const api = client({
+      list: vi.fn(() => Promise.resolve([installation, second])),
+      configuration: configurationRead
+    });
+    render(<SiteManager workspaceId={workspaceId} client={api} />);
+
+    expect(await screen.findByRole('heading', { level: 1, name: 'My Sites' })).toBeVisible();
+    expect(screen.getByRole('heading', { name: installation.siteId })).toBeVisible();
+    expect(screen.getByRole('heading', { name: second.siteId })).toBeVisible();
+    expect(configurationRead).not.toHaveBeenCalled();
+
+    await userEvent.click(screen.getAllByRole('button', { name: 'Open Site settings' })[0]!);
+    expect(await screen.findByRole('heading', { level: 1, name: 'Site Manager' })).toBeVisible();
+    expect(configurationRead).toHaveBeenCalledWith(installation.siteId);
+    expect(screen.queryByRole('heading', { level: 1, name: 'My Sites' })).not.toBeInTheDocument();
+  });
+
   it('renders exact owner state and previews current durable projection without publishing', async () => {
     const reviseConfiguration = vi.fn(() => Promise.resolve({ ...installation, version: 5 }));
     const activate = vi.fn(() => Promise.resolve({ installation, binding }));

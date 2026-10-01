@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import './styles.css';
 import { AppShell, SideNavigation, TopBar } from '@markorbit/ui';
 
@@ -20,11 +20,24 @@ const navigationItems = [
 ] as const;
 
 export function SuperAdminShell({ children }: { children: ReactNode }) {
+  const [activeId, setActiveId] = useState(() => window.location.hash.slice(1) || 'overview');
+  useEffect(() => {
+    const followNavigation = () => setActiveId(window.location.hash.slice(1) || 'overview');
+    window.addEventListener('hashchange', followNavigation);
+    return () => window.removeEventListener('hashchange', followNavigation);
+  }, []);
   return (
     <AppShell
       brand="MarkOrbit Super Admin"
       internalOnly
-      navigation={<SideNavigation items={navigationItems} />}
+      navigation={
+        <SideNavigation
+          items={navigationItems.map((item) => ({
+            ...item,
+            active: item.href === `#${activeId}`
+          }))}
+        />
+      }
       topBar={<TopBar context="Platform administration · Owner-routed truth" />}
     >
       {children}
