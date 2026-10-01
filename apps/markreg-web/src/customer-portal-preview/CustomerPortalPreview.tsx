@@ -2182,7 +2182,7 @@ function BusinessDetailDialog({
   const t = (zh: string, en: string) => (state.locale === 'zh-CN' ? zh : en);
   const isMatter = item.kind === 'MATTER';
   const title = state.locale === 'zh-CN' ? item.title : item.titleEn;
-  const status = state.locale === 'zh-CN' ? item.status : item.statusEn;
+  const status = businessStatus(state, item);
   return (
     <Modal title={t('业务详情', 'Business details')} onClose={onClose}>
       <article className="cp-detail-hero">
@@ -2205,10 +2205,15 @@ function BusinessDetailDialog({
                 '资料齐全后，服务顾问会继续核对申请内容；当前显示为服务进展。',
                 'Once files are complete, your advisor will continue checking the filing. This is service progress.'
               )
-            : t(
-                '请先核对费用和服务范围；确认 Demo 报价不会发起真实付款。',
-                'Review fees and scope first. Confirming the Demo quote does not start a real payment.'
-              )}
+            : state.quoteStatus === 'PENDING'
+              ? t(
+                  '请先核对费用和服务范围；确认 Demo 报价不会发起真实付款。',
+                  'Review fees and scope first. Confirming the Demo quote does not start a real payment.'
+                )
+              : t(
+                  '当前状态仅记录 Demo 互动；报价确认不等于付款、履约或正式完成。',
+                  'This status records Demo interaction only; quote confirmation is not payment, performance, or formal completion.'
+                )}
         </p>
       </section>
       <ol className="cp-detail-timeline">

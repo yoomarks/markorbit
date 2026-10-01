@@ -132,6 +132,24 @@ test('authorized business detail explains service progress and preserves source 
   );
 });
 
+test('confirmed quote keeps the business card and detail on the same state', async ({ page }) => {
+  await page.getByRole('button', { name: '使用 MO 账号登录' }).click();
+  await page.getByRole('button', { name: '去处理', exact: true }).nth(1).click();
+  await page
+    .getByRole('dialog', { name: '确认报价' })
+    .getByRole('button', {
+      name: '确认此 Demo 报价'
+    })
+    .click();
+
+  await expect(page.getByText('Demo 报价已确认 · 等待机构继续办理')).toBeVisible();
+  await page.getByRole('button', { name: '去处理: order-us-nova-042' }).click();
+  const detail = page.getByRole('dialog', { name: '业务详情' });
+  await expect(detail).toContainText('Demo 报价已确认 · 等待机构继续办理');
+  await expect(detail).toContainText('报价确认不等于付款、履约或正式完成');
+  await expect(detail).not.toContainText('报价待确认 · 尚未付款');
+});
+
 test('H5 has a distinct entry, five touch destinations and no URL-ID authority', async ({
   page
 }, testInfo) => {
