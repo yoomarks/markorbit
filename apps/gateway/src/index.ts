@@ -42,6 +42,7 @@ export * from './business-attribution-http.js';
 export * from './data-engine-product-http.js';
 export * from './data-control-plane-http.js';
 export * from './knowledge-control-plane-http.js';
+export * from './knowledge-operator-runs-http.js';
 export * from './knowledge-super-admin-http.js';
 export * from './execution-super-admin-http.js';
 export * from './core-super-admin-http.js';
@@ -88,6 +89,7 @@ import { createGatewayBusinessAttributionRoutes } from './business-attribution-h
 import { createGatewayDataEngineRoutes } from './data-engine-product-http.js';
 import { createGatewayDataControlPlaneRoutes } from './data-control-plane-http.js';
 import { createGatewayKnowledgeControlPlaneRoutes } from './knowledge-control-plane-http.js';
+import { createGatewayKnowledgeOperatorRunsRoutes } from './knowledge-operator-runs-http.js';
 import { createGatewayKnowledgeSuperAdminRoutes } from './knowledge-super-admin-http.js';
 import { createGatewayWorkspaceSuperAdminRoutes } from './workspace-super-admin-http.js';
 import { createGatewayWorkspaceCommercialRoutesV1 } from './workspace-commercial-http.js';
@@ -560,6 +562,20 @@ export function createRuntime(options: GatewayOptions = {}) {
                   process.env.MO_INTERNAL_SERVICE_SECRET)!
               }
             : {}),
+          ...(options.knowledgeFetchImpl ? { fetchImpl: options.knowledgeFetchImpl } : {})
+        }),
+        ...createGatewayKnowledgeOperatorRunsRoutes({
+          ...(knowledgeUrl ? { knowledgeUrl } : {}),
+          ...(knowledgeTimeoutMs === undefined ? {} : { timeoutMs: knowledgeTimeoutMs }),
+          ...(authenticationClient ? { authenticationClient } : {}),
+          ...((options.internalServiceSecret ?? process.env.MO_INTERNAL_SERVICE_SECRET)
+            ? {
+                internalServiceSecret: (options.internalServiceSecret ??
+                  process.env.MO_INTERNAL_SERVICE_SECRET)!
+              }
+            : {}),
+          csrfSecret,
+          allowedOrigins,
           ...(options.knowledgeFetchImpl ? { fetchImpl: options.knowledgeFetchImpl } : {})
         }),
         ...createGatewayKnowledgeSuperAdminRoutes({
