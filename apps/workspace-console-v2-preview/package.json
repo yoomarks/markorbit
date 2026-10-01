@@ -1,0 +1,9 @@
+{
+  "name": "@markorbit/workspace-console-v2-preview",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "node server.mjs",
+    "test": "node --test tests/preview.test.mjs"
+  }
+}
