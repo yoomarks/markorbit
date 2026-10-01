@@ -16,9 +16,8 @@ export default defineConfig({
     }
   ],
   webServer: {
-    command:
-      'pnpm --filter @markorbit/contracts build && pnpm --filter @markorbit/ui build && pnpm exec storybook dev -c ../../packages/ui/.storybook --host 127.0.0.1 --port 4316 --no-open',
-    url: 'http://127.0.0.1:4316',
+    command: 'pnpm exec vite --host 127.0.0.1 --port 4316',
+    url: 'http://127.0.0.1:4316/oa-workbench-preview.html',
     reuseExistingServer: false,
     timeout: 120_000
   }

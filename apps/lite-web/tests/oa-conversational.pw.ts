@@ -1,13 +1,13 @@
 import { expect, test } from '@playwright/test';
 import path from 'node:path';
 
-const story = (id: string) => `/iframe.html?id=${id}&viewMode=story`;
+const preview = (scenario = 'READY') => `/oa-workbench-preview.html?scenario=${scenario}`;
 const evidence = path.resolve('../../docs/product/lite-oa-conversational-pilot/evidence');
 
 test('exact context supports two source issues, clarification, review, Demo save and restore', async ({
   page
 }, testInfo) => {
-  await page.goto(story('products-lite-oa-conversational-workbench--chinese-main-journey'));
+  await page.goto(preview());
   await expect(page.getByText('OA 对话式专业工作台')).toBeVisible();
   await expect(page.getByText('formal-matter_demo-oa-2407@7')).toBeVisible();
   await expect(page.getByText('document_demo-oa-2026-07@3', { exact: true })).toBeVisible();
@@ -52,6 +52,7 @@ test('exact context supports two source issues, clarification, review, Demo save
   await expect(page.getByText('View cited source text').first()).toBeVisible();
   await expect(page.getByText('MOKI 小莫')).toBeVisible();
   await expect(page.getByText('DEMO_Office_Action_2026-07-18.pdf')).toBeVisible();
+  await expect(page.getByRole('button', { name: /Back to matter/u })).toBeDisabled();
   await expect(
     page.getByRole('region', { name: 'Review output' }).getByText('客户提供分析报告与在线仪表板。')
   ).toBeVisible();
@@ -72,7 +73,7 @@ test('exact context supports two source issues, clarification, review, Demo save
 test('ambiguous match requires confirmation and direct unauthorized links fail closed', async ({
   page
 }) => {
-  await page.goto(story('products-lite-oa-conversational-workbench--ambiguous-match'));
+  await page.goto(preview('AMBIGUOUS_MATCH'));
   await expect(page.getByText(/找到两个候选案件/u)).toBeVisible();
   await expect(page.getByText(/Applicant must clarify/u)).toHaveCount(0);
   const confirmMatch = page.getByRole('button', { name: '确认此 Demo 匹配' });
@@ -85,32 +86,32 @@ test('ambiguous match requires confirmation and direct unauthorized links fail c
   await confirmMatch.click();
   await expect(page.getByRole('heading', { name: '问题 · 2' })).toBeVisible();
 
-  await page.goto(story('products-lite-oa-conversational-workbench--permission-revoked'));
+  await page.goto(preview('PERMISSION'));
   await expect(page.getByText(/文件授权已撤销/u)).toBeVisible();
   await expect(page.getByText(/Applicant must clarify/u)).toHaveCount(0);
-  await page.goto(story('products-lite-oa-conversational-workbench--wrong-workspace'));
+  await page.goto(preview('WRONG_WORKSPACE'));
   await expect(page.getByText(/不属于当前 Workspace/u)).toBeVisible();
 });
 
 test('old versions, partial files, dependency failures and storage failures remain explicit', async ({
   page
 }, testInfo) => {
-  await page.goto(story('products-lite-oa-conversational-workbench--stale-document-version'));
+  await page.goto(preview('STALE_SOURCE'));
   await expect(page.getByText(/文件版本已变化/u)).toBeVisible();
   await expect(page.getByRole('button', { name: '保存 Demo 工作草稿' })).toHaveCount(0);
 
-  await page.goto(story('products-lite-oa-conversational-workbench--partial-file'));
+  await page.goto(preview('PARTIAL_FILE'));
   await expect(page.getByText(/源文件缺少第 3 页/u)).toBeVisible();
   if (testInfo.project.name === 'mobile-390') {
     await page.getByRole('button', { name: '待审核成果' }).click();
   }
   await expect(page.getByRole('button', { name: '保存 Demo 工作草稿' })).toBeDisabled();
 
-  await page.goto(story('products-lite-oa-conversational-workbench--dependency-failure'));
+  await page.goto(preview('SOURCE_UNAVAILABLE'));
   await expect(page.getByText(/来源服务暂时不可用/u)).toBeVisible();
   await expect(page.getByText(/这不是空结果/u)).toBeVisible();
 
-  await page.goto(story('products-lite-oa-conversational-workbench--save-failure'));
+  await page.goto(preview('STORAGE_FAILURE'));
   if (testInfo.project.name === 'mobile-390') {
     await page.getByRole('button', { name: '待审核成果' }).click();
   }
