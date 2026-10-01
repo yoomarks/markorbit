@@ -1,0 +1,854 @@
+.journey-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  overflow: auto;
+  background: #eef2ee;
+  color: #173028;
+}
+
+.journey-shell {
+  min-height: 100%;
+  background: radial-gradient(circle at 85% 0%, rgb(168 238 190 / 28%), transparent 30%), #f4f6f3;
+}
+
+.journey-topbar {
+  position: sticky;
+  top: 0;
+  z-index: 4;
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr) auto;
+  gap: 14px;
+  align-items: center;
+  min-height: 74px;
+  padding: 10px max(24px, calc((100vw - 1240px) / 2));
+  border-bottom: 1px solid #dce5df;
+  background: rgb(255 255 252 / 94%);
+  backdrop-filter: blur(14px);
+}
+
+.journey-close {
+  width: 40px;
+  height: 40px;
+  border: 1px solid #d6dfda;
+  border-radius: 999px;
+  background: #fff;
+  color: #193c31;
+  font-size: 24px;
+  cursor: pointer;
+}
+
+.journey-topbar div {
+  display: grid;
+  gap: 2px;
+}
+
+.journey-topbar div span {
+  color: #718179;
+  font-size: 11px;
+}
+
+.journey-topbar div strong {
+  font-size: 15px;
+}
+
+.journey-demo {
+  padding: 7px 10px;
+  border-radius: 999px;
+  background: #fff1bd;
+  color: #735300;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+}
+
+.journey-progress {
+  display: grid;
+  grid-template-columns: repeat(8, 1fr);
+  width: min(1160px, calc(100% - 48px));
+  margin: 22px auto;
+  padding: 15px 18px;
+  border: 1px solid #dce5df;
+  border-radius: 18px;
+  background: #fff;
+  box-shadow: 0 10px 30px rgb(25 60 49 / 5%);
+}
+
+.journey-progress span {
+  position: relative;
+  display: grid;
+  justify-items: center;
+  gap: 6px;
+  color: #8a9791;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.journey-progress span::before {
+  position: absolute;
+  top: 13px;
+  right: 50%;
+  left: -50%;
+  height: 2px;
+  background: #e0e7e3;
+  content: '';
+}
+
+.journey-progress span:first-child::before {
+  display: none;
+}
+
+.journey-progress i {
+  z-index: 1;
+  display: grid;
+  width: 28px;
+  height: 28px;
+  place-items: center;
+  border: 2px solid #dbe5df;
+  border-radius: 999px;
+  background: #fff;
+  font-style: normal;
+}
+
+.journey-progress .is-current,
+.journey-progress .is-done {
+  color: #0f7056;
+}
+
+.journey-progress .is-current i,
+.journey-progress .is-done i {
+  border-color: #148063;
+  background: #148063;
+  color: #fff;
+}
+
+.journey-progress .is-current::before,
+.journey-progress .is-done::before {
+  background: #5bb499;
+}
+
+.journey-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 310px;
+  gap: 22px;
+  width: min(1160px, calc(100% - 48px));
+  margin: 0 auto;
+  padding-bottom: 56px;
+}
+
+.journey-conversation,
+.journey-summary {
+  border: 1px solid #dde5e0;
+  border-radius: 24px;
+  background: #fff;
+  box-shadow: 0 18px 44px rgb(26 65 53 / 7%);
+}
+
+.journey-conversation {
+  min-height: 680px;
+  padding: 36px 42px;
+}
+
+.journey-step > header > span {
+  color: #13775b;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.journey-step > header h1 {
+  margin: 8px 0;
+  color: #0d372b;
+  font-size: clamp(26px, 3vw, 38px);
+  line-height: 1.15;
+}
+
+.journey-step > header p {
+  max-width: 720px;
+  margin: 0;
+  color: #687870;
+  font-size: 13px;
+  line-height: 1.7;
+}
+
+.journey-assistant {
+  display: grid;
+  grid-template-columns: 42px minmax(0, 1fr);
+  gap: 12px;
+  align-items: start;
+  margin: 28px 0 20px;
+}
+
+.journey-assistant span {
+  display: grid;
+  width: 42px;
+  height: 42px;
+  place-items: center;
+  border-radius: 14px 14px 14px 4px;
+  background: linear-gradient(145deg, #0d6e54, #154c3e);
+  color: #dfff7e;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.journey-assistant p {
+  margin: 0;
+  padding: 14px 16px;
+  border-radius: 4px 16px 16px;
+  background: #edf7f2;
+  color: #315b4e;
+  font-size: 13px;
+  line-height: 1.65;
+}
+
+.journey-field,
+.journey-review-card label,
+.journey-coupon label {
+  display: grid;
+  gap: 7px;
+}
+
+.journey-field > span,
+.journey-review-card label > span,
+.journey-coupon label > span,
+.journey-options legend {
+  color: #52675f;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.journey-field input,
+.journey-review-card input,
+.journey-coupon input {
+  min-height: 48px;
+  padding: 0 14px;
+  border: 1px solid #cfdad4;
+  border-radius: 12px;
+  background: #fff;
+  color: #183b30;
+  font: inherit;
+}
+
+.journey-choice-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.journey-choice-grid button,
+.journey-options button {
+  padding: 15px;
+  border: 1px solid #d6e0da;
+  border-radius: 14px;
+  background: #fff;
+  color: #24453a;
+  text-align: left;
+  cursor: pointer;
+}
+
+.journey-choice-grid button.is-selected,
+.journey-options button.is-selected {
+  border-color: #188366;
+  background: #eaf8f2;
+  box-shadow: inset 0 0 0 1px #188366;
+}
+
+.journey-choice-grid small {
+  display: block;
+  margin-top: 5px;
+  color: #77857f;
+}
+
+.journey-boundary-note,
+.journey-risk-note,
+.journey-error {
+  margin-top: 16px;
+  padding: 13px 15px;
+  border-radius: 12px;
+  font-size: 12px;
+  line-height: 1.65;
+}
+
+.journey-boundary-note {
+  background: #fff7db;
+  color: #715b12;
+}
+
+.journey-risk-note {
+  display: grid;
+  gap: 4px;
+  border: 1px solid #eadcb8;
+  background: #fffaf0;
+  color: #695827;
+}
+
+.journey-error {
+  border: 1px solid #efbbb6;
+  background: #fff2f0;
+  color: #9a3028;
+}
+
+.journey-actions,
+.journey-payment-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 24px;
+}
+
+.journey-actions .cp-primary,
+.journey-payment-actions .cp-primary {
+  min-width: 190px;
+}
+
+.journey-upload {
+  display: grid;
+  width: 100%;
+  min-height: 170px;
+  place-items: center;
+  margin-top: 18px;
+  padding: 22px;
+  border: 1.5px dashed #91b8aa;
+  border-radius: 20px;
+  background: #f5fbf8;
+  color: #235b49;
+  cursor: pointer;
+}
+
+.journey-upload > span {
+  display: grid;
+  width: 48px;
+  height: 48px;
+  place-items: center;
+  border-radius: 16px;
+  background: #dff4e9;
+  font-size: 22px;
+}
+
+.journey-upload strong,
+.journey-upload small {
+  display: block;
+}
+
+.journey-upload small {
+  color: #75867f;
+}
+
+.journey-upload.is-ready {
+  border-style: solid;
+  border-color: #45a584;
+}
+
+.journey-file-preview {
+  display: grid;
+  grid-template-columns: 68px 1fr;
+  gap: 5px 14px;
+  align-items: center;
+  margin-top: 12px;
+  padding: 14px;
+  border: 1px solid #dce5e0;
+  border-radius: 14px;
+}
+
+.journey-file-preview b {
+  display: grid;
+  grid-row: span 2;
+  height: 54px;
+  place-items: center;
+  border-radius: 12px;
+  background: #0c7156;
+  color: #fff;
+}
+
+.journey-file-preview span {
+  color: #5c6e67;
+  font-size: 12px;
+}
+
+.journey-review-card {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+  margin-top: 18px;
+}
+
+.journey-review-card label {
+  padding: 16px;
+  border: 1px solid #dfe7e2;
+  border-radius: 16px;
+  background: #fbfcfb;
+}
+
+.journey-review-card small {
+  color: #7a8882;
+  font-size: 10px;
+}
+
+.journey-check {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  margin-top: 18px;
+  color: #52665f;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.journey-check input {
+  width: 18px;
+  height: 18px;
+  accent-color: #13775b;
+}
+
+.journey-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 22px 0 0;
+  padding: 0;
+  border: 0;
+}
+
+.journey-options legend {
+  width: 100%;
+  margin-bottom: 2px;
+}
+
+.journey-options button {
+  min-width: 120px;
+  text-align: center;
+}
+
+.journey-checklist {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-top: 24px;
+}
+
+.journey-checklist > span {
+  display: grid;
+  grid-template-columns: 24px 1fr;
+  gap: 4px 8px;
+  padding: 16px;
+  border: 1px solid #d7e6df;
+  border-radius: 15px;
+  background: #f3faf6;
+  color: #158061;
+}
+
+.journey-checklist small {
+  grid-column: 2;
+  color: #63766e;
+}
+
+.journey-checklist .is-review {
+  border-color: #eadcb8;
+  background: #fffaf0;
+  color: #9c7411;
+}
+
+.journey-draft-sheet,
+.journey-quote-card {
+  margin-top: 24px;
+  padding: 22px;
+  border: 1px solid #dce5e0;
+  border-radius: 18px;
+  background: #fff;
+  box-shadow: 0 12px 28px rgb(19 75 58 / 7%);
+}
+
+.journey-draft-sheet header,
+.journey-quote-card header {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  padding-bottom: 15px;
+  border-bottom: 1px solid #e4ebe7;
+}
+
+.journey-draft-sheet header span,
+.journey-quote-card header span {
+  color: #15795d;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.07em;
+}
+
+.journey-draft-sheet dl,
+.journey-quote-card dl,
+.journey-receipt dl {
+  display: grid;
+  gap: 0;
+  margin: 12px 0;
+}
+
+.journey-draft-sheet dl div,
+.journey-quote-card dl div,
+.journey-receipt dl div {
+  display: grid;
+  grid-template-columns: 145px 1fr;
+  gap: 12px;
+  padding: 10px 0;
+  border-bottom: 1px solid #edf1ee;
+}
+
+.journey-draft-sheet dt,
+.journey-quote-card dt,
+.journey-receipt dt {
+  color: #74827c;
+  font-size: 11px;
+}
+
+.journey-draft-sheet dd,
+.journey-quote-card dd,
+.journey-receipt dd {
+  margin: 0;
+  color: #24443a;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.journey-draft-sheet p {
+  margin: 15px 0 0;
+  color: #85671d;
+  font-size: 12px;
+}
+
+.journey-quote-card header > div {
+  display: grid;
+  gap: 3px;
+}
+
+.journey-quote-card header > b {
+  color: #0f5f49;
+  font-size: 25px;
+}
+
+.journey-quote-card ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.journey-quote-card li {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 0;
+  color: #52665e;
+  font-size: 12px;
+}
+
+.journey-coupon {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: end;
+  margin-top: 14px;
+}
+
+.journey-coupon-result {
+  margin-top: 8px;
+  padding: 11px 13px;
+  border-radius: 10px;
+  font-size: 12px;
+}
+
+.journey-coupon-result.is-valid {
+  background: #e5f7ee;
+  color: #0b7254;
+}
+
+.journey-coupon-result.is-invalid {
+  background: #fff0ee;
+  color: #a23d35;
+}
+
+.journey-total {
+  display: flex;
+  justify-content: space-between;
+  gap: 20px;
+  align-items: center;
+  margin-top: 14px;
+  padding: 16px;
+  border-radius: 14px;
+  background: #133e33;
+  color: #fff;
+}
+
+.journey-total span,
+.journey-total small {
+  display: block;
+}
+
+.journey-total small {
+  margin-top: 4px;
+  color: #bbd0c8;
+  font-size: 10px;
+}
+
+.journey-total strong {
+  color: #dfff82;
+  font-size: 24px;
+}
+
+.journey-payment-method {
+  display: grid;
+  grid-template-columns: 50px minmax(0, 1fr) auto;
+  gap: 13px;
+  align-items: center;
+  margin-top: 24px;
+  padding: 18px;
+  border: 2px solid #178163;
+  border-radius: 16px;
+  background: #f0faf5;
+}
+
+.journey-payment-method > span {
+  display: grid;
+  width: 48px;
+  height: 48px;
+  place-items: center;
+  border-radius: 14px;
+  background: #12a46e;
+  color: #fff;
+  font-weight: 900;
+}
+
+.journey-payment-method div {
+  display: grid;
+  gap: 3px;
+}
+
+.journey-payment-method small,
+.journey-payment-method code {
+  color: #697c74;
+  font-size: 10px;
+}
+
+.journey-payment-summary {
+  display: grid;
+  gap: 0;
+  margin-top: 14px;
+  padding: 8px 16px;
+  border: 1px solid #dce5e0;
+  border-radius: 14px;
+}
+
+.journey-payment-summary span {
+  display: grid;
+  grid-template-columns: 120px 1fr;
+  gap: 10px;
+  padding: 11px 0;
+  border-bottom: 1px solid #edf1ee;
+  color: #75847d;
+  font-size: 11px;
+}
+
+.journey-payment-summary span:last-child {
+  border-bottom: 0;
+}
+
+.journey-payment-summary b {
+  color: #213f35;
+}
+
+.journey-receipt {
+  margin-top: 24px;
+  padding: 26px;
+  border: 1px solid #a8d7c5;
+  border-radius: 20px;
+  background: linear-gradient(145deg, #effaf5, #fff);
+  text-align: center;
+}
+
+.journey-receipt > span {
+  display: grid;
+  width: 54px;
+  height: 54px;
+  place-items: center;
+  margin: 0 auto;
+  border-radius: 999px;
+  background: #148063;
+  color: #fff;
+  font-size: 24px;
+}
+
+.journey-receipt h3 {
+  margin: 12px 0 4px;
+  font-size: 21px;
+}
+
+.journey-receipt > p {
+  margin: 0;
+  color: #8c6220;
+  font-size: 12px;
+}
+
+.journey-receipt dl {
+  margin-top: 18px;
+  text-align: left;
+}
+
+.journey-summary {
+  position: sticky;
+  top: 96px;
+  align-self: start;
+  padding: 22px;
+}
+
+.journey-summary > span {
+  color: #72827b;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.journey-summary h2 {
+  margin: 7px 0 14px;
+  color: #0c5944;
+  font-size: 28px;
+}
+
+.journey-summary dl {
+  display: grid;
+  gap: 0;
+  margin: 0;
+}
+
+.journey-summary dl div {
+  padding: 11px 0;
+  border-bottom: 1px solid #e9eeeb;
+}
+
+.journey-summary dt {
+  color: #81908a;
+  font-size: 10px;
+}
+
+.journey-summary dd {
+  margin: 4px 0 0;
+  overflow-wrap: anywhere;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.journey-summary p {
+  margin: 18px 0 0;
+  padding: 12px;
+  border-radius: 10px;
+  background: #f4f6f4;
+  color: #76857e;
+  font-size: 10px;
+  line-height: 1.6;
+}
+
+@media (max-width: 760px) {
+  .journey-topbar {
+    grid-template-columns: 40px minmax(0, 1fr);
+    min-height: 66px;
+    padding: 8px 14px;
+  }
+
+  .journey-demo {
+    display: none;
+  }
+
+  .journey-progress {
+    display: flex;
+    width: auto;
+    margin: 12px 14px;
+    padding: 12px;
+    overflow-x: auto;
+  }
+
+  .journey-progress span {
+    min-width: 58px;
+    flex: 0 0 auto;
+  }
+
+  .journey-progress span::before {
+    display: none;
+  }
+
+  .journey-layout {
+    display: flex;
+    width: auto;
+    flex-direction: column;
+    margin: 0 14px;
+    padding-bottom: 30px;
+  }
+
+  .journey-conversation {
+    min-height: 0;
+    padding: 24px 18px;
+    border-radius: 20px;
+  }
+
+  .journey-summary {
+    position: static;
+    order: -1;
+    padding: 16px 18px;
+    border-radius: 18px;
+  }
+
+  .journey-summary dl,
+  .journey-summary p,
+  .journey-summary > span {
+    display: none;
+  }
+
+  .journey-summary h2 {
+    margin: 0;
+    font-size: 18px;
+  }
+
+  .journey-choice-grid,
+  .journey-review-card,
+  .journey-checklist {
+    grid-template-columns: 1fr;
+  }
+
+  .journey-draft-sheet dl div,
+  .journey-quote-card dl div,
+  .journey-receipt dl div,
+  .journey-payment-summary span {
+    grid-template-columns: 1fr;
+    gap: 4px;
+  }
+
+  .journey-draft-sheet,
+  .journey-quote-card {
+    padding: 16px;
+  }
+
+  .journey-draft-sheet header,
+  .journey-quote-card header {
+    flex-direction: column;
+  }
+
+  .journey-coupon {
+    grid-template-columns: 1fr;
+  }
+
+  .journey-actions,
+  .journey-payment-actions {
+    position: sticky;
+    bottom: 0;
+    z-index: 2;
+    padding: 12px 0 2px;
+    background: linear-gradient(transparent, #fff 24%);
+  }
+
+  .journey-actions .cp-primary,
+  .journey-payment-actions .cp-primary {
+    min-width: 0;
+    flex: 1;
+  }
+
+  .journey-payment-actions {
+    flex-direction: column;
+  }
+}
