@@ -1,22 +1,17 @@
 import { defineConfig } from '@playwright/test';
 
-// Storybook-only responsive and visual evidence for the bounded UX trust/state lane.
 export default defineConfig({
   testDir: './tests',
-  testMatch: ['**/ux-trust-visual.pw.ts', '**/trading-creative.pw.ts'],
-  outputDir: './test-results/ux-trust-visual',
+  testMatch: '**/oa-conversational.pw.ts',
+  outputDir: './test-results/oa-conversational',
   forbidOnly: Boolean(process.env.CI),
   retries: 0,
   workers: 1,
-  use: {
-    baseURL: 'http://127.0.0.1:4316',
-    browserName: 'chromium',
-    trace: 'retain-on-failure'
-  },
+  use: { baseURL: 'http://127.0.0.1:4316', browserName: 'chromium', trace: 'retain-on-failure' },
   projects: [
-    { name: 'desktop-working', use: { viewport: { width: 1440, height: 900 } } },
+    { name: 'desktop', use: { viewport: { width: 1440, height: 960 } } },
     {
-      name: 'mobile-review-390',
+      name: 'mobile-390',
       use: { viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true }
     }
   ],

@@ -107,6 +107,23 @@
 .trading-studio__direction button {
   margin-top: auto;
 }
+.trading-studio__direction-media {
+  display: grid;
+  grid-template-columns: 1.65fr 1fr;
+  gap: 8px;
+  margin: 4px 0 0;
+}
+.trading-studio__direction-media svg {
+  width: 100%;
+  min-width: 0;
+  border-radius: 10px;
+}
+.trading-studio__direction-media figcaption {
+  grid-column: 1 / -1;
+  overflow-wrap: anywhere;
+  color: var(--mo-muted, #475569);
+  font-size: 0.7rem;
+}
 .trading-studio__direction-value {
   display: grid;
   gap: 10px;
