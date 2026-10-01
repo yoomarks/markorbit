@@ -111,6 +111,21 @@ describe('Knowledge Control Center owner-health presentation', () => {
     ).rejects.toThrow('Knowledge owner health is malformed and cannot be trusted.');
   });
 
+  it('preserves exact auth failure classes without converting them to empty owner health', async () => {
+    await expect(
+      loadKnowledgeOwnerHealth(
+        vi.fn(() => response({ code: 'AUTHENTICATION_REQUIRED' }, 401)),
+        workspaceId
+      )
+    ).rejects.toMatchObject({ kind: 'authentication', status: 401 });
+    await expect(
+      loadKnowledgeOwnerHealth(
+        vi.fn(() => response({ code: 'PERMISSION_DENIED' }, 403)),
+        workspaceId
+      )
+    ).rejects.toMatchObject({ kind: 'permission', status: 403 });
+  });
+
   it('keeps boundary copy explicitly non-synthetic and owner-scoped', () => {
     const unavailable = KNOWLEDGE_PLATFORM_UNAVAILABLE_TEXT.toLowerCase();
     expect(unavailable).toContain('not the same as healthy');
