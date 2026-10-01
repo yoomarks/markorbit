@@ -73,7 +73,7 @@ integration('PostgreSQL Knowledge intake repository', () => {
     await database
       .getPool()
       .query(
-        'DROP TABLE IF EXISTS knowledge_v2_deliveries,knowledge_intake_contents,knowledge_intakes,sessions,workspace_memberships,workspaces,users CASCADE; DROP SCHEMA IF EXISTS markorbit_persistence CASCADE'
+        'DROP TABLE IF EXISTS core_workspace_private_case_evidence_bindings,knowledge_v2_deliveries,knowledge_intake_contents,knowledge_intakes,sessions,workspace_memberships,workspaces,users CASCADE; DROP SCHEMA IF EXISTS markorbit_persistence CASCADE'
       );
     await migrate(database.getPool(), 'core_knowledge_intake', await migrations());
     await new PostgresWorkspaceRepository(database.getPool()).create({

@@ -72,7 +72,7 @@ integration('PostgreSQL governed human-action receipt authority', () => {
     await database
       .getPool()
       .query(
-        'DROP TABLE IF EXISTS core_governed_human_action_receipts,knowledge_v2_deliveries,knowledge_intake_contents,knowledge_intakes,password_credentials,account_profiles,sessions,workspace_memberships,workspaces,users CASCADE; DROP SCHEMA IF EXISTS markorbit_persistence CASCADE'
+        'DROP TABLE IF EXISTS core_workspace_private_case_evidence_bindings,core_governed_human_action_receipts,knowledge_v2_deliveries,knowledge_intake_contents,knowledge_intakes,password_credentials,account_profiles,sessions,workspace_memberships,workspaces,users CASCADE; DROP SCHEMA IF EXISTS markorbit_persistence CASCADE'
       );
     const allMigrations = await coreMigrations();
     await migrate(
