@@ -54,6 +54,12 @@ describe('ReadyPackage Content Export consumer contract', () => {
     );
   });
 
+  it('accepts the canonical Knowledge Staging Verification evidence identity', async () => {
+    const value = await fixture();
+    (value.provenance as Record<string, unknown>).verificationId = 'stv_01ARZ3NDEKTSV4RRFFQ69G5FAV';
+    expect(parseReadyPackageContentExportV1(value)).not.toBeNull();
+  });
+
   it.each(['STANDARD_SOURCE', 'GLOBAL_REFERENCE'] as const)(
     'accepts governed V1.1 %s exports and preserves governance in serialization',
     async (kind) => {
