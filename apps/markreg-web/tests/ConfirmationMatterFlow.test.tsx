@@ -1,5 +1,5 @@
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { CustomerConfirmation, MatterDraft, PlanQuoteResponse } from '@markorbit/contracts';
 import { ConfirmationMatterFlow } from '../src/ConfirmationMatterFlow.js';
 
@@ -70,8 +70,17 @@ const matter: MatterDraft & { version: number } = {
   createdAt: now,
   updatedAt: now
 };
+const readyMatter: MatterDraft & { version: number } = {
+  ...matter,
+  readiness: { evaluatedAt: now, readyForProfessionalReview: true, checks: [] },
+  missingInformation: [],
+  status: 'READY_FOR_PROFESSIONAL_REVIEW',
+  version: 3
+};
 
 describe('Confirmation receipt authority boundary', () => {
+  beforeEach(() => sessionStorage.clear());
+
   it('renders each prohibited automatic consequence exactly once with a visible No value', () => {
     render(
       <ConfirmationMatterFlow
@@ -128,5 +137,56 @@ describe('Confirmation receipt authority boundary', () => {
       await screen.findByRole('heading', { name: 'Matter Draft preparation workspace' })
     ).toBeVisible();
     expect(screen.getByText('matter-draft_test')).toBeVisible();
+  });
+
+  it('fails closed with a visible reason when exact confirmation version evidence is absent', () => {
+    sessionStorage.setItem('markorbit-workspace-id', 'workspace_test');
+    const createFormalMatter = vi.fn();
+    render(
+      <ConfirmationMatterFlow
+        quote={quote}
+        client={{ createIntake: vi.fn(), createFormalMatter }}
+        fixture={{
+          state: 'READY_FOR_PROFESSIONAL_REVIEW',
+          confirmation,
+          draft: readyMatter
+        }}
+      />
+    );
+
+    expect(
+      screen.getByText('Formal Matter creation is unavailable', { exact: true })
+    ).toBeVisible();
+    expect(screen.getByText(/exact Customer Confirmation version is unavailable/)).toBeVisible();
+    expect(screen.getByRole('button', { name: 'Create Formal Matter' })).toBeDisabled();
+    expect(createFormalMatter).not.toHaveBeenCalled();
+  });
+
+  it('submits the exact confirmation and Draft versions when authority is available', async () => {
+    sessionStorage.setItem('markorbit-workspace-id', 'workspace_test');
+    const createFormalMatter = vi.fn().mockRejectedValue(new Error('fixture stop'));
+    render(
+      <ConfirmationMatterFlow
+        quote={quote}
+        client={{ createIntake: vi.fn(), createFormalMatter }}
+        fixture={{
+          state: 'READY_FOR_PROFESSIONAL_REVIEW',
+          confirmation: { ...confirmation, version: 2 },
+          draft: readyMatter
+        }}
+      />
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Create Formal Matter' }));
+    await waitFor(() =>
+      expect(createFormalMatter).toHaveBeenCalledWith({
+        workspaceId: 'workspace_test',
+        customerConfirmationId: 'confirmation_test',
+        expectedCustomerConfirmationVersion: 2,
+        matterDraftId: 'matter-draft_test',
+        expectedMatterDraftVersion: 3,
+        idempotencyKey: 'formal-matter:matter-draft_test:3'
+      })
+    );
   });
 });
