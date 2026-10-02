@@ -31,6 +31,10 @@ export default defineConfig({
         'customers-preview': resolve(
           fileURLToPath(new URL('.', import.meta.url)),
           'customers-preview.html'
+        ),
+        'content-studio-preview': resolve(
+          fileURLToPath(new URL('.', import.meta.url)),
+          'content-studio-preview.html'
         )
       }
     }
