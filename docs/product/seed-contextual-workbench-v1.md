@@ -115,6 +115,11 @@ The PR must provide:
 - focused tests proving Prepare and Confirm are separate explicit steps;
 - repository lint, typecheck, tests, build and affected hosted CI.
 
-No production route is added by this prototype.
+The deterministic fixture is also available at `/contextual-workbench-preview.html` for direct
+desktop and mobile usability review. Query parameters select the bounded task and state without
+connecting to an owner runtime.
+
+No production route is added by this prototype. The standalone entry remains fixture-only and does
+not create a Customer, Opportunity, message, filing, payment or Official Truth.
 
 Final merge requires hosted CI success on the current exact PR head.

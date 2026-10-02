@@ -1,0 +1,15 @@
+.contextual-workbench-preview {
+  min-height: 100vh;
+  padding: var(--mo-space-lg, 1.25rem);
+  background: var(--mo-background, #f5f7f8);
+}
+
+.contextual-workbench-preview > [role='status'] {
+  margin-bottom: var(--mo-space-lg, 1.25rem);
+}
+
+@media (max-width: 760px) {
+  .contextual-workbench-preview {
+    padding: var(--mo-space-md, 1rem);
+  }
+}

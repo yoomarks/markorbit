@@ -23,6 +23,10 @@ export default defineConfig({
         'agency-workspace-preview': resolve(
           fileURLToPath(new URL('.', import.meta.url)),
           'agency-workspace-preview.html'
+        ),
+        'contextual-workbench-preview': resolve(
+          fileURLToPath(new URL('.', import.meta.url)),
+          'contextual-workbench-preview.html'
         )
       }
     }
