@@ -10,7 +10,7 @@ A trademark agent or agency project lead beginning a normal workday. They unders
 
 ## Starting state
 
-Open the Storybook story `Prototypes / Agency task-language IA / Today Morning Triage` at desktop width. The synthetic Northstar IP workspace is selected. No real client data or external provider is connected.
+Open `/agency-workspace-preview.html` from the Lite web app at desktop width, or use the Storybook story `Prototypes / Agency task-language IA / Today Morning Triage` for isolated component review. The synthetic Northstar IP workspace is selected. No real client data or external provider is connected, and the standalone preview does not send messages, file applications, or change official records.
 
 ## Tasks
 

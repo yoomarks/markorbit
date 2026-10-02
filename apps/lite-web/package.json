@@ -13,6 +13,7 @@
     "test:trademark-commerce:browser": "playwright test --config playwright.trademark-commerce.config.ts",
     "test:trading-creative-preview:browser": "playwright test --config playwright.trading-creative-preview.config.ts",
     "test:agency-ia-prototype:browser": "playwright test --config playwright.agency-ia-prototype.config.ts",
+    "test:agency-workspace-preview:browser": "playwright test --config playwright.agency-workspace-preview.config.ts",
     "test:ux-trust-visual:browser": "playwright test --config playwright.ux-trust-visual.config.ts",
     "typecheck": "tsc --noEmit",
     "lint": "eslint src tests vite.config.ts playwright.navigation.config.ts playwright.opportunity-candidates.config.ts playwright.governed-provider.config.ts playwright.trademark-commerce.config.ts playwright.agency-ia-prototype.config.ts playwright.ux-trust-visual.config.ts",
