@@ -437,6 +437,10 @@ test('Customer Confirmation to ready Matter Draft remains preparatory @visual', 
   await expect(page.getByText(/Readiness is not approval/)).toBeVisible();
   const createFormalMatter = page.getByRole('button', { name: 'Create Formal Matter' });
   await expect(createFormalMatter).toBeVisible();
+  await expect(createFormalMatter).toBeEnabled();
+  await expect(
+    page.getByText('Formal Matter creation is unavailable', { exact: true })
+  ).toHaveCount(0);
   await createFormalMatter.click();
   const formalReceipt = page.getByRole('region', { name: 'Formal Matter receipt' });
   await expect(formalReceipt).toBeVisible();

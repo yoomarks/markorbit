@@ -136,7 +136,7 @@ export interface ConfirmationCommand {
   idempotencyKey: string;
 }
 export interface ConfirmationResponse {
-  confirmation: CustomerConfirmation;
+  confirmation: CustomerConfirmation & { version: number };
   nextAction: 'PREPARE_MATTER_DRAFT' | 'NONE';
   consequences: AuthorityBoundary;
 }
@@ -166,6 +166,10 @@ function confirmationResponse(value: ConfirmationResponse): ConfirmationResponse
       acknowledgementCodes: readonly ConfirmationAcknowledgement['code'][];
     };
   };
+  if (typeof raw.version !== 'number' || !Number.isSafeInteger(raw.version) || raw.version < 1)
+    throw new Error(
+      'Customer Confirmation version is unavailable. Reload before creating a Formal Matter.'
+    );
   if (!raw.sourceSnapshot) return value;
   const at = raw.acceptedAt ?? raw.updatedAt;
   return {
@@ -193,7 +197,7 @@ function confirmationResponse(value: ConfirmationResponse): ConfirmationResponse
       createdAt: at,
       updatedAt: raw.updatedAt,
       version: raw.version
-    } as CustomerConfirmation & { version?: number }
+    }
   };
 }
 

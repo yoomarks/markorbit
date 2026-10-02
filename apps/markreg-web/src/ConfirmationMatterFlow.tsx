@@ -47,10 +47,12 @@ const acknowledgementLabels = {
 const codes = Object.keys(acknowledgementLabels) as ConfirmationAcknowledgement['code'][];
 const format = (minor: number, currency: string) =>
   new Intl.NumberFormat('en', { style: 'currency', currency }).format(minor / 100);
+const durableVersion = (value: unknown) =>
+  typeof value === 'number' && Number.isSafeInteger(value) && value > 0 ? value : undefined;
 export interface FlowFixture {
   state: MatterViewState;
-  confirmation?: CustomerConfirmation;
-  draft?: MatterDraft;
+  confirmation?: CustomerConfirmation & { version?: number };
+  draft?: MatterDraft & { version?: number };
   message?: string;
 }
 export interface ConfirmationQuoteSource {
@@ -170,7 +172,7 @@ export function ConfirmationMatterFlow({
     try {
       const response = await client.createMatterDraft!(
         confirmation.confirmationId,
-        (confirmation as CustomerConfirmation & { version?: number }).version,
+        confirmation.version,
         workspaceId
       );
       setMatter(response.matterDraft);
@@ -189,7 +191,7 @@ export function ConfirmationMatterFlow({
       const response = await client.updateMatterDraft!(
         matter.matterDraftId,
         form,
-        (matter as MatterDraft & { version?: number }).version,
+        matter.version,
         workspaceId
       );
       setMatter(response.matterDraft);
@@ -211,7 +213,7 @@ export function ConfirmationMatterFlow({
       const saved = await client.updateMatterDraft!(
         matter.matterDraftId,
         form,
-        (matter as MatterDraft & { version?: number }).version,
+        matter.version,
         workspaceId
       );
       const response = await client.evaluateMatterDraft!(
@@ -387,6 +389,19 @@ export function ConfirmationMatterFlow({
       </section>
     );
   if (!matter) return null;
+  const draftVersion = durableVersion(matter.version);
+  const confirmationVersion = durableVersion(confirmation?.version);
+  const formalMatterUnavailableReason = siteInbound
+    ? undefined
+    : !confirmationVersion
+      ? 'The exact Customer Confirmation version is unavailable. Reload this workspace before creating a Formal Matter.'
+      : !draftVersion
+        ? 'The exact Matter Draft version is unavailable. Reload this workspace before creating a Formal Matter.'
+        : !workspaceId
+          ? 'Workspace authority is unavailable. Sign in to the intended Workspace before creating a Formal Matter.'
+          : !client.createFormalMatter
+            ? 'Formal Matter creation is unavailable. Reload this workspace or contact support.'
+            : undefined;
   const update = <K extends keyof MatterDraftPreparation>(
     key: K,
     value: MatterDraftPreparation[K]
@@ -406,9 +421,7 @@ export function ConfirmationMatterFlow({
             { key: 'Matter Draft ID', value: matter.matterDraftId },
             {
               key: 'Matter Draft version',
-              value: String(
-                (matter as MatterDraft & { version?: number }).version ?? matter.updatedAt
-              )
+              value: String(draftVersion ?? 'Unavailable')
             }
           ]}
         />
@@ -526,21 +539,35 @@ export function ConfirmationMatterFlow({
               Payment created: No · Professional appointed: No · Filing created: No
             </Alert>
             <p>
-              Exact READY Draft version:{' '}
-              <strong>{String((matter as MatterDraft & { version?: number }).version)}</strong>
+              Exact READY Draft version: <strong>{String(draftVersion ?? 'Unavailable')}</strong>
             </p>
+            {!siteInbound && formalMatterUnavailableReason && (
+              <Alert tone="warning" title="Formal Matter creation is unavailable">
+                {formalMatterUnavailableReason}
+              </Alert>
+            )}
             <Button
+              disabled={!siteInbound && Boolean(formalMatterUnavailableReason)}
               onClick={() => {
                 if (siteInbound) {
                   setOrderJourneyOpen(true);
                   return;
                 }
-                if (!confirmation || !workspaceId || !client.createFormalMatter) return;
-                const draftVersion = (matter as MatterDraft & { version?: number }).version;
-                const confirmationVersion = (
-                  confirmation as CustomerConfirmation & { version?: number }
-                ).version;
-                if (!draftVersion || !confirmationVersion) return;
+                if (
+                  formalMatterUnavailableReason ||
+                  !confirmation ||
+                  !workspaceId ||
+                  !client.createFormalMatter ||
+                  !draftVersion ||
+                  !confirmationVersion
+                ) {
+                  setMessage(
+                    formalMatterUnavailableReason ??
+                      'Formal Matter creation is unavailable. Reload this workspace.'
+                  );
+                  setState('RECOVERABLE_ERROR');
+                  return;
+                }
                 setState('FORMAL_MATTER_CREATING');
                 void client
                   .createFormalMatter({

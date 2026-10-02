@@ -48,7 +48,7 @@ const acknowledgements = (
     'SCOPE_CHANGE_REQUOTE'
   ] as const
 ).map((code) => ({ code, acknowledged: true as const, acknowledgedAt: now }));
-const confirmation: CustomerConfirmation = {
+const confirmation: CustomerConfirmation & { version: number } = {
   schemaVersion: 1,
   confirmationId: 'confirmation_story',
   customerId: 'customer_story',
@@ -66,14 +66,22 @@ const confirmation: CustomerConfirmation = {
   termsVersion: 'terms-v1',
   acknowledgements,
   status: 'CONFIRMED',
+  version: 1,
   createdAt: now,
   updatedAt: now
+};
+const withoutVersion = ({
+  version,
+  ...value
+}: CustomerConfirmation & { version: number }): CustomerConfirmation => {
+  void version;
+  return value;
 };
 const check = (
   code: MatterDraft['readiness']['checks'][number]['code'],
   status: 'PASS' | 'FAIL' | 'UNKNOWN'
 ) => ({ code, status, explanation: `${code} evidence result.`, blocking: true });
-const draft: MatterDraft = {
+const draft: MatterDraft & { version: number } = {
   schemaVersion: 1,
   matterDraftId: 'matter-draft_story',
   confirmationId: confirmation.confirmationId,
@@ -91,6 +99,7 @@ const draft: MatterDraft = {
   },
   missingInformation: ['APPLICANT_IDENTITY_PRESENT', 'FILING_BASIS_PRESENT_OR_NOT_REQUIRED'],
   status: 'NEEDS_INFORMATION',
+  version: 1,
   createdAt: now,
   updatedAt: now
 };
@@ -160,13 +169,21 @@ const client: MarkregClient = {
         professionalAppointed: false,
         filingCreated: false
       }
-    })
+    }),
+  createFormalMatter: () => Promise.reject(new Error('Story fixture does not persist records.'))
 };
 export default {
   title: 'Products/MarkReg/Customer confirmation and Matter Draft',
   component: ConfirmationMatterFlow,
   args: { quote, client },
-  parameters: { layout: 'fullscreen' }
+  parameters: { layout: 'fullscreen' },
+  decorators: [
+    (Story) => {
+      if (typeof sessionStorage !== 'undefined')
+        sessionStorage.setItem('markorbit-workspace-id', 'workspace_story');
+      return <Story />;
+    }
+  ]
 } satisfies Meta<typeof ConfirmationMatterFlow>;
 type Story = StoryObj<typeof ConfirmationMatterFlow>;
 const fixture = (state: MatterViewState, value: MatterDraft = draft): Story => ({
@@ -183,6 +200,15 @@ export const MatterDraftIncomplete: Story = fixture('MATTER_DRAFT_NEEDS_INFORMAT
 export const BlockingFail: Story = fixture('MATTER_DRAFT_NEEDS_INFORMATION');
 export const BlockingUnknown: Story = fixture('MATTER_DRAFT_NEEDS_INFORMATION');
 export const ReadyForProfessionalReview: Story = fixture('READY_FOR_PROFESSIONAL_REVIEW', ready);
+export const ConcurrencyEvidenceUnavailable: Story = {
+  args: {
+    fixture: {
+      state: 'READY_FOR_PROFESSIONAL_REVIEW',
+      confirmation: withoutVersion(confirmation),
+      draft: ready
+    }
+  }
+};
 export const StaleState: Story = fixture('MATTER_DRAFT_EDITING');
 export const RecoverableError: Story = {
   args: {
