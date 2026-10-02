@@ -31,6 +31,9 @@ jobs:
       MARKREG_TEST_DATABASE_URL: postgresql://markorbit_test:markorbit-test-only@127.0.0.1:5432/markorbit_markreg_m5_test
       M5_REVIEWED_SOURCE_EXECUTION_DATABASE_URL: postgresql://markorbit_test:markorbit-test-only@127.0.0.1:5432/markorbit_execution_m5_handoff_test
       M5_REVIEWED_SOURCE_MARKREG_DATABASE_URL: postgresql://markorbit_test:markorbit-test-only@127.0.0.1:5432/markorbit_markreg_m5_handoff_test
+      MO_MILESTONE_DURABLE_OWNERS: '1'
+      MARKREG_DATABASE_URL: postgresql://markorbit_test:markorbit-test-only@127.0.0.1:5432/markorbit_markreg_m5_test
+      EXECUTION_DATABASE_URL: postgresql://markorbit_test:markorbit-test-only@127.0.0.1:5432/markorbit_execution_m5_test
       MO_INTERNAL_SERVICE_SECRET: ${{ github.sha }}
       MO_CSRF_SECRET: ${{ github.sha }}
       WEB_ORIGINS: http://127.0.0.1:4371,http://127.0.0.1:4372
@@ -44,6 +47,8 @@ jobs:
       - uses: actions/setup-node@v4
         with: { node-version: 22, cache: pnpm }
       - run: pnpm install --frozen-lockfile
+      - name: Validate M5 reliability topology
+        run: node --test scripts/milestone5-reliability-command.test.mjs
       - name: Install browser runtime
         run: pnpm exec playwright install --with-deps chromium
       - name: Create M5 reliability database topology
