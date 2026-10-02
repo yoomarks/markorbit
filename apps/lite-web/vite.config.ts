@@ -19,6 +19,10 @@ export default defineConfig({
         'trading-studio-preview': resolve(
           fileURLToPath(new URL('.', import.meta.url)),
           'trading-studio-preview.html'
+        ),
+        'agency-workspace-preview': resolve(
+          fileURLToPath(new URL('.', import.meta.url)),
+          'agency-workspace-preview.html'
         )
       }
     }
