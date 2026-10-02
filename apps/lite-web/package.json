@@ -11,6 +11,7 @@
     "test:opportunity-candidates:browser": "playwright test --config playwright.opportunity-candidates.config.ts",
     "test:governed-provider:browser": "playwright test --config playwright.governed-provider.config.ts",
     "test:trademark-commerce:browser": "playwright test --config playwright.trademark-commerce.config.ts",
+    "test:trading-creative-preview:browser": "playwright test --config playwright.trading-creative-preview.config.ts",
     "test:agency-ia-prototype:browser": "playwright test --config playwright.agency-ia-prototype.config.ts",
     "test:ux-trust-visual:browser": "playwright test --config playwright.ux-trust-visual.config.ts",
     "typecheck": "tsc --noEmit",

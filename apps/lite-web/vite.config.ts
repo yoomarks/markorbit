@@ -15,6 +15,10 @@ export default defineConfig({
         'oa-workbench-preview': resolve(
           fileURLToPath(new URL('.', import.meta.url)),
           'oa-workbench-preview.html'
+        ),
+        'trading-studio-preview': resolve(
+          fileURLToPath(new URL('.', import.meta.url)),
+          'trading-studio-preview.html'
         )
       }
     }
