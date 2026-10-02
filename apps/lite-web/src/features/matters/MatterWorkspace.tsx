@@ -572,7 +572,7 @@ export function PrivateCaseEvidencePanel({
                   <div className="lite-evidence-panel">
                     <div className="lite-row">
                       <div>
-                        <p className="lite-eyebrow">CURRENT KNOWLEDGE RETRIEVAL</p>
+                        <p className="lite-eyebrow">VERIFIED SOURCE RETRIEVAL</p>
                         <h3>{exactRead.document.documentId}</h3>
                       </div>
                       <Badge>All currentness checks passed</Badge>
