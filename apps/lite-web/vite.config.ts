@@ -27,6 +27,10 @@ export default defineConfig({
         'contextual-workbench-preview': resolve(
           fileURLToPath(new URL('.', import.meta.url)),
           'contextual-workbench-preview.html'
+        ),
+        'customers-preview': resolve(
+          fileURLToPath(new URL('.', import.meta.url)),
+          'customers-preview.html'
         )
       }
     }

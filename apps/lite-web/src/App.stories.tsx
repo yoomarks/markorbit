@@ -28,6 +28,15 @@ export const CustomerList: Story = { args: { initialSurface: 'customers' } };
 export const CustomerDetail: Story = {
   args: { initialSurface: 'customers', initialCustomerId: 'cus-northwind' }
 };
+export const CustomerLoading: Story = {
+  args: { initialSurface: 'customers', initialState: 'loading' }
+};
+export const CustomerStale: Story = {
+  args: { initialSurface: 'customers', initialState: 'stale' }
+};
+export const CustomerPartialFixture: Story = {
+  args: { initialSurface: 'customers', initialCustomerId: 'cus-studio' }
+};
 export const Empty: Story = { args: { initialSurface: 'customers', initialState: 'empty' } };
 export const Error: Story = { args: { initialSurface: 'customers', initialState: 'error' } };
 const mobile390 = {
@@ -46,6 +55,10 @@ export const GuideMobile390: Story = {
 };
 export const WorkHubMobile390: Story = {
   ...WorkHub,
+  parameters: mobile390
+};
+export const CustomerMobile390: Story = {
+  args: { initialSurface: 'customers', initialCustomerId: 'cus-studio' },
   parameters: mobile390
 };
 export const ReviewQueueLoading: Story = {
