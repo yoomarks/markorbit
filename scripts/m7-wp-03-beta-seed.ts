@@ -825,8 +825,11 @@ export async function resetAndSeedM7Wp03BetaScenario(
   } as const;
 
   try {
-    for (const owner of Object.keys(databases) as SeedOwner[])
-      await resetOwnerDatabase(databases[owner], owner);
+    await Promise.all(
+      (Object.keys(databases) as SeedOwner[]).map((owner) =>
+        resetOwnerDatabase(databases[owner], owner)
+      )
+    );
 
     const core = await seedCore(databases.CORE);
     const lite = await seedLite(databases.LITE, core);
