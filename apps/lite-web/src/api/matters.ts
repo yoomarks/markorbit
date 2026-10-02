@@ -1,4 +1,10 @@
 import type { FormalMatter, FormalMatterListResponse } from '@markorbit/contracts';
+import {
+  assertWorkspacePrivateCaseEvidenceReadResultV1,
+  assertWorkspacePrivateCaseEvidenceReferenceListV1,
+  type WorkspacePrivateCaseEvidenceReadResultV1,
+  type WorkspacePrivateCaseEvidenceReferenceListV1
+} from '@markorbit/contracts/workspace-private-evidence';
 
 function parseGatewayUrl(value: unknown): string {
   if (value === undefined || value === '') return '';
@@ -45,6 +51,16 @@ export interface MatterWorkspaceClient {
   list(query: MatterListQuery, signal?: AbortSignal): Promise<FormalMatterListResponse>;
   load(formalMatterId: string, signal?: AbortSignal): Promise<FormalMatter>;
   startProfessionalReview(matter: Readonly<FormalMatter>): Promise<MatterReviewCaseReference>;
+  listPrivateEvidence(
+    formalMatterId: string,
+    signal?: AbortSignal
+  ): Promise<WorkspacePrivateCaseEvidenceReferenceListV1>;
+  readPrivateEvidence(
+    formalMatterId: string,
+    bindingId: string,
+    expectedVersion: number,
+    signal?: AbortSignal
+  ): Promise<WorkspacePrivateCaseEvidenceReadResultV1>;
 }
 
 async function parsedResponse<T>(response: Response, fallbackMessage: string): Promise<T> {
@@ -92,6 +108,7 @@ async function read<T>(path: string, workspaceId: string, signal?: AbortSignal):
   try {
     response = await fetch(`${baseUrl}${path}`, {
       credentials: 'include',
+      cache: 'no-store',
       headers: {
         'x-markorbit-workspace-id': workspaceId,
         'x-correlation-id': crypto.randomUUID()
@@ -133,6 +150,69 @@ export function createMatterWorkspaceClient(workspaceId: string): MatterWorkspac
         signal
       );
       return response.formalMatter;
+    },
+    listPrivateEvidence: async (formalMatterId, signal) => {
+      const response = await read<unknown>(
+        `/api/markreg/formal-matters/${encodeURIComponent(formalMatterId)}/private-evidence`,
+        workspaceId,
+        signal
+      );
+      try {
+        assertWorkspacePrivateCaseEvidenceReferenceListV1(response);
+        return response;
+      } catch {
+        throw new MatterWorkspaceHttpError(
+          503,
+          'WORKSPACE_PRIVATE_CASE_EVIDENCE_INVALID_RESPONSE',
+          'Private evidence references could not be verified.',
+          true
+        );
+      }
+    },
+    readPrivateEvidence: async (formalMatterId, bindingId, expectedVersion, signal) => {
+      const csrf = await csrfToken();
+      let response: Response;
+      try {
+        response = await fetch(
+          `${baseUrl}/api/markreg/formal-matters/${encodeURIComponent(formalMatterId)}/private-evidence/${encodeURIComponent(bindingId)}/read`,
+          {
+            method: 'POST',
+            credentials: 'include',
+            cache: 'no-store',
+            headers: {
+              'content-type': 'application/json',
+              'x-markorbit-workspace-id': workspaceId,
+              'x-markorbit-csrf-token': csrf,
+              'x-correlation-id': crypto.randomUUID()
+            },
+            body: JSON.stringify({ expectedVersion }),
+            ...(signal ? { signal } : {})
+          }
+        );
+      } catch (error) {
+        if (error instanceof DOMException && error.name === 'AbortError') throw error;
+        throw new MatterWorkspaceHttpError(
+          503,
+          'WORKSPACE_PRIVATE_CASE_EVIDENCE_SOURCE_UNAVAILABLE',
+          'Exact private evidence is unavailable.',
+          true
+        );
+      }
+      const value = await parsedResponse<unknown>(
+        response,
+        'Exact private evidence is unavailable.'
+      );
+      try {
+        assertWorkspacePrivateCaseEvidenceReadResultV1(value);
+        return value;
+      } catch {
+        throw new MatterWorkspaceHttpError(
+          503,
+          'WORKSPACE_PRIVATE_CASE_EVIDENCE_INVALID_RESPONSE',
+          'Exact private evidence could not be verified.',
+          true
+        );
+      }
     },
     startProfessionalReview: async (matter) => {
       const csrf = await csrfToken();

@@ -1,5 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { FormalMatter, FormalMatterListResponse } from '@markorbit/contracts';
+import type {
+  WorkspacePrivateCaseEvidenceReadResultV1,
+  WorkspacePrivateCaseEvidenceReferenceListV1
+} from '@markorbit/contracts/workspace-private-evidence';
 import {
   Alert,
   Badge,
@@ -388,6 +392,7 @@ function MatterDetail({
           {matter.sourceQuoteId} · v{matter.sourceQuoteVersion}
         </p>
       </div>
+      <PrivateCaseEvidencePanel matter={matter} client={client} />
       <details className="lite-evidence-panel">
         <summary>Exact Matter evidence and immutable lineage</summary>
         <div className="lite-detail-grid">
@@ -429,5 +434,200 @@ function MatterDetail({
         </div>
       </details>
     </>
+  );
+}
+
+type EvidenceError = Readonly<{ status?: number; message: string }>;
+
+function evidenceError(error: unknown): EvidenceError {
+  return error instanceof MatterWorkspaceHttpError
+    ? { status: error.status, message: error.message }
+    : {
+        status: 503,
+        message: error instanceof Error ? error.message : 'Private evidence is unavailable.'
+      };
+}
+
+function evidenceErrorTitle(status?: number): string {
+  if (status === 401) return 'Sign in to read private evidence';
+  if (status === 403) return 'Private evidence access denied';
+  if (status === 404) return 'Private evidence not found';
+  if (status === 409) return 'Private evidence is no longer current';
+  return 'Private evidence service unavailable';
+}
+
+export function PrivateCaseEvidencePanel({
+  matter,
+  client
+}: {
+  matter: FormalMatter;
+  client: MatterWorkspaceClient;
+}) {
+  const [tick, setTick] = useState(0);
+  const [references, setReferences] = useState<WorkspacePrivateCaseEvidenceReferenceListV1>();
+  const [listError, setListError] = useState<EvidenceError>();
+  const [loading, setLoading] = useState(true);
+  const [selectedBindingId, setSelectedBindingId] = useState('');
+  const [exactRead, setExactRead] = useState<WorkspacePrivateCaseEvidenceReadResultV1>();
+  const [readError, setReadError] = useState<EvidenceError>();
+  const [reading, setReading] = useState(false);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    setLoading(true);
+    setListError(undefined);
+    setReferences(undefined);
+    setSelectedBindingId('');
+    setExactRead(undefined);
+    setReadError(undefined);
+    void client
+      .listPrivateEvidence(matter.formalMatterId, controller.signal)
+      .then(setReferences)
+      .catch((error: unknown) => {
+        if (error instanceof DOMException && error.name === 'AbortError') return;
+        setListError(evidenceError(error));
+      })
+      .finally(() => setLoading(false));
+    return () => controller.abort();
+  }, [client, matter.formalMatterId, tick]);
+
+  const openExactSource = async (bindingId: string, bindingVersion: number): Promise<void> => {
+    setSelectedBindingId(bindingId);
+    setExactRead(undefined);
+    setReadError(undefined);
+    setReading(true);
+    try {
+      setExactRead(
+        await client.readPrivateEvidence(matter.formalMatterId, bindingId, bindingVersion)
+      );
+    } catch (error) {
+      setReadError(evidenceError(error));
+    } finally {
+      setReading(false);
+    }
+  };
+
+  return (
+    <section aria-labelledby="private-case-evidence-heading" aria-live="polite">
+      <div className="lite-row">
+        <div>
+          <p className="lite-eyebrow">WORKSPACE-PRIVATE EVIDENCE</p>
+          <h2 id="private-case-evidence-heading">Exact private Case evidence</h2>
+          <p>
+            Accepted references are verified against the current Matter and current private
+            Knowledge source. This read-only evidence does not create Official Truth or authorize a
+            filing or external action.
+          </p>
+        </div>
+        <Badge>Read-only · exact grant</Badge>
+      </div>
+      {loading ? (
+        <LoadingState label="Loading accepted private evidence" />
+      ) : listError ? (
+        <Card>
+          <Alert tone="danger" title={evidenceErrorTitle(listError.status)}>
+            {listError.message}
+          </Alert>
+          <Button variant="secondary" onClick={() => setTick((value) => value + 1)}>
+            Retry private evidence
+          </Button>
+        </Card>
+      ) : references?.items.length ? (
+        <div className="lite-list">
+          {references.items.map((reference, index) => {
+            const selected = selectedBindingId === reference.bindingId;
+            return (
+              <Card key={reference.bindingId}>
+                <div className="lite-row">
+                  <div>
+                    <p className="lite-eyebrow">ACCEPTED SOURCE {index + 1}</p>
+                    <h3>{reference.readyPackageId}</h3>
+                    <p>
+                      Binding {reference.bindingId} · version {reference.bindingVersion} · accepted{' '}
+                      {new Date(reference.acceptedAt).toLocaleString()}
+                    </p>
+                  </div>
+                  <Badge>Current</Badge>
+                </div>
+                <p>
+                  {reference.sourceLocators.length} exact retrieval locator
+                  {reference.sourceLocators.length === 1 ? '' : 's'} · no Global fallback
+                </p>
+                <Button
+                  variant="secondary"
+                  disabled={reading}
+                  aria-expanded={selected && Boolean(exactRead)}
+                  onClick={() =>
+                    void openExactSource(reference.bindingId, reference.bindingVersion)
+                  }
+                >
+                  {reading && selected ? 'Verifying exact source…' : 'Open exact source'}
+                </Button>
+                {selected && readError && (
+                  <Alert tone="danger" title={evidenceErrorTitle(readError.status)}>
+                    {readError.message}
+                  </Alert>
+                )}
+                {selected && exactRead && (
+                  <div className="lite-evidence-panel">
+                    <div className="lite-row">
+                      <div>
+                        <p className="lite-eyebrow">VERIFIED SOURCE RETRIEVAL</p>
+                        <h3>{exactRead.document.documentId}</h3>
+                      </div>
+                      <Badge>All currentness checks passed</Badge>
+                    </div>
+                    <Alert title="Locator precision">
+                      These are exact retrieval chunks. Page numbers and text offsets are
+                      unavailable from the owner, so none are inferred or displayed.
+                    </Alert>
+                    <div className="lite-list">
+                      {exactRead.chunks.map((chunk) => (
+                        <Card key={chunk.chunkId}>
+                          <p className="lite-eyebrow">
+                            CHUNK {chunk.ordinal + 1} · {chunk.locator}
+                          </p>
+                          <h4>{chunk.headingPath.join(' / ') || 'Untitled source section'}</h4>
+                          <p>{chunk.text}</p>
+                        </Card>
+                      ))}
+                    </div>
+                    <details>
+                      <summary>Exact source lineage</summary>
+                      <KeyValueList
+                        items={[
+                          {
+                            key: 'Formal Matter snapshot',
+                            value: `${exactRead.binding.caseId} · v${exactRead.binding.caseVersion}`
+                          },
+                          {
+                            key: 'Knowledge Workspace',
+                            value: exactRead.authority.knowledgeWorkspaceId
+                          },
+                          { key: 'Ready Package', value: exactRead.lineage.readyPackageId },
+                          {
+                            key: 'Document artifact version',
+                            value: String(exactRead.document.artifactVersion)
+                          },
+                          {
+                            key: 'Indexed',
+                            value: new Date(exactRead.document.indexedAt).toLocaleString()
+                          }
+                        ]}
+                      />
+                    </details>
+                  </div>
+                )}
+              </Card>
+            );
+          })}
+        </div>
+      ) : (
+        <EmptyState
+          title="No accepted private evidence is linked"
+          description="This means no current accepted Workspace-private evidence binding is linked to this Matter. It does not mean no office action or source document exists."
+        />
+      )}
+    </section>
   );
 }

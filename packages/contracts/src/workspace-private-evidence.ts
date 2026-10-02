@@ -100,6 +100,40 @@ export function materializeCaseEvidenceBinderV1(input: {
 
 export const WORKSPACE_PRIVATE_CASE_EVIDENCE_READ_GRANT_PROTOCOL_VERSION = '1.0' as const;
 
+export type WorkspacePrivateCaseEvidenceReferenceV1 = Readonly<{
+  bindingId: string;
+  bindingVersion: number;
+  knowledgeWorkspaceId: string;
+  readyPackageId: string;
+  caseId: string;
+  caseVersion: number;
+  caseSnapshotSha256: string;
+  sourceLocators: readonly string[];
+  methodProvenanceRefs: readonly string[];
+  status: 'ACCEPTED';
+  acceptedAt: string;
+  currentness: Readonly<{
+    formalMatter: 'CURRENT';
+    coreKnowledgeEvidence: 'CURRENT';
+  }>;
+  consequences: Readonly<{
+    officialTruthCreated: false;
+    filingAuthorized: false;
+    externalActionAuthorized: false;
+  }>;
+}>;
+
+export type WorkspacePrivateCaseEvidenceReferenceListV1 = Readonly<{
+  protocolVersion: typeof WORKSPACE_PRIVATE_CASE_EVIDENCE_READ_GRANT_PROTOCOL_VERSION;
+  objectType: 'WORKSPACE_PRIVATE_CASE_EVIDENCE_REFERENCE_LIST';
+  workspaceId: string;
+  caseId: string;
+  caseVersion: number;
+  caseSnapshotSha256: string;
+  items: readonly WorkspacePrivateCaseEvidenceReferenceV1[];
+  materializedAt: string;
+}>;
+
 export type WorkspacePrivateCaseEvidenceReadGrantV1 = Readonly<{
   protocolVersion: typeof WORKSPACE_PRIVATE_CASE_EVIDENCE_READ_GRANT_PROTOCOL_VERSION;
   objectType: 'WORKSPACE_PRIVATE_CASE_EVIDENCE_READ_GRANT';
@@ -141,6 +175,72 @@ export type WorkspacePrivateCaseEvidenceReadGrantV1 = Readonly<{
   expiresAt: string;
 }>;
 
+export type WorkspacePrivateCaseEvidenceReadResultV1 = Readonly<{
+  protocolVersion: typeof WORKSPACE_PRIVATE_CASE_EVIDENCE_READ_GRANT_PROTOCOL_VERSION;
+  objectType: 'WORKSPACE_PRIVATE_CASE_EVIDENCE_READ_RESULT';
+  binding: Readonly<{
+    bindingId: string;
+    bindingVersion: number;
+    caseId: string;
+    caseVersion: number;
+    caseSnapshotSha256: string;
+  }>;
+  authority: Readonly<{
+    coreWorkspaceId: string;
+    knowledgeWorkspaceId: string;
+    userId: string;
+    membershipId: string;
+    verifiedAt: string;
+    expiresAt: string;
+  }>;
+  lineage: Readonly<{
+    readyPackageId: string;
+    readyPackageDigest: string;
+    coreIntakeId: string;
+    contentExportSha256: string;
+    rawArtifactId: string;
+    rawArtifactSha256: string;
+  }>;
+  document: Readonly<{
+    documentId: string;
+    artifactVersion: number;
+    stagingDocumentId: string;
+    canonicalSha256: string;
+    stagingSha256: string;
+    documentSha256: string;
+    indexedAt: string;
+  }>;
+  currentness: Readonly<{
+    workspaceAuthority: 'CURRENT';
+    formalMatter: 'CURRENT';
+    coreKnowledgeEvidence: 'CURRENT';
+    knowledgeRetrieval: 'CURRENT';
+    documentVersion: 'CURRENT';
+  }>;
+  locatorSemantics: Readonly<{
+    basis: 'RETRIEVAL_CHUNK';
+    pageNumbers: 'UNAVAILABLE';
+    textOffsets: 'UNAVAILABLE';
+  }>;
+  chunks: readonly Readonly<{
+    locator: string;
+    chunkId: string;
+    ordinal: number;
+    headingPath: readonly string[];
+    text: string;
+    contentSha256: string;
+    contentKind: 'CANONICAL_MARKDOWN_CHUNK';
+    pageNumber: null;
+    textStartOffset: null;
+    textEndOffset: null;
+  }>[];
+  consequences: Readonly<{
+    officialTruthCreated: false;
+    filingAuthorized: false;
+    externalActionAuthorized: false;
+  }>;
+}>;
+
 const canonicalUuid = (value: unknown): value is string =>
   typeof value === 'string' &&
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/iu.test(value);
@@ -150,6 +250,139 @@ const positiveVersion = (value: unknown): value is number =>
   typeof value === 'number' && Number.isSafeInteger(value) && value >= 1;
 const rfc3339 = (value: unknown): value is string =>
   typeof value === 'string' && Number.isFinite(Date.parse(value));
+
+const record = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null && !Array.isArray(value);
+
+const noAuthorityConsequences = (value: unknown): boolean =>
+  record(value) &&
+  value.officialTruthCreated === false &&
+  value.filingAuthorized === false &&
+  value.externalActionAuthorized === false;
+
+function validReference(value: unknown): value is WorkspacePrivateCaseEvidenceReferenceV1 {
+  if (!record(value) || !record(value.currentness)) return false;
+  return (
+    canonicalUuid(value.bindingId) &&
+    positiveVersion(value.bindingVersion) &&
+    nonEmpty(value.knowledgeWorkspaceId) &&
+    nonEmpty(value.readyPackageId) &&
+    nonEmpty(value.caseId) &&
+    positiveVersion(value.caseVersion) &&
+    sha256(value.caseSnapshotSha256) &&
+    Array.isArray(value.sourceLocators) &&
+    value.sourceLocators.length > 0 &&
+    value.sourceLocators.every(nonEmpty) &&
+    Array.isArray(value.methodProvenanceRefs) &&
+    value.methodProvenanceRefs.every(nonEmpty) &&
+    value.status === 'ACCEPTED' &&
+    rfc3339(value.acceptedAt) &&
+    value.currentness.formalMatter === 'CURRENT' &&
+    value.currentness.coreKnowledgeEvidence === 'CURRENT' &&
+    noAuthorityConsequences(value.consequences)
+  );
+}
+
+export function assertWorkspacePrivateCaseEvidenceReferenceListV1(
+  value: unknown
+): asserts value is WorkspacePrivateCaseEvidenceReferenceListV1 {
+  if (
+    !record(value) ||
+    value.protocolVersion !== WORKSPACE_PRIVATE_CASE_EVIDENCE_READ_GRANT_PROTOCOL_VERSION ||
+    value.objectType !== 'WORKSPACE_PRIVATE_CASE_EVIDENCE_REFERENCE_LIST' ||
+    !canonicalUuid(value.workspaceId) ||
+    !nonEmpty(value.caseId) ||
+    !positiveVersion(value.caseVersion) ||
+    !sha256(value.caseSnapshotSha256) ||
+    !Array.isArray(value.items) ||
+    !value.items.every(validReference) ||
+    !value.items.every(
+      (item) =>
+        item.caseId === value.caseId &&
+        item.caseVersion === value.caseVersion &&
+        item.caseSnapshotSha256 === value.caseSnapshotSha256
+    ) ||
+    !rfc3339(value.materializedAt)
+  )
+    throw new TypeError('Workspace private Case evidence reference list is invalid.');
+}
+
+export function assertWorkspacePrivateCaseEvidenceReadResultV1(
+  value: unknown
+): asserts value is WorkspacePrivateCaseEvidenceReadResultV1 {
+  if (!record(value))
+    throw new TypeError('Workspace private Case evidence read result is invalid.');
+  const binding = value.binding;
+  const authority = value.authority;
+  const lineage = value.lineage;
+  const document = value.document;
+  const currentness = value.currentness;
+  const locatorSemantics = value.locatorSemantics;
+  const chunks = value.chunks;
+  if (
+    value.protocolVersion !== WORKSPACE_PRIVATE_CASE_EVIDENCE_READ_GRANT_PROTOCOL_VERSION ||
+    value.objectType !== 'WORKSPACE_PRIVATE_CASE_EVIDENCE_READ_RESULT' ||
+    !record(binding) ||
+    !canonicalUuid(binding.bindingId) ||
+    !positiveVersion(binding.bindingVersion) ||
+    !nonEmpty(binding.caseId) ||
+    !positiveVersion(binding.caseVersion) ||
+    !sha256(binding.caseSnapshotSha256) ||
+    !record(authority) ||
+    !canonicalUuid(authority.coreWorkspaceId) ||
+    !nonEmpty(authority.knowledgeWorkspaceId) ||
+    !canonicalUuid(authority.userId) ||
+    !canonicalUuid(authority.membershipId) ||
+    !rfc3339(authority.verifiedAt) ||
+    !rfc3339(authority.expiresAt) ||
+    Date.parse(authority.expiresAt) <= Date.parse(authority.verifiedAt) ||
+    !record(lineage) ||
+    !nonEmpty(lineage.readyPackageId) ||
+    !sha256(lineage.readyPackageDigest) ||
+    !nonEmpty(lineage.coreIntakeId) ||
+    !sha256(lineage.contentExportSha256) ||
+    !nonEmpty(lineage.rawArtifactId) ||
+    !sha256(lineage.rawArtifactSha256) ||
+    !record(document) ||
+    !nonEmpty(document.documentId) ||
+    !positiveVersion(document.artifactVersion) ||
+    !nonEmpty(document.stagingDocumentId) ||
+    !sha256(document.canonicalSha256) ||
+    !sha256(document.stagingSha256) ||
+    !sha256(document.documentSha256) ||
+    !rfc3339(document.indexedAt) ||
+    !record(currentness) ||
+    currentness.workspaceAuthority !== 'CURRENT' ||
+    currentness.formalMatter !== 'CURRENT' ||
+    currentness.coreKnowledgeEvidence !== 'CURRENT' ||
+    currentness.knowledgeRetrieval !== 'CURRENT' ||
+    currentness.documentVersion !== 'CURRENT' ||
+    !record(locatorSemantics) ||
+    locatorSemantics.basis !== 'RETRIEVAL_CHUNK' ||
+    locatorSemantics.pageNumbers !== 'UNAVAILABLE' ||
+    locatorSemantics.textOffsets !== 'UNAVAILABLE' ||
+    !Array.isArray(chunks) ||
+    chunks.length === 0 ||
+    !chunks.every(
+      (chunk) =>
+        record(chunk) &&
+        nonEmpty(chunk.locator) &&
+        nonEmpty(chunk.chunkId) &&
+        Number.isSafeInteger(chunk.ordinal) &&
+        Number(chunk.ordinal) >= 0 &&
+        Array.isArray(chunk.headingPath) &&
+        chunk.headingPath.every(nonEmpty) &&
+        nonEmpty(chunk.text) &&
+        sha256(chunk.contentSha256) &&
+        chunk.contentKind === 'CANONICAL_MARKDOWN_CHUNK' &&
+        chunk.pageNumber === null &&
+        chunk.textStartOffset === null &&
+        chunk.textEndOffset === null
+    ) ||
+    !noAuthorityConsequences(value.consequences)
+  )
+    throw new TypeError('Workspace private Case evidence read result is invalid.');
+}
 
 export function assertWorkspacePrivateCaseEvidenceReadGrantV1(
   value: unknown

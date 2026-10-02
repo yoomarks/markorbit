@@ -227,6 +227,15 @@ integration('PostgreSQL Workspace-private exact CASE evidence binding', () => {
       caseId: matter.formalMatterId,
       rawArtifactSha256: content.rawArtifact.sha256
     });
+    const listed = await service().listAccepted(principal(), matter.formalMatterId);
+    expect(listed.items).toMatchObject([
+      {
+        bindingId,
+        bindingVersion: 2,
+        status: 'ACCEPTED',
+        caseId: matter.formalMatterId
+      }
+    ]);
   });
 
   it('serializes concurrent same-key suggestions to one durable row', async () => {
