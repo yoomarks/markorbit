@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import {
+  assertWorkspacePrivateCaseEvidenceReadGrantV1,
   assertWorkspacePrivateDocumentBindingV1,
   materializeCaseEvidenceBinderV1,
+  type WorkspacePrivateCaseEvidenceReadGrantV1,
   type WorkspacePrivateDocumentBindingV1
 } from '../src/workspace-private-evidence.js';
 
@@ -72,5 +74,73 @@ describe('workspace private evidence', () => {
       materializedAt: '2026-09-22T01:00:00Z'
     });
     expect(binder.evidence).toEqual([]);
+  });
+});
+
+const readGrant: WorkspacePrivateCaseEvidenceReadGrantV1 = {
+  protocolVersion: '1.0',
+  objectType: 'WORKSPACE_PRIVATE_CASE_EVIDENCE_READ_GRANT',
+  bindingId: '018f0000-0000-7000-8000-000000001452',
+  bindingVersion: 2,
+  workspaceId: '018f0000-0000-7000-8000-000000001450',
+  userId: '018f0000-0000-7000-8000-000000001451',
+  membershipId: '018f0000-0000-7000-8000-000000001453',
+  knowledgeWorkspaceId: 'wsp_01ARZ3NDEKTSV4RRFFQ69G5FAV',
+  readyPackageId: 'rdp_01ARZ3NDEKTSV4RRFFQ69G5FAV',
+  readyPackageDigest: '1'.repeat(64),
+  coreIntakeId: '018f0000-0000-7000-8000-000000001454',
+  contentExportSha256: '5'.repeat(64),
+  stagingDocumentId: 'std_01ARZ3NDEKTSV4RRFFQ69G5FAV',
+  stagingSha256: '2'.repeat(64),
+  rawArtifactId: 'art_01ARZ3NDEKTSV4RRFFQ69G5FAV',
+  rawArtifactSha256: '3'.repeat(64),
+  caseId: 'formal-matter_oa-1452',
+  caseVersion: 1,
+  caseSnapshotSha256: '4'.repeat(64),
+  sourceLocators: ['chunk:1'],
+  authoritySnapshot: {
+    workspaceVersion: 1,
+    userVersion: 1,
+    membershipVersion: 1
+  },
+  currentness: {
+    workspaceAuthority: 'CURRENT',
+    formalMatter: 'CURRENT',
+    coreKnowledgeEvidence: 'CURRENT',
+    knowledgeRetrieval: 'MUST_VERIFY'
+  },
+  consequences: {
+    officialTruthCreated: false,
+    filingAuthorized: false,
+    externalActionAuthorized: false
+  },
+  verifiedAt: '2026-09-30T14:30:00.000Z',
+  expiresAt: '2026-09-30T14:31:00.000Z'
+};
+
+describe('workspace private Case evidence read grant', () => {
+  it('accepts only a bounded currentness proof that still requires Knowledge retrieval verification', () => {
+    expect(() => assertWorkspacePrivateCaseEvidenceReadGrantV1(readGrant)).not.toThrow();
+  });
+
+  it('rejects forged content identity and grants that claim retrieval currentness without verification', () => {
+    expect(() =>
+      assertWorkspacePrivateCaseEvidenceReadGrantV1({
+        ...readGrant,
+        stagingSha256: 'not-a-sha'
+      })
+    ).toThrow(/invalid/u);
+    expect(() =>
+      assertWorkspacePrivateCaseEvidenceReadGrantV1({
+        ...readGrant,
+        currentness: { ...readGrant.currentness, knowledgeRetrieval: 'CURRENT' }
+      })
+    ).toThrow(/invalid/u);
+    expect(() =>
+      assertWorkspacePrivateCaseEvidenceReadGrantV1({
+        ...readGrant,
+        expiresAt: readGrant.verifiedAt
+      })
+    ).toThrow(/invalid/u);
   });
 });

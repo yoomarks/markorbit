@@ -10,7 +10,7 @@
     "test": "vitest run",
     "test:postgres": "vitest run tests/identity-postgres.test.ts && vitest run tests/method-outcome-evidence-postgres.test.ts && vitest run tests/method-outcome-report-postgres.test.ts && vitest run tests/method-improvement-postgres.test.ts && vitest run tests/method-improvement-coverage-gap-postgres.test.ts",
     "test:auth:postgres": "vitest run tests/session-postgres.test.ts && vitest run tests/account-access-postgres.test.ts && vitest run tests/account-onboarding-postgres.test.ts && vitest run tests/workspace-admin-management-postgres.test.ts && vitest run tests/oauth-credential-postgres.test.ts && vitest run tests/external-credential-postgres.test.ts",
-    "test:knowledge-intake:postgres": "vitest run tests/knowledge-intake-postgres.test.ts",
+    "test:knowledge-intake:postgres": "vitest run tests/knowledge-intake-postgres.test.ts && vitest run tests/workspace-private-case-evidence-postgres.test.ts",
     "test:knowledge-v2-delivery:postgres": "vitest run tests/knowledge-v2-delivery-postgres.test.ts",
     "typecheck": "tsc --noEmit",
     "lint": "eslint src tests",

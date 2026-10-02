@@ -8,6 +8,7 @@
     "core_method_improvement": "@markorbit/core-service",
     "core_governed_human_action_receipts": "@markorbit/core-service",
     "core_workspace_admin_actions": "@markorbit/core-service",
+    "core_workspace_private_case_evidence": "@markorbit/core-service",
     "markreg_customer_confirmations": "@markorbit/markreg-service",
     "markreg_matter_drafts": "@markorbit/markreg-service",
     "markreg_formal_matters": "@markorbit/markreg-service",
@@ -105,6 +106,7 @@
     "lite_notification_delivery_": "@markorbit/lite-service",
     "lite_workspace_channel_identity_binding_": "@markorbit/lite-service",
     "core_external_credential_": "@markorbit/core-service",
+    "core_workspace_private_case_evidence_": "@markorbit/core-service",
     "lite_seed_workspace_": "@markorbit/lite-service"
   },
   "migrations": {
@@ -237,6 +239,7 @@
     "0144_core_external_credential_resolution_audit": "@markorbit/core-service",
     "0145_lite_outbound_contact_policy_sms": "@markorbit/lite-service",
     "0146_lite_notification_automation_sms": "@markorbit/lite-service",
-    "0147_lite_seed_workspace_packages": "@markorbit/lite-service"
+    "0147_lite_seed_workspace_packages": "@markorbit/lite-service",
+    "0148_core_workspace_private_case_evidence": "@markorbit/core-service"
   }
 }
