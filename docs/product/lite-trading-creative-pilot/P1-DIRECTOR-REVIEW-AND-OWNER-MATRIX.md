@@ -76,3 +76,9 @@
 - 技术总监：不从 Workspace 或资产权限推断个人身份，也不构造用户 ID。仅接受上游已验证主体；否则明确降级为不跨刷新的内存草稿。
 
 建议 PR 标题：`feat(lite): validate conversational trademark creative workbench`
+
+## 8. 可直达验收入口
+
+`trading-studio-preview.html` 是与 Storybook 共用同一份 fixture 的隔离入口。默认打开已选方向，用户可进入工作台、调整结构化参数、比较版本并在同一可信浏览器主体下保存/恢复 Demo 草稿；`?scenario=DIRECTIONS` 从三方向选择开始。
+
+可通过 `scenario` 检查 `NO_MATERIALS`、`PARTIAL`、`RUNNING`、`QA_FAILED`、`SAVED`、`EMPTY`、`LEGACY_PROFILE`、`STALE`、`PERMISSION` 与 `STORAGE_FAILURE`，通过 `session=memory` 验证无可信个人主体时不跨刷新保存。该入口始终是 Preview fixture，不替代 Gateway owner state，不新增生成、收费、发布或正式资产写入能力。
