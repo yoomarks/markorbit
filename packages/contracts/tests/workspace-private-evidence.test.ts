@@ -1,9 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import {
+  assertWorkspacePrivateCaseEvidenceReadResultV1,
+  assertWorkspacePrivateCaseEvidenceReferenceListV1,
   assertWorkspacePrivateCaseEvidenceReadGrantV1,
   assertWorkspacePrivateDocumentBindingV1,
   materializeCaseEvidenceBinderV1,
   type WorkspacePrivateCaseEvidenceReadGrantV1,
+  type WorkspacePrivateCaseEvidenceReadResultV1,
+  type WorkspacePrivateCaseEvidenceReferenceListV1,
   type WorkspacePrivateDocumentBindingV1
 } from '../src/workspace-private-evidence.js';
 
@@ -74,6 +78,127 @@ describe('workspace private evidence', () => {
       materializedAt: '2026-09-22T01:00:00Z'
     });
     expect(binder.evidence).toEqual([]);
+  });
+});
+
+const referenceList = (): WorkspacePrivateCaseEvidenceReferenceListV1 => ({
+  protocolVersion: '1.0',
+  objectType: 'WORKSPACE_PRIVATE_CASE_EVIDENCE_REFERENCE_LIST',
+  workspaceId: readGrant.workspaceId,
+  caseId: readGrant.caseId,
+  caseVersion: readGrant.caseVersion,
+  caseSnapshotSha256: readGrant.caseSnapshotSha256,
+  materializedAt: readGrant.verifiedAt,
+  items: [
+    {
+      bindingId: readGrant.bindingId,
+      bindingVersion: readGrant.bindingVersion,
+      knowledgeWorkspaceId: readGrant.knowledgeWorkspaceId,
+      readyPackageId: readGrant.readyPackageId,
+      caseId: readGrant.caseId,
+      caseVersion: readGrant.caseVersion,
+      caseSnapshotSha256: readGrant.caseSnapshotSha256,
+      sourceLocators: readGrant.sourceLocators,
+      methodProvenanceRefs: ['method://oa/private-evidence-v1'],
+      status: 'ACCEPTED',
+      acceptedAt: readGrant.verifiedAt,
+      currentness: { formalMatter: 'CURRENT', coreKnowledgeEvidence: 'CURRENT' },
+      consequences: readGrant.consequences
+    }
+  ]
+});
+
+const readResult = (): WorkspacePrivateCaseEvidenceReadResultV1 => ({
+  protocolVersion: '1.0',
+  objectType: 'WORKSPACE_PRIVATE_CASE_EVIDENCE_READ_RESULT',
+  binding: {
+    bindingId: readGrant.bindingId,
+    bindingVersion: readGrant.bindingVersion,
+    caseId: readGrant.caseId,
+    caseVersion: readGrant.caseVersion,
+    caseSnapshotSha256: readGrant.caseSnapshotSha256
+  },
+  authority: {
+    coreWorkspaceId: readGrant.workspaceId,
+    knowledgeWorkspaceId: readGrant.knowledgeWorkspaceId,
+    userId: readGrant.userId,
+    membershipId: readGrant.membershipId,
+    verifiedAt: readGrant.verifiedAt,
+    expiresAt: readGrant.expiresAt
+  },
+  lineage: {
+    readyPackageId: readGrant.readyPackageId,
+    readyPackageDigest: readGrant.readyPackageDigest,
+    coreIntakeId: readGrant.coreIntakeId,
+    contentExportSha256: readGrant.contentExportSha256,
+    rawArtifactId: readGrant.rawArtifactId,
+    rawArtifactSha256: readGrant.rawArtifactSha256
+  },
+  document: {
+    documentId: 'doc_private_1452',
+    artifactVersion: 1,
+    stagingDocumentId: readGrant.stagingDocumentId,
+    canonicalSha256: readGrant.stagingSha256,
+    stagingSha256: readGrant.stagingSha256,
+    documentSha256: '6'.repeat(64),
+    indexedAt: readGrant.verifiedAt
+  },
+  currentness: {
+    workspaceAuthority: 'CURRENT',
+    formalMatter: 'CURRENT',
+    coreKnowledgeEvidence: 'CURRENT',
+    knowledgeRetrieval: 'CURRENT',
+    documentVersion: 'CURRENT'
+  },
+  locatorSemantics: {
+    basis: 'RETRIEVAL_CHUNK',
+    pageNumbers: 'UNAVAILABLE',
+    textOffsets: 'UNAVAILABLE'
+  },
+  chunks: [
+    {
+      locator: 'chunk:1',
+      chunkId: 'chunk:1',
+      ordinal: 0,
+      headingPath: ['Office action', 'Refusal basis'],
+      text: 'Exact current private source text.',
+      contentSha256: '7'.repeat(64),
+      contentKind: 'CANONICAL_MARKDOWN_CHUNK',
+      pageNumber: null,
+      textStartOffset: null,
+      textEndOffset: null
+    }
+  ],
+  consequences: readGrant.consequences
+});
+
+describe('workspace private Case evidence consumer contracts', () => {
+  it('accepts only current accepted references for the exact Case snapshot', () => {
+    const value = referenceList();
+    expect(() => assertWorkspacePrivateCaseEvidenceReferenceListV1(value)).not.toThrow();
+    expect(() =>
+      assertWorkspacePrivateCaseEvidenceReferenceListV1({
+        ...value,
+        items: [{ ...value.items[0]!, caseId: 'other-case' }]
+      })
+    ).toThrow(/invalid/u);
+  });
+
+  it('rejects exact reads that invent page numbers or currentness', () => {
+    const value = readResult();
+    expect(() => assertWorkspacePrivateCaseEvidenceReadResultV1(value)).not.toThrow();
+    expect(() =>
+      assertWorkspacePrivateCaseEvidenceReadResultV1({
+        ...value,
+        chunks: [{ ...value.chunks[0]!, pageNumber: 1 }]
+      })
+    ).toThrow(/invalid/u);
+    expect(() =>
+      assertWorkspacePrivateCaseEvidenceReadResultV1({
+        ...value,
+        currentness: { ...value.currentness, knowledgeRetrieval: 'MUST_VERIFY' }
+      })
+    ).toThrow(/invalid/u);
   });
 });
 

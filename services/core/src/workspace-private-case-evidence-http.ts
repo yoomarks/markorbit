@@ -15,7 +15,10 @@ import {
 
 export interface WorkspacePrivateCaseEvidenceHttpOptions {
   internalServiceSecret: string;
-  service: Pick<WorkspacePrivateCaseEvidenceService, 'suggest' | 'decide' | 'readGrant'>;
+  service: Pick<
+    WorkspacePrivateCaseEvidenceService,
+    'suggest' | 'decide' | 'readGrant' | 'listAccepted'
+  >;
 }
 
 function principalFor(request: JsonRequest, secret: string): WorkspacePrincipal {
@@ -169,6 +172,21 @@ export function createWorkspacePrivateCaseEvidenceRoutes(
   options: WorkspacePrivateCaseEvidenceHttpOptions
 ): readonly JsonRoute[] {
   return [
+    {
+      method: 'GET',
+      path: '/internal/v1/workspace-private-case-evidence/cases/:formalMatterId',
+      async handle(request) {
+        const principal = principalFor(request, options.internalServiceSecret);
+        try {
+          return json(
+            200,
+            await options.service.listAccepted(principal, request.params.formalMatterId ?? '')
+          );
+        } catch (error) {
+          return translate(error);
+        }
+      }
+    },
     {
       method: 'POST',
       path: '/internal/v1/workspace-private-case-evidence/suggestions',

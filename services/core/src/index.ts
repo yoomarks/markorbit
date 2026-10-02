@@ -108,7 +108,7 @@ export interface CoreRuntimeOptions {
   knowledgeContents?: KnowledgeReadyPackageContentRepository;
   workspacePrivateCaseEvidence?: Pick<
     WorkspacePrivateCaseEvidenceService,
-    'suggest' | 'decide' | 'readGrant'
+    'suggest' | 'decide' | 'readGrant' | 'listAccepted'
   >;
   knowledgeV2Deliveries?: KnowledgeV2DeliveryRepository;
   brainCognitiveRead?: Pick<BrainCognitiveReadServiceV1, 'read'>;

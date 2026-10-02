@@ -97,6 +97,7 @@ import { createGatewaySiteRoutesV1 } from './site-http.js';
 import { createGatewayWechatMiniProgramRoutesV1 } from './site-wechat-miniprogram-http.js';
 import { createGatewaySiteInboundOutcomeRoutesV1 } from './site-inbound-outcome-http.js';
 import { createGatewayMarkRegEarlyFunnelRoutes } from './markreg-early-funnel-http.js';
+import { createGatewayWorkspacePrivateCaseEvidenceRoutes } from './workspace-private-case-evidence-http.js';
 import { createGatewayPreparationLockHandler } from './preparation-lock-http.js';
 import { createGatewayFilingGovernanceHandler } from './filing-governance-http.js';
 import { createGatewayProtectedExternalActionRoutes } from './protected-external-action-http.js';
@@ -530,6 +531,21 @@ export function createRuntime(options: GatewayOptions = {}) {
           csrfSecret,
           allowedOrigins,
           fixtureTestRuntime: milestoneTestRuntime
+        }),
+        ...createGatewayWorkspacePrivateCaseEvidenceRoutes({
+          coreUrl: options.coreUrl ?? process.env.CORE_URL ?? 'http://127.0.0.1:4101',
+          ...(knowledgeUrl ? { knowledgeUrl } : {}),
+          ...(authenticationClient ? { authenticationClient } : {}),
+          ...((options.internalServiceSecret ?? process.env.MO_INTERNAL_SERVICE_SECRET)
+            ? {
+                internalServiceSecret: (options.internalServiceSecret ??
+                  process.env.MO_INTERNAL_SERVICE_SECRET)!
+              }
+            : {}),
+          csrfSecret,
+          allowedOrigins,
+          ...(options.knowledgeFetchImpl ? { fetchImpl: options.knowledgeFetchImpl } : {}),
+          ...(knowledgeTimeoutMs === undefined ? {} : { timeoutMs: knowledgeTimeoutMs })
         }),
         ...createGatewayDataEngineRoutes({
           ...(dataEngineUrl ? { dataEngineUrl } : {}),

@@ -275,6 +275,48 @@ describe('Workspace-private exact CASE evidence binding', () => {
     expect(JSON.stringify(accepted)).not.toContain('confidential content');
   });
 
+  it('lists only accepted references that still match the current Matter and Core evidence', async () => {
+    const f = await fixture();
+    const suggested = await f.service.suggest(principal(), suggestion());
+    await expect(f.service.listAccepted(principal(), matter.formalMatterId)).resolves.toMatchObject(
+      {
+        caseId: matter.formalMatterId,
+        items: []
+      }
+    );
+    const accepted = await f.service.decide(principal(), {
+      bindingId: suggested.bindingId,
+      expectedVersion: 1,
+      idempotencyKey: 'accept-list-case-evidence-501',
+      decision: 'ACCEPT'
+    });
+    const listed = await f.service.listAccepted(principal(), matter.formalMatterId);
+    expect(listed).toMatchObject({
+      workspaceId: ids.workspace,
+      caseId: matter.formalMatterId,
+      caseVersion: matter.version,
+      items: [
+        {
+          bindingId: accepted.bindingId,
+          bindingVersion: 2,
+          status: 'ACCEPTED',
+          currentness: { formalMatter: 'CURRENT', coreKnowledgeEvidence: 'CURRENT' },
+          consequences: {
+            officialTruthCreated: false,
+            filingAuthorized: false,
+            externalActionAuthorized: false
+          }
+        }
+      ]
+    });
+    expect(JSON.stringify(listed)).not.toContain('confidential content');
+    f.setMatter({ ...matter, version: 2 });
+    await expect(f.service.listAccepted(principal(), matter.formalMatterId)).rejects.toMatchObject({
+      code: 'WORKSPACE_PRIVATE_CASE_EVIDENCE_STALE',
+      status: 409
+    });
+  });
+
   it('replays the same suggestion and rejects the same key with different reviewed provenance', async () => {
     const f = await fixture();
     const first = await f.service.suggest(principal(), suggestion());

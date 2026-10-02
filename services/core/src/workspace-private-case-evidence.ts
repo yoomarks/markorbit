@@ -5,6 +5,7 @@ import {
   type WorkspacePrincipal
 } from '@markorbit/contracts';
 import type {
+  WorkspacePrivateCaseEvidenceReferenceListV1,
   WorkspacePrivateCaseEvidenceReadGrantV1,
   WorkspacePrivateDocumentBindingV1
 } from '@markorbit/contracts/workspace-private-evidence';
@@ -67,6 +68,10 @@ export interface WorkspacePrivateCaseEvidenceBindingRepository {
     candidate: WorkspacePrivateCaseEvidenceBindingRecord
   ): Promise<{ binding: WorkspacePrivateCaseEvidenceBindingRecord; created: boolean }>;
   findById(bindingId: string): Promise<WorkspacePrivateCaseEvidenceBindingRecord | undefined>;
+  listAcceptedByFormalMatter(
+    workspaceId: string,
+    formalMatterId: string
+  ): Promise<readonly WorkspacePrivateCaseEvidenceBindingRecord[]>;
   transitionDecision(
     input: Readonly<{
       bindingId: string;
@@ -304,6 +309,23 @@ export class MemoryWorkspacePrivateCaseEvidenceBindingRepository implements Work
     return value ? structuredClone(value) : undefined;
   }
 
+  async listAcceptedByFormalMatter(workspaceId: string, formalMatterId: string) {
+    await Promise.resolve();
+    return [...this.rows.values()]
+      .filter(
+        (binding) =>
+          binding.workspaceId === workspaceId &&
+          binding.formalMatterId === formalMatterId &&
+          binding.status === 'ACCEPTED'
+      )
+      .sort((left, right) =>
+        `${right.decidedAt ?? ''}\u001f${right.bindingId}`.localeCompare(
+          `${left.decidedAt ?? ''}\u001f${left.bindingId}`
+        )
+      )
+      .map((binding) => structuredClone(binding));
+  }
+
   async transitionDecision(
     input: Parameters<WorkspacePrivateCaseEvidenceBindingRepository['transitionDecision']>[0]
   ) {
@@ -454,6 +476,16 @@ export class PostgresWorkspacePrivateCaseEvidenceBindingRepository implements Wo
     return result.rows[0] ? mapBindingRow(result.rows[0] as BindingRow) : undefined;
   }
 
+  async listAcceptedByFormalMatter(workspaceId: string, formalMatterId: string) {
+    const result = await this.query.query(
+      `SELECT * FROM core_workspace_private_case_evidence_bindings
+        WHERE workspace_id=$1 AND formal_matter_id=$2 AND status='ACCEPTED'
+        ORDER BY decided_at DESC, binding_id ASC`,
+      [workspaceId, formalMatterId]
+    );
+    return result.rows.map((row) => mapBindingRow(row as BindingRow));
+  }
+
   async transitionDecision(
     input: Parameters<WorkspacePrivateCaseEvidenceBindingRepository['transitionDecision']>[0]
   ) {
@@ -569,6 +601,33 @@ export class WorkspacePrivateCaseEvidenceService {
         'WORKSPACE_PRIVATE_CASE_EVIDENCE_STALE',
         'Formal Matter version or snapshot is no longer current.',
         409
+      );
+    return matter;
+  }
+
+  private async currentMatter(principal: WorkspacePrincipal, formalMatterId: string) {
+    let matter: FormalMatterCurrentSnapshot;
+    try {
+      matter = await this.options.formalMatters.read(principal, formalMatterId);
+    } catch (cause) {
+      if (cause instanceof WorkspacePrivateCaseEvidenceError) throw cause;
+      throw new WorkspacePrivateCaseEvidenceError(
+        'WORKSPACE_PRIVATE_CASE_EVIDENCE_SOURCE_UNAVAILABLE',
+        'Current Formal Matter source is unavailable.',
+        503,
+        true,
+        { cause: cause instanceof Error ? cause : undefined }
+      );
+    }
+    if (
+      matter.workspaceId !== principal.workspaceId ||
+      matter.formalMatterId !== formalMatterId ||
+      matter.status !== 'OPEN'
+    )
+      throw new WorkspacePrivateCaseEvidenceError(
+        'WORKSPACE_PRIVATE_CASE_EVIDENCE_NOT_FOUND',
+        'Current Formal Matter was not found.',
+        404
       );
     return matter;
   }
@@ -891,6 +950,89 @@ export class WorkspacePrivateCaseEvidenceService {
       expiresAt: new Date(verifiedAt.getTime() + READ_GRANT_TTL_MS).toISOString()
     };
     return Object.freeze(grant);
+  }
+
+  async listAccepted(
+    principal: WorkspacePrincipal,
+    formalMatterId: string
+  ): Promise<WorkspacePrivateCaseEvidenceReferenceListV1> {
+    if (!formalMatterId.trim())
+      throw new WorkspacePrivateCaseEvidenceError(
+        'INVALID_WORKSPACE_PRIVATE_CASE_EVIDENCE_REQUEST',
+        'Exact Formal Matter identity is required.',
+        400
+      );
+    await this.authority(principal, 'matter:read');
+    const matter = await this.currentMatter(principal, formalMatterId);
+    let bindings: readonly WorkspacePrivateCaseEvidenceBindingRecord[];
+    try {
+      bindings = await this.options.repository.listAcceptedByFormalMatter(
+        principal.workspaceId,
+        formalMatterId
+      );
+    } catch (cause) {
+      throw new WorkspacePrivateCaseEvidenceError(
+        'WORKSPACE_PRIVATE_CASE_EVIDENCE_SOURCE_UNAVAILABLE',
+        'Workspace private Case evidence persistence is unavailable.',
+        503,
+        true,
+        { cause: cause instanceof Error ? cause : undefined }
+      );
+    }
+    for (const binding of bindings) {
+      if (
+        binding.formalMatterVersion !== matter.version ||
+        binding.formalMatterSnapshotSha256 !== matter.snapshotSha256 ||
+        !binding.decidedAt
+      )
+        throw new WorkspacePrivateCaseEvidenceError(
+          'WORKSPACE_PRIVATE_CASE_EVIDENCE_STALE',
+          'An accepted private evidence binding no longer matches the current Formal Matter.',
+          409
+        );
+      await this.exactSource(principal.workspaceId, binding.readyPackageId, {
+        coreIntakeId: binding.coreIntakeId,
+        knowledgeWorkspaceId: binding.knowledgeWorkspaceId,
+        readyPackageId: binding.readyPackageId,
+        readyPackageDigest: binding.readyPackageDigest,
+        contentExportSha256: binding.contentExportSha256,
+        stagingDocumentId: binding.stagingDocumentId,
+        stagingSha256: binding.stagingSha256,
+        rawArtifactId: binding.rawArtifactId,
+        rawArtifactSha256: binding.rawArtifactSha256
+      });
+    }
+    return {
+      protocolVersion: '1.0',
+      objectType: 'WORKSPACE_PRIVATE_CASE_EVIDENCE_REFERENCE_LIST',
+      workspaceId: principal.workspaceId,
+      caseId: matter.formalMatterId,
+      caseVersion: matter.version,
+      caseSnapshotSha256: matter.snapshotSha256,
+      items: bindings.map((binding) => ({
+        bindingId: binding.bindingId,
+        bindingVersion: binding.version,
+        knowledgeWorkspaceId: binding.knowledgeWorkspaceId,
+        readyPackageId: binding.readyPackageId,
+        caseId: binding.formalMatterId,
+        caseVersion: binding.formalMatterVersion,
+        caseSnapshotSha256: binding.formalMatterSnapshotSha256,
+        sourceLocators: [...binding.sourceLocators],
+        methodProvenanceRefs: [...binding.methodProvenanceRefs],
+        status: 'ACCEPTED' as const,
+        acceptedAt: binding.decidedAt!,
+        currentness: {
+          formalMatter: 'CURRENT' as const,
+          coreKnowledgeEvidence: 'CURRENT' as const
+        },
+        consequences: {
+          officialTruthCreated: false as const,
+          filingAuthorized: false as const,
+          externalActionAuthorized: false as const
+        }
+      })),
+      materializedAt: this.now().toISOString()
+    };
   }
 }
 

@@ -60,7 +60,10 @@ function request(
 }
 
 function routes(
-  service: Pick<WorkspacePrivateCaseEvidenceService, 'suggest' | 'decide' | 'readGrant'>
+  service: Pick<
+    WorkspacePrivateCaseEvidenceService,
+    'suggest' | 'decide' | 'readGrant' | 'listAccepted'
+  >
 ) {
   return createWorkspacePrivateCaseEvidenceRoutes({
     internalServiceSecret: secret,
@@ -77,14 +80,24 @@ function service() {
         protocolVersion: '1.0',
         objectType: 'WORKSPACE_PRIVATE_CASE_EVIDENCE_READ_GRANT'
       })
+    ),
+    listAccepted: vi.fn(() =>
+      Promise.resolve({
+        protocolVersion: '1.0',
+        objectType: 'WORKSPACE_PRIVATE_CASE_EVIDENCE_REFERENCE_LIST',
+        items: []
+      })
     )
-  } as unknown as Pick<WorkspacePrivateCaseEvidenceService, 'suggest' | 'decide' | 'readGrant'>;
+  } as unknown as Pick<
+    WorkspacePrivateCaseEvidenceService,
+    'suggest' | 'decide' | 'readGrant' | 'listAccepted'
+  >;
 }
 
 describe('Workspace-private Case evidence HTTP boundary', () => {
   it('derives user and Workspace authority only from the trusted Principal headers', async () => {
     const owner = service();
-    const response = await routes(owner)[0]!.handle(
+    const response = await routes(owner)[1]!.handle(
       request('/internal/v1/workspace-private-case-evidence/suggestions', suggestion)
     );
     expect(response.status).toBe(200);
@@ -94,7 +107,7 @@ describe('Workspace-private Case evidence HTTP boundary', () => {
   it('rejects caller-supplied authority fields instead of accepting body spoofing', async () => {
     const owner = service();
     await expect(
-      routes(owner)[0]!.handle(
+      routes(owner)[1]!.handle(
         request('/internal/v1/workspace-private-case-evidence/suggestions', {
           ...suggestion,
           workspaceId: '018f0000-0000-7000-8000-000000000799'
@@ -110,7 +123,7 @@ describe('Workspace-private Case evidence HTTP boundary', () => {
   it('fails privacy-safely when the asserted Workspace does not match the Principal', async () => {
     const owner = service();
     await expect(
-      routes(owner)[2]!.handle(
+      routes(owner)[3]!.handle(
         request(
           `/internal/v1/workspace-private-case-evidence/${bindingId}/read-grants`,
           { expectedVersion: 2 },
@@ -124,7 +137,7 @@ describe('Workspace-private Case evidence HTTP boundary', () => {
   it('rejects untrusted internal callers before consulting the owner', async () => {
     const owner = service();
     await expect(
-      routes(owner)[1]!.handle(
+      routes(owner)[2]!.handle(
         request(
           `/internal/v1/workspace-private-case-evidence/${bindingId}/decisions`,
           { expectedVersion: 1, idempotencyKey: 'http-decision-701', decision: 'ACCEPT' },
@@ -137,7 +150,7 @@ describe('Workspace-private Case evidence HTTP boundary', () => {
 
   it('forwards only the path binding identity and bounded decision body', async () => {
     const owner = service();
-    await routes(owner)[1]!.handle(
+    await routes(owner)[2]!.handle(
       request(`/internal/v1/workspace-private-case-evidence/${bindingId}/decisions`, {
         expectedVersion: 1,
         idempotencyKey: 'http-decision-701',
@@ -154,7 +167,7 @@ describe('Workspace-private Case evidence HTTP boundary', () => {
 
   it('forwards exact accepted binding version to the read-grant owner', async () => {
     const owner = service();
-    await routes(owner)[2]!.handle(
+    await routes(owner)[3]!.handle(
       request(`/internal/v1/workspace-private-case-evidence/${bindingId}/read-grants`, {
         expectedVersion: 2
       })
@@ -176,7 +189,7 @@ describe('Workspace-private Case evidence HTTP boundary', () => {
       )
     );
     await expect(
-      routes(owner)[2]!.handle(
+      routes(owner)[3]!.handle(
         request(`/internal/v1/workspace-private-case-evidence/${bindingId}/read-grants`, {
           expectedVersion: 2
         })
@@ -186,5 +199,19 @@ describe('Workspace-private Case evidence HTTP boundary', () => {
       code: 'WORKSPACE_PRIVATE_CASE_EVIDENCE_SOURCE_UNAVAILABLE',
       retryable: true
     });
+  });
+
+  it('lists accepted references for the exact path-bound Formal Matter', async () => {
+    const owner = service();
+    const formalMatterId = 'formal-matter_http-701';
+    const value = request(
+      `/internal/v1/workspace-private-case-evidence/cases/${formalMatterId}`,
+      undefined
+    );
+    value.method = 'GET';
+    value.params = { formalMatterId };
+    const response = await routes(owner)[0]!.handle(value);
+    expect(response.status).toBe(200);
+    expect(owner.listAccepted).toHaveBeenCalledWith(principal, formalMatterId);
   });
 });

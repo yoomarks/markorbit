@@ -1,5 +1,9 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { FormalMatter } from '@markorbit/contracts';
+import {
+  privateEvidenceRead,
+  privateEvidenceReferences
+} from '../features/matters/private-case-evidence-fixtures.js';
 import { createMatterWorkspaceClient } from './matters.js';
 
 afterEach(() => vi.unstubAllGlobals());
@@ -117,5 +121,61 @@ describe('Matter Workspace Gateway client', () => {
     await expect(
       createMatterWorkspaceClient('workspace-live').startProfessionalReview(matter)
     ).rejects.toMatchObject({ status: 503, code: 'MALFORMED_REVIEW_RESPONSE' });
+  });
+
+  it('reads verified private evidence references and exact chunks with no-store semantics', async () => {
+    const fetchMock = vi
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify(privateEvidenceReferences), { status: 200 })
+      )
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ csrfToken: 'csrf-private-evidence' }), { status: 200 })
+      )
+      .mockResolvedValueOnce(new Response(JSON.stringify(privateEvidenceRead), { status: 200 }));
+    vi.stubGlobal('fetch', fetchMock);
+    const client = createMatterWorkspaceClient(privateEvidenceReferences.workspaceId);
+
+    await expect(client.listPrivateEvidence(privateEvidenceReferences.caseId)).resolves.toEqual(
+      privateEvidenceReferences
+    );
+    await expect(
+      client.readPrivateEvidence(
+        privateEvidenceReferences.caseId,
+        privateEvidenceReferences.items[0]!.bindingId,
+        privateEvidenceReferences.items[0]!.bindingVersion
+      )
+    ).resolves.toEqual(privateEvidenceRead);
+
+    expect(fetchMock.mock.calls[0]![1]).toMatchObject({
+      credentials: 'include',
+      cache: 'no-store'
+    });
+    const [readUrl, readInit] = fetchMock.mock.calls[2]!;
+    expect(readUrl).toContain('/private-evidence/018f0000-0000-7000-8000-000000001452/read');
+    expect(readInit).toMatchObject({ method: 'POST', credentials: 'include', cache: 'no-store' });
+    expect(new Headers(readInit?.headers).get('x-markorbit-csrf-token')).toBe(
+      'csrf-private-evidence'
+    );
+    expect(readInit?.body).toBe(JSON.stringify({ expectedVersion: 2 }));
+  });
+
+  it('rejects malformed private owner success instead of rendering unverified content', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn<typeof fetch>().mockResolvedValue(
+        new Response(JSON.stringify({ ...privateEvidenceReferences, workspaceId: 'spoofed' }), {
+          status: 200
+        })
+      )
+    );
+    await expect(
+      createMatterWorkspaceClient(privateEvidenceReferences.workspaceId).listPrivateEvidence(
+        privateEvidenceReferences.caseId
+      )
+    ).rejects.toMatchObject({
+      status: 503,
+      code: 'WORKSPACE_PRIVATE_CASE_EVIDENCE_INVALID_RESPONSE'
+    });
   });
 });
