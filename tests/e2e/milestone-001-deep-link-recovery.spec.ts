@@ -145,7 +145,9 @@ for (const { group, targets } of markregTargets) {
   });
 }
 
-test('Lite Work targets load exact detail without opening first/latest queue record', async ({
+// The root browser matrix runs the explicit fixture entry. The production account/Workspace gate
+// is covered without the fixture flag by apps/lite-web/tests/account-entry-deep-link.pw.ts.
+test('Lite fixture Work targets load exact detail without opening first/latest queue record', async ({
   page
 }) => {
   const targets = [

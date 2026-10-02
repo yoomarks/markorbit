@@ -21,38 +21,43 @@ if (fixtureNeedsWorkspace) {
     `${window.location.pathname}?${parameters.toString()}${window.location.hash}`
   );
 }
-const professionalReviewCaseId = parameters.get('professionalReviewCaseId') ?? undefined;
-const filingAuthorizationId = parameters.get('filingAuthorizationId');
-const filingAuthorizationVersion = Number(parameters.get('filingAuthorizationVersion'));
-const documentPackageId = parameters.get('documentPackageId') ?? undefined;
-const documentPackageReviewCaseId = parameters.get('documentPackageReviewCaseId') ?? undefined;
-const workspaceId = parameters.get('workspaceId') ?? '';
-const product = () => (
-  <LiteApp
-    workspaceId={workspaceId}
-    {...(professionalReviewCaseId ? { initialReviewCaseId: professionalReviewCaseId } : {})}
-    {...(filingAuthorizationId && filingAuthorizationVersion
-      ? {
-          initialFilingAuthorization: {
-            id: filingAuthorizationId,
-            version: filingAuthorizationVersion
-          }
-        }
-      : {})}
-  />
-);
-createRoot(root).render(
-  documentPackageId || documentPackageReviewCaseId ? (
-    <DocumentPackageWorkspace
+
+function ProductEntry() {
+  const current = new URLSearchParams(window.location.search);
+  const professionalReviewCaseId = current.get('professionalReviewCaseId') ?? undefined;
+  const filingAuthorizationId = current.get('filingAuthorizationId');
+  const filingAuthorizationVersion = Number(current.get('filingAuthorizationVersion'));
+  const documentPackageId = current.get('documentPackageId') ?? undefined;
+  const documentPackageReviewCaseId = current.get('documentPackageReviewCaseId') ?? undefined;
+  const workspaceId = current.get('workspaceId') ?? '';
+
+  if (documentPackageId || documentPackageReviewCaseId)
+    return (
+      <DocumentPackageWorkspace
+        workspaceId={workspaceId}
+        {...(documentPackageId ? { packageId: documentPackageId } : {})}
+        {...(documentPackageReviewCaseId ? { reviewCaseId: documentPackageReviewCaseId } : {})}
+      />
+    );
+
+  if (current.has('view')) return <GovernedWorkRouteEntry search={current.toString()} />;
+
+  return (
+    <LiteApp
       workspaceId={workspaceId}
-      {...(documentPackageId ? { packageId: documentPackageId } : {})}
-      {...(documentPackageReviewCaseId ? { reviewCaseId: documentPackageReviewCaseId } : {})}
+      {...(professionalReviewCaseId ? { initialReviewCaseId: professionalReviewCaseId } : {})}
+      {...(filingAuthorizationId && filingAuthorizationVersion
+        ? {
+            initialFilingAuthorization: {
+              id: filingAuthorizationId,
+              version: filingAuthorizationVersion
+            }
+          }
+        : {})}
     />
-  ) : parameters.has('view') ? (
-    <GovernedWorkRouteEntry />
-  ) : fixtureEntry ? (
-    product()
-  ) : (
-    <LiteAccountEntry renderProduct={product} />
-  )
+  );
+}
+
+createRoot(root).render(
+  fixtureEntry ? <ProductEntry /> : <LiteAccountEntry renderProduct={() => <ProductEntry />} />
 );
