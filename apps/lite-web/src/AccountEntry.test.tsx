@@ -42,6 +42,57 @@ const access = {
 };
 
 describe('Lite account entry', () => {
+  it('preserves an exact governed deep link while replacing an untrusted Workspace request', async () => {
+    sessionStorage.clear();
+    window.history.replaceState(
+      {},
+      '',
+      '/?section=work&view=professional-review&workspaceId=workspace-untrusted&professionalReviewCaseId=professional-review_exact&professionalReviewCaseVersion=review-v1'
+    );
+    const otherWorkspace: WorkspaceEntry = {
+      workspace: {
+        ...workspace.workspace,
+        workspaceId: '018f0000-0000-7000-8000-000000000601',
+        name: 'International Team',
+        slug: 'international-team'
+      },
+      membership: {
+        ...workspace.membership,
+        membershipId: '018f0000-0000-7000-8000-000000000602',
+        workspaceId: '018f0000-0000-7000-8000-000000000601'
+      }
+    };
+    const api: LiteAccountApi = {
+      session: () => Promise.resolve(access),
+      register: () => Promise.resolve(access),
+      login: () => Promise.resolve(access),
+      workspaces: () => Promise.resolve([workspace, otherWorkspace]),
+      createWorkspace: () => Promise.resolve(workspace),
+      previewSeedInvitation: vi.fn() as never,
+      claimSeedWorkspace: vi.fn() as never
+    };
+    const user = userEvent.setup();
+
+    render(
+      <LiteAccountEntry
+        api={api}
+        renderProduct={() => <div data-testid="restored-route">{window.location.search}</div>}
+      />
+    );
+
+    expect(await screen.findByRole('heading', { name: 'Choose your workspace' })).toBeTruthy();
+    expect(screen.queryByTestId('restored-route')).toBeNull();
+    await user.click(screen.getByRole('button', { name: 'Professional Practice' }));
+
+    const restored = new URLSearchParams(
+      (await screen.findByTestId('restored-route')).textContent ?? ''
+    );
+    expect(restored.get('workspaceId')).toBe(workspace.workspace.workspaceId);
+    expect(restored.get('professionalReviewCaseId')).toBe('professional-review_exact');
+    expect(restored.get('professionalReviewCaseVersion')).toBe('review-v1');
+    expect(restored.get('view')).toBe('professional-review');
+  });
+
   it('takes a new professional from registration through first Workspace into Lite', async () => {
     sessionStorage.clear();
     window.history.replaceState({}, '', '/');
