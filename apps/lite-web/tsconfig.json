@@ -17,6 +17,7 @@
     "playwright.agency-ia-prototype.config.ts",
     "playwright.customers-preview.config.ts",
     "playwright.content-studio-preview.config.ts",
+    "playwright.today-workspace-preview.config.ts",
     "playwright.ux-trust-visual.config.ts"
   ]
 }
