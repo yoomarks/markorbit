@@ -60,10 +60,11 @@ function request(
 
 function route() {
   const renameDisplayName = vi.fn(() => Promise.resolve(updatedWorkspace));
+  const grantCurrentOperatorMembership = vi.fn();
   return {
     renameDisplayName,
     route: createWorkspaceAdminManagementRoutesV1({
-      service: { renameDisplayName },
+      service: { renameDisplayName, grantCurrentOperatorMembership },
       internalServiceSecret: secret,
       now: () => new Date('2026-09-07T12:00:00.000Z')
     })[0]!
@@ -164,12 +165,97 @@ describe('Workspace Admin management HTTP owner boundary', () => {
       )
     );
     const ownerRoute = createWorkspaceAdminManagementRoutesV1({
-      service: { renameDisplayName },
+      service: { renameDisplayName, grantCurrentOperatorMembership: vi.fn() },
       internalServiceSecret: secret
     })[0]!;
     await expect(ownerRoute.handle(request())).rejects.toMatchObject({
       status: 409,
       code: 'STALE_VERSION'
     });
+  });
+});
+
+const grantedMembership = {
+  membershipId: '018f0000-0000-7000-8000-000000000975',
+  workspaceId,
+  userId,
+  role: 'REVIEWER' as const,
+  status: 'ACTIVE' as const,
+  version: 1,
+  createdAt: '2026-09-07T12:00:00.000Z',
+  updatedAt: '2026-09-07T12:00:00.000Z'
+};
+
+function membershipRequest(
+  body: unknown = { role: 'REVIEWER', reason: 'Authorize governed execution dispatch.' },
+  authority = principal('workspace-admin:manage'),
+  internal = secret
+): JsonRequest {
+  return {
+    method: 'POST',
+    path: `/internal/super-admin/workspaces/${workspaceId}/current-operator-membership`,
+    params: { workspaceId },
+    query: {},
+    body,
+    headers: {
+      'x-markorbit-internal-authorization': internal,
+      'x-markorbit-principal': authority,
+      'idempotency-key': 'membership-973-1',
+      'x-correlation-id': 'corr-membership-973-1'
+    }
+  };
+}
+
+describe('Workspace Admin current-operator membership HTTP boundary', () => {
+  it('derives the target user from the trusted operator principal', async () => {
+    const grantCurrentOperatorMembership = vi.fn(() => Promise.resolve(grantedMembership));
+    const routes = createWorkspaceAdminManagementRoutesV1({
+      service: { renameDisplayName: vi.fn(), grantCurrentOperatorMembership },
+      internalServiceSecret: secret,
+      now: () => new Date('2026-09-07T12:00:00.000Z')
+    });
+    const ownerRoute = routes.find(
+      (candidate) =>
+        candidate.method === 'POST' &&
+        candidate.path ===
+          '/internal/super-admin/workspaces/:workspaceId/current-operator-membership'
+    )!;
+
+    await expect(ownerRoute.handle(membershipRequest())).resolves.toEqual({
+      status: 201,
+      body: grantedMembership
+    });
+    expect(grantCurrentOperatorMembership).toHaveBeenCalledWith(
+      {
+        workspaceId,
+        role: 'REVIEWER',
+        reason: 'Authorize governed execution dispatch.',
+        idempotencyKey: 'membership-973-1'
+      },
+      { userId, sessionId: 'session-973' },
+      'corr-membership-973-1'
+    );
+  });
+
+  it('rejects client-supplied target identities and non-manage authority', async () => {
+    const grantCurrentOperatorMembership = vi.fn();
+    const routes = createWorkspaceAdminManagementRoutesV1({
+      service: { renameDisplayName: vi.fn(), grantCurrentOperatorMembership },
+      internalServiceSecret: secret
+    });
+    const ownerRoute = routes[1]!;
+    await expect(
+      ownerRoute.handle(
+        membershipRequest({
+          role: 'REVIEWER',
+          reason: 'Authorize governed execution dispatch.',
+          userId: '018f0000-0000-7000-8000-000000000999'
+        })
+      )
+    ).rejects.toMatchObject({ status: 400, code: 'INVALID_REQUEST' });
+    await expect(
+      ownerRoute.handle(membershipRequest(undefined, principal('workspace-admin:read')))
+    ).rejects.toMatchObject({ status: 403, code: 'PERMISSION_DENIED' });
+    expect(grantCurrentOperatorMembership).not.toHaveBeenCalled();
   });
 });

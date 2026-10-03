@@ -114,7 +114,10 @@ export interface CoreRuntimeOptions {
   brainCognitiveRead?: Pick<BrainCognitiveReadServiceV1, 'read'>;
   internalOperatorPrincipalResolver?: Pick<InternalOperatorPrincipalResolverV1, 'resolve'>;
   workspaceAdminPortfolio?: Pick<WorkspaceAdminPortfolioReaderV1, 'read'>;
-  workspaceAdminManagement?: Pick<PostgresWorkspaceAdminManagementServiceV1, 'renameDisplayName'>;
+  workspaceAdminManagement?: Pick<
+    PostgresWorkspaceAdminManagementServiceV1,
+    'renameDisplayName' | 'grantCurrentOperatorMembership'
+  >;
   methodOutcomeEvidenceAdmissions?: Pick<MethodOutcomeEvidenceAdmissionServiceV1, 'admit'>;
   methodOutcomeReports?: Pick<MethodOutcomeReportServiceV1, 'report'>;
   methodImprovementAdmissions?: Pick<MethodImprovementAdmissionServiceV1, 'admit'>;

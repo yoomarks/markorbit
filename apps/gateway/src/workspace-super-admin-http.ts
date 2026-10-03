@@ -352,6 +352,17 @@ interface WorkspaceSuperAdminManagedWorkspace {
   updatedAt: string;
 }
 
+interface WorkspaceSuperAdminMembership {
+  membershipId: string;
+  workspaceId: string;
+  userId: string;
+  role: 'WORKSPACE_ADMIN' | 'MATTER_MANAGER' | 'REVIEWER' | 'READ_ONLY';
+  status: 'ACTIVE' | 'SUSPENDED';
+  version: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
 function parseManagedWorkspace(value: unknown): WorkspaceSuperAdminManagedWorkspace | null {
   const candidate = record(value);
   if (!candidate) return null;
@@ -376,6 +387,43 @@ function parseManagedWorkspace(value: unknown): WorkspaceSuperAdminManagedWorksp
   )
     return null;
   return { workspaceId, name, slug, status, version, createdAt, updatedAt };
+}
+
+function parseMembership(value: unknown): WorkspaceSuperAdminMembership | null {
+  const candidate = record(value);
+  if (!candidate) return null;
+  const membershipId = text(candidate.membershipId);
+  const workspaceId = text(candidate.workspaceId);
+  const userId = text(candidate.userId);
+  const role = candidate.role;
+  const status = candidate.status;
+  const version = nonNegativeInteger(candidate.version);
+  const createdAt = text(candidate.createdAt);
+  const updatedAt = text(candidate.updatedAt);
+  if (
+    !membershipId ||
+    !workspaceId ||
+    !userId ||
+    !['WORKSPACE_ADMIN', 'MATTER_MANAGER', 'REVIEWER', 'READ_ONLY'].includes(String(role)) ||
+    (status !== 'ACTIVE' && status !== 'SUSPENDED') ||
+    version === null ||
+    version < 1 ||
+    !createdAt ||
+    !updatedAt ||
+    !Number.isFinite(Date.parse(createdAt)) ||
+    !Number.isFinite(Date.parse(updatedAt))
+  )
+    return null;
+  return {
+    membershipId,
+    workspaceId,
+    userId,
+    role: role as WorkspaceSuperAdminMembership['role'],
+    status,
+    version,
+    createdAt,
+    updatedAt
+  };
 }
 
 async function manageDisplayName(
@@ -447,6 +495,79 @@ async function manageDisplayName(
   return json(200, managed);
 }
 
+async function grantCurrentOperatorMembership(
+  request: JsonRequest,
+  options: GatewayWorkspaceSuperAdminOptions
+): Promise<JsonResult> {
+  const token = sessionToken(request);
+  const operator = await resolveOperator(
+    request,
+    token,
+    options,
+    WORKSPACE_SUPER_ADMIN_MANAGE_AUTHORITY,
+    '/internal/super-admin/workspace/manage/operator-principals/resolve'
+  );
+  if ('response' in operator) return operator.response;
+  requireTrustedOrigin(request.headers.origin, options.allowedOrigins ?? []);
+  validateCsrf(
+    operator.principal.sessionId,
+    options.csrfSecret ?? '',
+    request.headers['x-markorbit-csrf-token']
+  );
+  const key = request.headers['idempotency-key'];
+  if (!key) throw new HttpError(400, 'IDEMPOTENCY_KEY_REQUIRED', 'Idempotency-Key is required.');
+  const workspaceId = request.params.workspaceId;
+  if (!workspaceId) throw new HttpError(400, 'INVALID_REQUEST', 'Workspace target is required.');
+  const configured = runtime(options);
+  let response: Response;
+  try {
+    response = await configured.fetchImpl(
+      `${configured.coreUrl}/internal/super-admin/workspaces/${encodeURIComponent(workspaceId)}/current-operator-membership`,
+      {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          'x-markorbit-internal-authorization': configured.internalServiceSecret,
+          'x-markorbit-principal': encodeInternalOperatorPrincipal(operator.principal),
+          'idempotency-key': key,
+          ...correlationHeaders(request)
+        },
+        body: JSON.stringify(request.body ?? {}),
+        signal: AbortSignal.timeout(configured.ownerTimeoutMs)
+      }
+    );
+  } catch {
+    throw new HttpError(
+      503,
+      'WORKSPACE_ADMIN_OWNER_UNAVAILABLE',
+      'Core Workspace membership management is unavailable.',
+      true
+    );
+  }
+  const value: unknown = await response.json().catch(() => undefined);
+  if (!response.ok)
+    return json(
+      response.status,
+      value ?? {
+        code: 'WORKSPACE_ADMIN_OWNER_FAILURE',
+        message: 'Core Workspace membership management failed.'
+      }
+    );
+  const membership = parseMembership(value);
+  if (
+    !membership ||
+    membership.workspaceId !== workspaceId ||
+    membership.userId !== operator.principal.userId
+  )
+    throw new HttpError(
+      503,
+      'WORKSPACE_ADMIN_OWNER_CONTRACT_MISMATCH',
+      'Core Workspace membership response is malformed.',
+      true
+    );
+  return json(response.status, membership);
+}
+
 export function createGatewayWorkspaceSuperAdminRoutes(
   options: GatewayWorkspaceSuperAdminOptions
 ): readonly JsonRoute[] {
@@ -472,6 +593,11 @@ export function createGatewayWorkspaceSuperAdminRoutes(
       method: 'PATCH',
       path: '/api/internal/super-admin/workspaces/:workspaceId/display-name',
       handle: (request) => manageDisplayName(request, options)
+    },
+    {
+      method: 'POST',
+      path: '/api/internal/super-admin/workspaces/:workspaceId/current-operator-membership',
+      handle: (request) => grantCurrentOperatorMembership(request, options)
     }
   ];
 }
