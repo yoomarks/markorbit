@@ -18,9 +18,10 @@
     "test:customers-preview:browser": "playwright test --config playwright.customers-preview.config.ts",
     "test:content-studio-preview:browser": "playwright test --config playwright.content-studio-preview.config.ts",
     "test:today-workspace-preview:browser": "playwright test --config playwright.today-workspace-preview.config.ts",
+    "test:opportunity-center-preview:browser": "playwright test --config playwright.opportunity-center-preview.config.ts",
     "test:ux-trust-visual:browser": "playwright test --config playwright.ux-trust-visual.config.ts",
     "typecheck": "tsc --noEmit",
-    "lint": "eslint src tests vite.config.ts playwright.navigation.config.ts playwright.opportunity-candidates.config.ts playwright.governed-provider.config.ts playwright.trademark-commerce.config.ts playwright.agency-ia-prototype.config.ts playwright.customers-preview.config.ts playwright.content-studio-preview.config.ts playwright.today-workspace-preview.config.ts playwright.ux-trust-visual.config.ts",
+    "lint": "eslint src tests vite.config.ts playwright.navigation.config.ts playwright.opportunity-candidates.config.ts playwright.governed-provider.config.ts playwright.trademark-commerce.config.ts playwright.agency-ia-prototype.config.ts playwright.customers-preview.config.ts playwright.content-studio-preview.config.ts playwright.today-workspace-preview.config.ts playwright.opportunity-center-preview.config.ts playwright.ux-trust-visual.config.ts",
     "build-storybook": "storybook build -c ../../packages/ui/.storybook"
   },
   "dependencies": {
