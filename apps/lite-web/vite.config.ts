@@ -35,6 +35,10 @@ export default defineConfig({
         'content-studio-preview': resolve(
           fileURLToPath(new URL('.', import.meta.url)),
           'content-studio-preview.html'
+        ),
+        'today-workspace-preview': resolve(
+          fileURLToPath(new URL('.', import.meta.url)),
+          'today-workspace-preview.html'
         )
       }
     }
