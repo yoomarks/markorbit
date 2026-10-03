@@ -39,6 +39,10 @@ export default defineConfig({
         'today-workspace-preview': resolve(
           fileURLToPath(new URL('.', import.meta.url)),
           'today-workspace-preview.html'
+        ),
+        'opportunity-center-preview': resolve(
+          fileURLToPath(new URL('.', import.meta.url)),
+          'opportunity-center-preview.html'
         )
       }
     }
