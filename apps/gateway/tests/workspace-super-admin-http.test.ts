@@ -373,3 +373,113 @@ describe('Gateway Workspace Super Admin management', () => {
     });
   });
 });
+
+const managedMembership = {
+  membershipId: '22222222-2222-4222-8222-222222222222',
+  workspaceId: '11111111-1111-4111-8111-111111111111',
+  userId: managePrincipal.userId,
+  role: 'REVIEWER',
+  status: 'ACTIVE',
+  version: 1,
+  createdAt: '2026-09-08T00:30:00.000Z',
+  updatedAt: '2026-09-08T00:30:00.000Z'
+};
+
+function membershipRequest(headers: Record<string, string> = {}): JsonRequest {
+  return {
+    method: 'POST',
+    path: '/api/internal/super-admin/workspaces/11111111-1111-4111-8111-111111111111/current-operator-membership',
+    params: { workspaceId: '11111111-1111-4111-8111-111111111111' },
+    query: {},
+    body: { role: 'REVIEWER', reason: 'Authorize governed execution dispatch.' },
+    headers: {
+      cookie: 'mo_session=browser-workspace-admin-session',
+      origin: adminOrigin,
+      'x-markorbit-csrf-token': csrfToken(managePrincipal.sessionId, csrfSecret),
+      'idempotency-key': 'workspace-membership-test-1',
+      'x-correlation-id': 'correlation-workspace-membership-manage',
+      'x-markorbit-principal': 'browser-forged-principal',
+      'x-markorbit-internal-authorization': 'browser-forged-secret',
+      ...headers
+    }
+  };
+}
+
+function membershipRoute(fetchImpl: typeof fetch) {
+  const found = createGatewayWorkspaceSuperAdminRoutes({
+    coreUrl,
+    internalServiceSecret: secret,
+    fetchImpl,
+    csrfSecret,
+    allowedOrigins: [adminOrigin]
+  }).find(
+    (candidate) =>
+      candidate.method === 'POST' &&
+      candidate.path ===
+        '/api/internal/super-admin/workspaces/:workspaceId/current-operator-membership'
+  );
+  if (!found) throw new Error('Missing Workspace Super Admin membership route.');
+  return found;
+}
+
+describe('Gateway Workspace Super Admin current-operator membership', () => {
+  it('uses browser manage authority and never accepts a client-selected user', async () => {
+    let calls = 0;
+    const fetchImpl: typeof fetch = vi.fn(
+      (input: Parameters<typeof fetch>[0], init?: RequestInit) => {
+        calls += 1;
+        const headers = new Headers(init?.headers);
+        expect(headers.get('x-markorbit-internal-authorization')).toBe(secret);
+        if (calls === 1) {
+          expect(url(input)).toBe(
+            `${coreUrl}/internal/super-admin/workspace/manage/operator-principals/resolve`
+          );
+          return response(managePrincipal);
+        }
+        expect(url(input)).toBe(
+          `${coreUrl}/internal/super-admin/workspaces/11111111-1111-4111-8111-111111111111/current-operator-membership`
+        );
+        expect(headers.get('x-markorbit-principal')).not.toBe('browser-forged-principal');
+        expect(headers.get('idempotency-key')).toBe('workspace-membership-test-1');
+        expect(body(init)).toEqual({
+          role: 'REVIEWER',
+          reason: 'Authorize governed execution dispatch.'
+        });
+        return response({ ...managedMembership, futureOwnerField: 'must-not-leak' }, 201);
+      }
+    );
+
+    await expect(membershipRoute(fetchImpl).handle(membershipRequest())).resolves.toEqual({
+      status: 201,
+      body: managedMembership
+    });
+    expect(fetchImpl).toHaveBeenCalledTimes(2);
+  });
+
+  it('rejects absent browser session and invalid CSRF before owner mutation', async () => {
+    const fetchImpl = vi.fn<typeof fetch>(() => response(managePrincipal));
+    await expect(
+      membershipRoute(fetchImpl).handle(membershipRequest({ cookie: '' }))
+    ).rejects.toMatchObject({ status: 401, code: 'AUTHENTICATION_REQUIRED' });
+    expect(fetchImpl).not.toHaveBeenCalled();
+
+    await expect(
+      membershipRoute(fetchImpl).handle(membershipRequest({ 'x-markorbit-csrf-token': 'invalid' }))
+    ).rejects.toMatchObject({ code: 'INVALID_CSRF_TOKEN' });
+    expect(fetchImpl).toHaveBeenCalledTimes(1);
+  });
+
+  it('fails closed when owner returns a different user or workspace', async () => {
+    let calls = 0;
+    const fetchImpl: typeof fetch = vi.fn(() => {
+      calls += 1;
+      return calls === 1
+        ? response(managePrincipal)
+        : response({ ...managedMembership, userId: 'different-user' }, 201);
+    });
+    await expect(membershipRoute(fetchImpl).handle(membershipRequest())).rejects.toMatchObject({
+      status: 503,
+      code: 'WORKSPACE_ADMIN_OWNER_CONTRACT_MISMATCH'
+    });
+  });
+});

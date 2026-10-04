@@ -240,6 +240,7 @@
     "0145_lite_outbound_contact_policy_sms": "@markorbit/lite-service",
     "0146_lite_notification_automation_sms": "@markorbit/lite-service",
     "0147_lite_seed_workspace_packages": "@markorbit/lite-service",
-    "0148_core_workspace_private_case_evidence": "@markorbit/core-service"
+    "0148_core_workspace_private_case_evidence": "@markorbit/core-service",
+    "0149_core_workspace_admin_membership_grants": "@markorbit/core-service"
   }
 }

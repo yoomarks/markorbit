@@ -8,7 +8,10 @@ import {
 } from './workspace-admin-management.js';
 
 export interface WorkspaceAdminManagementHttpOptionsV1 {
-  service: Pick<PostgresWorkspaceAdminManagementServiceV1, 'renameDisplayName'>;
+  service: Pick<
+    PostgresWorkspaceAdminManagementServiceV1,
+    'renameDisplayName' | 'grantCurrentOperatorMembership'
+  >;
   internalServiceSecret: string;
   now?: () => Date;
 }
@@ -71,6 +74,26 @@ function commandBody(request: JsonRequest): {
   };
 }
 
+function membershipBody(request: JsonRequest): {
+  role: 'WORKSPACE_ADMIN' | 'MATTER_MANAGER' | 'REVIEWER' | 'READ_ONLY';
+  reason: string;
+} {
+  if (!request.body || typeof request.body !== 'object' || Array.isArray(request.body))
+    throw new HttpError(400, 'INVALID_REQUEST', 'Request body must be an object.');
+  const body = request.body as Record<string, unknown>;
+  if (
+    Object.keys(body).length !== 2 ||
+    !['role', 'reason'].every((key) => key in body) ||
+    !['WORKSPACE_ADMIN', 'MATTER_MANAGER', 'REVIEWER', 'READ_ONLY'].includes(String(body.role)) ||
+    typeof body.reason !== 'string'
+  )
+    throw new HttpError(400, 'INVALID_REQUEST', 'Workspace membership grant command is invalid.');
+  return {
+    role: body.role as 'WORKSPACE_ADMIN' | 'MATTER_MANAGER' | 'REVIEWER' | 'READ_ONLY',
+    reason: body.reason
+  };
+}
+
 function idempotencyKey(request: JsonRequest): string {
   const value = request.headers['idempotency-key'];
   if (typeof value !== 'string' || !value || value.trim() !== value || value.length > 256)
@@ -112,6 +135,32 @@ export function createWorkspaceAdminManagementRoutesV1(
             request.headers['x-correlation-id']
           );
           return json(200, workspace);
+        } catch (error) {
+          return translate(error);
+        }
+      }
+    },
+    {
+      method: 'POST',
+      path: '/internal/super-admin/workspaces/:workspaceId/current-operator-membership',
+      async handle(request) {
+        const principal = authorize(request, options);
+        const workspaceId = request.params.workspaceId;
+        if (!workspaceId)
+          throw new HttpError(400, 'INVALID_REQUEST', 'Workspace target is required.');
+        const body = membershipBody(request);
+        try {
+          const membership = await options.service.grantCurrentOperatorMembership(
+            {
+              workspaceId,
+              role: body.role,
+              reason: body.reason,
+              idempotencyKey: idempotencyKey(request)
+            },
+            { userId: principal.userId, sessionId: principal.sessionId },
+            request.headers['x-correlation-id']
+          );
+          return json(201, membership);
         } catch (error) {
           return translate(error);
         }

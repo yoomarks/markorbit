@@ -37,13 +37,16 @@ type AuditRow = {
   actor_user_id: string;
   actor_session_id: string;
   workspace_id: string;
-  expected_workspace_version: number;
-  resulting_workspace_version: number;
+  expected_workspace_version: number | null;
+  resulting_workspace_version: number | null;
   reason: string;
   idempotency_key: string;
   correlation_id: string | null;
   result: string;
   result_workspace_json: unknown;
+  target_user_id?: string | null;
+  granted_role?: string | null;
+  result_membership_json?: unknown;
 };
 const command = (
   overrides: Partial<
@@ -55,6 +58,17 @@ const command = (
   displayName: 'Renamed Workspace',
   reason: 'Correct the Workspace display name.',
   idempotencyKey: 'workspace-rename-973-1',
+  ...overrides
+});
+const membershipCommand = (
+  overrides: Partial<
+    Parameters<PostgresWorkspaceAdminManagementServiceV1['grantCurrentOperatorMembership']>[0]
+  > = {}
+) => ({
+  workspaceId: ids.workspace,
+  role: 'REVIEWER' as const,
+  reason: 'Authorize governed execution dispatch.',
+  idempotencyKey: 'workspace-membership-973-1',
   ...overrides
 });
 
@@ -215,5 +229,78 @@ integration('PostgreSQL Workspace Admin management durability', () => {
     await expect(
       restartedService.renameDisplayName(command(), actor, 'corr-after-restart')
     ).resolves.toEqual(first);
+  });
+
+  it('grants the current operator an audited membership and replays exactly once', async () => {
+    await reset();
+    const service = new PostgresWorkspaceAdminManagementServiceV1(database);
+    const first = await service.grantCurrentOperatorMembership(
+      membershipCommand(),
+      actor,
+      'corr-membership-973-1'
+    );
+    const replayed = await service.grantCurrentOperatorMembership(
+      membershipCommand(),
+      actor,
+      'corr-membership-ignored'
+    );
+
+    expect(replayed).toEqual(first);
+    expect(first).toMatchObject({
+      workspaceId: ids.workspace,
+      userId: ids.actor,
+      role: 'REVIEWER',
+      status: 'ACTIVE',
+      version: 1
+    });
+    const memberships = await database
+      .getPool()
+      .query('SELECT workspace_id,user_id,role,status FROM workspace_memberships');
+    expect(memberships.rows).toEqual([
+      {
+        workspace_id: ids.workspace,
+        user_id: ids.actor,
+        role: 'REVIEWER',
+        status: 'ACTIVE'
+      }
+    ]);
+    const audit = await database.getPool().query<AuditRow>(
+      `SELECT action,actor_user_id,actor_session_id,workspace_id,target_user_id,granted_role,
+              expected_workspace_version,resulting_workspace_version,reason,idempotency_key,
+              correlation_id,result,result_workspace_json,result_membership_json
+         FROM core_workspace_admin_actions`
+    );
+    expect(audit.rows).toHaveLength(1);
+    expect(audit.rows[0]).toMatchObject({
+      action: 'GRANT_CURRENT_OPERATOR_MEMBERSHIP',
+      actor_user_id: ids.actor,
+      actor_session_id: actor.sessionId,
+      workspace_id: ids.workspace,
+      target_user_id: ids.actor,
+      granted_role: 'REVIEWER',
+      expected_workspace_version: null,
+      resulting_workspace_version: null,
+      reason: 'Authorize governed execution dispatch.',
+      idempotency_key: 'workspace-membership-973-1',
+      correlation_id: 'corr-membership-973-1',
+      result: 'SUCCEEDED',
+      result_workspace_json: null
+    });
+    expect(audit.rows[0]!.result_membership_json).toEqual(first);
+  });
+
+  it('fails closed on incompatible membership and idempotency reuse', async () => {
+    await reset();
+    const service = new PostgresWorkspaceAdminManagementServiceV1(database);
+    await service.grantCurrentOperatorMembership(membershipCommand(), actor);
+    await expect(
+      service.grantCurrentOperatorMembership(membershipCommand({ role: 'READ_ONLY' }), actor)
+    ).rejects.toMatchObject({ code: 'IDEMPOTENCY_CONFLICT', status: 409 });
+    await expect(
+      service.grantCurrentOperatorMembership(
+        membershipCommand({ role: 'READ_ONLY', idempotencyKey: 'membership-role-conflict' }),
+        actor
+      )
+    ).rejects.toMatchObject({ code: 'MEMBERSHIP_CONFLICT', status: 409 });
   });
 });
