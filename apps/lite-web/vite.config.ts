@@ -51,6 +51,10 @@ export default defineConfig({
         'documents-instructions-preview': resolve(
           fileURLToPath(new URL('.', import.meta.url)),
           'documents-instructions-preview.html'
+        ),
+        'preparation-lock-preview': resolve(
+          fileURLToPath(new URL('.', import.meta.url)),
+          'preparation-lock-preview.html'
         )
       }
     }

@@ -798,6 +798,44 @@ export interface PreparationLock {
   consequences: Readonly<PreparationAuthorityConsequences>;
 }
 
+/** Durable MarkReg owner record returned by the current Preparation Lock HTTP boundary. */
+export interface DurablePreparationLockView {
+  schemaVersion: 1;
+  preparationLockId: PreparationLockId;
+  workspaceId: string;
+  version: 1;
+  source: Readonly<{
+    documentPackageId: DocumentPackageId;
+    documentPackageVersion: number;
+    canonicalEvidenceHash: string;
+    formalMatterId: FormalMatterId;
+    formalMatterVersion: number;
+    formalMatterHash: string;
+    professionalReviewCaseId: ProfessionalReviewCaseId;
+    reviewVersion: number;
+    completedDecisionId: string;
+    completedDecisionHash: string;
+    instructionEntryCount: number;
+    instructionEntries: readonly Readonly<{
+      instructionEntryId: string;
+      sequence: number;
+      canonicalFingerprint: string;
+    }>[];
+    instructionSetHash: string;
+  }>;
+  lockPayloadHash: string;
+  createdBy: string;
+  createdAt: string;
+  authority: Readonly<{
+    filingAuthorizationCreated: false;
+    executionReleaseCreated: false;
+    externalFilingCreated: false;
+    paymentCreated: false;
+    providerContacted: false;
+    officialTruthCreated: false;
+  }>;
+}
+
 /** Version 1 contracts for the Execution-owned filing authority boundary. */
 export type FilingAuthorizationId = `filing-authorization_${string}`;
 export type ExecutionReleaseId = `execution-release_${string}`;
