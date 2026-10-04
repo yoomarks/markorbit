@@ -60,6 +60,16 @@ export default defineConfig({
       {
         find: /^@markorbit\/ui$/,
         replacement: fileURLToPath(new URL('../../packages/ui/src/index.ts', import.meta.url))
+      },
+      {
+        find: /^@markorbit\/contracts$/,
+        replacement: fileURLToPath(
+          new URL('../../packages/contracts/src/index.ts', import.meta.url)
+        )
+      },
+      {
+        find: /^@markorbit\/contracts\/(.+)$/,
+        replacement: fileURLToPath(new URL('../../packages/contracts/src/$1.ts', import.meta.url))
       }
     ]
   },
