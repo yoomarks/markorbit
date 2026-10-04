@@ -1,5 +1,11 @@
 import type { Meta, StoryObj } from '@storybook/react';
 import type { DurableDocumentPackageView } from '@markorbit/contracts';
+import {
+  completedReviewFixture,
+  packageClientForScenario,
+  previewPackageId,
+  reviewClientForScenario
+} from '../../documents-instructions-preview/fixtures.js';
 import { DocumentPackageWorkspace } from './DocumentPackageWorkspace.js';
 
 const base: DurableDocumentPackageView = {
@@ -55,11 +61,42 @@ const meta = {
   title: 'Lite/Document Package Workspace',
   component: DocumentPackageWorkspace,
   parameters: { layout: 'fullscreen' },
-  args: { workspaceId: base.workspaceId, initialPackage: base }
+  args: { workspaceId: base.workspaceId }
 } satisfies Meta<typeof DocumentPackageWorkspace>;
 export default meta;
 type Story = StoryObj<typeof meta>;
-export const Draft: Story = {};
+export const Draft: Story = { args: { initialPackage: base } };
+export const CompletedReviewNotStarted: Story = {
+  args: {
+    initialReview: completedReviewFixture,
+    packageClient: packageClientForScenario('from-review'),
+    reviewClient: reviewClientForScenario('from-review')
+  }
+};
+export const Loading: Story = {
+  args: {
+    packageId: previewPackageId,
+    packageClient: packageClientForScenario('loading')
+  }
+};
+export const PermissionDenied: Story = {
+  args: {
+    packageId: previewPackageId,
+    packageClient: packageClientForScenario('permission')
+  }
+};
+export const VersionConflict: Story = {
+  args: {
+    packageId: previewPackageId,
+    packageClient: packageClientForScenario('conflict')
+  }
+};
+export const ServiceUnavailable: Story = {
+  args: {
+    packageId: previewPackageId,
+    packageClient: packageClientForScenario('unavailable')
+  }
+};
 export const ReadyForPreparationLock: Story = {
   args: {
     initialPackage: {

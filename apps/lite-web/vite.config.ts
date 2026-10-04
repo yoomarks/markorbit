@@ -47,6 +47,10 @@ export default defineConfig({
         'matter-workspace-preview': resolve(
           fileURLToPath(new URL('.', import.meta.url)),
           'matter-workspace-preview.html'
+        ),
+        'documents-instructions-preview': resolve(
+          fileURLToPath(new URL('.', import.meta.url)),
+          'documents-instructions-preview.html'
         )
       }
     }

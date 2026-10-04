@@ -1,8 +1,16 @@
 // @vitest-environment jsdom
-import { render, screen } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import '@testing-library/jest-dom/vitest';
+import { cleanup, render, screen } from '@testing-library/react';
+import { axe } from 'jest-axe';
+import { afterEach, describe, expect, it } from 'vitest';
 import type { DurableDocumentPackageView } from '@markorbit/contracts';
+import {
+  packageClientForScenario,
+  previewPackageId
+} from '../../documents-instructions-preview/fixtures.js';
 import { DocumentPackageWorkspace } from './DocumentPackageWorkspace.js';
+
+afterEach(cleanup);
 
 const ready: DurableDocumentPackageView = {
   documentPackageId: 'document-package_test025',
@@ -56,11 +64,41 @@ const ready: DurableDocumentPackageView = {
   canonicalEvidenceHash: 'c'.repeat(64)
 };
 describe('Document Package workspace', () => {
-  it('renders exact ready semantics and complete append-only supersession history read-only', () => {
-    render(<DocumentPackageWorkspace workspaceId={ready.workspaceId} initialPackage={ready} />);
+  it('renders exact ready semantics and complete append-only supersession history read-only', async () => {
+    const { container } = render(
+      <DocumentPackageWorkspace workspaceId={ready.workspaceId} initialPackage={ready} />
+    );
     expect(screen.getAllByText('Ready for Preparation Lock').length).toBeGreaterThan(0);
     expect(screen.getByText(/Supersedes instruction-entry_test025_1/)).toBeTruthy();
     expect(screen.queryByRole('button', { name: /Mark Ready/ })).toBeNull();
     expect(screen.getByText(/does not authorize filing/)).toBeTruthy();
+    expect((await axe(container)).violations).toEqual([]);
+  });
+
+  it('loads exact draft truth through an injected owner client', async () => {
+    render(
+      <DocumentPackageWorkspace
+        workspaceId={ready.workspaceId}
+        packageId={previewPackageId}
+        packageClient={packageClientForScenario('draft')}
+      />
+    );
+    expect(
+      await screen.findByRole('heading', { name: 'Documents and Instructions' })
+    ).toBeVisible();
+    expect(screen.getByRole('heading', { name: 'Required documents' })).toBeVisible();
+    expect(screen.getByRole('button', { name: 'Record evidence' })).toBeVisible();
+  });
+
+  it('distinguishes authentication failure from permission denial', async () => {
+    render(
+      <DocumentPackageWorkspace
+        workspaceId={ready.workspaceId}
+        packageId={previewPackageId}
+        packageClient={packageClientForScenario('unauthorized')}
+      />
+    );
+    expect(await screen.findByText('Sign in required')).toBeVisible();
+    expect(screen.getByText(/Sign in before reading Package evidence/)).toBeVisible();
   });
 });
