@@ -1,4 +1,4 @@
-import type { InternalOperatorPrincipal } from '@markorbit/contracts';
+import { AuthenticationError, type InternalOperatorPrincipal } from '@markorbit/contracts';
 import type { JsonRequest } from '@markorbit/service-kit';
 import { describe, expect, it, vi } from 'vitest';
 import { csrfToken } from '../src/auth.js';
@@ -260,6 +260,12 @@ const managePrincipal: InternalOperatorPrincipal = {
   capabilities: ['workspace-admin:manage'],
   sessionExpiresAt: '2030-01-01T00:00:00.000Z'
 };
+const membershipPrincipal = {
+  kind: 'AUTHENTICATED_USER' as const,
+  sessionId: managePrincipal.sessionId,
+  userId: managePrincipal.userId,
+  sessionExpiresAt: managePrincipal.sessionExpiresAt
+};
 const csrfSecret = 'workspace-super-admin-csrf-secret';
 const adminOrigin = 'https://admin.example';
 
@@ -278,6 +284,7 @@ function manageRequest(headers: Record<string, string> = {}): JsonRequest {
       'x-correlation-id': 'correlation-workspace-admin-manage',
       'x-markorbit-principal': 'browser-forged-principal',
       'x-markorbit-internal-authorization': 'browser-forged-secret',
+      'x-markorbit-session-token': 'browser-forged-session',
       ...headers
     }
   };
@@ -400,18 +407,25 @@ function membershipRequest(headers: Record<string, string> = {}): JsonRequest {
       'x-correlation-id': 'correlation-workspace-membership-manage',
       'x-markorbit-principal': 'browser-forged-principal',
       'x-markorbit-internal-authorization': 'browser-forged-secret',
+      'x-markorbit-session-token': 'browser-forged-session',
       ...headers
     }
   };
 }
 
-function membershipRoute(fetchImpl: typeof fetch) {
+function membershipRoute(
+  fetchImpl: typeof fetch,
+  authenticationClient = {
+    resolve: vi.fn(() => Promise.resolve(membershipPrincipal))
+  }
+) {
   const found = createGatewayWorkspaceSuperAdminRoutes({
     coreUrl,
     internalServiceSecret: secret,
     fetchImpl,
     csrfSecret,
-    allowedOrigins: [adminOrigin]
+    allowedOrigins: [adminOrigin],
+    authenticationClient
   }).find(
     (candidate) =>
       candidate.method === 'POST' &&
@@ -423,23 +437,19 @@ function membershipRoute(fetchImpl: typeof fetch) {
 }
 
 describe('Gateway Workspace Super Admin current-operator membership', () => {
-  it('uses browser manage authority and never accepts a client-selected user', async () => {
-    let calls = 0;
+  it('forwards only the authenticated browser session and never accepts a client-selected user', async () => {
+    const authenticationClient = {
+      resolve: vi.fn(() => Promise.resolve(membershipPrincipal))
+    };
     const fetchImpl: typeof fetch = vi.fn(
       (input: Parameters<typeof fetch>[0], init?: RequestInit) => {
-        calls += 1;
         const headers = new Headers(init?.headers);
         expect(headers.get('x-markorbit-internal-authorization')).toBe(secret);
-        if (calls === 1) {
-          expect(url(input)).toBe(
-            `${coreUrl}/internal/super-admin/workspace/manage/operator-principals/resolve`
-          );
-          return response(managePrincipal);
-        }
         expect(url(input)).toBe(
           `${coreUrl}/internal/super-admin/workspaces/11111111-1111-4111-8111-111111111111/current-operator-membership`
         );
-        expect(headers.get('x-markorbit-principal')).not.toBe('browser-forged-principal');
+        expect(headers.get('x-markorbit-principal')).toBeNull();
+        expect(headers.get('x-markorbit-session-token')).toBe('browser-workspace-admin-session');
         expect(headers.get('idempotency-key')).toBe('workspace-membership-test-1');
         expect(body(init)).toEqual({
           role: 'REVIEWER',
@@ -449,37 +459,75 @@ describe('Gateway Workspace Super Admin current-operator membership', () => {
       }
     );
 
-    await expect(membershipRoute(fetchImpl).handle(membershipRequest())).resolves.toEqual({
+    await expect(
+      membershipRoute(fetchImpl, authenticationClient).handle(membershipRequest())
+    ).resolves.toEqual({
       status: 201,
       body: managedMembership
     });
-    expect(fetchImpl).toHaveBeenCalledTimes(2);
-  });
-
-  it('rejects absent browser session and invalid CSRF before owner mutation', async () => {
-    const fetchImpl = vi.fn<typeof fetch>(() => response(managePrincipal));
-    await expect(
-      membershipRoute(fetchImpl).handle(membershipRequest({ cookie: '' }))
-    ).rejects.toMatchObject({ status: 401, code: 'AUTHENTICATION_REQUIRED' });
-    expect(fetchImpl).not.toHaveBeenCalled();
-
-    await expect(
-      membershipRoute(fetchImpl).handle(membershipRequest({ 'x-markorbit-csrf-token': 'invalid' }))
-    ).rejects.toMatchObject({ code: 'INVALID_CSRF_TOKEN' });
+    expect(authenticationClient.resolve).toHaveBeenCalledWith(
+      'browser-workspace-admin-session',
+      'correlation-workspace-membership-manage'
+    );
     expect(fetchImpl).toHaveBeenCalledTimes(1);
   });
 
+  it('rejects absent browser session and invalid CSRF before owner mutation', async () => {
+    const fetchImpl = vi.fn<typeof fetch>(() => response(managedMembership, 201));
+    const authenticationClient = {
+      resolve: vi.fn(() => Promise.resolve(membershipPrincipal))
+    };
+    await expect(
+      membershipRoute(fetchImpl, authenticationClient).handle(membershipRequest({ cookie: '' }))
+    ).rejects.toMatchObject({ status: 401, code: 'AUTHENTICATION_REQUIRED' });
+    expect(fetchImpl).not.toHaveBeenCalled();
+    expect(authenticationClient.resolve).not.toHaveBeenCalled();
+
+    await expect(
+      membershipRoute(fetchImpl, authenticationClient).handle(
+        membershipRequest({ 'x-markorbit-csrf-token': 'invalid' })
+      )
+    ).rejects.toMatchObject({ code: 'INVALID_CSRF_TOKEN' });
+    expect(fetchImpl).not.toHaveBeenCalled();
+    expect(authenticationClient.resolve).toHaveBeenCalledTimes(1);
+  });
+
   it('fails closed when owner returns a different user or workspace', async () => {
-    let calls = 0;
-    const fetchImpl: typeof fetch = vi.fn(() => {
-      calls += 1;
-      return calls === 1
-        ? response(managePrincipal)
-        : response({ ...managedMembership, userId: 'different-user' }, 201);
-    });
+    const fetchImpl: typeof fetch = vi.fn(() =>
+      response({ ...managedMembership, userId: 'different-user' }, 201)
+    );
     await expect(membershipRoute(fetchImpl).handle(membershipRequest())).rejects.toMatchObject({
       status: 503,
       code: 'WORKSPACE_ADMIN_OWNER_CONTRACT_MISMATCH'
     });
+  });
+
+  it('propagates owner denial and fails closed when authentication is unavailable', async () => {
+    const deniedFetch: typeof fetch = vi.fn(() =>
+      response({ code: 'PERMISSION_DENIED', message: 'Explicit grant is required.' }, 403)
+    );
+    await expect(membershipRoute(deniedFetch).handle(membershipRequest())).resolves.toEqual({
+      status: 403,
+      body: { code: 'PERMISSION_DENIED', message: 'Explicit grant is required.' }
+    });
+
+    const unavailableFetch = vi.fn<typeof fetch>();
+    const unavailableAuthentication = {
+      resolve: vi.fn(() =>
+        Promise.reject(
+          new AuthenticationError(
+            'AUTHENTICATION_SERVICE_UNAVAILABLE',
+            'Authentication service is unavailable.'
+          )
+        )
+      )
+    };
+    await expect(
+      membershipRoute(unavailableFetch, unavailableAuthentication).handle(membershipRequest())
+    ).resolves.toMatchObject({
+      status: 503,
+      body: { code: 'AUTHENTICATION_SERVICE_UNAVAILABLE' }
+    });
+    expect(unavailableFetch).not.toHaveBeenCalled();
   });
 });

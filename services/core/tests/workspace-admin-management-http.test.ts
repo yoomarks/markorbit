@@ -1,4 +1,5 @@
 import {
+  AuthenticationError,
   encodeInternalOperatorPrincipal,
   type InternalOperatorPrincipal
 } from '@markorbit/contracts';
@@ -188,8 +189,8 @@ const grantedMembership = {
 
 function membershipRequest(
   body: unknown = { role: 'REVIEWER', reason: 'Authorize governed execution dispatch.' },
-  authority = principal('workspace-admin:manage'),
-  internal = secret
+  internal = secret,
+  headers: Record<string, string> = {}
 ): JsonRequest {
   return {
     method: 'POST',
@@ -199,27 +200,49 @@ function membershipRequest(
     body,
     headers: {
       'x-markorbit-internal-authorization': internal,
-      'x-markorbit-principal': authority,
+      'x-markorbit-session-token': 'browser-session-token',
       'idempotency-key': 'membership-973-1',
-      'x-correlation-id': 'corr-membership-973-1'
+      'x-correlation-id': 'corr-membership-973-1',
+      ...headers
     }
   };
 }
 
 describe('Workspace Admin current-operator membership HTTP boundary', () => {
-  it('derives the target user from the trusted operator principal', async () => {
-    const grantCurrentOperatorMembership = vi.fn(() => Promise.resolve(grantedMembership));
+  function membershipRoute(
+    grantCurrentOperatorMembership = vi.fn(() => Promise.resolve(grantedMembership)),
+    resolveSession = vi.fn(() =>
+      Promise.resolve({
+        kind: 'AUTHENTICATED_USER' as const,
+        sessionId: 'session-973',
+        userId,
+        sessionExpiresAt: '2099-01-01T00:00:00.000Z'
+      })
+    ),
+    hasGrant = vi.fn(() => Promise.resolve(true))
+  ) {
     const routes = createWorkspaceAdminManagementRoutesV1({
       service: { renameDisplayName: vi.fn(), grantCurrentOperatorMembership },
       internalServiceSecret: secret,
+      membershipAuthentication: { resolveSession },
+      workspaceAdminManageGrants: { hasGrant },
       now: () => new Date('2026-09-07T12:00:00.000Z')
     });
-    const ownerRoute = routes.find(
-      (candidate) =>
-        candidate.method === 'POST' &&
-        candidate.path ===
-          '/internal/super-admin/workspaces/:workspaceId/current-operator-membership'
-    )!;
+    return {
+      grantCurrentOperatorMembership,
+      resolveSession,
+      hasGrant,
+      route: routes[1]!
+    };
+  }
+
+  it('derives the actor and target from the authenticated browser session', async () => {
+    const grantCurrentOperatorMembership = vi.fn(() => Promise.resolve(grantedMembership));
+    const {
+      route: ownerRoute,
+      resolveSession,
+      hasGrant
+    } = membershipRoute(grantCurrentOperatorMembership);
 
     await expect(ownerRoute.handle(membershipRequest())).resolves.toEqual({
       status: 201,
@@ -235,15 +258,12 @@ describe('Workspace Admin current-operator membership HTTP boundary', () => {
       { userId, sessionId: 'session-973' },
       'corr-membership-973-1'
     );
+    expect(resolveSession).toHaveBeenCalledWith('browser-session-token');
+    expect(hasGrant).toHaveBeenCalledWith(userId);
   });
 
-  it('rejects client-supplied target identities and non-manage authority', async () => {
-    const grantCurrentOperatorMembership = vi.fn();
-    const routes = createWorkspaceAdminManagementRoutesV1({
-      service: { renameDisplayName: vi.fn(), grantCurrentOperatorMembership },
-      internalServiceSecret: secret
-    });
-    const ownerRoute = routes[1]!;
+  it('rejects client-supplied target identities', async () => {
+    const { route: ownerRoute, grantCurrentOperatorMembership } = membershipRoute(vi.fn());
     await expect(
       ownerRoute.handle(
         membershipRequest({
@@ -253,9 +273,56 @@ describe('Workspace Admin current-operator membership HTTP boundary', () => {
         })
       )
     ).rejects.toMatchObject({ status: 400, code: 'INVALID_REQUEST' });
-    await expect(
-      ownerRoute.handle(membershipRequest(undefined, principal('workspace-admin:read')))
-    ).rejects.toMatchObject({ status: 403, code: 'PERMISSION_DENIED' });
     expect(grantCurrentOperatorMembership).not.toHaveBeenCalled();
+  });
+
+  it('requires internal identity, a browser session, and an explicit manage grant', async () => {
+    const grantCurrentOperatorMembership = vi.fn();
+    const { route: ownerRoute, resolveSession } = membershipRoute(
+      grantCurrentOperatorMembership,
+      undefined,
+      vi.fn(() => Promise.resolve(false))
+    );
+    await expect(ownerRoute.handle(membershipRequest(undefined, 'wrong'))).rejects.toMatchObject({
+      status: 401,
+      code: 'INTERNAL_SERVICE_UNAUTHORIZED'
+    });
+    await expect(
+      ownerRoute.handle(membershipRequest(undefined, secret, { 'x-markorbit-session-token': '' }))
+    ).rejects.toMatchObject({ status: 401, code: 'AUTHENTICATION_REQUIRED' });
+    await expect(ownerRoute.handle(membershipRequest())).rejects.toMatchObject({
+      status: 403,
+      code: 'PERMISSION_DENIED'
+    });
+    expect(grantCurrentOperatorMembership).not.toHaveBeenCalled();
+    expect(resolveSession).toHaveBeenCalledTimes(1);
+  });
+
+  it('fails closed when session or explicit-grant authority is unavailable', async () => {
+    const sessionUnavailable = membershipRoute(
+      vi.fn(),
+      vi.fn(() =>
+        Promise.reject(
+          new AuthenticationError(
+            'AUTHENTICATION_SERVICE_UNAVAILABLE',
+            'Authentication service is unavailable.'
+          )
+        )
+      )
+    );
+    await expect(sessionUnavailable.route.handle(membershipRequest())).rejects.toMatchObject({
+      status: 503,
+      code: 'AUTHENTICATION_SERVICE_UNAVAILABLE'
+    });
+
+    const grantUnavailable = membershipRoute(
+      vi.fn(),
+      undefined,
+      vi.fn(() => Promise.reject(new Error('unavailable')))
+    );
+    await expect(grantUnavailable.route.handle(membershipRequest())).rejects.toMatchObject({
+      status: 503,
+      code: 'AUTHENTICATION_SERVICE_UNAVAILABLE'
+    });
   });
 });

@@ -655,6 +655,7 @@ export function createRuntime(options: GatewayOptions = {}) {
         }),
         ...createGatewayWorkspaceSuperAdminRoutes({
           coreUrl: options.coreUrl ?? process.env.CORE_URL ?? 'http://127.0.0.1:4101',
+          ...(authenticationClient ? { authenticationClient } : {}),
           ...((options.internalServiceSecret ?? process.env.MO_INTERNAL_SERVICE_SECRET)
             ? {
                 internalServiceSecret: (options.internalServiceSecret ??

@@ -1,6 +1,8 @@
-import { parseInternalOperatorPrincipal } from '@markorbit/contracts';
+import { AuthenticationError, parseInternalOperatorPrincipal } from '@markorbit/contracts';
 import { HttpError, json, type JsonRequest, type JsonRoute } from '@markorbit/service-kit';
+import type { AuthenticationService } from './auth.js';
 import { validateInternalServiceSecret } from './auth.js';
+import type { WorkspaceAdminManageGrantSourceV1 } from './internal-operator-principal.js';
 import {
   WORKSPACE_ADMIN_MANAGE_AUTHORITY,
   WorkspaceAdminManagementError,
@@ -13,10 +15,15 @@ export interface WorkspaceAdminManagementHttpOptionsV1 {
     'renameDisplayName' | 'grantCurrentOperatorMembership'
   >;
   internalServiceSecret: string;
+  membershipAuthentication?: Pick<AuthenticationService, 'resolveSession'>;
+  workspaceAdminManageGrants?: Pick<WorkspaceAdminManageGrantSourceV1, 'hasGrant'>;
   now?: () => Date;
 }
 
-function authorize(request: JsonRequest, options: WorkspaceAdminManagementHttpOptionsV1) {
+function requireInternalService(
+  request: JsonRequest,
+  options: WorkspaceAdminManagementHttpOptionsV1
+) {
   if (
     !validateInternalServiceSecret(
       options.internalServiceSecret,
@@ -28,6 +35,10 @@ function authorize(request: JsonRequest, options: WorkspaceAdminManagementHttpOp
       'INTERNAL_SERVICE_UNAUTHORIZED',
       'Internal service identity is invalid.'
     );
+}
+
+function authorizeOperator(request: JsonRequest, options: WorkspaceAdminManagementHttpOptionsV1) {
+  requireInternalService(request, options);
   let principal;
   try {
     principal = parseInternalOperatorPrincipal(request.headers['x-markorbit-principal']);
@@ -47,6 +58,49 @@ function authorize(request: JsonRequest, options: WorkspaceAdminManagementHttpOp
   const now = (options.now ?? (() => new Date()))().valueOf();
   if (!Number.isFinite(expiresAt) || expiresAt <= now)
     throw new HttpError(401, 'SESSION_EXPIRED', 'Internal Operator session is expired.');
+  return principal;
+}
+
+async function authorizeCurrentMembership(
+  request: JsonRequest,
+  options: WorkspaceAdminManagementHttpOptionsV1
+) {
+  requireInternalService(request, options);
+  if (!options.membershipAuthentication || !options.workspaceAdminManageGrants)
+    throw new HttpError(
+      503,
+      'AUTHENTICATION_SERVICE_UNAVAILABLE',
+      'Workspace membership authorization is unavailable.',
+      true
+    );
+  const token = request.headers['x-markorbit-session-token'];
+  if (typeof token !== 'string' || !token || token.length > 4096)
+    throw new HttpError(401, 'AUTHENTICATION_REQUIRED', 'Authenticated session is required.');
+  let principal;
+  try {
+    principal = await options.membershipAuthentication.resolveSession(token);
+  } catch (error) {
+    if (!(error instanceof AuthenticationError)) throw error;
+    const status = error.code === 'AUTHENTICATION_SERVICE_UNAVAILABLE' ? 503 : 401;
+    throw new HttpError(status, error.code, error.message, status === 503);
+  }
+  let granted: boolean;
+  try {
+    granted = await options.workspaceAdminManageGrants.hasGrant(principal.userId);
+  } catch {
+    throw new HttpError(
+      503,
+      'AUTHENTICATION_SERVICE_UNAVAILABLE',
+      'Workspace membership authorization is unavailable.',
+      true
+    );
+  }
+  if (!granted)
+    throw new HttpError(
+      403,
+      'PERMISSION_DENIED',
+      'Explicit workspace-admin:manage authority is required.'
+    );
   return principal;
 }
 
@@ -117,7 +171,7 @@ export function createWorkspaceAdminManagementRoutesV1(
       method: 'PATCH',
       path: '/internal/super-admin/workspaces/:workspaceId/display-name',
       async handle(request) {
-        const principal = authorize(request, options);
+        const principal = authorizeOperator(request, options);
         const workspaceId = request.params.workspaceId;
         if (!workspaceId)
           throw new HttpError(400, 'INVALID_REQUEST', 'Workspace target is required.');
@@ -144,7 +198,7 @@ export function createWorkspaceAdminManagementRoutesV1(
       method: 'POST',
       path: '/internal/super-admin/workspaces/:workspaceId/current-operator-membership',
       async handle(request) {
-        const principal = authorize(request, options);
+        const principal = await authorizeCurrentMembership(request, options);
         const workspaceId = request.params.workspaceId;
         if (!workspaceId)
           throw new HttpError(400, 'INVALID_REQUEST', 'Workspace target is required.');
