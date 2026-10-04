@@ -25,7 +25,10 @@ import { createInternalOperatorPrincipalRoutesV1 } from './internal-operator-pri
 import { createCoreAdminRoutesV1 } from './core-admin-http.js';
 import { createSystemAdminRoutesV1 } from './system-admin-http.js';
 import { createGovernanceAdminRoutesV1 } from './governance-admin-http.js';
-import type { InternalOperatorPrincipalResolverV1 } from './internal-operator-principal.js';
+import type {
+  InternalOperatorPrincipalResolverV1,
+  WorkspaceAdminManageGrantSourceV1
+} from './internal-operator-principal.js';
 import { createWorkspaceAdminPortfolioRoutesV1 } from './workspace-admin-portfolio-http.js';
 import type { WorkspaceAdminPortfolioReaderV1 } from './workspace-admin-portfolio.js';
 import { createWorkspaceAdminManagementRoutesV1 } from './workspace-admin-management-http.js';
@@ -118,6 +121,7 @@ export interface CoreRuntimeOptions {
     PostgresWorkspaceAdminManagementServiceV1,
     'renameDisplayName' | 'grantCurrentOperatorMembership'
   >;
+  workspaceAdminManageGrants?: Pick<WorkspaceAdminManageGrantSourceV1, 'hasGrant'>;
   methodOutcomeEvidenceAdmissions?: Pick<MethodOutcomeEvidenceAdmissionServiceV1, 'admit'>;
   methodOutcomeReports?: Pick<MethodOutcomeReportServiceV1, 'report'>;
   methodImprovementAdmissions?: Pick<MethodImprovementAdmissionServiceV1, 'admit'>;
@@ -240,7 +244,11 @@ export function createRuntime(options: CoreRuntimeOptions = {}) {
     options.workspaceAdminManagement && secret
       ? createWorkspaceAdminManagementRoutesV1({
           service: options.workspaceAdminManagement,
-          internalServiceSecret: secret
+          internalServiceSecret: secret,
+          ...(authentication ? { membershipAuthentication: authentication } : {}),
+          ...(options.workspaceAdminManageGrants
+            ? { workspaceAdminManageGrants: options.workspaceAdminManageGrants }
+            : {})
         })
       : [];
   const methodOutcomeEvidenceRoutes =

@@ -179,6 +179,7 @@ const accountAccess = new AccountAccessService(
   new PostgresAccountAccessStore(database),
   authentication
 );
+const workspaceAdminManageGrants = createEnvironmentWorkspaceAdminManageGrantSourceV1();
 const internalOperatorPrincipalResolver = new InternalOperatorPrincipalResolverV1({
   authentication,
   accountAccess,
@@ -186,7 +187,7 @@ const internalOperatorPrincipalResolver = new InternalOperatorPrincipalResolverV
   dataReadGrants: createEnvironmentDataReadGrantSourceV1(),
   knowledgeReadGrants: createEnvironmentKnowledgeReadGrantSourceV1(),
   workspaceAdminReadGrants: createEnvironmentWorkspaceAdminReadGrantSourceV1(),
-  workspaceAdminManageGrants: createEnvironmentWorkspaceAdminManageGrantSourceV1(),
+  workspaceAdminManageGrants,
   liteAdminReadGrants: createEnvironmentLiteAdminReadGrantSourceV1(),
   executionAdminReadGrants: createEnvironmentExecutionAdminReadGrantSourceV1(),
   coreAdminReadGrants: createEnvironmentCoreAdminReadGrantSourceV1(),
@@ -226,6 +227,7 @@ const runtime = createRuntime({
   internalOperatorPrincipalResolver,
   workspaceAdminPortfolio: new PostgresWorkspaceAdminPortfolioReaderV1(query),
   workspaceAdminManagement: new PostgresWorkspaceAdminManagementServiceV1(database),
+  workspaceAdminManageGrants,
   methodOutcomeEvidenceAdmissions,
   methodOutcomeReports,
   methodImprovementAdmissions,

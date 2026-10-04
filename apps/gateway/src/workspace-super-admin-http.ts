@@ -1,4 +1,5 @@
 import {
+  AuthenticationError,
   encodeInternalOperatorPrincipal,
   parseInternalOperatorPrincipal,
   type InternalOperatorPrincipal
@@ -10,7 +11,12 @@ import {
   type JsonResult,
   type JsonRoute
 } from '@markorbit/service-kit';
-import { readSessionCookie, requireTrustedOrigin, validateCsrf } from './auth.js';
+import {
+  readSessionCookie,
+  requireTrustedOrigin,
+  validateCsrf,
+  type CoreAuthenticationClient
+} from './auth.js';
 
 export const WORKSPACE_SUPER_ADMIN_READ_AUTHORITY = 'workspace-admin:read' as const;
 export const WORKSPACE_SUPER_ADMIN_MANAGE_AUTHORITY = 'workspace-admin:manage' as const;
@@ -23,6 +29,7 @@ export interface GatewayWorkspaceSuperAdminOptions {
   fetchImpl?: typeof fetch;
   csrfSecret?: string;
   allowedOrigins?: readonly string[];
+  authenticationClient?: Pick<CoreAuthenticationClient, 'resolve'>;
 }
 
 export interface WorkspaceSuperAdminItem {
@@ -500,17 +507,31 @@ async function grantCurrentOperatorMembership(
   options: GatewayWorkspaceSuperAdminOptions
 ): Promise<JsonResult> {
   const token = sessionToken(request);
-  const operator = await resolveOperator(
-    request,
-    token,
-    options,
-    WORKSPACE_SUPER_ADMIN_MANAGE_AUTHORITY,
-    '/internal/super-admin/workspace/manage/operator-principals/resolve'
-  );
-  if ('response' in operator) return operator.response;
+  if (!options.authenticationClient)
+    throw new HttpError(
+      503,
+      'AUTHENTICATION_SERVICE_UNAVAILABLE',
+      'Workspace membership authentication is unavailable.',
+      true
+    );
+  let principal;
+  try {
+    principal = await options.authenticationClient.resolve(
+      token,
+      request.headers['x-correlation-id']
+    );
+  } catch (error) {
+    if (!(error instanceof AuthenticationError)) throw error;
+    const status = error.code === 'AUTHENTICATION_SERVICE_UNAVAILABLE' ? 503 : 401;
+    return json(status, {
+      code: error.code,
+      message: error.message,
+      retryable: status === 503
+    });
+  }
   requireTrustedOrigin(request.headers.origin, options.allowedOrigins ?? []);
   validateCsrf(
-    operator.principal.sessionId,
+    principal.sessionId,
     options.csrfSecret ?? '',
     request.headers['x-markorbit-csrf-token']
   );
@@ -528,7 +549,7 @@ async function grantCurrentOperatorMembership(
         headers: {
           'content-type': 'application/json',
           'x-markorbit-internal-authorization': configured.internalServiceSecret,
-          'x-markorbit-principal': encodeInternalOperatorPrincipal(operator.principal),
+          'x-markorbit-session-token': token,
           'idempotency-key': key,
           ...correlationHeaders(request)
         },
@@ -557,7 +578,7 @@ async function grantCurrentOperatorMembership(
   if (
     !membership ||
     membership.workspaceId !== workspaceId ||
-    membership.userId !== operator.principal.userId
+    membership.userId !== principal.userId
   )
     throw new HttpError(
       503,
