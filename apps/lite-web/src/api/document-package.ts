@@ -50,7 +50,39 @@ async function request(
   return value;
 }
 const key = (action: string) => `${action}:${crypto.randomUUID()}`;
-export const createDocumentPackageClient = (workspaceId: string) => ({
+export interface DocumentPackageClient {
+  create(input: {
+    professionalReviewCaseId: string;
+    expectedReviewVersion: number;
+    expectedCompletedDecisionId: string;
+    expectedCompletedDecisionHash: string;
+  }): Promise<DurableDocumentPackageView>;
+  get(id: string): Promise<DurableDocumentPackageView>;
+  save(
+    id: string,
+    expectedVersion: number,
+    draft: Record<string, unknown>
+  ): Promise<DurableDocumentPackageView>;
+  evidence(
+    id: string,
+    expectedVersion: number,
+    evidence: DurableDocumentEvidenceInput
+  ): Promise<DurableDocumentPackageView>;
+  append(
+    id: string,
+    expectedVersion: number,
+    instruction: DurableInstructionInput
+  ): Promise<DurableDocumentPackageView>;
+  supersede(
+    id: string,
+    entryId: string,
+    expectedVersion: number,
+    instruction: DurableInstructionInput
+  ): Promise<DurableDocumentPackageView>;
+  ready(id: string, expectedVersion: number): Promise<DurableDocumentPackageView>;
+}
+
+export const createDocumentPackageClient = (workspaceId: string): DocumentPackageClient => ({
   create: (input: {
     professionalReviewCaseId: string;
     expectedReviewVersion: number;

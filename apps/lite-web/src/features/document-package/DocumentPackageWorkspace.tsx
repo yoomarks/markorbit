@@ -12,9 +12,15 @@ import {
   Select,
   TextInput
 } from '@markorbit/ui';
-import { createProfessionalReviewClient } from '../../api/professional-review.js';
-import { createDocumentPackageClient } from '../../api/document-package.js';
-import type { PackageHttpError } from '../../api/document-package.js';
+import {
+  createProfessionalReviewClient,
+  type ProfessionalReviewClient
+} from '../../api/professional-review.js';
+import {
+  createDocumentPackageClient,
+  type DocumentPackageClient,
+  type PackageHttpError
+} from '../../api/document-package.js';
 
 const hash = async (value: unknown) =>
   Array.from(
@@ -40,20 +46,37 @@ export function DocumentPackageWorkspace({
   reviewCaseId,
   packageId,
   initialPackage,
-  initialReview
+  initialReview,
+  packageClient,
+  reviewClient
 }: {
   workspaceId: string;
   reviewCaseId?: string;
   packageId?: string;
   initialPackage?: DurableDocumentPackageView;
   initialReview?: ProfessionalReviewCase;
+  packageClient?: DocumentPackageClient;
+  reviewClient?: ProfessionalReviewClient;
 }) {
-  const client = useMemo(() => createDocumentPackageClient(workspaceId), [workspaceId]);
-  const reviews = useMemo(() => createProfessionalReviewClient(workspaceId), [workspaceId]);
+  const client = useMemo(
+    () => packageClient ?? createDocumentPackageClient(workspaceId),
+    [packageClient, workspaceId]
+  );
+  const reviews = useMemo(
+    () => reviewClient ?? createProfessionalReviewClient(workspaceId),
+    [reviewClient, workspaceId]
+  );
   const [value, setValue] = useState<DurableDocumentPackageView | undefined>(initialPackage);
   const [review, setReview] = useState<ProfessionalReviewCase | undefined>(initialReview);
   const [state, setState] = useState<
-    'loading' | 'ready' | 'error' | 'forbidden' | 'missing' | 'conflict' | 'unavailable'
+    | 'loading'
+    | 'ready'
+    | 'error'
+    | 'unauthorized'
+    | 'forbidden'
+    | 'missing'
+    | 'conflict'
+    | 'unavailable'
   >('loading');
   const [message, setMessage] = useState('');
   const [note, setNote] = useState('');
@@ -66,15 +89,17 @@ export function DocumentPackageWorkspace({
     const e = error as PackageHttpError;
     setMessage(e.message);
     setState(
-      e.status === 403
-        ? 'forbidden'
-        : e.status === 404
-          ? 'missing'
-          : e.status === 409
-            ? 'conflict'
-            : e.status === 503
-              ? 'unavailable'
-              : 'error'
+      e.status === 401
+        ? 'unauthorized'
+        : e.status === 403
+          ? 'forbidden'
+          : e.status === 404
+            ? 'missing'
+            : e.status === 409
+              ? 'conflict'
+              : e.status === 503
+                ? 'unavailable'
+                : 'error'
     );
   };
   useEffect(() => {
@@ -84,6 +109,7 @@ export function DocumentPackageWorkspace({
     }
     setState('loading');
     setValue(undefined);
+    setReview(undefined);
     const work = packageId
       ? client.get(packageId).then(setValue)
       : reviewCaseId
@@ -112,6 +138,7 @@ export function DocumentPackageWorkspace({
       <ErrorState
         title={
           {
+            unauthorized: 'Sign in required',
             forbidden: 'Package permission denied',
             missing: 'Document Package not found',
             conflict: 'Package version conflict',
