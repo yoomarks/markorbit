@@ -43,6 +43,10 @@ export default defineConfig({
         'opportunity-center-preview': resolve(
           fileURLToPath(new URL('.', import.meta.url)),
           'opportunity-center-preview.html'
+        ),
+        'matter-workspace-preview': resolve(
+          fileURLToPath(new URL('.', import.meta.url)),
+          'matter-workspace-preview.html'
         )
       }
     }

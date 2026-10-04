@@ -1,0 +1,20 @@
+.matter-workspace-preview {
+  width: min(1180px, 100%);
+  min-height: 100vh;
+  margin-inline: auto;
+  padding: var(--mo-space-lg, 1.25rem);
+}
+
+.matter-workspace-preview > [role='status']:first-child {
+  margin-bottom: var(--mo-space-lg, 1.25rem);
+}
+
+.matter-workspace-preview__return {
+  margin-bottom: var(--mo-space-md, 1rem);
+}
+
+@media (max-width: 760px) {
+  .matter-workspace-preview {
+    padding: var(--mo-space-md, 1rem);
+  }
+}
