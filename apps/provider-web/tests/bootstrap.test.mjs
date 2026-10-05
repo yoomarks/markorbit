@@ -59,10 +59,34 @@ test('package remains dependency-free and validates every product module', async
   for (const module of [
     'provider-work-api.js',
     'provider-work-model.js',
-    'provider-work-view.js'
+    'provider-work-view.js',
+    'provider-workspace-preview.js'
   ]) {
     const matcher = new RegExp(module.replaceAll('.', '\\.'));
     assert.match(build, matcher);
     assert.match(check, matcher);
   }
+});
+
+test('runnable preview exposes governed Provider workflow states', async () => {
+  const preview = [
+    await source('provider-workspace-preview.html'),
+    await source('src/provider-workspace-preview.js'),
+    await source('src/provider-workspace-preview.css')
+  ].join('\n');
+  for (const marker of [
+    'My work',
+    'Needs response',
+    'Returns to prepare',
+    'Refresh owner truth',
+    'Provider Return recorded by MGSN',
+    'Provider action permission denied',
+    'Work changed before submission',
+    'Provider Workspace access required',
+    'Owner source temporarily unavailable'
+  ]) {
+    assert.match(preview, new RegExp(marker));
+  }
+  assert.match(preview, /max-width: 560px/);
+  assert.match(preview, /prefers-reduced-motion/);
 });

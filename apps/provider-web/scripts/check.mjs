@@ -8,7 +8,8 @@ const productModules = [
   'main.js',
   'provider-work-api.js',
   'provider-work-model.js',
-  'provider-work-view.js'
+  'provider-work-view.js',
+  'provider-workspace-preview.js'
 ];
 for (const file of productModules) {
   const result = spawnSync(process.execPath, ['--check', resolve(root, 'src', file)], {
@@ -19,8 +20,10 @@ for (const file of productModules) {
 
 const combined = [
   await readFile(resolve(root, 'index.html'), 'utf8'),
+  await readFile(resolve(root, 'provider-workspace-preview.html'), 'utf8'),
   await readFile(resolve(root, 'src', 'main.js'), 'utf8'),
-  await readFile(resolve(root, 'src', 'provider-work-view.js'), 'utf8')
+  await readFile(resolve(root, 'src', 'provider-work-view.js'), 'utf8'),
+  await readFile(resolve(root, 'src', 'provider-workspace-preview.js'), 'utf8')
 ].join('\n');
 for (const marker of [
   'Provider Workspace',
