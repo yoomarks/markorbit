@@ -59,6 +59,10 @@ export default defineConfig({
         'filing-authorization-preview': resolve(
           fileURLToPath(new URL('.', import.meta.url)),
           'filing-authorization-preview.html'
+        ),
+        'execution-release-preview': resolve(
+          fileURLToPath(new URL('.', import.meta.url)),
+          'execution-release-preview.html'
         )
       }
     }
