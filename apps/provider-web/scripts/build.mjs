@@ -8,11 +8,17 @@ const dist = resolve(root, 'dist');
 await rm(dist, { recursive: true, force: true });
 await mkdir(resolve(dist, 'src'), { recursive: true });
 await cp(resolve(root, 'index.html'), resolve(dist, 'index.html'));
+await cp(
+  resolve(root, 'provider-workspace-preview.html'),
+  resolve(dist, 'provider-workspace-preview.html')
+);
 for (const file of [
   'main.js',
   'provider-work-api.js',
   'provider-work-model.js',
   'provider-work-view.js',
+  'provider-workspace-preview.js',
+  'provider-workspace-preview.css',
   'styles.css'
 ]) {
   await cp(resolve(root, 'src', file), resolve(dist, 'src', file));
