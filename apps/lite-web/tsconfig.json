@@ -22,6 +22,7 @@
     "playwright.matter-workspace-preview.config.ts",
     "playwright.documents-instructions-preview.config.ts",
     "playwright.preparation-lock-preview.config.ts",
+    "playwright.filing-authorization-preview.config.ts",
     "playwright.ux-trust-visual.config.ts"
   ]
 }

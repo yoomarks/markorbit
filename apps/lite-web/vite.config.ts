@@ -55,6 +55,10 @@ export default defineConfig({
         'preparation-lock-preview': resolve(
           fileURLToPath(new URL('.', import.meta.url)),
           'preparation-lock-preview.html'
+        ),
+        'filing-authorization-preview': resolve(
+          fileURLToPath(new URL('.', import.meta.url)),
+          'filing-authorization-preview.html'
         )
       }
     }
