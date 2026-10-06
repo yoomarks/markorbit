@@ -1,6 +1,8 @@
 import { Alert, Button, Card, LoadingState } from '@markorbit/ui';
 import { useCallback, useEffect, useState } from 'react';
 import { TruthBadge, TruthContext } from './TruthContext.js';
+import { MarkregApiError } from './api/errors.js';
+import './recommended-action/recommended-action.css';
 import {
   createCustomerLifecycleClient,
   type CustomerLifecycleClient,
@@ -12,7 +14,37 @@ const defaultClient = createCustomerLifecycleClient();
 type State =
   | { kind: 'LOADING' }
   | { kind: 'READY'; value: CustomerLifecycleSurface }
-  | { kind: 'ERROR'; message: string };
+  | {
+      kind: 'ERROR';
+      title: string;
+      message: string;
+      truth: 'UNAVAILABLE_STALE' | 'GOVERNED_INTERNAL';
+    };
+
+const statusCopy = {
+  OPEN: 'Needs your review',
+  ACKNOWLEDGED: 'Acknowledged',
+  DISMISSED: 'Dismissed'
+} as const;
+
+function loadError(error: unknown): Extract<State, { kind: 'ERROR' }> {
+  if (error instanceof MarkregApiError && (error.status === 401 || error.status === 403)) {
+    return {
+      kind: 'ERROR',
+      title: 'Access required',
+      message:
+        'Your authenticated customer relationship does not allow this Matter lifecycle to be viewed.',
+      truth: 'GOVERNED_INTERNAL'
+    };
+  }
+  return {
+    kind: 'ERROR',
+    title: 'Lifecycle unavailable',
+    message:
+      'Lifecycle information is temporarily unavailable. No recommendation or Matter state is inferred.',
+    truth: 'UNAVAILABLE_STALE'
+  };
+}
 
 export function LifecyclePanel({
   formalMatterId,
@@ -27,15 +59,13 @@ export function LifecyclePanel({
 }) {
   const [state, setState] = useState<State>({ kind: 'LOADING' });
   const [mutation, setMutation] = useState<'ACKNOWLEDGE' | 'DISMISS' | null>(null);
+  const [mutationError, setMutationError] = useState<string | null>(null);
   const load = useCallback(async () => {
     setState({ kind: 'LOADING' });
     try {
       setState({ kind: 'READY', value: await client.get(formalMatterId) });
-    } catch {
-      setState({
-        kind: 'ERROR',
-        message: 'Lifecycle information is temporarily unavailable. The Matter itself is unchanged.'
-      });
+    } catch (error) {
+      setState(loadError(error));
     }
   }, [client, formalMatterId]);
 
@@ -46,18 +76,19 @@ export function LifecyclePanel({
   const act = async (target: 'ACKNOWLEDGE' | 'DISMISS') => {
     if (state.kind !== 'READY' || !state.value.recommendedAction || disabled) return;
     const action = state.value.recommendedAction;
+    setMutationError(null);
     setMutation(target);
     try {
       if (target === 'ACKNOWLEDGE')
         await client.acknowledge(action.recommendedActionId, action.version);
       else await client.dismiss(action.recommendedActionId, action.version);
       await load();
-    } catch {
-      setState({
-        kind: 'ERROR',
-        message:
-          'The action changed or could not be updated. Reload the exact Matter before trying again.'
-      });
+    } catch (error) {
+      setMutationError(
+        error instanceof MarkregApiError && error.kind === 'conflict'
+          ? 'This recommendation changed in another session. Its current version is still shown below; reload before deciding again.'
+          : 'The recommendation could not be updated. Its current version remains visible and no external action was taken.'
+      );
     } finally {
       setMutation(null);
     }
@@ -66,8 +97,8 @@ export function LifecyclePanel({
   if (state.kind === 'LOADING') return <LoadingState label="Loading lifecycle status" />;
   if (state.kind === 'ERROR')
     return (
-      <Alert tone="warning" title="Lifecycle unavailable">
-        <TruthBadge kind="UNAVAILABLE_STALE" /> {state.message}{' '}
+      <Alert tone="warning" title={state.title}>
+        <TruthBadge kind={state.truth} /> {state.message}{' '}
         <Button onClick={() => void load()}>Retry</Button>
       </Alert>
     );
@@ -90,65 +121,112 @@ export function LifecyclePanel({
         </TruthContext>
       )}
 
-      <Card>
-        <div className="markreg-cockpit-card-heading">
-          <h3>Current recommended action</h3>
-          <TruthBadge kind="GOVERNED_INTERNAL" />
-        </div>
-        <div aria-live="polite">
-          {recommendedAction ? (
-            <>
-              <strong>{recommendedAction.title}</strong>
-              <p>{recommendedAction.explanation}</p>
-              {recommendedAction.timingBasis && <p>{recommendedAction.timingBasis}</p>}
-              <p>Status: {recommendedAction.status}</p>
-              {recommendedAction.status === 'OPEN' && (
-                <p>
-                  <Button
-                    disabled={disabled || mutation !== null}
-                    onClick={() => void act('ACKNOWLEDGE')}
-                  >
-                    {mutation === 'ACKNOWLEDGE' ? 'Saving…' : 'Acknowledge'}
-                  </Button>{' '}
-                  <Button
-                    disabled={disabled || mutation !== null}
-                    onClick={() => void act('DISMISS')}
-                  >
-                    {mutation === 'DISMISS' ? 'Saving…' : 'Dismiss'}
-                  </Button>
+      <div className="markreg-lifecycle-grid">
+        <Card className="markreg-recommendation-card">
+          <div className="markreg-cockpit-card-heading">
+            <h3>Current recommended action</h3>
+            <TruthBadge kind="GOVERNED_INTERNAL" />
+          </div>
+          <div aria-live="polite">
+            {recommendedAction ? (
+              <>
+                <div className="markreg-recommendation-heading">
+                  <div>
+                    <span
+                      className={`markreg-recommendation-status is-${recommendedAction.status.toLowerCase()}`}
+                    >
+                      {statusCopy[recommendedAction.status]}
+                    </span>
+                    <span className="markreg-recommendation-status-code">
+                      Status: {recommendedAction.status}
+                    </span>
+                    <h4>{recommendedAction.title}</h4>
+                  </div>
+                  <span className="markreg-recommendation-version">
+                    v{recommendedAction.version}
+                  </span>
+                </div>
+                <p className="markreg-recommendation-explanation">
+                  {recommendedAction.explanation}
                 </p>
-              )}
-              <details className="markreg-cockpit-inline-details">
-                <summary>Recommendation boundary</summary>
-                <p>
-                  Recommended Action is governed product guidance, not authorization. Acknowledging
-                  or dismissing does not execute, file, contact a provider, or pay for anything.
-                </p>
-              </details>
-            </>
-          ) : noAction ? (
-            <p>No customer action is currently recommended.</p>
-          ) : (
-            <p>No current recommendation is available.</p>
-          )}
-        </div>
-      </Card>
+                {recommendedAction.timingBasis && (
+                  <p className="markreg-recommendation-timing">
+                    <strong>Timing basis</strong>
+                    <span>{recommendedAction.timingBasis}</span>
+                  </p>
+                )}
+                <div className="markreg-authority-lock" role="note">
+                  <span aria-hidden="true">◎</span>
+                  <span>
+                    <strong>Execution authority: FALSE</strong>
+                    Acknowledging or dismissing changes only your advisory state.
+                  </span>
+                </div>
+                {mutationError && (
+                  <Alert tone="warning" title="Recommendation not updated">
+                    {mutationError}
+                  </Alert>
+                )}
+                {recommendedAction.status === 'OPEN' && (
+                  <div className="markreg-recommendation-actions">
+                    <Button
+                      disabled={disabled || mutation !== null}
+                      onClick={() => void act('ACKNOWLEDGE')}
+                    >
+                      {mutation === 'ACKNOWLEDGE' ? 'Saving…' : 'Acknowledge'}
+                    </Button>{' '}
+                    <Button
+                      disabled={disabled || mutation !== null}
+                      onClick={() => void act('DISMISS')}
+                    >
+                      {mutation === 'DISMISS' ? 'Saving…' : 'Dismiss'}
+                    </Button>
+                  </div>
+                )}
+                {disabled && recommendedAction.status === 'OPEN' && (
+                  <p className="markreg-recommendation-readonly">
+                    Read only — this customer relationship may view the recommendation but cannot
+                    change its advisory state.
+                  </p>
+                )}
+                <details className="markreg-cockpit-inline-details">
+                  <summary>Recommendation boundary</summary>
+                  <p>
+                    Recommended Action is governed product guidance, not authorization.
+                    Acknowledging or dismissing does not execute, file, contact a provider, or pay
+                    for anything.
+                  </p>
+                  <p>
+                    Exact recommendation: {recommendedAction.recommendedActionId} · version{' '}
+                    {recommendedAction.version} · updated{' '}
+                    {new Date(recommendedAction.updatedAt).toLocaleString()}
+                  </p>
+                </details>
+              </>
+            ) : noAction ? (
+              <p>No customer action is currently recommended.</p>
+            ) : (
+              <p>No current recommendation is available.</p>
+            )}
+          </div>
+        </Card>
 
-      <Card>
-        <div className="markreg-cockpit-card-heading">
-          <h3>Current lifecycle</h3>
-          <TruthBadge kind="GOVERNED_INTERNAL" />
-        </div>
-        {lifecycle ? (
-          <>
-            <strong>{lifecycle.customerSafeLabel}</strong>
-            <p>{lifecycle.customerSafeSummary}</p>
-            <small>Updated {new Date(lifecycle.updatedAt).toLocaleString()}</small>
-          </>
-        ) : (
-          <p>No governed lifecycle view has been recorded for this Matter yet.</p>
-        )}
-      </Card>
+        <Card className="markreg-current-lifecycle-card">
+          <div className="markreg-cockpit-card-heading">
+            <h3>Current lifecycle</h3>
+            <TruthBadge kind="GOVERNED_INTERNAL" />
+          </div>
+          {lifecycle ? (
+            <>
+              <strong>{lifecycle.customerSafeLabel}</strong>
+              <p>{lifecycle.customerSafeSummary}</p>
+              <small>Updated {new Date(lifecycle.updatedAt).toLocaleString()}</small>
+            </>
+          ) : (
+            <p>No governed lifecycle view has been recorded for this Matter yet.</p>
+          )}
+        </Card>
+      </div>
 
       <details className="markreg-lifecycle-history markreg-cockpit-secondary-details">
         <summary>Lifecycle history ({timeline.length})</summary>
