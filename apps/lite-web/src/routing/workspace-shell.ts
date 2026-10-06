@@ -12,6 +12,7 @@ export type LiteSurface =
   | 'opportunities-provider'
   | 'professional-review'
   | 'execution-release'
+  | 'knowledge-run-dispatch'
   | 'seed-review';
 
 export type LitePrimaryDestination = 'today' | 'matters' | 'create' | 'portfolio' | 'work';
@@ -102,6 +103,12 @@ export const LITE_SURFACES: Readonly<Record<LiteSurface, LiteSurfaceDefinition>>
     hash: '#work-execution-release',
     primary: 'work',
     requiresWorkspace: false
+  },
+  'knowledge-run-dispatch': {
+    surface: 'knowledge-run-dispatch',
+    hash: '#work-knowledge-run-dispatch',
+    primary: 'work',
+    requiresWorkspace: true
   },
   customers: {
     surface: 'customers',

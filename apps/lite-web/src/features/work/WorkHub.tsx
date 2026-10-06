@@ -32,6 +32,26 @@ export function WorkHub({ workspaceId }: WorkHubProps) {
         <Card>
           <div className="lite-row">
             <div>
+              <p>Governed collection operations</p>
+              <h2>Knowledge Run Dispatch</h2>
+            </div>
+            <Badge>Workspace admin</Badge>
+          </div>
+          <p>
+            Dispatch one existing Knowledge Plan through the authenticated Core bridge with a
+            deliberate stable idempotency key and a durable run receipt.
+          </p>
+          <Button
+            variant="secondary"
+            disabled={!workspaceId}
+            onClick={() => open('knowledge-run-dispatch', workspaceId)}
+          >
+            {workspaceId ? 'Open Knowledge Run Dispatch' : 'Select a Workspace first'}
+          </Button>
+        </Card>
+        <Card>
+          <div className="lite-row">
+            <div>
               <p>External business projection</p>
               <h2>Site Manager</h2>
             </div>
