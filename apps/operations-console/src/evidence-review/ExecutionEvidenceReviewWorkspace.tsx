@@ -120,6 +120,7 @@ function WorkspaceFrame({ children }: { children: React.ReactNode }) {
           <a className="active" href="#evidence-review-main" aria-current="page">
             Evidence review
           </a>
+          <a href="./reviewed-source-admission-preview.html">Source admission</a>
           <a href="#lifecycle">Lifecycle provenance</a>
           <a href="#recommended-actions">Recommended actions</a>
         </nav>

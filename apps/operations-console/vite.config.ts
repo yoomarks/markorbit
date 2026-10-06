@@ -10,6 +10,9 @@ export default defineConfig({
         main: fileURLToPath(new URL('./index.html', import.meta.url)),
         evidenceReviewPreview: fileURLToPath(
           new URL('./execution-evidence-review-preview.html', import.meta.url)
+        ),
+        reviewedSourceAdmissionPreview: fileURLToPath(
+          new URL('./reviewed-source-admission-preview.html', import.meta.url)
         )
       }
     }
