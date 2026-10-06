@@ -4,6 +4,16 @@ import { fileURLToPath } from 'node:url';
 
 export default defineConfig({
   plugins: [react()],
+  build: {
+    rollupOptions: {
+      input: {
+        main: fileURLToPath(new URL('./index.html', import.meta.url)),
+        evidenceReviewPreview: fileURLToPath(
+          new URL('./execution-evidence-review-preview.html', import.meta.url)
+        )
+      }
+    }
+  },
   resolve: {
     alias: [
       {
