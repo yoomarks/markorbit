@@ -15,6 +15,10 @@ export default defineConfig({
         'customer-portal-preview': resolve(
           fileURLToPath(new URL('.', import.meta.url)),
           'customer-portal-preview.html'
+        ),
+        'recommended-action-preview': resolve(
+          fileURLToPath(new URL('.', import.meta.url)),
+          'recommended-action-preview.html'
         )
       }
     }
