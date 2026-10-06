@@ -133,7 +133,7 @@ function AdmissionFrame({ children }: { children: React.ReactNode }) {
           <a className="active" href="#reviewed-source-admission-main" aria-current="page">
             Source admission
           </a>
-          <a href="#lifecycle-handoff">Lifecycle handoff</a>
+          <a href="./reviewed-source-handoff-preview.html">Lifecycle handoff</a>
         </nav>
         <div className="er-sidebar-note">
           <strong>Execution-owned admission</strong>

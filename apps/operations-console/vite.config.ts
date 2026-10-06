@@ -13,6 +13,9 @@ export default defineConfig({
         ),
         reviewedSourceAdmissionPreview: fileURLToPath(
           new URL('./reviewed-source-admission-preview.html', import.meta.url)
+        ),
+        reviewedSourceHandoffPreview: fileURLToPath(
+          new URL('./reviewed-source-handoff-preview.html', import.meta.url)
         )
       }
     }
