@@ -34,6 +34,7 @@ describe('Workspace Shell registry', () => {
       'guide',
       'professional-review',
       'execution-release',
+      'knowledge-run-dispatch',
       'customers'
     ] as const) {
       expect(litePrimaryForSurface(surface)).toBe('work');

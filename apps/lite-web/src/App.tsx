@@ -15,6 +15,7 @@ import { CustomersPreview } from './features/customers/CustomersPreview.js';
 import { ProfessionalReview } from './features/professional-review/ProfessionalReview.js';
 import { ExecutionReleaseView } from './features/execution-release/ExecutionRelease.js';
 import { WorkHub } from './features/work/WorkHub.js';
+import { KnowledgeRunDispatch } from './features/knowledge-run-dispatch/KnowledgeRunDispatch.js';
 import { MatterWorkspace } from './features/matters/MatterWorkspace.js';
 import { TodayWorkspace } from './features/today/TodayWorkspace.js';
 import { SeedReviewWorkspace } from './features/seed-review/SeedReviewWorkspace.js';
@@ -61,6 +62,7 @@ const workSubnavigationSurfaces: readonly LiteSurface[] = [
   'site-manager',
   'professional-review',
   'execution-release',
+  'knowledge-run-dispatch',
   'customers'
 ];
 
@@ -86,6 +88,7 @@ function WorkSubnavigation({
     { label: 'Site Manager', surface: 'site-manager' },
     { label: 'Professional Review', surface: 'professional-review' },
     { label: 'Execution Release', surface: 'execution-release' },
+    { label: 'Knowledge Runs', surface: 'knowledge-run-dispatch' },
     { label: 'Customers', surface: 'customers' }
   ] as const;
   return (
@@ -361,6 +364,14 @@ export function LiteApp({
             workspaceId={activeWorkspaceId}
             {...(initialFilingAuthorization ? { initialFilingAuthorization } : {})}
           />
+        ) : surface === 'knowledge-run-dispatch' ? (
+          activeWorkspaceId ? (
+            <KnowledgeRunDispatch workspaceId={activeWorkspaceId} />
+          ) : (
+            workspaceRequired(
+              'A valid Workspace context is required to dispatch a governed Knowledge run.'
+            )
+          )
         ) : surface === 'opportunities' ? (
           activeWorkspaceId ? (
             <CandidateReview

@@ -79,6 +79,11 @@ vi.mock('./features/execution-release/ExecutionRelease.js', () => ({
     </h1>
   )
 }));
+vi.mock('./features/knowledge-run-dispatch/KnowledgeRunDispatch.js', () => ({
+  KnowledgeRunDispatch: ({ workspaceId }: { workspaceId: string }) => (
+    <h1>Knowledge Run Dispatch {workspaceId}</h1>
+  )
+}));
 vi.mock('./features/opportunities/CandidateReview.js', () => ({
   CandidateReview: ({ workspaceId }: { workspaceId: string }) => (
     <h1>Opportunity Center {workspaceId}</h1>
@@ -215,6 +220,7 @@ describe('Lite Workspace Shell V2 navigation truth', () => {
       ['Site Manager', '#work-site-manager', /Site Manager workspace-1/],
       ['Professional Review', '#work-professional-review', /Professional Review/],
       ['Execution Release', '#work-execution-release', /Execution Release/],
+      ['Knowledge Runs', '#work-knowledge-run-dispatch', /Knowledge Run Dispatch workspace-1/],
       ['Customers', '#work-customers', /Customers/],
       ['Overview', '#work', /^Work$/]
     ] as const) {
