@@ -1,11 +1,11 @@
-import { expect, test } from '@playwright/test';
+import { expect, test, type Page } from '@playwright/test';
 
 const gateway = 'http://127.0.0.1:4420';
 const lite = 'http://127.0.0.1:4485';
 const desktopWorkspaceId = '41414141-4141-4414-8414-414141414141';
 const mobileWorkspaceId = '42424242-4242-4424-8424-424242424242';
 
-function acceptedPrivateReflection(page: import('@playwright/test').Page) {
+function acceptedPrivateReflection(page: Page) {
   return page
     .getByLabel('Your practice picture')
     .getByText(/My private Capability Ledger contains 1 governed work outcome/);
