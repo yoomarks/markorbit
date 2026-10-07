@@ -171,3 +171,21 @@ Disposition: permanent product strategy
 Decision: A stronger platform does not justify a more complex product. Ordinary users receive progressively disclosed, job-oriented workflows. Internal Brain/Capability/Knowledge/Data/Execution complexity remains behind product abstractions unless a user role genuinely needs it.
 
 Disposition: 1.0+
+
+
+## D-024 — Forward-version reserve is not the moat by itself
+
+Decision: Keeping MarkReg one meaningful release horizon ahead of ordinary Workspaces is a release and learning strategy, not the primary competitive moat.
+
+Long-term defensibility must come from the compounding system around the product:
+- real MarkReg operating evidence and workflow learning;
+- higher-quality Data and Knowledge with currentness/provenance;
+- validated Brain/Capability methods;
+- Workspace-specific operating overlays and accumulated private context;
+- MGSN/provider/channel relationships;
+- faster measured iteration from dogfood to Workspace release;
+- supportability, reliability and evidence that competitors cannot reproduce by copying UI.
+
+Product Governance must not delay obviously valuable customer improvements solely to preserve an artificial version gap.
+
+Disposition: permanent strategy rule
