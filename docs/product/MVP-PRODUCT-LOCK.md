@@ -1,4 +1,15 @@
-# MVP Product Lock
+# MVP Product Lock — Historical Baseline
+
+> Superseded for current product planning by the 2026-10-07 MarkOrbit product rebaseline.
+>
+> Current authority:
+> - MO-PRODUCT-CONSTITUTION.md
+> - MO-VERSION-ROADMAP.md
+> - MO-PRODUCT-GOVERNANCE.md
+> - MO-PRODUCT-DECISION-LOG.md
+> - MO-MVP-1.0-ACCEPTANCE.md
+>
+> This file is retained as historical evidence. Its five-loop Beta definition no longer controls implementation priority or MVP acceptance.
 
 ## Products
 
