@@ -63,6 +63,10 @@ export default defineConfig({
         'execution-release-preview': resolve(
           fileURLToPath(new URL('.', import.meta.url)),
           'execution-release-preview.html'
+        ),
+        'capability-reflection-preview': resolve(
+          fileURLToPath(new URL('.', import.meta.url)),
+          'capability-reflection-preview.html'
         )
       }
     }

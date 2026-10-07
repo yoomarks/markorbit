@@ -120,6 +120,10 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 export const Ready: Story = { args: { client: client(() => Promise.resolve(ready)) } };
+export const ReadyOnMobile: Story = {
+  args: { client: client(() => Promise.resolve(ready)) },
+  parameters: { viewport: { defaultViewport: 'mobile1' } }
+};
 export const Empty: Story = {
   args: {
     client: client(() =>

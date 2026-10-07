@@ -24,9 +24,10 @@
     "test:preparation-lock-preview:browser": "playwright test --config playwright.preparation-lock-preview.config.ts",
     "test:filing-authorization-preview:browser": "playwright test --config playwright.filing-authorization-preview.config.ts",
     "test:execution-release-preview:browser": "playwright test --config playwright.execution-release-preview.config.ts",
+    "test:capability-reflection-preview:browser": "playwright test --config playwright.capability-reflection-preview.config.ts",
     "test:ux-trust-visual:browser": "playwright test --config playwright.ux-trust-visual.config.ts",
     "typecheck": "tsc --noEmit",
-    "lint": "eslint src tests vite.config.ts playwright.navigation.config.ts playwright.opportunity-candidates.config.ts playwright.governed-provider.config.ts playwright.trademark-commerce.config.ts playwright.agency-ia-prototype.config.ts playwright.customers-preview.config.ts playwright.content-studio-preview.config.ts playwright.today-workspace-preview.config.ts playwright.opportunity-center-preview.config.ts playwright.matter-workspace-preview.config.ts playwright.documents-instructions-preview.config.ts playwright.preparation-lock-preview.config.ts playwright.filing-authorization-preview.config.ts playwright.execution-release-preview.config.ts playwright.ux-trust-visual.config.ts",
+    "lint": "eslint src tests vite.config.ts playwright.navigation.config.ts playwright.opportunity-candidates.config.ts playwright.governed-provider.config.ts playwright.trademark-commerce.config.ts playwright.agency-ia-prototype.config.ts playwright.customers-preview.config.ts playwright.content-studio-preview.config.ts playwright.today-workspace-preview.config.ts playwright.opportunity-center-preview.config.ts playwright.matter-workspace-preview.config.ts playwright.documents-instructions-preview.config.ts playwright.preparation-lock-preview.config.ts playwright.filing-authorization-preview.config.ts playwright.execution-release-preview.config.ts playwright.capability-reflection-preview.config.ts playwright.ux-trust-visual.config.ts",
     "build-storybook": "storybook build -c ../../packages/ui/.storybook"
   },
   "dependencies": {
