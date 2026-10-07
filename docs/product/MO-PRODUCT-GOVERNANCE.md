@@ -200,6 +200,39 @@ A stronger internal model must not create:
 - dependency on unfinished future modules;
 - release blockage without an explicit acceptance reason.
 
+## Product specification approval gate
+
+Material product development is specification-gated.
+
+Before runtime implementation begins for a product module or a material product change, the three directors must produce an owner-reviewable specification covering, at minimum:
+
+- module purpose and target users;
+- target release track/version;
+- entry points, pages and information architecture;
+- canonical business objects;
+- fields and visible information;
+- states/state transitions;
+- user/system actions;
+- permissions and Workspace isolation;
+- feature/profile/channel/provider controls;
+- dependencies and owner boundaries;
+- failure/degradation behavior;
+- audit/evidence requirements;
+- product/operating metrics;
+- acceptance criteria;
+- unresolved questions requiring Product Owner decision.
+
+Specification status is one of:
+DRAFT / IN_REVIEW / APPROVED / FROZEN / CHANGE_REQUESTED / SUPERSEDED.
+
+Only the Product Owner can move product scope to APPROVED/FROZEN for implementation. Approval may apply to a full module or explicitly identified subsections.
+
+Implementation issues and PRs must cite the approved module/subsection, release track and acceptance criteria.
+
+If an approved product definition changes, affected implementation pauses until the Change Request is reviewed and the product specification is updated.
+
+Existing code, previous Issues, Preview maturity or green CI do not override this gate.
+
 ## 11. Capability maturity and product release
 
 Technical existence is distinct from product maturity.
