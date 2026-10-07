@@ -45,7 +45,7 @@ test.describe('M6-WP-06 private Capability Center real runtime', () => {
     await expect(page.getByRole('heading', { name: 'Private practice insights' })).toBeVisible();
     await expect(page.getByText(/do not verify, certify or rank your capability/)).toBeVisible();
     await expect(page.getByRole('button', { name: 'Add to my private picture' })).toBeEnabled();
-    await page.getByRole('button', { name: 'Source details' }).first().click();
+    await page.getByText('Source details', { exact: true }).first().click();
     await expect(page.getByText(/evidence-review-decision_wp06-/)).toBeVisible();
 
     const decision = page.waitForResponse(
