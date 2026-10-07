@@ -5,11 +5,31 @@ Effective date: 2026-10-07
 
 ## 1. Commercial promise
 
-MVP 1.0 passes only when:
+WS-1.0 passes only when both conditions are true:
 
-MarkReg can convert a qualified overseas trademark inquiry into a professionally managed, quoted, documented, traceable and deliverable trademark matter without engineering intervention.
+1. MarkReg has already proven the WS-1.0 capability set in real operations and is operating a meaningful forward product profile beyond it; and
+2. an ordinary non-MarkReg Workspace can use the released Lite/Workspace product for real daily trademark business without engineering intervention.
 
-## 2. Canonical Golden Business Loop
+MarkReg's reference commercial loop must remain production-capable:
+
+qualified overseas inquiry → professionally managed, quoted, documented, traceable and deliverable trademark matter.
+
+The ordinary Workspace release must provide a validated subset of daily operations rather than exposing the full MarkReg Forward Track.
+
+## 2. Release-train acceptance
+
+WS-1.0 is not a MarkReg-only milestone.
+
+Before WS-1.0 release:
+- every ordinary Workspace-facing capability must have MARKREG_DOGFOOD evidence or an approved Reference Workspace exception;
+- MarkReg must be running at least one meaningful forward capability wave beyond WS-1.0;
+- 1–3 ordinary controlled Workspaces must be able to onboard and run the released flow without engineering-only setup;
+- the ordinary Workspace UI must hide experimental/forward capabilities not included in its Product Profile;
+- rollback, entitlement and kill-switch behavior must preserve separation between MarkReg forward capabilities and WS-1.0.
+
+A nominal version label is not sufficient. The forward reserve must be visible in real dogfood use, for example an MR-1.5 or MR-2.0-candidate Product Profile while ordinary Workspaces receive WS-1.0.
+
+## 3. Canonical Golden Business Loop
 
 Visitor / Lead
 → MarkReg Customer Account / Customer Relationship
@@ -30,7 +50,7 @@ Visitor / Lead
 
 The loop may contain human professional work. Automation is not an acceptance requirement unless explicitly stated.
 
-## 3. Required 1.0 product capabilities
+## 4. Required WS-1.0 product capabilities
 
 ### Identity and Workspace
 - MarkReg Reference Workspace exists as a normal governed Workspace with special entitlements;
@@ -107,18 +127,28 @@ The loop may contain human professional work. Automation is not an acceptance re
 - rollback/kill-switch procedure;
 - no production fixture fallback.
 
-## 4. Dogfood acceptance
+## 5. Dogfood and external Workspace acceptance
 
-Before release:
-- run at least 20–30 historical or highly realistic MarkReg cases to expose operational gaps;
-- then process at least 10 consecutive real/production-grade cases through the complete loop;
+Before WS-1.0 release:
+
+MarkReg reference use:
+- run at least 20–30 historical or highly realistic cases to expose operational gaps;
+- process at least 10 consecutive real/production-grade cases through the complete reference loop;
 - target 5–10 paid Matters where commercial/legal circumstances permit;
 - operate continuously for 2–4 weeks without relying on engineers for ordinary case progression;
-- record every escape to spreadsheet, personal email, manual script or undocumented note.
+- record every escape to spreadsheet, personal email, manual script or undocumented note;
+- actively dogfood the next meaningful capability wave beyond WS-1.0.
+
+Ordinary Workspace validation:
+- onboard 1–3 controlled non-MarkReg Workspaces;
+- prove staff can learn the released product without knowledge of internal MO architecture;
+- prove the Workspace can complete the intended daily workflow using only its entitled WS-1.0 profile;
+- record onboarding time, support requests, workflow abandonment and manual-tool escapes;
+- confirm no MarkReg-only or experimental capability leaks through navigation, API or entitlement.
 
 A repeated escape is a product defect or deliberate documented non-goal.
 
-## 5. Quality gates
+## 6. Quality gates
 
 Release is blocked by:
 - open P0/P1 defect affecting the Golden Business Loop;
@@ -132,7 +162,7 @@ Release is blocked by:
 - unavailable critical feature that cannot be disabled or safely degraded;
 - missing backup/restore or incident procedure.
 
-## 6. Operational targets
+## 7. Operational targets
 
 Every active inquiry/matter should have:
 - responsible owner;
@@ -154,7 +184,7 @@ Key 1.0 operating metrics:
 - delivery completion;
 - escape-to-manual-tool count.
 
-## 7. Explicit non-gates
+## 8. Explicit non-gates
 
 The following do not block 1.0 unless a later accepted decision changes this file:
 - Mini Program;
@@ -169,7 +199,7 @@ The following do not block 1.0 unless a later accepted decision changes this fil
 - multi-provider parity;
 - full Product Builder.
 
-## 8. Release decision
+## 9. Release decision
 
 A green CI suite or merged PR cannot mark 1.0 released.
 
@@ -177,4 +207,6 @@ Final release requires:
 - acceptance evidence for this document;
 - three-director review;
 - Product Owner release decision;
-- recorded version/profile being released.
+- exact WS-1.0 Product Profile/version being released;
+- exact MarkReg Forward Product Profile/version currently in dogfood;
+- evidence that the MarkReg Forward Track remains ahead rather than collapsing to the same release horizon.

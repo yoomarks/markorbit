@@ -121,22 +121,86 @@ No item remains in 1.0 because work has already been spent on it.
 
 ## 7. Implementation admission rule
 
-An implementation task is admitted only if it maps to:
-- an active 1.0 acceptance requirement; or
-- a P0 security/data-integrity defect; or
+An implementation task is admitted only if it maps to one of:
+- an active Workspace-release acceptance requirement;
+- a MarkReg Forward Track dogfood objective;
+- an explicitly approved Architecture Runway objective;
+- a P0 security/data-integrity defect;
 - an explicitly authorized platform-maintenance obligation.
 
+Architecture Runway admission is intentionally possible even when a capability is not yet customer-visible. However, it must be decoupled from current release-critical flows, have a clear future platform/safety/cost rationale, and may not force product exposure merely to justify the work.
+
 Every admitted task must name:
-- Product version;
-- user/business outcome;
+- Track: Architecture Runway / MarkReg Forward / Workspace Release;
+- Product version or target horizon where applicable;
+- user/business outcome or explicit platform/safety rationale;
 - owning product surface;
 - durable owner(s);
 - acceptance evidence;
-- rollout/maturity target.
+- rollout/maturity target;
+- whether the work is visible to ordinary Workspace users.
+
+Horizontal platform expansion without a named Architecture Runway objective remains blocked.
 
 Horizontal platform expansion without such mapping is blocked.
 
-## 8. Capability maturity and product release
+## 8. MarkReg-first proof policy
+
+Reusable user-facing capabilities intended for ordinary Workspaces should normally progress:
+
+EXPERIMENTAL
+→ INTERNAL
+→ MARKREG_DOGFOOD
+→ PILOT
+→ GA
+
+Promotion from MARKREG_DOGFOOD requires real-use evidence, not only synthetic tests or operator walkthroughs.
+
+Evidence should include as applicable:
+- number of real runs/cases;
+- user/operator friction;
+- error/fallback rate;
+- escapes to manual tools;
+- business outcome or time saved;
+- support burden;
+- operational cost;
+- rollback/degradation behavior.
+
+### Exception
+
+If MarkReg is not a representative user for a capability, Product Governance may designate another Reference Workspace or bounded pilot.
+
+The exception must state:
+- why MarkReg is not representative;
+- which Workspace/user is representative;
+- equivalent evidence required before wider release.
+
+"MarkReg does not use it" is never sufficient reason to skip real-use proof.
+
+## 9. Release-lag policy
+
+Workspace releases intentionally lag the MarkReg Forward Track.
+
+At a Workspace release decision, three-director review must confirm:
+- every ordinary-user capability has reference-use evidence;
+- the released UI is simpler than the underlying platform;
+- MarkReg is already exercising the next meaningful improvement wave;
+- the next release can be shipped without redesigning the just-released core.
+
+The purpose is continuous improvement and product defensibility, not artificial feature withholding.
+
+## 10. Architecture/product decoupling
+
+Architecture may advance beyond current product needs, but product surfaces should expose only what users need for the current job.
+
+A stronger internal model must not create:
+- additional user navigation solely for internal objects;
+- mandatory configuration users cannot understand;
+- slower onboarding;
+- dependency on unfinished future modules;
+- release blockage without an explicit acceptance reason.
+
+## 11. Capability maturity and product release
 
 Technical existence is distinct from product maturity.
 
@@ -147,7 +211,7 @@ Promotion is evidence-based.
 
 A Product Profile may only depend on capabilities/providers/packs whose maturity and compatibility satisfy that profile's policy.
 
-## 9. Repository truth classification
+## 12. Repository truth classification
 
 Each significant existing capability should be classified as one of:
 
@@ -160,7 +224,7 @@ Each significant existing capability should be classified as one of:
 
 This classification must be used during MVP rebaseline and subsequent audits.
 
-## 10. Review cadence
+## 13. Review cadence
 
 At minimum:
 - continuous: record material product decisions;
@@ -169,7 +233,7 @@ At minimum:
 - before maturity promotion: verify production evidence;
 - before 1.0 release: run full acceptance review.
 
-## 11. Conflict resolution
+## 14. Conflict resolution
 
 Priority order:
 1. security, legal/privacy and data integrity;
@@ -181,7 +245,7 @@ Priority order:
 
 Old Issues do not override a newer accepted product baseline.
 
-## 12. Communication contract
+## 15. Communication contract
 
 Future product discussions should end with one of:
 - no durable product change;

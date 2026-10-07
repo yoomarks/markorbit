@@ -115,3 +115,77 @@ Disposition: 2.0 candidate
 Decision: MarkReg may dogfood growth automation, but early maturity emphasizes research/preparation/approval rather than unrestricted auto-send.
 
 Disposition: 2.0 primary; limited 1.0 internal experiments only if they do not block the core loop
+
+
+## D-017 — Architecture may run ahead of product
+
+Decision: MarkOrbit deliberately allows a stronger and broader Architecture Runway than the currently released user product. Architecture work may advance composability, governance, owner truth, resilience and future capacity without forcing those concepts into user-facing navigation.
+
+Constraint: Architecture Runway work must remain decoupled from release-critical user journeys and must not delay a validated customer release without an explicit acceptance reason.
+
+Disposition: permanent platform principle
+
+## D-018 — MarkReg-first proof is the default release rule
+
+Decision: Any reusable user-facing capability intended for ordinary Workspace release must normally be used first by the MarkReg Reference Workspace in real operations and demonstrate measurable value, operational supportability and failure behavior.
+
+CI, Preview, Storybook and synthetic acceptance are insufficient for promotion to ordinary Workspace users.
+
+Disposition: 1.0+ release governance
+
+## D-019 — Reference Workspace exception is allowed when MarkReg is not representative
+
+Decision: If a capability is inherently specific to another user segment, jurisdiction, white-label configuration or channel, Product Governance may designate an equivalent Reference Workspace/pilot instead of forcing an artificial MarkReg use case.
+
+The substitute must provide equivalent real-use evidence before wider rollout.
+
+Disposition: permanent governance rule
+
+## D-020 — Separate Architecture, MarkReg and Workspace release trains
+
+Decision: MarkOrbit operates three speeds:
+- Architecture Runway — strongest/farthest-ahead internal capacity;
+- MarkReg Forward Track — next user-facing capabilities proven in real operation;
+- Workspace Release Track — narrower, simpler, stable capabilities released to ordinary Workspace users.
+
+Disposition: permanent release model
+
+## D-021 — Workspace 1.0 is an external-usable release, not a MarkReg-only milestone
+
+Decision: 1.0 denotes the first version that ordinary non-MarkReg Workspaces can use for real daily business. It may launch as a controlled cohort rather than unrestricted GA, but it must be production-usable outside MarkReg.
+
+At WS-1.0 release time, MarkReg should already be running a meaningful forward profile (for example MR-1.5 or MR-2.0-candidate scope) rather than consuming the same exact product horizon.
+
+Disposition: 1.0
+
+## D-022 — Maintain an innovation reserve ahead of public Workspace releases
+
+Decision: Public/ordinary Workspace release must not consume the full validated roadmap. MarkReg should continue dogfooding the next meaningful product wave before or at the time the current Workspace version is released.
+
+The purpose is faster iteration, real-world learning and defensibility against copying/competitive pressure, while keeping ordinary-user experience simpler and more stable.
+
+Disposition: permanent product strategy
+
+## D-023 — Product simplicity is a release requirement
+
+Decision: A stronger platform does not justify a more complex product. Ordinary users receive progressively disclosed, job-oriented workflows. Internal Brain/Capability/Knowledge/Data/Execution complexity remains behind product abstractions unless a user role genuinely needs it.
+
+Disposition: 1.0+
+
+
+## D-024 — Forward-version reserve is not the moat by itself
+
+Decision: Keeping MarkReg one meaningful release horizon ahead of ordinary Workspaces is a release and learning strategy, not the primary competitive moat.
+
+Long-term defensibility must come from the compounding system around the product:
+- real MarkReg operating evidence and workflow learning;
+- higher-quality Data and Knowledge with currentness/provenance;
+- validated Brain/Capability methods;
+- Workspace-specific operating overlays and accumulated private context;
+- MGSN/provider/channel relationships;
+- faster measured iteration from dogfood to Workspace release;
+- supportability, reliability and evidence that competitors cannot reproduce by copying UI.
+
+Product Governance must not delay obviously valuable customer improvements solely to preserve an artificial version gap.
+
+Disposition: permanent strategy rule

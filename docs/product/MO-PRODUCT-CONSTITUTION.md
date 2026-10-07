@@ -277,7 +277,69 @@ The first proof is not "all platform modules exist". The first proof is:
 
 MarkReg can convert a qualified overseas trademark inquiry into a professionally managed, quoted, documented, traceable and deliverable trademark matter without engineering intervention.
 
-## 11. Permanent product principles
+## 11. Release-speed principle
+
+MarkOrbit deliberately runs three different speeds.
+
+### Architecture Runway
+
+The platform architecture may run materially ahead of the released product.
+
+It may build stronger owner boundaries, composability, provider abstraction, Brain/Capability governance, Knowledge/Data infrastructure, MGSN, observability and recovery before those capabilities are exposed to ordinary Workspace users.
+
+Architecture advancement is valuable only when it:
+- preserves product simplicity;
+- stays decoupled from release-critical user flows;
+- does not force internal concepts into user navigation;
+- does not block product iteration;
+- has a clear future platform use, safety value or operating-cost benefit.
+
+Architecture sophistication is not a reason to expose complexity to users.
+
+### MarkReg Forward Track
+
+MarkReg is the default Reference Workspace and first real user of reusable Workspace-facing capabilities.
+
+Before a capability is promoted to ordinary Workspace users, MarkReg should normally:
+- use it in real operations;
+- produce measurable value or remove real friction;
+- expose failure modes and manual escape paths;
+- provide feedback for UX and policy correction;
+- prove that the capability can be supported operationally.
+
+MarkReg should intentionally operate ahead of the ordinary Workspace release train so MO retains a tested innovation reserve.
+
+### Workspace Release Track
+
+Ordinary Workspace users receive a deliberately narrower, simpler and more stable product.
+
+The product should use progressive disclosure and staged rollout. Users see the capability appropriate to their job, plan, market and maturity level rather than the full power of the underlying platform.
+
+The goal is not to make users learn MO architecture. The goal is to let users complete valuable trademark work faster than their current methods.
+
+### Reference-workspace exception
+
+The "MarkReg first" rule is a default proof rule, not a ritual.
+
+If a capability is inherently not representative for MarkReg — for example a China-agency-specific workflow, a particular white-label channel or another market-specific operating model — Product Governance must designate an equivalent Reference Workspace or controlled pilot that can provide real-use evidence before wider release.
+
+No feature may skip real-use proof merely because MarkReg is not the correct tester.
+
+## 12. Product iteration and innovation reserve
+
+MO should maintain a deliberate gap between what the architecture can support, what MarkReg is currently proving, and what ordinary Workspace users receive.
+
+At the time a Workspace release is made broadly available or sold as a stable version:
+- the released functions must already have real-use evidence;
+- MarkReg should be operating at least one meaningful product horizon ahead;
+- the next release wave should already contain tested or actively dogfooded improvements;
+- public release must not consume the entire innovation backlog.
+
+This reserve is not secrecy for its own sake. It exists to maintain iteration speed, absorb competitor copying, and ensure that customer-facing releases arrive as a continuous sequence of improvements rather than one large static launch.
+
+Product simplicity remains mandatory even when the architecture and MarkReg Forward Track are significantly more advanced.
+
+## 13. Permanent product principles
 
 - Product flow before module completeness.
 - User language before internal platform vocabulary.
@@ -296,7 +358,7 @@ MarkReg can convert a qualified overseas trademark inquiry into a professionally
 - Optional providers/APIs must fail boundedly and be disableable.
 - New horizontal platform work requires evidence that a current product journey needs it.
 
-## 12. Governance references
+## 14. Governance references
 
 The following documents are co-canonical:
 - MO-VERSION-ROADMAP.md;
