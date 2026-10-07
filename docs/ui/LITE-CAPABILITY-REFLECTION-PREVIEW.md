@@ -1,7 +1,7 @@
 # Lite Capability Reflection runnable preview
 
 - **Task ID:** `LITE-CAPABILITY-REFLECTION-RUNNABLE-PREVIEW`
-- **Repository / allowed directories:** `apps/lite-web`, `docs/ui`
+- **Repository / allowed directories:** `apps/lite-web`, `tests/e2e`, `docs/ui`
 - **Expected PR title:** `feat(lite): add runnable Capability Reflection preview`
 
 ## Outcome

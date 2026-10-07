@@ -7,8 +7,7 @@ const mobileWorkspaceId = '42424242-4242-4424-8424-424242424242';
 
 function acceptedPrivateReflection(page: import('@playwright/test').Page) {
   return page
-    .getByRole('heading', { name: 'Current private Profiles' })
-    .locator('..')
+    .getByLabel('Your practice picture')
     .getByText(/My private Capability Ledger contains 1 governed work outcome/);
 }
 
@@ -43,13 +42,10 @@ test.describe('M6-WP-06 private Capability Center real runtime', () => {
     await page.goto(`${lite}/?workspaceId=${workspaceId}#capability`);
     expect((await loadResponse).status()).toBe(200);
 
-    await expect(
-      page.getByRole('heading', { name: 'Capability Center', exact: true })
-    ).toBeVisible();
-    await expect(
-      page.getByText(/does not create certification, ranking, canonical truth/)
-    ).toBeVisible();
-    await expect(page.getByRole('button', { name: 'Accept private reflection' })).toBeEnabled();
+    await expect(page.getByRole('heading', { name: 'Private practice insights' })).toBeVisible();
+    await expect(page.getByText(/do not verify, certify or rank your capability/)).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Add to my private picture' })).toBeEnabled();
+    await page.getByRole('button', { name: 'Source details' }).first().click();
     await expect(page.getByText(/evidence-review-decision_wp06-/)).toBeVisible();
 
     const decision = page.waitForResponse(
@@ -58,26 +54,24 @@ test.describe('M6-WP-06 private Capability Center real runtime', () => {
         response.url().endsWith('/disposition') &&
         response.request().method() === 'POST'
     );
-    await page.getByRole('button', { name: 'Accept private reflection' }).click();
+    await page.getByRole('button', { name: 'Add to my private picture' }).click();
     expect([200, 201]).toContain((await decision).status());
 
-    await expect(page.getByText('No pending private Reflection Candidate.')).toBeVisible();
+    await expect(page.getByText('You are up to date')).toBeVisible();
     await expect(acceptedPrivateReflection(page)).toBeVisible();
-    await expect(page.getByText('Autonomous execution authority')).toBeVisible();
+    await expect(
+      page.getByText(/No public score, badge, ranking or autonomous authority/)
+    ).toBeVisible();
 
     const durableUrl = page.url();
     await page.reload();
-    await expect(
-      page.getByRole('heading', { name: 'Capability Center', exact: true })
-    ).toBeVisible();
-    await expect(page.getByText('No pending private Reflection Candidate.')).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Private practice insights' })).toBeVisible();
+    await expect(page.getByText('You are up to date')).toBeVisible();
     await expect(acceptedPrivateReflection(page)).toBeVisible();
 
     const direct = await page.context().newPage();
     await direct.goto(durableUrl);
-    await expect(
-      direct.getByRole('heading', { name: 'Capability Center', exact: true })
-    ).toBeVisible();
+    await expect(direct.getByRole('heading', { name: 'Private practice insights' })).toBeVisible();
     await expect(acceptedPrivateReflection(direct)).toBeVisible();
     await direct.close();
 

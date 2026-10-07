@@ -84,7 +84,7 @@ test('Workspace Shell exposes five truthful primary destinations on desktop and 
 test('legacy specialist deep links remain reachable under Work context', async ({ page }) => {
   for (const [hash, heading] of [
     ['opportunities', 'Opportunity Center'],
-    ['capability', 'Capability Center'],
+    ['capability', 'Private practice insights'],
     ['guide', 'Guide']
   ] as const) {
     await page.goto(`/?workspaceId=workspace-browser#${hash}`);
