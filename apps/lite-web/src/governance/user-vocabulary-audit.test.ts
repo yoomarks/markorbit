@@ -67,19 +67,9 @@ const BASELINE: readonly VocabularyBaselineEntry[] = [
   ),
   ...baselineEntries(
     'apps/lite-web/src/features/capability/CapabilityCenter.tsx',
-    'USER',
-    'Known Capability Center wording debt remains outside this bounded governance change.',
-    [
-      ['REFLECTION_INTERNAL', 'reflection candidates', 2],
-      ['REFLECTION_INTERNAL', 'reflection candidate', 3],
-      ['CAPABILITY_INTERNAL', 'Capability Twin', 1]
-    ]
-  ),
-  ...baselineEntries(
-    'apps/lite-web/src/features/capability/CapabilityCenter.tsx',
     'ADVANCED',
     'Capability evidence details expose exact fingerprints for inspection.',
-    [['TECHNICAL_EVIDENCE', 'fingerprint', 2]]
+    [['TECHNICAL_EVIDENCE', 'fingerprint', 1]]
   ),
   ...baselineEntries(
     'apps/lite-web/src/features/content-studio/ContentStudio.tsx',
@@ -448,15 +438,15 @@ describe('user-facing vocabulary audit', () => {
   });
 
   it('keeps the checked-in audit summary explicit', () => {
-    expect(BASELINE.reduce((total, entry) => total + entry.count, 0)).toBe(110);
+    expect(BASELINE.reduce((total, entry) => total + entry.count, 0)).toBe(103);
     expect(summarizeVocabularyBaseline(BASELINE)).toEqual({
       'USER:REVIEW_INTERNAL': 24,
       'USER:EXECUTION_INTERNAL': 16,
       'USER:TECHNICAL_EVIDENCE': 1,
-      'ADVANCED:TECHNICAL_EVIDENCE': 16,
+      'ADVANCED:TECHNICAL_EVIDENCE': 15,
       'USER:PREPARATION_INTERNAL': 4,
-      'USER:REFLECTION_INTERNAL': 6,
-      'USER:CAPABILITY_INTERNAL': 2,
+      'USER:REFLECTION_INTERNAL': 1,
+      'USER:CAPABILITY_INTERNAL': 1,
       'USER:OWNER_INTERNAL': 27,
       'USER:PROTECTED_ACTION_INTERNAL': 10,
       'USER:RAW_STATUS_ENUM': 4

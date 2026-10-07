@@ -1,0 +1,16 @@
+.capability-reflection-preview {
+  width: min(1180px, 100%);
+  min-height: 100vh;
+  margin-inline: auto;
+  padding: 1.35rem;
+}
+
+.capability-reflection-preview > [role='status']:first-child {
+  margin-bottom: 1.5rem;
+}
+
+@media (max-width: 640px) {
+  .capability-reflection-preview {
+    padding: 1rem;
+  }
+}

@@ -71,13 +71,11 @@ describe('Lite Capability Center', () => {
     const client: CapabilityCenterClient = { load, disposition };
     render(<CapabilityCenter workspaceId={workspaceId} client={client} />);
 
-    expect(await screen.findByRole('heading', { name: 'Capability Center' })).toBeTruthy();
-    expect(
-      screen.getByText(/does not create certification, ranking, canonical truth/)
-    ).toBeTruthy();
+    expect(await screen.findByRole('heading', { name: 'Private practice insights' })).toBeTruthy();
+    expect(screen.getByText(/do not verify, certify or rank your capability/)).toBeTruthy();
     expect(screen.getByText(candidate.proposedPrivateReflection)).toBeTruthy();
 
-    fireEvent.click(screen.getByRole('button', { name: 'Accept private reflection' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Add to my private picture' }));
     await waitFor(() => expect(disposition).toHaveBeenCalledTimes(1));
     expect(disposition).toHaveBeenCalledWith({
       reflectionCandidateId: candidate.reflectionCandidateId,
@@ -95,7 +93,7 @@ describe('Lite Capability Center', () => {
       disposition: () => Promise.resolve({})
     };
     render(<CapabilityCenter workspaceId={workspaceId} client={client} />);
-    expect(await screen.findByText('Capability Center permission required')).toBeTruthy();
-    expect(screen.queryByText('No private Capability evidence yet')).toBeNull();
+    expect(await screen.findByText('Private insights permission required')).toBeTruthy();
+    expect(screen.queryByText('Your private picture will grow here')).toBeNull();
   });
 });
