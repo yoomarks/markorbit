@@ -5,11 +5,71 @@ Effective date: 2026-10-07
 
 This roadmap is version-oriented rather than module-oriented. New ideas must be placed into a version, parked, or rejected. They do not become implementation work merely because they are technically attractive.
 
-## 1.0 — Operable MarkReg + Reusable Platform Core
+## Release trains
 
-### Commercial promise
+MarkOrbit uses three coordinated but non-identical release tracks.
 
-MarkReg can take a qualified overseas direct-customer trademark inquiry through Customer, Intake, Qualification, Quote, Confirmation, Materials, Order/Matter, Delivery Route, Communication, Evidence and Delivery without engineering intervention.
+### Architecture Runway
+
+No customer-facing semantic version is required.
+
+Purpose:
+- keep architecture stronger than current product needs;
+- advance owner truth, composability, observability, provider abstraction, Data/Knowledge/Brain/Capability governance and recovery;
+- create future product capacity without forcing immediate exposure.
+
+Architecture Runway work must not become an excuse to delay a validated user-facing release.
+
+### MarkReg Forward Track
+
+Naming convention: `MR-x.y`.
+
+MarkReg is the default Reference Workspace and should run ahead of the external Workspace release.
+
+At the time `WS-1.0` is released, MarkReg should normally be operating a meaningful forward profile such as `MR-1.5` or an `MR-2.0-candidate`, containing the next validated/dogfooded product wave.
+
+The exact numeric label is less important than the invariant:
+
+> MarkReg must maintain a real-use innovation reserve ahead of ordinary Workspaces.
+
+### Workspace Release Track
+
+Naming convention: `WS-x.y`.
+
+This is the version ordinary Workspace users receive.
+
+A Workspace release is narrower and more conservative than the MarkReg Forward Track. It contains only capabilities already proven through MarkReg or an explicitly designated equivalent Reference Workspace.
+
+## WS-1.0 — First Ordinary Workspace Release
+
+### Release promise
+
+WS-1.0 is the first version that an ordinary external Workspace can use for real day-to-day trademark business.
+
+Before WS-1.0 ships:
+- MarkReg must already run the WS-1.0 capability set in real operations;
+- MarkReg must have a forward capability reserve beyond WS-1.0;
+- 1–3 controlled ordinary Workspaces should be able to onboard without engineering intervention;
+- the released product must stay simpler than the underlying platform and MarkReg Forward Track.
+
+The external Workspace promise is:
+
+A professional trademark Workspace can onboard, manage customers and trademark work, prepare/send quotes, create/manage filing work, communicate with customers, track work/status and complete normal daily operations using the validated subset of MO capabilities.
+
+MarkReg simultaneously remains the reference operator for the direct-customer commercial loop:
+
+qualified overseas inquiry
+→ Customer
+→ Intake
+→ Qualification
+→ Quote
+→ Confirmation
+→ Materials
+→ Order/Matter
+→ Delivery Route
+→ Communication
+→ Evidence
+→ Delivery.
 
 ### Required product surfaces
 
@@ -36,7 +96,9 @@ Required:
 - materials/missing-information handling;
 - delivery/closure evidence.
 
-MarkReg receives dogfood entitlements. One invited Lite design partner may be used for validation, but broad Lite launch is not a 1.0 gate.
+MarkReg receives the forward/dogfood Product Profile.
+
+WS-1.0 ordinary Workspace release should begin with a controlled external cohort rather than unrestricted scale. Broad GA is a later promotion decision, but WS-1.0 must already be usable by real non-MarkReg Workspaces.
 
 #### markreg.com
 Required:
@@ -83,7 +145,7 @@ Must support:
 
 1.0 does not require a fully free-form graphical AI/product builder.
 
-### 1.0 explicit non-goals
+### WS-1.0 explicit non-goals
 
 - broad Lite GA;
 - trademark marketplace;
@@ -98,9 +160,9 @@ Must support:
 - multi-channel marketing matrix;
 - new horizontal platform domains without an active 1.0 journey need.
 
-## 2.0 — Validated Workspace Platform
+## WS-2.0 — Validated Workspace Platform
 
-2.0 begins only after MarkReg dogfood demonstrates stable product/operations patterns.
+WS-2.0 begins after WS-1.0 external use plus MarkReg forward-track evidence demonstrate stable reusable product/operations patterns.
 
 Primary objectives:
 - 2+ real China agency Workspaces using validated Lite workflows;
@@ -126,7 +188,7 @@ Potential 2.0 candidates subject to validation:
 - second/third Site profile;
 - deeper mini-program customer interaction.
 
-## 3.0 — Composable Trademark Business Platform
+## WS-3.0 — Composable Trademark Business Platform
 
 3.0 is the platform-scale phase, not a commitment to implement every listed item.
 
