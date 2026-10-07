@@ -189,3 +189,14 @@ Long-term defensibility must come from the compounding system around the product
 Product Governance must not delay obviously valuable customer improvements solely to preserve an artificial version gap.
 
 Disposition: permanent strategy rule
+
+
+## D-025 — Product modules require Owner-approved specifications before implementation
+
+Decision: Every material product module/change must be presented to the Product Owner as a detailed reviewable specification before runtime implementation begins.
+
+The specification must cover user surface, objects, fields, states, actions, permissions, configuration, dependencies, failure/degradation, audit, metrics, acceptance and open decisions.
+
+Approval may be module-level or subsection-level. Only approved/frozen scope may be converted into implementation work. Any later scope change requires a recorded Change Request and re-approval before affected development continues.
+
+Disposition: permanent governance rule
