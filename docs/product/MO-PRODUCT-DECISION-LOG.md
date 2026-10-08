@@ -1,7 +1,7 @@
 # MarkOrbit Product Decision Log
 
 Status: ACTIVE
-Effective date: 2026-10-07
+Effective date: 2026-10-08
 
 This file records durable product-level decisions. Detailed implementation decisions may live elsewhere but must not contradict these entries.
 
@@ -22,12 +22,15 @@ Disposition: 1.0
 ## D-003 — Separate staff identity from customer account
 
 Decision:
+
 - staff identity uses global authentication + Workspace Membership;
 - direct-customer accounts are Site/Workspace scoped;
 - customers cannot use a Workspace switcher or discover relationships in another Workspace;
 - business data never auto-merges across Workspaces.
 
 Disposition: 1.0
+
+Status note (2026-10-08): partially superseded by D-028. CustomerAccount is a personal login/security identity. Site/Workspace scoping applies to the active customer session, Customer Relationship, Applicant/Trademark authority and business data; matching or reused credentials never expose, discover or merge relationships across Workspaces.
 
 ## D-004 — MO Control Center is a control plane, not a super database
 
@@ -74,6 +77,8 @@ Examples include Lite Basic, Lite Creator, Sites CN and Sites Global. 1.0 uses c
 
 Disposition: 1.0 template support; 2.0+ greater flexibility
 
+Status note (2026-10-08): partially superseded by D-027 for the named WS-1.0 and 2.0 Plan/Profile/channel composition. The versioned-composition principle remains active.
+
 ## D-010 — Knowledge/Data/Brain/Capability are governed platform inventory
 
 Decision: these systems are not hidden engineering sandboxes. MO operators must see ownership, versions, dependencies, runs, failures, cost/currentness and rollout. Ordinary Lite/Site users consume their outcomes through product jobs.
@@ -85,6 +90,8 @@ Disposition: 1.0 minimum control; 2.0+ advanced authoring
 Decision: broad Lite GA, trademark marketplace, mini-program release gate, independent Apps, all-jurisdiction support, autonomous marketing, unrestricted Capability Center and new provider-specific product forks do not block 1.0.
 
 Disposition: 2.0/3.0/PARKED as defined by roadmap
+
+Status note (2026-10-08): partially superseded by D-027, D-029 and D-031 for the bounded Mini Program, jurisdiction/data, quote and trademark-for-sale scope explicitly reassigned to WS-1.0. Broad GA, all-jurisdiction Data Engine coverage, full marketplace and unrestricted automation remain excluded.
 
 ## D-012 — Existing substrate is inventory, not automatic product scope
 
@@ -104,11 +111,15 @@ Decision: Trading substrate may remain in the repository, but a marketplace/full
 
 Disposition: 2.0 candidate / 3.0 marketplace
 
+Status note (2026-10-08): partially superseded by D-031. Bounded trademark-for-sale management and transaction handoff enter WS-1.0; a full marketplace and any ungoverned ownership/settlement claim remain later scope.
+
 ## D-015 — Mini-program is demand-gated
 
 Decision: responsive Web is the 1.0 customer-channel requirement. Mini-program enters a later version only when real customer/agency use demonstrates channel value.
 
 Disposition: 2.0 candidate
+
+Status note (2026-10-08): superseded by D-027. Mini Program Basic is part of the WS-1.0 channel profile.
 
 ## D-016 — MarkReg Growth automation begins human-governed
 
@@ -116,6 +127,7 @@ Decision: MarkReg may dogfood growth automation, but early maturity emphasizes r
 
 Disposition: 2.0 primary; limited 1.0 internal experiments only if they do not block the core loop
 
+Status note (2026-10-08): partially superseded by D-030. Human-governed Growth remains the rule, but its first committed dogfood horizon is the MarkReg Forward Track / MR-1.5 rather than WS-2.0.
 
 ## D-017 — Architecture may run ahead of product
 
@@ -144,6 +156,7 @@ Disposition: permanent governance rule
 ## D-020 — Separate Architecture, MarkReg and Workspace release trains
 
 Decision: MarkOrbit operates three speeds:
+
 - Architecture Runway — strongest/farthest-ahead internal capacity;
 - MarkReg Forward Track — next user-facing capabilities proven in real operation;
 - Workspace Release Track — narrower, simpler, stable capabilities released to ordinary Workspace users.
@@ -172,12 +185,12 @@ Decision: A stronger platform does not justify a more complex product. Ordinary 
 
 Disposition: 1.0+
 
-
 ## D-024 — Forward-version reserve is not the moat by itself
 
 Decision: Keeping MarkReg one meaningful release horizon ahead of ordinary Workspaces is a release and learning strategy, not the primary competitive moat.
 
 Long-term defensibility must come from the compounding system around the product:
+
 - real MarkReg operating evidence and workflow learning;
 - higher-quality Data and Knowledge with currentness/provenance;
 - validated Brain/Capability methods;
@@ -190,7 +203,6 @@ Product Governance must not delay obviously valuable customer improvements solel
 
 Disposition: permanent strategy rule
 
-
 ## D-025 — Product modules require Owner-approved specifications before implementation
 
 Decision: Every material product module/change must be presented to the Product Owner as a detailed reviewable specification before runtime implementation begins.
@@ -200,3 +212,93 @@ The specification must cover user surface, objects, fields, states, actions, per
 Approval may be module-level or subsection-level. Only approved/frozen scope may be converted into implementation work. Any later scope change requires a recorded Change Request and re-approval before affected development continues.
 
 Disposition: permanent governance rule
+
+The decisions below record only the explicit directions and version assignments established through Product Owner feedback. They do not approve M01-M25 as complete modules. Any subsection not explicitly decided remains CHANGE_REQUESTED or IN_REVIEW under D-025.
+
+## D-026 — Released products are Chinese-first bilingual and conversation-first, structure-backed
+
+Decision:
+
+- all released MarkOrbit user and operator surfaces support Chinese and English, with Chinese as the primary/default language and complete English functional coverage;
+- a unified conversation/work surface is the primary interaction model for service workflows, while Today, object pages and other direct entries remain available;
+- Customer, Applicant, Trademark, Opportunity, Quote, Order, Matter, Payment, Filing, Message and Delivery remain structured owner-backed state;
+- conversation may prepare and explain an action but cannot by itself establish payment, authority, acceptance, filing, transfer, completion or Official Truth.
+
+This extends D-006 beyond the markreg.com entry experience without weakening its authority boundary.
+
+Disposition: Shared 1.0 product principle
+
+## D-027 — WS-1.0 fixes the first Plan/Profile, channel and payment composition
+
+Decision:
+
+- WS-1.0 Lite launch Product Profiles are Free, Go and Plus;
+- WS-1.0 Sites exposes Mini Program Basic, and the MarkReg reference experience operates Web and Mini Program as distinct governed channels;
+- Bundles describe included capability/pack/channel composition but are not independently priced;
+- MR-1.0 MarkReg Web payment uses PayPal with CNY and USD where eligible; MR-1.0 and WS-1.0 Mini Program payments use WeChat Pay; invoice/tax handling remains distinct from payment status;
+- Stripe, Lite Pro/Business, Sites Web Basic and Mini Program Plus belong to the 2.0 horizon unless reassigned by a later decision.
+
+This decision assigns product scope only. Provider, merchant, compliance and release-readiness gates remain mandatory.
+
+Disposition: WS-1.0 composition; 2.0 expansion
+
+## D-028 — Personal Customer Accounts, Applicants and Workspace authority remain distinct
+
+Decision:
+
+- staff authentication remains global, while business authority comes from explicit Workspace Membership;
+- CustomerAccount is a personal login/security identity; its active session, Customer Relationships and Applicant/Trademark authority are strictly Site/Workspace scoped. A CustomerAccount may be explicitly linked to multiple Applicants without making Customer and Applicant the same object;
+- Applicant and Trademark access may be shared with authorized Workspace staff through explicit, revocable authority rather than implicit relationship merging;
+- Workspace administrators may manage Lite users, permissions and available functions only within the Workspace's effective Product Profile and Entitlements;
+- Chinese Lite and Customer users require a governed WeChat binding/login path; any email/SMS OTP chosen as MFA applies to all released user types, while the exact factor and recovery policy remains subject to approved security specification;
+- WS-1.0 binds one organization record/name to one Workspace and is invitation-led. Its verification status is separate: payment-account confirmation evidence must not silently replace organization-identity evidence required by policy.
+
+Disposition: WS-1.0 identity and Workspace boundary
+
+## D-029 — Data coverage, asset import and quote coverage are deliberately separate
+
+Decision:
+
+- initial Data Engine-linked trademark jurisdictions are China, United States, Canada, United Kingdom, European Union, Australia, New Zealand and Singapore;
+- Workspace users may bulk import trademark assets from any jurisdiction; assets outside linked Data Engine coverage remain managed assets without implied Data Engine or Official Truth verification;
+- WS-1.0 supports governed Workspace pricing for filing, change, assignment and renewal services in any country where a valid versioned price and viable delivery route are confirmed;
+- Workspace pricing may be supplied through the approved template/conversation flow, but every Quote must retain its exact governed pricing lineage;
+- the ability to quote a jurisdiction does not claim equivalent Data Engine coverage, automated legal analysis or provider availability.
+
+Disposition: WS-1.0 bounded data and commercial coverage
+
+## D-030 — WS-1.0 communication and fulfillment stay bounded while MarkReg advances on the Forward Track
+
+Decision:
+
+- WS-1.0 supports system-to-user/customer in-product messages and email, Workspace-configured sending identity where entitled, and Mini Program WeChat notifications; ordinary Lite does not promise general bidirectional communication in 1.0;
+- MarkReg may send and receive foreign-counsel email, associate it with governed business records and operate consent-governed email marketing;
+- ordinary WS-1.0 fulfillment offers self-filing or delivery through MarkReg, without direct provider selection;
+- on the MarkReg Forward Track / MR-1.5, MarkReg may select an MGSN provider and providers receive a bounded order/quote-management workspace;
+- MarkReg Growth begins in MR-1.5 as human-governed opportunity preparation, scoring, outreach review and follow-up, using shared platform capabilities rather than a MarkReg-only fork.
+
+Disposition: WS-1.0 bounded communication/fulfillment; MR-1.5 / FORWARD expansion
+
+## D-031 — WS-1.0 includes bounded trademark-for-sale workflows, not an unqualified marketplace claim
+
+Decision:
+
+- Lite and Sites expose a distinct trademark-for-sale area with governed asset review, AI-assisted classification/tagging and approved content/media preparation;
+- Mini Program Basic supports list and single-asset presentation plus fixed-price purchase intent, inquiry and offer workflows;
+- payment, seller declaration or an accepted offer alone does not prove ownership, representation authority, agreement, transfer or completion; those remain separate evidence-backed states with explicit review and handoff;
+- MR-1.5 may add multiple presentation templates and trademark recommendation video after WS-1.0 evidence;
+- a full marketplace, escrow-like settlement or automatic title-transfer claim remains outside this decision.
+
+Disposition: WS-1.0 bounded Trading; MR-1.5 / FORWARD presentation expansion; full marketplace later
+
+## D-032 — Knowledge, Data, Brain, Capabilities and credentials remain governed layers
+
+Decision:
+
+- WS-1.0 Workspace users may upload and manage private Knowledge and see the exact system Pack version and authorized data volume available to their product;
+- Data Pack entitlement may be finer than jurisdiction, including distinct corpus/resource classes, versions and permitted uses; it may gate effective Capability availability and Opportunity discovery scope without rewriting Capability Canon, while exact commercial slices remain subject to three-director specification and data-rights review;
+- Brain's first explicit reusable outputs include versioned, currentness-aware reference values such as official fees, expected timing and process guidance. Broader Brain output remains RESEARCH until a bounded consumer and evidence standard are approved;
+- Capabilities integrate the stable outcomes required by approved product workflows; technical existence alone does not grant Product Profile exposure or maturity;
+- ordinary Workspace users do not receive custom API-key configuration in WS-1.0. MarkReg may use governed custom email/provider credentials. A later offering may support either Workspace-provided credentials or paid MO-managed credentials, subject to usage, privacy, cost and routing policy.
+
+Disposition: WS-1.0 governed consumption; MR-1.5 / FORWARD dogfood where assigned; later credential expansion

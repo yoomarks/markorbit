@@ -1,7 +1,7 @@
 # MarkOrbit Product Constitution
 
 Status: CURRENT WORKING BASELINE
-Effective date: 2026-10-07
+Effective date: 2026-10-08
 Authority: Product Director + Design Director + Technical Director, subject to Product Owner revision
 Scope: MarkOrbit platform, MO Control Center, Lite, Sites, markreg.com, shared owners and external integrations
 
@@ -22,6 +22,7 @@ Internal platform control plane for MO administrators and operators.
 It must make the platform observable, governable and recoverable without becoming a cross-service database editor.
 
 Primary responsibilities:
+
 - Workspace, staff, role and access administration;
 - product profile, maturity, entitlement and rollout control;
 - Data Engine and Knowledge source/plan/run visibility and governed commands;
@@ -41,14 +42,22 @@ The professional operating product for Workspace staff.
 Lite is organized around user jobs and business objects, not internal platform modules.
 
 Target first-level product vocabulary:
-- Today;
-- Customers;
-- Trademarks;
-- Work;
-- Create;
-- Messages.
 
-Quote, Filing, Trading and other functions are primarily actions/workbenches reached from the relevant object or task rather than mandatory top-level navigation.
+- 今日 / Today;
+- 客户 / Customers;
+- 商标 / Trademarks;
+- 工作 / Work;
+- 创作 / Create;
+- 案件 / Matters;
+- 消息 / Messages.
+
+These are working labels. The UI/Experience Design Director validates the final Chinese and English names before navigation lock; changing a label must not silently change the underlying Product-owned meaning.
+
+Today is a reminder/recommendation and quick-entry surface, not the only way into the product. Customers, Trademarks, Work, Create, Matters and Messages remain directly addressable and preserve deep-link/reload context.
+
+Work is the actionable queue across business objects. Matters is the durable professional record for an accepted service or legal/professional work item. A task may point to a Matter, but the two surfaces must not become duplicate lists with indistinguishable ownership or lifecycle.
+
+Quote, Filing and other functions are primarily actions/workbenches reached from the relevant object or task rather than mandatory top-level navigation. Trademarks includes a clearly separated trademark-for-sale inventory rather than hiding sale work inside a generic portfolio.
 
 MarkReg staff use Lite. MarkReg may receive additional pilot entitlements such as Growth Operations.
 
@@ -59,6 +68,7 @@ Workspace-owned customer-facing projections.
 A Site is bound to exactly one Workspace. Site configuration does not own Customer, Quote, Order, Matter, Payment or Trademark truth.
 
 Sites may vary by Product Profile:
+
 - language;
 - jurisdiction/business scope;
 - channel;
@@ -66,6 +76,8 @@ Sites may vary by Product Profile:
 - customer-facing Brain profile;
 - enabled capabilities;
 - mini-program or future App availability.
+
+WS-1.0 includes a bounded WeChat Mini Program Basic profile for ordinary Workspaces. A reusable Workspace Web Basic profile and richer mini-program editions belong to later release decisions.
 
 ### markreg.com
 
@@ -76,6 +88,12 @@ Initial focus is overseas direct customers and a narrow international-trademark 
 The interaction model is Conversation-first, structure-backed.
 
 Conversation guides intent and clarification. Structured objects carry Customer, Intake, Quote, Order, Matter, Payment, Filing and Delivery truth.
+
+### Cross-product language and interaction
+
+All product surfaces are Chinese-first and fully bilingual. Simplified Chinese is the default authored interface; English must cover the same navigation, instructions, forms, states, errors, confirmations, receipts and accessibility labels. Switching language must not rewrite user input, names, trademarks, source text, object identifiers, money, evidence or workflow state.
+
+Business initiation and guided work use one consistent conversation-plus-structured-workbench pattern. Conversation explains, asks bounded questions and orchestrates work. Structured cards, fields, summaries and owner-backed objects retain editable facts, uncertainty, prices, evidence, approvals and state. A chat message cannot authenticate a person, grant access, accept a Quote, authorize Payment, complete a trademark transfer, file, publish or perform another protected action.
 
 ## 3. User and identity model
 
@@ -91,7 +109,9 @@ A staff user may belong to more than one Workspace where policy permits.
 
 ### Workspace customers
 
-Customer accounts are Site/Workspace scoped business identities.
+CustomerAccount is primarily a personal login/security account. It may bind verified email, phone and, for supported China users, WeChat credentials. Authentication reuse does not create or merge business relationships.
+
+Customer Relationships, Applicant links, trademark access and customer-visible business objects remain explicitly Site/Workspace scoped. A customer may manage its explicitly bound Applicants and Trademark Assets within the owning Workspace's granted actions; all changes remain permission-checked and audited. Applicant and trademark sharing with Workspace staff is an explicit, auditable relationship/permission action; it is not identity matching, applicant ownership proof or cross-Workspace data fusion.
 
 A customer session is bound to the current Site and Workspace. It must not expose Workspace selection, cross-Workspace discovery, cross-Workspace search, or implicit relationship merging.
 
@@ -111,6 +131,7 @@ Workspace is the primary business isolation boundary.
 MarkReg is a special reference Workspace by entitlement and maturity policy, not by forked code.
 
 Workspace-owned/private concerns include:
+
 - staff membership and role;
 - customer relationships;
 - contacts and business communications;
@@ -120,6 +141,8 @@ Workspace-owned/private concerns include:
 - matters, work and files subject to exact owner boundaries;
 - Site configuration;
 - Workspace overlays for approved AI behavior.
+
+WS-1.0 binds one organization name to one Workspace. The Workspace administrator manages Lite users, invitations, bounded permissions and enabled product functions. Institution or collection-account verification, when required, records exactly what evidence was verified; a small-payment round trip must not be presented as broader legal identity proof than its accepted policy supports.
 
 No Workspace may read or mutate another Workspace's business truth by default.
 
@@ -135,7 +158,10 @@ Module existence/health is not itself user entitlement.
 
 ### Capability
 
-A stable outcome that the system can perform, for example:
+At the product layer, Capability is shorthand for the repository's canonical definition: Stable Outcome Contract + Governed Implementation + Evidence Base + Version Lineage + Controlled Evolution. The hierarchy remains Domain → Capability → Skill → Action / Invocation, and a composition has exactly one Primary, zero to three Supporting and zero or one Critic capability.
+
+Examples of provider-neutral stable outcomes include:
+
 - TRADEMARK_QUOTE;
 - US_FILING_PREPARATION;
 - CUSTOMER_EMAIL_DRAFT;
@@ -152,6 +178,7 @@ A Capability is provider-neutral.
 ### Implementation / Provider
 
 A concrete implementation of a Capability, such as:
+
 - OpenAI / Google / Anthropic / DeepSeek;
 - Gmail / Microsoft Graph / SMTP;
 - Stripe / PayPal / WeChat Pay / Alipay / manual transfer;
@@ -161,9 +188,14 @@ Products depend on Capabilities, not directly on providers where avoidable.
 
 Provider failure must degrade the bounded Capability, not collapse unrelated product functions.
 
+For MGSN, a Provider price/quote is supply-side truth, not the customer Quote; Provider Supply Capability is not user Capability evidence; and a Provider Return is reviewable input/evidence, not Official Truth or automatic completion.
+
+Ordinary Workspace users do not manage custom API keys in WS-1.0. MarkReg may bind approved email or external API credentials under its governed profile. Future products may support either approved bring-your-own-key use or paid use of MO-managed keys, but secrets remain provider bindings and never become front-end business truth.
+
 ### Knowledge/Data Pack
 
 A governed package of information or structured data made available to a Brain/Product Profile, such as:
+
 - CN trademark knowledge;
 - US filing knowledge;
 - EU/GB/WIPO packs;
@@ -173,6 +205,8 @@ A governed package of information or structured data made available to a Brain/P
 - Workspace private knowledge.
 
 Access is always filtered by exact Workspace, channel and object authority.
+
+Data Pack authorization may be narrower than a jurisdiction and is governed by jurisdiction, dataset family, version and permitted use. Distinct data families, such as refusal, opposition, review-decision and publication data, may carry separate availability and entitlement. Workspace users see only approved coverage and limitations, not an inferred whole-country entitlement; access for one use does not silently authorize Capability execution, opportunity discovery or marketing.
 
 ### Channel
 
@@ -185,11 +219,12 @@ Channel policy can further narrow capabilities already available to a Workspace.
 A versioned composition defining what a product edition exposes.
 
 Examples:
-- Lite Basic;
-- Lite Pro;
-- Lite Creator;
-- Sites CN;
-- Sites Global;
+
+- Lite Free;
+- Lite Go;
+- Lite Plus;
+- Sites Mini Program Basic;
+- Lite Pro / Business and Sites Web Basic / Mini Program Plus in later releases;
 - MarkReg Full.
 
 A Product Profile references Modules/Capabilities/Packs/Channels and policy. It is not a copy of their underlying truth.
@@ -197,6 +232,7 @@ A Product Profile references Modules/Capabilities/Packs/Channels and policy. It 
 ### Bundle
 
 A reusable commercial/configuration package such as:
+
 - China Trademark Pack;
 - International Filing Pack;
 - Creator Video Pack;
@@ -205,6 +241,8 @@ A reusable commercial/configuration package such as:
 - MGSN Pack.
 
 Bundles simplify configuration without creating duplicate runtime owners.
+
+Bundles are not independent pricing subjects. They may be included and described inside a priced Product Profile or offer, while entitlement and runtime composition remain versioned and auditable.
 
 ## 6. Effective access model
 
@@ -248,11 +286,14 @@ Execution answers primarily: what protected action is authorized to actually hap
 
 These responsibilities may compose but must not collapse.
 
+Brain may also produce governed, versioned reference assets—facts, estimates and rulesets such as official-fee tables, expected process stages and indicative timing ranges—so product workflows do not repeatedly rediscover the same inputs. These are not timeless constants: they require source, version, jurisdiction, effective window, currentness and limitation evidence and remain distinct from Official Truth or a professional decision.
+
 ## 9. Workspace Intelligence Profile
 
 A Workspace may be assigned one or more governed Intelligence Profiles.
 
 A profile can define:
+
 - Brain versions;
 - allowed Capabilities;
 - approved implementation profiles/providers;
@@ -288,6 +329,7 @@ The platform architecture may run materially ahead of the released product.
 It may build stronger owner boundaries, composability, provider abstraction, Brain/Capability governance, Knowledge/Data infrastructure, MGSN, observability and recovery before those capabilities are exposed to ordinary Workspace users.
 
 Architecture advancement is valuable only when it:
+
 - preserves product simplicity;
 - stays decoupled from release-critical user flows;
 - does not force internal concepts into user navigation;
@@ -301,6 +343,7 @@ Architecture sophistication is not a reason to expose complexity to users.
 MarkReg is the default Reference Workspace and first real user of reusable Workspace-facing capabilities.
 
 Before a capability is promoted to ordinary Workspace users, MarkReg should normally:
+
 - use it in real operations;
 - produce measurable value or remove real friction;
 - expose failure modes and manual escape paths;
@@ -330,6 +373,7 @@ No feature may skip real-use proof merely because MarkReg is not the correct tes
 MO should maintain a deliberate gap between what the architecture can support, what MarkReg is currently proving, and what ordinary Workspace users receive.
 
 At the time a Workspace release is made broadly available or sold as a stable version:
+
 - the released functions must already have real-use evidence;
 - MarkReg should be operating at least one meaningful product horizon ahead;
 - the next release wave should already contain tested or actively dogfooded improvements;
@@ -343,10 +387,13 @@ Product simplicity remains mandatory even when the architecture and MarkReg Forw
 
 - Product flow before module completeness.
 - User language before internal platform vocabulary.
+- Chinese by default and complete English across every released surface.
+- Conversation guides work; structured owner state carries business truth.
 - Preview != Production.
 - CI green != release readiness.
 - AI draft != protected action.
-- Payment != Order != Matter != Filing != Official Truth.
+- Payment != performance, authority, acceptance, Order, Matter, Filing, completion or Official Truth.
+- Purchase Intent or Payment != completed trademark transaction or rights transfer.
 - Source fact != legal conclusion.
 - Customer != Applicant.
 - Contact data != marketing consent.
@@ -361,6 +408,7 @@ Product simplicity remains mandatory even when the architecture and MarkReg Forw
 ## 14. Governance references
 
 The following documents are co-canonical:
+
 - MO-VERSION-ROADMAP.md;
 - MO-PRODUCT-GOVERNANCE.md;
 - MO-PRODUCT-DECISION-LOG.md;

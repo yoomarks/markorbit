@@ -1,77 +1,128 @@
-# MarkOrbit Master Product Spec — Owner Review Index
+# MarkOrbit Master Product Spec Owner Review Index
 
-Status: DRAFT / IN_REVIEW
+Status: CHANGE_REQUESTED / IN_REVIEW
 Effective date: 2026-10-08
-Runtime development gate: CLOSED until Product Owner approval
+Task ID: MO-PRODUCT-SPEC-R1
+Runtime development gate: CLOSED until the revised detailed specifications are stored in the repository and explicitly approved
 
-This index defines the module set for the first full owner-review specification. Detailed module specifications are reviewed outside runtime implementation and become implementation authority only after explicit approval.
+This index records the Product Owner's M01–M26 review, the joint Product, Design and Technical Director reconciliation, and the release horizon for each change. It updates durable product planning; it does not authorize runtime implementation.
+
+The separately supplied v0.1 DOCX is review evidence, not repository authority. Its unchanged sections remain DRAFT. Before an implementation task can cite a module, the revised 16-section specification for that module must be stored in the repository and moved to APPROVED or FROZEN by the Product Owner.
 
 ## Approval rule
 
 For each module the Product Owner may choose:
+
 - APPROVED;
 - CHANGE_REQUESTED;
 - DEFER / REASSIGN VERSION.
 
-Approval may apply to a whole module or explicitly named subsections.
+Approval may apply to a whole module or explicitly named subsections. A roadmap decision is not automatically approval of every object, field, state or action in a module specification.
 
-No runtime product Issue/PR may be admitted solely from historical Issues, current code, Preview pages or CI status.
+No runtime product Issue or PR may be admitted solely from this index, historical Issues, current code, Preview pages, Storybook, CI status or the separately supplied DOCX.
 
-## Module set
+## Release horizons used by this review
 
-- M01 MO Control Center / Platform Control Plane
-- M02 Identity / Accounts / Security
-- M03 Workspace / Membership / Organization
-- M04 Product Profiles / Entitlements / Release Control
-- M05 Lite Shell / Daily Operations
-- M06 MarkReg Operations / Reference Workspace
-- M07 Sites Runtime / Workspace Customer Surface
-- M08 markreg.com / Direct Customer Experience
-- M09 Customers / Leads / Contacts / Consent
-- M10 Trademark Assets / Applicant / Portfolio
-- M11 Quote / Pricing / Commercial / Order
-- M12 Payment / Reconciliation
-- M13 Filing / Matter / Work / Delivery
-- M14 MGSN / Provider Network
-- M15 Messages / Email / Customer Communication
-- M16 Content / Creator / Media
-- M17 Growth / Automated Marketing
-- M18 Trading / Trademark Commercialization
-- M19 Knowledge
-- M20 Data Engine
-- M21 Brain
-- M22 Capabilities
-- M23 External Providers / Integrations
-- M24 Execution / Protected Actions
-- M25 Observability / Audit / Backup / Incident / Support
-- M26 Versioning / Approval / Development Gate
+- Shared 1.0 Foundation: identity, Workspace isolation, bilingual delivery, product profiles, governed owner commands, evidence and operations used by both MarkReg and ordinary Workspaces.
+- MR-1.0: MarkReg's first production Web and Mini Program commercial surface.
+- WS-1.0: the first controlled ordinary Workspace release, including Lite Free, Go and Plus and Sites Mini Program Basic.
+- MR-1.5: MarkReg Forward dogfood for the next capability wave.
+- WS-2.0: validated Workspace expansion after reference-use evidence.
+- WS-3.0: platform-scale capabilities such as a multi-seller marketplace.
+- RESEARCH: a bounded question that must be resolved before version admission.
+
+## Owner review and three-director reconciliation
+
+All M01–M25 specifications remain CHANGE_REQUESTED until their detailed repository specifications incorporate the decisions below and receive explicit approval. M26's specification-first governance principle is approved through D-025; its procedural details remain subject to repository governance.
+
+| Module                                            | Current disposition                                                                  | Reconciled direction                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
+| ------------------------------------------------- | ------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| M01 MO Control Center                             | Shared 1.0 Foundation; role split WS-2.0                                             | The Design Director owns final navigation naming. Every platform is Chinese-primary and fully bilingual, with complete English functional coverage. 1.0 must use a command inventory that marks each command read-only, executable, approval-required or deferred; "most commands" is not an acceptance test. A System Admin may cover the initial operational role, while Support, Finance and Security specialization is deferred without weakening audit or protected-action controls.                                                                                                                                                                                                                                                        |
+| M02 Identity Accounts Security                    | Shared 1.0 Foundation; MFA and WeChat external gates                                 | CustomerAccount is a personal login identity that reaches Workspace-scoped Customer Relationships. A customer may be linked to multiple Applicants; staff collaboration comes from Workspace authority, never shared credentials or cross-Workspace identity merging. Workspace Admins manage members and permissions only inside the Product Profile and Entitlement ceiling. Account verification, one-time-code login and MFA are distinct concepts. Every user is covered by the 1.0 MFA policy, with exact factors, remembered-device, recovery and sensitive-action rules resolved by the security review. China-facing Lite staff and customers receive WeChat binding/login in 1.0, subject to channel identity and recovery acceptance. |
+| M03 Workspace Membership Organization             | Shared 1.0 Foundation; multi-entity WS-2.0; collection-account verification RESEARCH | A Workspace owns its team's asset library, private knowledge and bounded personalization. WS-1.0 binds one organization record/name while allowing separate brands and Sites; its verification status is recorded separately. Onboarding is invitation-based and does not require general certification. Activating a collection method requires the institution and account-control evidence defined by the approved payment policy. A small payment and return can prove account control only; it cannot by itself be labelled full institution real-name verification.                                                                                                                                                                        |
+| M04 Product Profiles Entitlements Release Control | WS-1.0 and WS-2.0                                                                    | WS-1.0 offers Lite Free, Go and Plus plus Sites Mini Program Basic. WS-2.0 adds Lite Pro and Business, Sites Web Basic and Mini Program Plus. MarkReg uses an internal reference/forward profile. A Bundle is a reusable included composition, not an independent pricing owner; offers and prices attach to the relevant plan or Product Profile.                                                                                                                                                                                                                                                                                                                                                                                               |
+| M05 Lite Shell Daily Operations                   | WS-1.0                                                                               | The working first-level set is Today, Customers, Trademarks, Work, Create, Matters and Messages; final Chinese and English labels require Design Director validation. Today recommends or requires near-term actions but is not the only entry. Every business object supports direct navigation and deep links. Work is the action queue; Matters is the durable professional record.                                                                                                                                                                                                                                                                                                                                                           |
+| M06 MarkReg Operations Reference Workspace        | MR-1.0 and MR-1.5                                                                    | MarkReg remains a normal Workspace with broader governed entitlements, not a fork. Mature and verifiable functions may enter 1.0; insufficiently proven forward functions enter MR-1.5. The forward inventory is selected from approved module needs, and each capability has its own dogfood volume, outcome, failure, manual escape, cost and rollback evidence.                                                                                                                                                                                                                                                                                                                                                                               |
+| M07 Sites Runtime Workspace Customer Surface      | MR-1.0 and WS-1.0                                                                    | WS-1.0 ordinary Workspaces receive Sites Mini Program Basic. markreg.com ships both Web and Mini Program, with channel-specific audience, service catalogue, language and interaction design. Both channels project the same Customer, Quote, Order, Matter, Payment and Trademark owner truth. A Mini Program is a customer channel, not a narrow Lite replica.                                                                                                                                                                                                                                                                                                                                                                                 |
+| M08 markreg.com Direct Customer Experience        | MR-1.0                                                                               | All supported service journeys begin in one conversation-led workbench. Conversation handles intent and guidance; structured cards and owner-backed objects handle fields, quotes, payment, materials, confirmation and protected actions. 1.0 includes basic content generation, public SEO content and online payment. The Web catalogue focuses on China and the approved advantage jurisdictions rather than implying automated self-service for every country.                                                                                                                                                                                                                                                                              |
+| M09 Customers Opportunities Contacts Consent      | WS-1.0; cross-Workspace sharing WS-2.0; sharing economics RESEARCH                   | Customers may link to multiple Applicants, and Site customers may manage Applicants and Trademarks within their relationship authority. Opportunity is a first-class domain object with its own route, search, contacts, provenance and permissions, but it need not become an eighth first-level navigation item. WS-1.0 supports Workspace-produced Opportunities. Cross-Workspace sharing uses an explicit share/handoff or recipient-owned record, not one jointly mutable object. The origin's rights, recipient's operating rights, revocation, contact legality and revenue model require a separate decision. Customer display numbers use a stable Workspace code plus sequence; internal identity remains immutable.                   |
+| M10 Trademark Assets Applicant Portfolio          | WS-1.0                                                                               | Data-linked launch jurisdictions are China, United States, Canada, United Kingdom, European Union, Australia, New Zealand and Singapore. Batch import accepts assets from any jurisdiction. Unsupported jurisdictions are labelled imported/manual and not connected to Data Engine currentness; they are not presented as missing or officially current.                                                                                                                                                                                                                                                                                                                                                                                        |
+| M11 Quote Pricing Commercial Order                | WS-1.0; MGSN expansion MR-1.5 and WS-2.0                                             | A Workspace downloads a price template and uploads it through conversation, followed by structured parsing, row validation, diff preview and explicit version publication. 1.0 may cover application, change, assignment and renewal quotes for any country when a valid Workspace price and delivery route exist. Quote coverage, publicly promoted services, Data Engine coverage and automated fulfilment are separate. WS-1.0 routes are self-file or handoff to MarkReg; MR-1.5 lets MarkReg select an MGSN Provider; WS-2.0 may let qualified Workspaces route directly to local firms.                                                                                                                                                    |
+| M12 Payment Reconciliation                        | MR-1.0 and WS-1.0; Stripe WS-2.0                                                     | Online payment is a 1.0 gate. Web uses PayPal and supports USD and CNY only where the merchant account is eligible; Mini Program uses WeChat Pay. Stripe is assigned to WS-2.0. Invoice requests and tax amounts are separate from Payment state. Merchant eligibility, settlement currency, tax responsibility and production credentials are external acceptance gates. Payment never implies Order completion, filing, transaction completion or rights transfer.                                                                                                                                                                                                                                                                             |
+| M13 Filing Matter Work Delivery                   | Shared 1.0 Foundation                                                                | The unified conversation is an orchestration shell, not the only information architecture. Lists, Work, Matters, materials, review and evidence workbenches remain available. Formal fields, prices, approvals and receipts are structured. Protected actions always receive an explicit, comprehensible confirmation and status.                                                                                                                                                                                                                                                                                                                                                                                                                |
+| M14 MGSN Provider Network                         | WS-1.0; MR-1.5; WS-2.0                                                               | Ordinary Lite users cannot select a Provider in 1.0 and see only self-file or MarkReg delivery routes. MR-1.5 lets MarkReg select an MGSN Provider and supplies a minimum Provider workbench for quotes and assigned orders. Direct Workspace-to-local-firm routing is a WS-2.0 candidate. Provider price is not the customer Quote, Provider Supply Capability is not user Capability evidence, and Provider Return is not Official Truth.                                                                                                                                                                                                                                                                                                      |
+| M15 Messages Email Customer Communication         | MR-1.0 and WS-1.0; expansion WS-2.0                                                  | Ordinary Lite/Site 1.0 communication is one-way system notification by in-product message and email; Mini Program adds consented WeChat notification. A Workspace may bind an outbound mailbox for system messages but cannot initiate broad two-way outreach. MarkReg may send and receive external-counsel email and archive it to business objects; ambiguous association requires human confirmation. Marketing is separated from case communication and remains human-approved with consent/suppression evidence. SMS, WeCom and ordinary Lite proactive/two-way messaging move to WS-2.0.                                                                                                                                                  |
+| M16 Content Creator Media                         | WS-1.0; MR-1.5; Creator definition RESEARCH                                          | WS-1.0 includes text, basic image generation and a parent-skill-style conversational creation flow with structured preview. The broader Creator product, collaboration and packaging remain unresolved. MR-1.5 dogfoods digital-human narration, video and Remotion-based output; Workspace promotion requires cost, rights, consent, brand and support evidence.                                                                                                                                                                                                                                                                                                                                                                                |
+| M17 Growth Automated Marketing                    | MR-1.5; selective WS-2.0                                                             | Growth is a reusable capability set exposed first through MarkReg entitlements, not separate MarkReg-only code. Eligible Data Engine facts, Knowledge, MarkReg assets and service capability may produce transient candidates. Qualification, score rationale, contact evidence, consent, suppression and human takeover are explicit. MR-1.5 starts with prepare, review and approve; automatic sending requires later evidence. Private Opportunity truth from other Workspaces is never silently pooled into markreg.com.                                                                                                                                                                                                                     |
+| M18 Trading Trademark Commercialization           | WS-1.0 bounded inventory; MR-1.5; marketplace WS-3.0; settlement RESEARCH            | WS-1.0 has a separate for-sale trademark area for Lite and customer surfaces, ownership-evidence review, explainable AI tag candidates, Mini Program list/detail and inquiry, offer and purchase-intent paths. Background computation may be asynchronous but cannot be hidden as a legal ownership conclusion. The Buy action creates a Purchase Intent; any conversion into Order, Payment and transfer Matter uses separate explicit, evidence-gated transitions and cannot claim a completed transaction or rights transfer without seller authority/KYC, contract, settlement/refund, transfer and completion evidence. MR-1.5 adds display templates and recommendation video. A multi-seller marketplace remains WS-3.0.                  |
+| M19 Knowledge                                     | WS-1.0                                                                               | Ordinary Workspace users upload and manage private knowledge and see system Pack version, availability, volume/capacity and currentness. They do not receive a generic Knowledge Run interface. Private material never becomes shared platform or Capability truth automatically.                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
+| M20 Data Engine                                   | Shared 1.0 Foundation; pack catalogue RESEARCH                                       | Data Pack entitlement is modelled by jurisdiction, dataset family, version and permitted use rather than one country boolean. China refusal, opposition, review and publication data may be independently entitled. Missing entitlement limits availability and discovery scope; it does not alter Capability Canon or fabricate a fact. The first sellable pack matrix and pricing require licensing and product review.                                                                                                                                                                                                                                                                                                                        |
+| M21 Brain                                         | Bounded 1.0 consumption; broader RESEARCH                                            | Brain may produce governed derived cognition, not unreviewed knowledge truth. Official fees, timelines and procedures are versioned reference facts, statistical estimates or rulesets with jurisdiction, scope, effective window, source, confidence and currentness. Build-time resolution may avoid repeated retrieval, but Case Runtime must use the admitted version and preserve provenance. Only reference assets required by approved launch services enter 1.0.                                                                                                                                                                                                                                                                         |
+| M22 Capabilities                                  | Shared 1.0 Foundation and demand-led evolution                                       | The first Capability inventory is derived from approved Lite and Site journeys. A Capability remains a Stable Outcome Contract plus Governed Implementation, Evidence Base, Version Lineage and Controlled Evolution. Capability composition remains exactly one Primary, zero to three Supporting and zero or one Critic. Ordinary users act through product jobs, not a generic Capability Center.                                                                                                                                                                                                                                                                                                                                             |
+| M23 External Providers Integrations               | MarkReg 1.0 allowlist; Workspace expansion WS-2.0                                    | Ordinary WS-1.0 users cannot add arbitrary API keys and use MO-managed implementations. MarkReg may bind allowlisted Connected Accounts or credential references through Entitlement; email should normally use OAuth rather than be described as an API key. Secrets are never returned to the UI. WS-2.0 may offer qualified Workspaces both BYOK and paid MO-managed consumption with metering, budget, revocation and fallback policy.                                                                                                                                                                                                                                                                                                       |
+| M24 Execution Protected Actions                   | Shared 1.0 Foundation                                                                | The existing prepare, authorize, execute, receipt, idempotency and review boundaries remain. The user experience must distinguish prepared, approval-required, running, succeeded, failed, retryable and review-required states. AI never grants final authority. Each module specification must identify true-execute versus prepare-only actions.                                                                                                                                                                                                                                                                                                                                                                                              |
+| M25 Observability Audit Backup Incident Support   | Shared 1.0 Foundation                                                                | Technical leadership owns concrete SLO, RTO and RPO values, but production monitoring, verified restore, incident response, audit, rollback and support paths remain release gates. User-visible degradation, recovery and support behavior must be specified rather than treated as invisible infrastructure.                                                                                                                                                                                                                                                                                                                                                                                                                                   |
+| M26 Versioning Approval Development Gate          | Permanent governance                                                                 | The specification-first gate and three-director review are approved as permanent process. Runtime work must cite an approved module/subsection, release horizon, owner contracts and acceptance evidence. This review does not waive that gate.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
+
+## Cross-module UI evidence required before implementation approval
+
+Any module that changes a browser, Web, H5 or Mini Program journey must define and later verify:
+
+- user and job-to-be-done;
+- Product-owned information architecture and direct/deep-link behavior;
+- desktop, 390px and applicable Mini Program behavior;
+- Chinese-primary and complete English content;
+- loading, empty, partial, stale, conflict, unauthorized, forbidden, recoverable error, blocking error, offline and success states as applicable;
+- task-specific states such as expired OTP, WeChat binding conflict, payment processing, reconciliation pending, ownership review, partial AI labelling and failed notification;
+- semantic structure, keyboard/focus behavior, non-color status communication and text/zoom resilience;
+- fixture-backed Storybook evidence;
+- desktop/mobile/applicable Mini Program bilingual visual review evidence;
+- Playwright coverage of the primary journey and important negative boundaries;
+- real WeChat-channel acceptance for login, payment and subscription notification, because Storybook cannot prove those channel integrations.
+
+## Reconciled development sequence
+
+1. Close the specification gap. Store revised detailed module specifications in the repository, resolve the RESEARCH items that gate 1.0, and obtain explicit approvals. No runtime task is admitted before this step for the affected scope.
+2. Build Shared 1.0 Foundation. Prioritize bilingual infrastructure, identity and Workspace boundaries, Product Profiles/Entitlements, the owner-command inventory, protected actions, Data/Knowledge/reference-fact admission and production operations.
+3. Complete MR-1.0 reference production. Deliver markreg.com Web and Mini Program, the conversation-plus-structured workbench, the filing commercial loop, PayPal/WeChat Pay, external-counsel email and basic content/SEO with real evidence.
+4. Start MR-1.5 forward dogfood before and alongside WS-1.0 completion. Prove a meaningful next-wave subset—such as MGSN Provider selection/workbench, Growth-assisted opportunity scoring and outreach, advanced trading presentation or digital-human/video/Remotion creation—with real-use evidence. Human-reviewed, consent/suppression-governed MarkReg email marketing already permitted in MR-1.0 is not deferred by this step.
+5. Complete and release WS-1.0 only after the forward prerequisite passes. Deliver Lite Free/Go/Plus, Sites Mini Program Basic, customer/applicant/asset operations, price-template import, any-country governed quotes, self/MarkReg delivery routes, one-way notifications, private Knowledge and bounded for-sale inventory; confirm MarkReg is already operating a meaningful MR-1.5 subset.
+6. Admit WS-2.0 only from evidence. Add Pro/Business, Web Basic, Mini Program Plus, Stripe, broader messaging, cross-Workspace Opportunity sharing, qualified BYOK and direct MGSN routing only after the relevant MarkReg/reference evidence passes.
+
+## Research and external gates
+
+- exact MFA and recovery methods for staff and customers;
+- institution verification and whether a micro-payment/return is lawful, supportable and useful as account-control evidence;
+- PayPal merchant eligibility for CNY presentation/settlement and production account readiness;
+- WeChat login, WeChat Pay and subscription-notification production credentials and channel approval;
+- Opportunity sharing rights, contact-lawful-use rules, withdrawal and monetization;
+- seller authority/KYC, contract, refund, transfer and dispute ownership for a true trademark sale;
+- complete Creator product definition and video/avatar rights policy;
+- Data Pack licensing, dataset-family catalogue and commercial packaging;
+- Brain derived-output admission and the first reference-fact inventory;
+- Product Profile feature/limit/price matrix and final Lite navigation labels.
 
 ## Mandatory specification sections per module
 
 1. Purpose
 2. Users
-3. Entry points/pages/information architecture
+3. Entry points, pages and information architecture
 4. Canonical objects
-5. Fields/information
-6. States/state machine
-7. User/system actions
-8. Permissions
-9. Feature/profile/channel/provider controls
-10. Dependencies/owner boundaries
-11. Failure/degradation
-12. Audit/evidence
+5. Fields and visible information
+6. States and state machine
+7. User and system actions
+8. Permissions and Workspace isolation
+9. Feature, profile, channel and provider controls
+10. Dependencies, contracts and owner boundaries
+11. Failure and degradation
+12. Audit and evidence
 13. Metrics
 14. Acceptance criteria
 15. Product Owner decisions still required
-16. Existing-development reuse / rewire / productize / defer assessment
+16. Existing-development reuse, rewire, productize or defer assessment
 
-## Recommended review order
+## Planning-change validation and non-goals
 
-1. M01–M04 — platform boundary and release control
-2. M05–M08 — user-facing products
-3. M09–M15 — WS-1.0 commercial/delivery loop
-4. M19–M24 — intelligence/data/execution substrate
-5. M16–M18 — MarkReg Forward / later product waves
-6. M25–M26 — production operations and governance
+This planning change must pass repository/workspace validation and Markdown formatting. It changes no runtime contract, state machine, event, migration, UI implementation or external system. It does not merge PR #1490, authorize a provider credential, set prices or admit implementation work.
 
-The detailed v0.1 specification is intentionally not treated as approved until Product Owner review is complete.
+Expected PR title: `docs(product): reconcile M01-M26 owner feedback`

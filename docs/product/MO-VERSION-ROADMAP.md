@@ -1,7 +1,7 @@
 # MarkOrbit Version Roadmap
 
 Status: CURRENT WORKING ROADMAP
-Effective date: 2026-10-07
+Effective date: 2026-10-08
 
 This roadmap is version-oriented rather than module-oriented. New ideas must be placed into a version, parked, or rejected. They do not become implementation work merely because they are technically attractive.
 
@@ -14,6 +14,7 @@ MarkOrbit uses three coordinated but non-identical release tracks.
 No customer-facing semantic version is required.
 
 Purpose:
+
 - keep architecture stronger than current product needs;
 - advance owner truth, composability, observability, provider abstraction, Data/Knowledge/Brain/Capability governance and recovery;
 - create future product capacity without forcing immediate exposure.
@@ -40,6 +41,58 @@ This is the version ordinary Workspace users receive.
 
 A Workspace release is narrower and more conservative than the MarkReg Forward Track. It contains only capabilities already proven through MarkReg or an explicitly designated equivalent Reference Workspace.
 
+## Shared 1.0 Foundation
+
+MR-1.0 and WS-1.0 share a release foundation rather than building separate product forks. Before either consuming release can pass, the applicable foundation must provide:
+
+- Chinese-primary interfaces with complete English functional parity;
+- personal/customer identity, Workspace isolation, Membership and auditable permission boundaries;
+- versioned Product Profiles, Entitlements, channel/provider gates and bounded degradation;
+- structured owner objects behind the conversation/workbench interaction model;
+- a versioned MO Control Center command inventory with all release-critical typed commands executable and verified;
+- protected-action prepare, authorize, execute, receipt, idempotency and review boundaries;
+- governed Data, Knowledge, Brain reference-asset and Capability admission with provenance/currentness;
+- production monitoring, audit, backup/restore, incident/support, rollback and user-visible recovery behavior.
+
+This foundation is not a separate customer edition and does not admit runtime work without an approved module/subsection. Its requirements are accepted through the MR-1.0 and WS-1.0 release evidence that consumes them.
+
+## MR-1.0 — MarkReg Direct-Customer Production
+
+### Release promise
+
+MarkReg can take a qualified direct-customer trademark inquiry through Customer, Intake, Qualification, Quote, Confirmation, Materials, Order/Matter, Delivery Route, Communication, Evidence and Delivery without engineering intervention.
+
+MR-1.0 requires:
+
+- responsive markreg.com Web and a WeChat Mini Program, with channel-specific audience and service catalog inside a Chinese-primary, fully bilingual experience;
+- bilingual Chinese/English support, while preserving conversation-first, structure-backed Customer, Quote, Order, Matter, Payment, Filing and Delivery truth;
+- basic public content generation and SEO;
+- production online payment: PayPal for Web in CNY/USD and WeChat Pay for the Mini Program, subject to merchant, tax, invoice and provider-readiness gates;
+- invoice requests and tax amounts represented separately from Payment state;
+- system-to-customer in-product/email notifications and WeChat notifications for the Mini Program;
+- a real MarkReg external-counsel mailbox that can send, receive and prepare object-linking/archive candidates;
+- human-reviewed MarkReg email marketing with contact source, consent where required, suppression/unsubscribe handling and audit; Growth-assisted candidate scoring, follow-up and higher automation remain MR-1.5;
+- allowlisted MarkReg connected accounts or provider keys through secure credential references, without exposing raw secrets or creating a provider-specific product fork;
+- governed manual/self-operated delivery, with external professional handoff allowed when authority, evidence and receipt remain durable.
+
+The public catalog focuses on China and selected advantageous jurisdictions. An assisted quote may be prepared for application, change, assignment and renewal in any country only when Workspace pricing and a viable delivery route are confirmed. This quote coverage does not imply self-service automation, Data Engine coverage or automatic official filing for every country.
+
+MR-1.0 does not require unrestricted Growth automation, dynamic MGSN Provider selection, video/digital-avatar production or a full trademark marketplace.
+
+## MR-1.5 — MarkReg Forward Dogfood
+
+MR-1.5 is the next real-use wave ahead of ordinary Workspace release. It is not a substitute for Capability maturity evidence.
+
+Primary objectives:
+
+- let MarkReg select an eligible Provider through MGSN and give that Provider a bounded workspace for assigned orders, provider quotations/costs, acceptance and returns;
+- operate MarkReg Growth with Data Engine facts, Knowledge, MarkReg assets and service capacity feeding governed Opportunity Candidates, scoring/contact research and prepare/review/approve outreach;
+- keep unrestricted auto-send disabled until consent, complaint, conversion, cost and rollback evidence justify promotion;
+- dogfood talking-head, digital-avatar and Remotion/video production with identity, consent, brand, provider and unit-economics controls;
+- add multiple presentation templates and recommendation-video preparation for trademarks for sale;
+
+At WS-1.0 release time, MarkReg should already be running a meaningful subset of MR-1.5 with measurable real-use evidence.
+
 ## WS-1.0 — First Ordinary Workspace Release
 
 ### Release promise
@@ -47,6 +100,7 @@ A Workspace release is narrower and more conservative than the MarkReg Forward T
 WS-1.0 is the first version that an ordinary external Workspace can use for real day-to-day trademark business.
 
 Before WS-1.0 ships:
+
 - MarkReg must already run the WS-1.0 capability set in real operations;
 - MarkReg must have a forward capability reserve beyond WS-1.0;
 - 1–3 controlled ordinary Workspaces should be able to onboard without engineering intervention;
@@ -54,27 +108,14 @@ Before WS-1.0 ships:
 
 The external Workspace promise is:
 
-A professional trademark Workspace can onboard, manage customers and trademark work, prepare/send quotes, create/manage filing work, communicate with customers, track work/status and complete normal daily operations using the validated subset of MO capabilities.
-
-MarkReg simultaneously remains the reference operator for the direct-customer commercial loop:
-
-qualified overseas inquiry
-→ Customer
-→ Intake
-→ Qualification
-→ Quote
-→ Confirmation
-→ Materials
-→ Order/Matter
-→ Delivery Route
-→ Communication
-→ Evidence
-→ Delivery.
+A professional trademark Workspace can onboard, manage customers and trademark work, prepare/send quotes, create/manage filing work, configure and send supported system notifications, track notification delivery and work status, and complete normal daily operations using the validated subset of MO capabilities.
 
 ### Required product surfaces
 
 #### MO Control Center
+
 Minimum production control for:
+
 - MarkReg/reference Workspace and selected pilot Workspaces;
 - staff roles and access;
 - product profile/maturity/entitlement;
@@ -83,63 +124,94 @@ Minimum production control for:
 - Brain/Capability version, dependency and run visibility;
 - integration readiness and disablement;
 - Execution/MGSN/Payment operational inspection;
+- typed owner commands for the critical launch operations rather than a predominantly read-only console;
 - audit and recovery.
 
+Fine-grained Support/Finance/Security operator roles are not a WS-1.0 gate. Primary mutations may remain with an audited Platform Admin while other operators receive only bounded/read access; narrower specialist authority is a later control-plane release.
+
 #### Lite / MarkReg Operations
+
 Required:
-- Today / operations queue;
+
+- Today as a reminder/recommendation/required-action fast entry, not the only entry;
 - Customers;
-- Trademarks where needed by the first service;
-- Work;
+- Trademarks;
+- Work as the actionable queue;
+- Create;
+- Matters as the durable professional record;
 - Messages;
 - Quote and Filing workbenches;
 - materials/missing-information handling;
 - delivery/closure evidence.
 
-MarkReg receives the forward/dogfood Product Profile.
+WS-1.0 launches controlled Lite Free, Go and Plus Product Profiles. The exact feature, limit and price matrix requires approved commercial specification. Bundles may be included by those Profiles but are not independently priced launch products.
 
 WS-1.0 ordinary Workspace release should begin with a controlled external cohort rather than unrestricted scale. Broad GA is a later promotion decision, but WS-1.0 must already be usable by real non-MarkReg Workspaces.
 
-#### markreg.com
+#### Workspace Site
+
 Required:
-- responsive Web;
-- overseas direct-customer entry;
-- conversation-first, structure-backed intake;
-- Customer Account bound to MarkReg Site/Workspace;
-- quote/confirmation;
-- material submission/status;
-- customer-facing matter progress;
-- message/notification projection;
-- final delivery package.
+
+- Sites Mini Program Basic as the only ordinary Workspace Site Profile in WS-1.0;
+- Chinese-primary presentation with complete English functional coverage;
+- WeChat customer sign-in/account binding, WeChat Pay and WeChat notifications;
+- personal Customer Accounts with strictly Workspace/Site-scoped sessions and business relationships, with no Workspace switch or cross-Workspace discovery;
+- customer-facing service, trademark-for-sale and status projections backed by owner truth.
 
 ### Service scope
 
-Start with one Hero Filing Package and optionally one supporting package after a Service Package Selection Audit.
+Data-linked trademark coverage launches for China, the United States, Canada, the United Kingdom, the European Union, Australia, New Zealand and Singapore, with each jurisdiction independently gated by currentness and readiness.
 
-Do not make all jurisdictions a 1.0 requirement.
+Users may bulk-import trademark assets from any jurisdiction. An imported asset outside the active Data-linked set remains usable with explicit manual/unlinked provenance and must not be presented as Data Engine-current.
+
+Workspace pricing supports a versioned template download, conversational upload, validation preview and explicit publish. Application, change, assignment and renewal quotes may cover any country when pricing and a viable delivery route are confirmed; automatic/self-service quotation and Data Engine integration remain limited to admitted service/jurisdiction combinations.
 
 ### Fulfillment
 
-Support governed internal routing:
-- MarkReg self-operated/manual professional delivery;
-- MGSN handoff when applicable.
+Ordinary Workspace users may choose only:
+
+- Workspace self-delivery; or
+- governed delivery by MarkReg.
+
+They do not select an MGSN Provider directly in WS-1.0. MarkReg Provider selection belongs to MR-1.5 and direct Workspace-to-local-Provider delivery belongs to WS-2.0.
 
 External filing may remain human-operated if state, authority, evidence and receipt are durable.
 
 ### Payment
 
-Production payment automation is optional for 1.0 if not ready.
+Production online payment is required for the relevant launch channel: WeChat Pay for ordinary Workspace Mini Programs and the MR-1.0 providers defined above.
 
-Manual/off-platform payment is acceptable only through a governed Payment-owner evidence/reconciliation flow. No ad-hoc paid=true state.
+Governed manual/off-platform reconciliation may remain a degradation path, but it does not satisfy the online-payment release gate. No ad-hoc paid=true state is permitted.
+
+### Customer, asset and communication scope
+
+WS-1.0 includes:
+
+- invite-only Workspace onboarding with one organization-name binding whose verification status is recorded separately;
+- Workspace Admin control of membership, roles and Product-Profile-bounded user access;
+- governed WeChat binding and sign-in for China-facing Lite staff and customer users, subject to production account-linking and recovery acceptance;
+- Customer Relationships that may link multiple Applicants and Trademark Assets without collapsing Customer Account, Customer or Applicant identity;
+- Workspace-internal Formal Opportunities with explicit source and contacts, while Candidate remains distinct from Formal Opportunity;
+- system-to-user/customer in-product and email messages plus Mini Program WeChat notifications;
+- no ordinary-user proactive/two-way customer messaging beyond supported system flows;
+- basic text/image creation through a conversational creation flow;
+- minimal Workspace private-Knowledge upload/management with Pack version, usable amount, quota and freshness visibility;
+- versioned Brain resolved values/rules/estimates required by admitted launch services rather than unversioned constants;
+- Data Pack identities and entitlements that can distinguish jurisdiction, dataset family and version for admitted launch packs;
+- an explicit trademark-for-sale area, evidence-backed listing readiness, explainable AI label candidates, Mini Program list/detail, inquiry, offer and purchase-intent flows.
+
+Purchase intent is not completed sale or trademark transfer. End-to-end settlement remains gated by the accepted ownership/KYC/contract/payment/transfer design.
 
 ### AI/platform composition required in 1.0
 
 Must support:
+
 - versioned Product Profiles;
 - maturity levels;
 - Workspace entitlement;
 - basic Workspace Intelligence Profile bindings;
 - Brain/Capability/Knowledge/Data dependency visibility;
+- a bounded 1.0 Capability inventory derived from approved MarkReg/Lite jobs rather than technical inventory breadth;
 - provider disablement/degradation;
 - audit.
 
@@ -148,15 +220,19 @@ Must support:
 ### WS-1.0 explicit non-goals
 
 - broad Lite GA;
-- trademark marketplace;
+- full trademark marketplace, escrow or unproven transfer settlement;
 - full Trading Studio deep-build;
-- WeChat Mini Program as a release gate;
+- ordinary Workspace Web Site profile;
 - independent native Apps;
-- all jurisdictions;
+- all-jurisdiction Data Engine integration or automatic/self-service service delivery;
 - automatic official filing;
 - autonomous marketing at scale;
+- direct ordinary-Workspace MGSN Provider selection;
+- Stripe;
+- ordinary-user SMS, WeCom, broad two-way communication or proactive customer messaging;
 - generic Capability Center for ordinary Lite users;
 - unrestricted custom Brain composition;
+- ordinary Workspace BYOK/custom API keys;
 - multi-channel marketing matrix;
 - new horizontal platform domains without an active 1.0 journey need.
 
@@ -165,34 +241,45 @@ Must support:
 WS-2.0 begins after WS-1.0 external use plus MarkReg forward-track evidence demonstrate stable reusable product/operations patterns.
 
 Primary objectives:
+
 - 2+ real China agency Workspaces using validated Lite workflows;
 - production Customer/Quote/Filing/Messages reused beyond MarkReg;
-- Workspace-configurable Product Profiles and approved overlays;
-- Sites CN / Sites Global as supported profiles;
-- optional WeChat Mini Program where validated demand exists;
+- Lite Pro and Lite Business Product Profiles;
+- Sites Web Basic and Sites Mini Program Plus Product Profiles;
+- Workspace-configurable Product Profiles and approved overlays within admitted combinations;
 - broader jurisdiction/service packs;
-- Content production and Asset management promoted based on real use;
-- MarkReg Growth Operations with prepare/approve and bounded policy automation;
+- richer Content production and Asset management promoted from MarkReg evidence;
+- direct governed MGSN delivery from a Workspace to eligible local Providers;
+- narrower Support, Finance and Security control-plane roles after the 1.0 audited System Admin model;
+- Stripe for admitted Web Profiles, while preserving PayPal/WeChat Pay as channel policy permits;
+- broader two-way customer communication, SMS and WeCom where provider, consent and object-linking evidence are ready;
+- MarkReg-proven Growth Operations released selectively with prepare/approve and bounded policy automation;
 - capability bundles such as International Filing Pack and Creator Pack;
 - richer Workspace private Knowledge management;
+- a broader commercially packaged Data Pack catalog built on the 1.0 jurisdiction/dataset/version entitlement foundation;
+- broader production Brain assets and admitted Workspace overlays;
 - provider routing/fallback policies exposed safely to MO operators;
+- eligible Workspace BYOK plus paid MO-managed-key consumption with usage, budget, revocation and fallback controls;
 - usage-based limits/cost controls;
 - customer-development flows proven with consent/governance.
 
 Potential 2.0 candidates subject to validation:
+
 - Lite video production;
 - talking-head video;
 - digital-avatar video;
 - selected social publishing;
-- basic trademark-for-sale listing and inquiry flow;
-- second/third Site profile;
-- deeper mini-program customer interaction.
+- completed trademark-sale settlement after ownership/KYC/contracts/payment/refund/transfer validation;
+- cross-Workspace Opportunity sharing with explicit origin, recipient rights, consent, revocation and commercial terms;
+- multiple organization/legal-entity bindings per Workspace;
+- deeper Mini Program customer interaction.
 
 ## WS-3.0 — Composable Trademark Business Platform
 
 3.0 is the platform-scale phase, not a commitment to implement every listed item.
 
 Target capabilities:
+
 - custom Product Profile composition with validation/admission;
 - independent iOS/Android App profiles where commercially justified;
 - multi-channel Site delivery;
@@ -207,14 +294,30 @@ Target capabilities:
 - APIs for selected external partners;
 - reusable industry packs derived from proven MarkReg/Lite operations.
 
+## Research / unresolved product decisions
+
+The following require bounded evidence or an explicit three-director decision before implementation admission:
+
+- exact MFA factors, step-up/remembered-device behavior, recovery and WeChat account-conflict handling; 1.0 policy coverage for every released user type is already assigned;
+- whether a small reciprocal payment should verify only payment-account control, and what separate organization/KYC evidence is required;
+- exact Free/Go/Plus and Pro/Business feature, limit, price and upgrade matrices;
+- invoice type, tax responsibility, merchant entity and provider/currency readiness for each payment channel;
+- cross-Workspace Opportunity ownership, recipient operating rights, contact/consent basis, revocation and revenue-sharing economics;
+- the legal/commercial/fulfillment model for Buy Now, offer acceptance, settlement, refund and trademark transfer completion;
+- the Creator product/package boundary and the evidence required to promote video/avatar capabilities beyond MarkReg;
+- Data Pack catalog, entitlement and pricing taxonomy below jurisdiction level;
+- the first production Brain Asset catalog and validation/currentness thresholds for fees, timelines and procedures;
+- BYOK eligibility, secret/account binding, usage metering and the premium model for MO-managed keys.
+
 ## Parked until evidence
 
 The following are not assigned to a version merely because they are possible:
+
 - unrestricted autonomous filing;
 - unrestricted autonomous legal decisions;
 - generic wallet/escrow;
 - unbounded cross-Workspace identity/data fusion;
-- universal all-country launch;
+- universal all-country automatic/self-service launch;
 - drag-and-drop arbitrary Brain/Capability combinations without admission;
 - new provider-specific product forks.
 
