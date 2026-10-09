@@ -493,6 +493,14 @@ function assertCleanWorktree(repoRoot) {
   if (status) throw new GuardError('WORKTREE_NOT_CLEAN');
 }
 
+function resolvePullRequestHead(repoRoot, manifest) {
+  const upstreamArgs = ['rev-parse', '--abbrev-ref', '--symbolic-full-name', '@{upstream}'];
+  if (!gitSucceeds(repoRoot, upstreamArgs)) return manifest.branch;
+  const upstream = runGit(repoRoot, upstreamArgs);
+  const remotePrefix = `${manifest.remote}/`;
+  return upstream.startsWith(remotePrefix) ? upstream.slice(remotePrefix.length) : manifest.branch;
+}
+
 function validateManifestContext(repoRoot, manifest) {
   const branch = runGit(repoRoot, ['branch', '--show-current']);
   if (branch !== manifest.branch) {
@@ -641,6 +649,7 @@ async function loadFreshState(options, dependencies = {}) {
   validateManifestContext(repoRoot, manifest);
   assertCleanWorktree(repoRoot);
   const currentRemoteMainSha = fetchRemoteMain(repoRoot, manifest.remote, manifest.defaultBranch);
+  const pullRequestHead = resolvePullRequestHead(repoRoot, manifest);
   const inspector = dependencies.inspectConcurrentWork ?? inspectConcurrentWork;
   const concurrency = await concurrencyState(
     {
@@ -650,7 +659,7 @@ async function loadFreshState(options, dependencies = {}) {
       defaultBranch: manifest.defaultBranch
     },
     manifest.expectedScope,
-    manifest.branch,
+    pullRequestHead,
     inspector
   );
   if (concurrency.conflicts.length) {
