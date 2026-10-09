@@ -97,6 +97,24 @@ async function callCore(
   }
 }
 
+export async function resolveCurrentWorkspaceEntitlementV1(
+  request: JsonRequest,
+  options: GatewayWorkspaceCommercialOptionsV1,
+  actor: WorkspacePrincipal,
+  entitlementKey: string,
+  now: () => Date = () => new Date()
+) {
+  const evaluatedAt = now().toISOString();
+  const response = await callCore(
+    request,
+    options,
+    actor,
+    `/internal/workspaces/${encodeURIComponent(actor.workspaceId)}/commercial/entitlements/resolve`,
+    { subjectScope: 'WORKSPACE', entitlementKey, asOf: evaluatedAt }
+  );
+  return { evaluatedAt, response };
+}
+
 export function createGatewayWorkspaceCommercialRoutesV1(
   options: GatewayWorkspaceCommercialOptionsV1
 ): readonly JsonRoute[] {

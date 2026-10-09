@@ -84,6 +84,7 @@ import { createGatewayGovernanceSuperAdminRoutes } from './governance-super-admi
 import { createGatewayExecutionSuperAdminRoutes } from './execution-super-admin-http.js';
 import { createGatewayLiteSuperAdminRoutes } from './lite-super-admin-http.js';
 import { createGatewayProductLoopRoutes } from './product-loop-http.js';
+import type { USApplicantNameAdmissionOptions } from './data-engine-applicant-admission.js';
 import { createGatewayOutboundContactPolicyRoutes } from './outbound-contact-policy-http.js';
 import { createGatewayBusinessAttributionRoutes } from './business-attribution-http.js';
 import { createGatewayDataEngineRoutes } from './data-engine-product-http.js';
@@ -119,6 +120,7 @@ export interface GatewayOptions {
   dataEngineApiKey?: string;
   dataEngineTimeoutMs?: number;
   dataEngineFetchImpl?: typeof fetch;
+  usApplicantNameAdmission?: USApplicantNameAdmissionOptions;
   knowledgeUrl?: string;
   knowledgeTimeoutMs?: number;
   knowledgeFetchImpl?: typeof fetch;
@@ -725,6 +727,15 @@ export function createRuntime(options: GatewayOptions = {}) {
         }),
         ...createGatewayProductLoopRoutes({
           liteUrl,
+          ...(dataEngineUrl ? { dataEngineUrl } : {}),
+          ...(dataEngineApiKey ? { dataEngineApiKey } : {}),
+          ...(dataEngineTimeoutMs === undefined ? {} : { dataEngineTimeoutMs }),
+          ...(options.dataEngineFetchImpl
+            ? { dataEngineFetchImpl: options.dataEngineFetchImpl }
+            : {}),
+          ...(options.usApplicantNameAdmission
+            ? { usApplicantNameAdmission: options.usApplicantNameAdmission }
+            : {}),
           ...(authenticationClient ? { authenticationClient } : {}),
           ...((options.internalServiceSecret ?? process.env.MO_INTERNAL_SERVICE_SECRET)
             ? {
