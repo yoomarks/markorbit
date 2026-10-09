@@ -1,7 +1,7 @@
 # MarkOrbit Version Roadmap
 
 Status: CURRENT WORKING ROADMAP
-Effective date: 2026-10-08
+Effective date: 2026-10-09
 
 This roadmap is version-oriented rather than module-oriented. New ideas must be placed into a version, parked, or rejected. They do not become implementation work merely because they are technically attractive.
 
@@ -40,6 +40,53 @@ Naming convention: `WS-x.y`.
 This is the version ordinary Workspace users receive.
 
 A Workspace release is narrower and more conservative than the MarkReg Forward Track. It contains only capabilities already proven through MarkReg or an explicitly designated equivalent Reference Workspace.
+
+## Lite Creator release-line mapping
+
+`LC-x.y` is a scope label for Lite Creator maturity and product content. It is not a fourth global release train and does not bypass the Architecture, MarkReg or Workspace maturity rules.
+
+### LC-1.0 mapped to WS-1.0
+
+LC-1.0 is a bounded static-outcome slice. Its target-GA play set is:
+
+- application and quote decision outcomes;
+- trademark-for-sale commercialization outcomes;
+- rules and Knowledge outreach outcomes.
+
+Portfolio/deadline maintenance and OA/case-action explanation begin as governed MarkReg dogfood. `Target-GA` identifies the intended released set and does not claim that a play has already passed maturity promotion.
+
+LC-1.0 may prepare reviewed text, deterministic image layouts, cards, carousels, articles/SEO content, PDFs, Web/Mini Program pages and video scripts. It does not promise ordinary Workspace MP4 rendering, TTS, talking-head video, digital avatars or automatic external publication.
+
+### LC-1.5 mapped to MR-1.5
+
+LC-1.5 is a MarkReg Forward dogfood line, not an ordinary Lite release promise. It may prove:
+
+- template video for trademark-for-sale recommendations, Knowledge/process explanation and customer quote/proposal explanation;
+- user-supplied talking-head editing, captions, brand treatment and long-to-short preparation;
+- exact scene/shot revision, resumable batch production and rights/cost evidence;
+- an official-API-first, single-platform distribution and reconciliation pilot;
+- bounded digital-avatar samples where identity, consent and rights are explicit.
+
+Provider failure must degrade boundedly and preserve export of the approved source, static result, captions and already prepared evidence.
+
+### LC-2.0 mapped to WS-2.0
+
+LC-2.0 adds Workspace brand rules, Campaign planning, team review, reviewed-master derivation, selected official channel bindings, PublishReceipt/reconciliation and linkage from exact result versions to owner-backed outcomes such as Quote Confirmation, Inquiry, Offer, Formal Opportunity, Order or Matter.
+
+Video, voice and avatar functions enter an ordinary Workspace profile only after MarkReg/reference dogfood proves rights, quality, capacity, supportability and unit economics.
+
+### LC-3.0 mapped to WS-3.0
+
+LC-3.0 may use governed Data, Knowledge, Workspace assets, service capability and prior outcome evidence to propose versioned content programs, budget/channel choices, reuse and stopping recommendations, and bounded personalization. It does not authorize autonomous publication or cross-Workspace private-data reuse.
+
+### Creator cost rules across versions
+
+- reuse approved sources and assets before generating new material;
+- ordinary tasks may plan three directions but finalize one unless an approved play requires a broader comparison;
+- approve low-cost structure and preview before paid final generation;
+- cache exact reusable inputs/outputs and retry only failed batch items;
+- enforce Workspace, task and batch budgets;
+- record estimated and actual cost plus cost per approved result and per owner-backed qualified outcome.
 
 ## Shared 1.0 Foundation
 
@@ -88,7 +135,7 @@ Primary objectives:
 - let MarkReg select an eligible Provider through MGSN and give that Provider a bounded workspace for assigned orders, provider quotations/costs, acceptance and returns;
 - operate MarkReg Growth with Data Engine facts, Knowledge, MarkReg assets and service capacity feeding governed Opportunity Candidates, scoring/contact research and prepare/review/approve outreach;
 - keep unrestricted auto-send disabled until consent, complaint, conversion, cost and rollback evidence justify promotion;
-- dogfood talking-head, digital-avatar and Remotion/video production with identity, consent, brand, provider and unit-economics controls;
+- dogfood the LC-1.5 video, talking-head and bounded digital-avatar lines with identity, consent, brand, provider, rights and unit-economics controls;
 - add multiple presentation templates and recommendation-video preparation for trademarks for sale;
 
 At WS-1.0 release time, MarkReg should already be running a meaningful subset of MR-1.5 with measurable real-use evidence.
@@ -194,7 +241,7 @@ WS-1.0 includes:
 - Workspace-internal Formal Opportunities with explicit source and contacts, while Candidate remains distinct from Formal Opportunity;
 - system-to-user/customer in-product and email messages plus Mini Program WeChat notifications;
 - no ordinary-user proactive/two-way customer messaging beyond supported system flows;
-- basic text/image creation through a conversational creation flow;
+- LC-1.0 bounded static-outcome creation through one business-object-bound conversational workbench, with exact owner/source/version/currentness, structured review and owner-backed handoff;
 - minimal Workspace private-Knowledge upload/management with Pack version, usable amount, quota and freshness visibility;
 - versioned Brain resolved values/rules/estimates required by admitted launch services rather than unversioned constants;
 - Data Pack identities and entitlements that can distinguish jurisdiction, dataset family and version for admitted launch packs;
@@ -234,6 +281,9 @@ Must support:
 - unrestricted custom Brain composition;
 - ordinary Workspace BYOK/custom API keys;
 - multi-channel marketing matrix;
+- ordinary Workspace MP4, TTS, talking-head or digital-avatar production;
+- automatic external publishing or browser-cookie publication;
+- a universal Artifact service, owner or lifecycle;
 - new horizontal platform domains without an active 1.0 journey need.
 
 ## WS-2.0 — Validated Workspace Platform
@@ -248,7 +298,7 @@ Primary objectives:
 - Sites Web Basic and Sites Mini Program Plus Product Profiles;
 - Workspace-configurable Product Profiles and approved overlays within admitted combinations;
 - broader jurisdiction/service packs;
-- richer Content production and Asset management promoted from MarkReg evidence;
+- LC-2.0 Campaign, team review, richer Content production and owner-backed result management promoted from MarkReg evidence;
 - direct governed MGSN delivery from a Workspace to eligible local Providers;
 - narrower Support, Finance and Security control-plane roles after the 1.0 audited System Admin model;
 - Stripe for admitted Web Profiles, while preserving PayPal/WeChat Pay as channel policy permits;
@@ -293,6 +343,7 @@ Target capabilities:
 - advanced usage/billing models by Product/Pack/Capability/Channel;
 - APIs for selected external partners;
 - reusable industry packs derived from proven MarkReg/Lite operations.
+- governed LC-3.0 evidence-driven content programs and bounded personalization without autonomous publication.
 
 ## Research / unresolved product decisions
 
@@ -304,7 +355,7 @@ The following require bounded evidence or an explicit three-director decision be
 - invoice type, tax responsibility, merchant entity and provider/currency readiness for each payment channel;
 - cross-Workspace Opportunity ownership, recipient operating rights, contact/consent basis, revocation and revenue-sharing economics;
 - the legal/commercial/fulfillment model for Buy Now, offer acceptance, settlement, refund and trademark transfer completion;
-- the Creator product/package boundary and the evidence required to promote video/avatar capabilities beyond MarkReg;
+- Creator Video/Avatar Pack pricing, entitlement and unit-economics evidence required for promotion beyond MarkReg;
 - Data Pack catalog, entitlement and pricing taxonomy below jurisdiction level;
 - the first production Brain Asset catalog and validation/currentness thresholds for fees, timelines and procedures;
 - BYOK eligibility, secret/account binding, usage metering and the premium model for MO-managed keys.

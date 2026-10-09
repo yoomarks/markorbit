@@ -1,7 +1,7 @@
 # MarkOrbit Product Decision Log
 
 Status: ACTIVE
-Effective date: 2026-10-08
+Effective date: 2026-10-09
 
 This file records durable product-level decisions. Detailed implementation decisions may live elsewhere but must not contradict these entries.
 
@@ -302,3 +302,61 @@ Decision:
 - ordinary Workspace users do not receive custom API-key configuration in WS-1.0. MarkReg may use governed custom email/provider credentials. A later offering may support either Workspace-provided credentials or paid MO-managed credentials, subject to usage, privacy, cost and routing policy.
 
 Disposition: WS-1.0 governed consumption; MR-1.5 / FORWARD dogfood where assigned; later credential expansion
+
+## D-033 — Admit bounded Lite Creator into WS-1.0
+
+Decision:
+
+- Create is one directly addressable, business-object-bound workbench for preparing governed trademark-industry outcomes;
+- Lite Creator 1.0 enters WS-1.0 as a bounded static-outcome slice, not as a generic media studio;
+- Artifact, Render, Edit and Publish are internal preparation stages rather than independent user modules or truth owners;
+- Creator version assignment does not itself promote a play, Capability or implementation to a higher maturity level.
+
+Disposition: WS-1.0 bounded product scope
+
+## D-034 — Freeze the first Creator play set
+
+Decision:
+
+- the WS-1.0 target-GA Creator play set is limited to application/quote decision outcomes, trademark-for-sale commercialization outcomes and rules/knowledge outreach outcomes;
+- portfolio/deadline maintenance and OA/case-action explanation require governed MarkReg dogfood before broader release;
+- every play binds exact owner facts, source/currentness, target audience, CTA, cost policy and an owner-backed business outcome;
+- output count, engagement and AI scoring alone do not validate a play.
+
+`Target-GA` identifies the intended released play set. It does not claim that the play has already passed maturity promotion or release acceptance.
+
+Disposition: WS-1.0 target-GA play set; MR-1.5 dogfood for the named later plays
+
+## D-035 — Lite Creator 1.5 is a MarkReg maturity line
+
+Decision:
+
+- Lite Creator 1.5 maps to MR-1.5 MarkReg dogfood and is not an ordinary Workspace release promise;
+- template video, talking-head editing, recommendation video, digital-avatar samples, batch production and local scene revision remain entitlement-, rights-, quality-, capacity-, cost- and evidence-gated;
+- promotion into WS-2.0 requires an explicit maturity decision supported by real-use evidence;
+- a video or voice Provider failure must not prevent export of the approved source, static result, captions or already prepared evidence.
+
+Disposition: MR-1.5 / FORWARD; WS-2.0 candidate after evidence
+
+## D-036 — Creator results remain an owner-backed projection
+
+Decision:
+
+- the Creator results library aggregates authorized exact owner, identifier, version and fingerprint references;
+- ContentKit remains a bounded working projection over the existing Content lifecycle;
+- Quote, Document Package, Trading Listing, Media Artifact, PublishReceipt and other domain owners retain their own truth and lifecycle;
+- no universal Artifact table, service, owner or lifecycle is authorized.
+
+Disposition: permanent owner boundary
+
+## D-037 — Distribution is official-API-first and single-platform-first
+
+Decision:
+
+- governed distribution follows exact reviewed source, DistributionIntent, exact target/channel binding, human review/protected action, Execution, adapter, PublishReceipt and independent reconciliation;
+- MO advances one official-API platform pilot at a time;
+- WS-1.0 supports copy, download, export, open-platform handoff and explicit user confirmation without presenting those steps as verified publication;
+- China-platform automation remains RESEARCH until an approved official path or separately governed policy and security path exists;
+- browser cookies, browser form completion and user-reported use are not canonical publication evidence.
+
+Disposition: WS-1.0 manual handoff; MR-1.5 official-API pilot; selected WS-2.0 promotion after evidence

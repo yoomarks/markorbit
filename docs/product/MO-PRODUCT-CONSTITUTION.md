@@ -1,7 +1,7 @@
 # MarkOrbit Product Constitution
 
 Status: CURRENT WORKING BASELINE
-Effective date: 2026-10-08
+Effective date: 2026-10-09
 Authority: Product Director + Design Director + Technical Director, subject to Product Owner revision
 Scope: MarkOrbit platform, MO Control Center, Lite, Sites, markreg.com, shared owners and external integrations
 
@@ -54,6 +54,8 @@ Target first-level product vocabulary:
 These are working labels. The UI/Experience Design Director validates the final Chinese and English names before navigation lock; changing a label must not silently change the underlying Product-owned meaning.
 
 Today is a reminder/recommendation and quick-entry surface, not the only way into the product. Customers, Trademarks, Work, Create, Matters and Messages remain directly addressable and preserve deep-link/reload context.
+
+Create is one directly addressable, business-object-bound workbench for preparing governed trademark-industry outcomes. Artifact, Render, Edit and Publish are internal stages, not independent user modules or truth owners. Creator results are an authorized read projection over exact owner-backed objects and versions; they do not own Quote, Document Package, Trading Listing, Media Artifact, PublishReceipt or publication truth and must not become a universal Artifact service or lifecycle.
 
 Work is the actionable queue across business objects. Matters is the durable professional record for an accepted service or legal/professional work item. A task may point to a Matter, but the two surfaces must not become duplicate lists with indistinguishable ownership or lifecycle.
 
@@ -394,6 +396,9 @@ Product simplicity remains mandatory even when the architecture and MarkReg Forw
 - AI draft != protected action.
 - Payment != performance, authority, acceptance, Order, Matter, Filing, completion or Official Truth.
 - Purchase Intent or Payment != completed trademark transaction or rights transfer.
+- Creator result projection != owner truth.
+- Creator output count or engagement != verified business value.
+- Copy, export or user report != verified platform publication.
 - Source fact != legal conclusion.
 - Customer != Applicant.
 - Contact data != marketing consent.

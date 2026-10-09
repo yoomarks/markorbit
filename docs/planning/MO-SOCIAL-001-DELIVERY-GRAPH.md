@@ -112,7 +112,7 @@ official-API vertical slice.
 The first vertical slice should prove exactly:
 
 ```text
-exact MO Artifact / reviewed PublishPackage
+exact owner-backed Audio/Clip/Video Artifact or exact reviewed PublishPackage
         ↓
 DistributionIntent
         ↓

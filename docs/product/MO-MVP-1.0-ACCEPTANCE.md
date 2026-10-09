@@ -1,7 +1,7 @@
 # MarkOrbit MVP 1.0 Acceptance
 
 Status: ACTIVE RELEASE GATE
-Effective date: 2026-10-08
+Effective date: 2026-10-09
 
 ## 1. Commercial promise
 
@@ -139,6 +139,21 @@ The for-sale branch may start from a trademark listing and create an Inquiry, Of
 - A background preparation task performs evidence-bounded ownership-document screening and AI-assisted classification, category, audience and other listing labels. Users can see pending/ready/failed status, inspect and edit suggestions and retry failures; the task does not claim verified title without required evidence and human authority.
 - The Create conversation/workbench can use accepted labels as disclosed context to draft a trademark meaning, slogan, story and basic image assets. Generated text/image output remains a draft until user review; digital-presenter and Remotion video generation are not WS-1.0 gates.
 
+### Lite Creator 1.0
+
+- Create is directly addressable and can also open from an authorized Customer, Trademark, Quote, Matter, Opportunity, trademark-for-sale or Knowledge context without forcing the user through Today.
+- Every prepared result retains exact source owner, identifier, version, fingerprint and currentness where available. Conversation text does not become a fact source merely because the user or AI mentioned it.
+- The target-GA WS-1.0 play set produces reviewable static outcomes for:
+  - application/quote decisions, with exact Quote amount, currency, official/service fee separation, tax/invoice treatment, validity, assumptions, limits and material requirements;
+  - trademark-for-sale commercialization, with exact source trademark image, jurisdiction, class, status, price/transaction method and listing-readiness evidence, plus Mini Program list/detail and Inquiry/Offer/Purchase Intent handoff;
+  - rules/Knowledge outreach, with visible source, jurisdiction, version/as-of date, applicable scope and limitation in the prepared article, carousel, card, SEO page or related static result.
+- Portfolio/deadline maintenance and OA/case-action explanation are accepted first as MarkReg dogfood, not as automatically mature ordinary-Workspace plays.
+- Trademark images and high-risk identifiers, registration numbers, classes, prices and dates use deterministic source-backed layers. AI must not redraw the source trademark or generate those fields as uncontrolled image content.
+- Machine checks and an explicit human review bind to the exact result version. Approval may prepare an owner-backed next object or PublishPackage, but it does not prove external publication, transaction completion or rights transfer.
+- The Creator results library is a read projection over exact owner-backed references. It does not create a universal Artifact owner or advance Quote, Trading, Media or Distribution state.
+- WS-1.0 China-platform delivery is limited to copy, download, export, open-platform handoff and explicit user confirmation. A user-reported link or use result remains labelled user-reported unless an owning integration independently reconciles it.
+- Ordinary WS-1.0 does not require MP4, TTS, talking-head, digital-avatar or automatic external-publishing capability.
+
 ### Site Mini Program Basic and transactions
 
 - An ordinary Workspace can configure and publish its Sites Mini Program Basic without engineering intervention.
@@ -194,7 +209,10 @@ Release is blocked by:
 - a one-way channel presenting a reply control that cannot complete its promise;
 - production path requiring fixture data or normal operations requiring direct database edits;
 - unavailable critical functionality that cannot be disabled or safely degraded;
-- missing required Storybook states, visual-review evidence, Playwright critical path, backup/restore evidence or incident procedure.
+- missing required Storybook states, visual-review evidence, Playwright critical path, backup/restore evidence or incident procedure;
+- a Creator result that conflicts with its exact owner facts, hides stale/currentness limits or allows uncontrolled AI image content to alter a source trademark or other high-risk field;
+- a Creator projection that owns or advances Quote, Trading, Media or Distribution state;
+- copy, export, browser handoff or user-reported use presented as independently verified publication.
 
 ## 8. Operational targets
 
@@ -220,6 +238,7 @@ Key 1.0 operating metrics:
 - paid Matter count;
 - delivery completion;
 - for-sale listing → Inquiry/Offer/Purchase Intent conversion;
+- direct owner-backed handoff/conversion from an exact Creator result to Quote Confirmation, Inquiry, Offer or a qualified Opportunity; cross-channel, campaign and multi-touch attribution remain LC-2.0 work;
 - escape-to-manual-tool count.
 
 ## 9. Explicit non-gates
@@ -237,7 +256,10 @@ The following do not block 1.0 unless a later accepted decision changes this fil
 - multi-provider parity or ordinary Workspace provider selection;
 - MarkReg 1.5 provider order/price back office;
 - ordinary Lite two-way messaging, SMS or WeCom;
-- digital-presenter or Remotion video production;
+- ordinary Workspace MP4, TTS, talking-head or digital-avatar production;
+- multi-platform automatic publishing;
+- a universal Artifact platform or lifecycle;
+- LC-2.0 Campaign/attribution and LC-3.0 evidence-driven program planning;
 - multi-organization binding in one Workspace;
 - ordinary Workspace custom API keys;
 - full Product Builder.
