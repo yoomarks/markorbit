@@ -1,7 +1,8 @@
 # MO Trademark Lifecycle LCR-A0 — Owner, Contract, Rule Pack and Handoff Scope Lock
 
 - **Task ID:** LCR-A0
-- **Status:** REVIEW_READY_FOR_PRODUCT_OWNER_APPROVAL
+- **Status:** FROZEN
+- **Product Owner approval:** 2026-10-10
 - **Repository:** `yoomarks/markorbit`
 - **Baseline:** `2d9c2d25008eb3edf790165377379561886382a6`
 - **Primary product surface:** MO Lite Trademark Asset Workspace
@@ -51,7 +52,7 @@ This scope lock is derived from the repository's current authoritative projectio
 - existing shared contracts for Trademark Asset, asset composition, asset management, Domain Pack, Brain Method, Capability runtime and external Capability exposure;
 - the current non-canonical high-fidelity Lifecycle Rail prototype as experience evidence only; D-039 approves the direction, not the fixture model as a production contract.
 
-Books 01–07 and the accepted Capability Canon are referenced by repository policy but their exact source artifacts are not stored in this checkout. Before this specification is marked `FROZEN`, Product Owner approval must also attest that the repository decisions listed above are the controlling projection for this module, or provide the exact superseding source/version. This is an authority check, not a request to reopen D-039's product direction.
+Books 01–07 and the accepted Capability Canon are referenced by repository policy but their exact source artifacts are not stored in this checkout. On 2026-10-10, the Product Owner explicitly froze this exact LCR-A0 scope and confirmed that the repository decisions listed above are the current controlling projection for this module. A later superseding exact source/version requires an explicit change decision; it cannot silently alter this boundary.
 
 ## 3. Three-director ruling
 
@@ -607,9 +608,9 @@ LCR-A0 does not:
 
 ## 19. Admission consequence and next tasks
 
-Only an explicit Product Owner instruction marking this document's exact scope `APPROVED` or `FROZEN` may change its status, and that same instruction attests the source authority described in section 2 unless it supplies a superseding exact source/version. It admits only the detailed contract boundary, not A1 implementation, runtime or a Rule Pack.
+The Product Owner explicitly marked this document's exact scope `FROZEN` on 2026-10-10 and attested the source authority described in section 2. This admits only the detailed contract boundary, not A1 implementation, runtime or a Rule Pack.
 
-After that approval, work proceeds as separately bootstrapped tasks:
+Following this approval, work proceeds as separately bootstrapped tasks:
 
 1. **LCR-A1 — Shared semantic contracts and negative fixtures:** implement `TrademarkLifecycleProjectionV1`, `TrademarkLifecycleReadResultV1`, the privacy-safe response union, legal state combinations and the promoted shared source-read vocabulary/parser without persistence or UI rewiring.
 2. **LCR-A2 — First exact Rule Pack/source admission and computation contracts:** define `TrademarkLifecycleComputationInputV1` / `TrademarkLifecycleComputationOutputV1`, then select one exact jurisdiction + authority + procedure + basis slice based on available evidence and admit its source/Rule/Method path and professional responsibility.
