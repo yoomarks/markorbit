@@ -137,6 +137,7 @@ Primary objectives:
 - keep unrestricted auto-send disabled until consent, complaint, conversion, cost and rollback evidence justify promotion;
 - dogfood the LC-1.5 video, talking-head and bounded digital-avatar lines with identity, consent, brand, provider, rights and unit-economics controls;
 - add multiple presentation templates and recommendation-video preparation for trademarks for sale;
+- dogfood a 12-month Trademark Portfolio Timeline, 30/60/90-day Upcoming Actions and admitted maintenance coverage, recording missed actions, false positives, professional corrections, operator load, source freshness and per-asset cost before ordinary-Workspace promotion;
 
 At WS-1.0 release time, MarkReg should already be running a meaningful subset of MR-1.5 with measurable real-use evidence.
 
@@ -183,6 +184,7 @@ Required:
 - Today as a reminder/recommendation/required-action fast entry, not the only entry;
 - Customers;
 - Trademarks;
+- a two-layer Trademark Lifecycle Rail on admitted asset details plus a compact, textual current/next/risk cue in asset lists;
 - Work as the actionable queue;
 - Create;
 - Matters as the durable professional record;
@@ -246,6 +248,7 @@ WS-1.0 includes:
 - the bounded D-032 reference-output obligation for admitted launch services, resolved through admitted Brain Methods and the existing Core/Capability materialization path rather than unversioned constants or a second Brain-owned source store; this does not admit the I-032 catalog, a case-specific DecisionPath job or the B1.0–B3.0 proposal;
 - Data Pack identities and entitlements that can distinguish jurisdiction, dataset family and version for admitted launch packs;
 - an explicit trademark-for-sale area, evidence-backed listing readiness, explainable AI label candidates, Mini Program list/detail, inquiry, offer and purchase-intent flows.
+- a D-039 Trademark Lifecycle projection for US, EUIPO, Singapore, the Philippines and China as five independently admitted WS-1.0 Rule Pack targets. Each declared scope requires source/evidence location, rule version and effective window, applicable basis/procedure, positive and negative fixtures, professional-review responsibility and explicit limited/manual/unavailable degradation. The Philippines remains outside the D-029 Data-linked set unless separately approved, and its rail must not imply Data Engine currentness.
 
 Purchase intent is not completed sale or trademark transfer. End-to-end settlement remains gated by the accepted ownership/KYC/contract/payment/transfer design.
 
@@ -259,6 +262,7 @@ Must support:
 - basic Workspace Intelligence Profile bindings;
 - Brain/Capability/Knowledge/Data dependency visibility;
 - a bounded 1.0 Capability inventory derived from approved MarkReg/Lite jobs rather than technical inventory breadth;
+- the narrow read-only `TrademarkLifecycleRailProjectionV1` result contract and `PROJECT_TRADEMARK_LIFECYCLE` CapabilityRequirement. Drawing/rendering is a deterministic Skill/Action over the semantic projection; page rendering must not use a live LLM to invent milestones, dates, confidence or action eligibility;
 - provider disablement/degradation;
 - audit.
 
@@ -272,6 +276,8 @@ Must support:
 - ordinary Workspace Web Site profile;
 - independent native Apps;
 - all-jurisdiction Data Engine integration or automatic/self-service service delivery;
+- complete lifecycle rules for every jurisdiction, front-end-hardcoded country timelines, or any certified deadline without an admitted exact source, rule basis, currentness and responsible review;
+- milestone selection that automatically creates formal work, authorizes or executes a protected action, or marks an official result complete;
 - automatic official filing;
 - autonomous marketing at scale;
 - direct ordinary-Workspace MGSN Provider selection;
@@ -298,6 +304,7 @@ Primary objectives:
 - Sites Web Basic and Sites Mini Program Plus Product Profiles;
 - Workspace-configurable Product Profiles and approved overlays within admitted combinations;
 - broader jurisdiction/service packs;
+- Portfolio Timeline, 30/60/90-day Upcoming Actions and additional independently admitted Trademark Lifecycle Rule Packs promoted only after MR-1.5 missed-action, false-positive, correction, operator-load and cost evidence;
 - LC-2.0 Campaign, team review, richer Content production and owner-backed result management promoted from MarkReg evidence;
 - direct governed MGSN delivery from a Workspace to eligible local Providers;
 - narrower Support, Finance and Security control-plane roles after the 1.0 audited System Admin model;
@@ -343,6 +350,7 @@ Target capabilities:
 - advanced usage/billing models by Product/Pack/Capability/Channel;
 - APIs for selected external partners;
 - reusable industry packs derived from proven MarkReg/Lite operations.
+- advisory Lifecycle Intelligence for comparable-cohort speed, abnormal delay and portfolio patterns, with explainable baselines and no official forecast or legal promise.
 - governed LC-3.0 evidence-driven content programs and bounded personalization without autonomous publication.
 
 ## M21 Brain maturity proposal — CHANGE_REQUESTED / IN_REVIEW
@@ -368,6 +376,7 @@ The following require bounded evidence or an explicit three-director decision be
 - the legal/commercial/fulfillment model for Buy Now, offer acceptance, settlement, refund and trademark transfer completion;
 - Creator Video/Avatar Pack pricing, entitlement and unit-economics evidence required for promotion beyond MarkReg;
 - Data Pack catalog, entitlement and pricing taxonomy below jurisdiction level;
+- per-jurisdiction Lifecycle Rule Pack authority and licensing, procedure/status mapping, effective-date and time-zone treatment, deadline-review responsibility, negative-fact completeness, prediction calibration and professional-review admission for US, EUIPO, Singapore, the Philippines and China;
 - the first production Brain reference-and-method catalog, including its real consumer, first job, jurisdiction/service scope, admitted method, reference dependencies, DecisionPath contract, currentness, professional-review responsibility and full-cost evidence;
 - the first substantive OA method family, if any, after extraction/comparison-only work;
 - the sharing license, permission, anonymization and revocation rules for private Workspace SOPs, cases and Creator feedback;

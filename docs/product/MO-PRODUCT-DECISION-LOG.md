@@ -373,3 +373,19 @@ Decision:
 - the attached Brain research archive and proposed B1.0–B3.0 line are selectively absorbed as research input. They do not approve a first job, jurisdiction/service scope, substantive OA family, professional-review responsibility, private-feedback license or runtime implementation.
 
 Disposition: permanent architecture guardrails for ownership, method lifecycle, history pinning and DecisionPath; D-032 reference-output admission unchanged; M21 detailed roadmap remains CHANGE_REQUESTED / IN_REVIEW
+
+## D-039 — Trademark Lifecycle is a core asset-management projection and Capability requirement
+
+Decision:
+
+- WS-1.0 adopts Trademark Lifecycle as a core M10 asset-management experience: a two-layer Lifecycle Rail on each admitted asset plus a compact current/next cue in asset lists. It is a lifecycle rail, not a percentage progress bar, and registration is not an endpoint where admitted post-registration obligations exist;
+- the current procedural phase, the time cursor or “today”, and an Action Required milestone are separate concepts. The projection keeps progress state, timing/assertion class, source/currentness/conflict state and action state separate rather than overloading one status;
+- source-recorded facts, professionally reviewed deadlines, admitted rule windows, estimates and typical ranges remain visibly distinct. An estimate or historical range cannot be styled, labelled or spoken as an official date or legal promise;
+- a negative fact such as “0 oppositions” is allowed only when an admitted source read is complete for the stated scope and displays its source, as-of time and currentness. `NOT_OBSERVED`, `NOT_COVERED`, `PARTIAL` and `UNAVAILABLE` never become zero;
+- US, EUIPO, Singapore, the Philippines and China are independent WS-1.0 Rule Pack targets. Each pack, procedure, milestone, date and action scope requires its own source, rule-version, effective-window, fixture, professional-review and degradation admission. The Philippines does not expand D-029's eight Data-linked jurisdictions and remains manual, limited or unavailable where no owner-backed source path is admitted;
+- M10/Lite aggregates authorized asset/source/action references and presents the rail. MarkReg retains professional lifecycle semantics and rule assessment; existing Data, Knowledge, Work, Matter, Capability and Execution owners retain their authority. The first slice reuses existing contracts and `DomainPackV1` exact references and does not create a second Rule Registry, fact store, event system or front-end-hardcoded country timeline;
+- M22 records a stable-outcome candidate named `PROJECT_TRADEMARK_LIFECYCLE` / `trademark.lifecycle.project`, producing a narrow, deterministic, bilingual and accessible semantic projection. Drawing or rendering the rail is a Skill/Action/implementation that consumes that projection; it is not a separate professional Capability, rule owner or truth source and cannot invent milestones, dates, confidence or CTA eligibility;
+- selecting a milestone may reveal evidence or deep-link to an eligible existing workbench. It does not automatically create a Work or Matter, grant authority, submit a filing, execute an external action or mark a milestone complete. Completion requires reconciliation by the owning source, professional review or an admitted Execution/official receipt;
+- the per-asset rail belongs to M10/M22 WS-1.0. Portfolio Timeline and 30/60/90-day Upcoming Actions begin as MR-1.5 MarkReg dogfood and may reach WS-2.0 after evidence; comparative Lifecycle Intelligence is a WS-3.0 advisory candidate. D-034's portfolio/deadline Creator content play remains MR-1.5 and is not promoted by this decision.
+
+Disposition: D-039 product direction and WS-1.0 per-asset/list scope APPROVED; every Rule Pack and runtime implementation remains separately admission-gated; MR-1.5 portfolio dogfood, WS-2.0 promotion and WS-3.0 comparative intelligence

@@ -135,6 +135,15 @@ The for-sale branch may start from a trademark listing and create an Inquiry, Of
 - Customer records use the Workspace short code plus a unique sequential/reference number, while retaining an immutable internal identifier.
 - A Lite customer's CustomerAccount can be granted multiple Applicant relationships; staff co-management of an Applicant or trademark uses explicit scoped grants.
 - Trademark assets support bulk import from any jurisdiction. The eight accepted Data-linked jurisdictions show linked status; every other jurisdiction remains usable with an explicit unlinked/limited state.
+- Every admitted asset detail shows a concise two-layer Trademark Lifecycle Rail: a default phase view and an expandable jurisdiction/procedure milestone view. Asset lists show a compact textual current-stage and next-item/risk cue; neither surface implies percentage completion.
+- Registration is not treated as the endpoint where the admitted Rule Pack contains maintenance, declaration or renewal obligations.
+- Source-recorded facts, professionally reviewed deadlines, admitted rule windows, estimates and typical ranges are visually, textually and semantically distinct. The current phase, the “today” time cursor and an Action Required milestone remain separate and do not rely on color alone.
+- Milestone details expose the exact source/evidence locator, as-of and recent-sync information, Rule Pack/version/effective window, applicability, currentness, missing inputs, conflicts and limitations. Predictions also expose their method/as-of basis and never use official/deadline language.
+- US, EUIPO, Singapore, the Philippines and China are independently accepted for their declared WS-1.0 Rule Pack scopes. An unadmitted procedure or missing source degrades visibly to limited, manual, not covered or unavailable; the Philippines must not be presented as Data-linked without a later D-029 change.
+- A negative fact or zero count is shown only when the admitted source read is complete for the stated scope and displays source, as-of and currentness. `NOT_OBSERVED`, `NOT_COVERED`, `PARTIAL` and `UNAVAILABLE` are not rendered as zero or “no event”.
+- Selecting an Action Milestone opens evidence or deep-links into the correct authorized workbench while preserving asset and milestone context. It does not by itself create a Work/Matter, authorize a filing, execute an external action or certify completion.
+- Desktop supports the concise horizontal/two-layer view; 390px and Mini Program use an accessible collapsible or vertical representation. Chinese-primary and complete English labels, semantic list structure, keyboard/focus behavior, screen-reader names, 200% text/zoom resilience and non-color status cues pass acceptance.
+- The rail renders deterministically from a versioned semantic projection and remains usable in an admitted no-prediction degradation mode; opening an asset page does not require a live LLM call.
 - Trademarks includes a separate 待售商标 / Trademarks for Sale area for inventory, listing readiness, inquiries, offers and transaction follow-up.
 - A background preparation task performs evidence-bounded ownership-document screening and AI-assisted classification, category, audience and other listing labels. Users can see pending/ready/failed status, inspect and edit suggestions and retry failures; the task does not claim verified title without required evidence and human authority.
 - The Create conversation/workbench can use accepted labels as disclosed context to draft a trademark meaning, slogan, story and basic image assets. Generated text/image output remains a draft until user review; digital-presenter and Remotion video generation are not WS-1.0 gates.
@@ -213,6 +222,11 @@ Release is blocked by:
 - a Creator result that conflicts with its exact owner facts, hides stale/currentness limits or allows uncontrolled AI image content to alter a source trademark or other high-risk field;
 - a Creator projection that owns or advances Quote, Trading, Media or Distribution state;
 - copy, export, browser handoff or user-reported use presented as independently verified publication.
+- a lifecycle estimate, typical range or internal due date presented as an official date or certified legal deadline;
+- a lifecycle deadline without an admitted exact source, rule version/effective window, applicability and responsible review;
+- a zero/negative lifecycle fact without complete-read evidence, or an unlinked/unsupported source presented as current official status;
+- jurisdiction rules hard-coded in the browser, a renderer or live model output that invents milestones, dates, confidence or CTA eligibility;
+- a lifecycle CTA that bypasses permission/currentness/entitlement checks, creates duplicate formal work or executes a protected action without explicit review and authorization.
 
 ## 8. Operational targets
 
@@ -250,6 +264,8 @@ The following do not block 1.0 unless a later accepted decision changes this fil
 - Stripe;
 - full public multi-Workspace marketplace, custody/escrow, KYC or settlement;
 - automated official filing in every country or all-country Data Engine linkage;
+- complete Lifecycle Rule Packs for every jurisdiction; WS-1.0 gates only the separately declared scopes for the US, EUIPO, Singapore, the Philippines and China;
+- ordinary-Workspace Portfolio Timeline, 30/60/90-day Upcoming Actions or comparative Lifecycle Intelligence, which remain MR-1.5 dogfood and WS-2.0/WS-3.0 candidates;
 - broad Lite general availability;
 - unrestricted automatic marketing;
 - advanced Brain authoring or a generic Capability Center;

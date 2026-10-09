@@ -61,6 +61,8 @@ Work is the actionable queue across business objects. Matters is the durable pro
 
 Quote, Filing and other functions are primarily actions/workbenches reached from the relevant object or task rather than mandatory top-level navigation. Trademarks includes a clearly separated trademark-for-sale inventory rather than hiding sale work inside a generic portfolio.
 
+Trademark Lifecycle is an owner-backed, read-only asset-management projection that helps a user understand the current stage, the next relevant matter and the basis of any related time. It continues through admitted post-registration obligations where applicable. The projection may organize source facts, admitted rule assessments, predictions and action references, but it does not create Official Truth, certify a legal deadline, mutate formal state or authorize execution.
+
 MarkReg staff use Lite. MarkReg may receive additional pilot entitlements such as Growth Operations.
 
 ### Sites
@@ -408,6 +410,7 @@ Product simplicity remains mandatory even when the architecture and MarkReg Forw
 - Creator output count or engagement != verified business value.
 - Copy, export or user report != verified platform publication.
 - Source fact != legal conclusion.
+- Lifecycle projection != Official Truth, certified deadline, formal-state mutation or execution authority.
 - Customer != Applicant.
 - Contact data != marketing consent.
 - Site != Customer/Order/Matter owner.
