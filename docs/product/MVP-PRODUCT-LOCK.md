@@ -3,6 +3,7 @@
 > Superseded for current product planning by the 2026-10-07 MarkOrbit product rebaseline.
 >
 > Current authority:
+>
 > - MO-PRODUCT-CONSTITUTION.md
 > - MO-VERSION-ROADMAP.md
 > - MO-PRODUCT-GOVERNANCE.md
