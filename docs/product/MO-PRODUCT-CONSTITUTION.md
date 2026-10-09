@@ -85,7 +85,7 @@ Sites may vary by Product Profile:
 
 WS-1.0 includes a bounded WeChat Mini Program Basic profile for ordinary Workspaces. A reusable Workspace Web Basic profile and richer mini-program editions belong to later release decisions.
 
-`OWNER_CONFIRMATION_REQUIRED`: whether MO-managed runtime and controlled publishing is the only supported dynamic WS-1.0 Sites deployment mode, with the Workspace retaining its channel account, legal subject, AppID, merchant account and domain, and with no downloadable full dynamic backend or customer-operated server in 1.0. The three-director recommendation is to approve this model.
+MO-managed runtime and controlled publishing is the only supported dynamic WS-1.0 Sites deployment mode. The Workspace retains its channel account, certified legal subject, AppID, merchant account and domain and grants only the authority needed for configuration, build, submission and upgrade. A signed thin-client build may be handed off for channel submission and static exports remain available, but WS-1.0 does not ship a full dynamic backend or support a customer-operated server. Enterprise self-hosting remains a later Business/Ultimate research candidate.
 
 ### markreg.com
 
@@ -423,6 +423,8 @@ Product simplicity remains mandatory even when the architecture and MarkReg Forw
 - AI draft != protected action.
 - Payment != performance, authority, acceptance, Order, Matter, Filing, completion or Official Truth.
 - Purchase Intent or Payment != completed trademark transaction or rights transfer.
+- Accepted commercial terms != Order, Payment, Transfer Matter, completed transaction or rights transfer.
+- Internally admitted Trading Listing != successful Site or Mini Program delivery.
 - Creator result projection != owner truth.
 - Creator output count or engagement != verified business value.
 - Copy, export or user report != verified platform publication.

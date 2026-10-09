@@ -138,6 +138,8 @@ Primary objectives:
 - keep unrestricted auto-send disabled until consent, complaint, conversion, cost and rollback evidence justify promotion;
 - dogfood the LC-1.5 video, talking-head and bounded digital-avatar lines with identity, consent, brand, provider, rights and unit-economics controls;
 - add multiple presentation templates and recommendation-video preparation for trademarks for sale;
+- dogfood the full Trading Commercial Value Map, three distinct commercial directions with six finished proposals, selected-direction application build, buyer brief and 2–4-item shortlist, private recommendation/light white label and evidence-labelled listing-price references;
+- compare fact-only, commercial-explanation, reviewed-visual and optional-video variants against qualified buyer intent, handling time, serious misstatement and total usable-output cost rather than views or generated-asset count alone;
 - dogfood a 12-month Trademark Portfolio Timeline, 30/60/90-day Upcoming Actions and admitted maintenance coverage, recording missed actions, false positives, professional corrections, operator load, source freshness and per-asset cost before ordinary-Workspace promotion;
 
 At WS-1.0 release time, MarkReg should already be running a meaningful subset of MR-1.5 with measurable real-use evidence.
@@ -210,7 +212,7 @@ Required:
 - personal Customer Accounts with strictly Workspace/Site-scoped sessions and business relationships, with no Workspace switch or cross-Workspace discovery;
 - customer-facing service, trademark-for-sale and status projections backed by owner truth.
 
-`OWNER_CONFIRMATION_REQUIRED`: confirm whether MO-managed runtime and controlled publishing is the only supported dynamic WS-1.0 Sites deployment mode. Under the recommended model the Workspace retains its channel account, certified subject, AppID, merchant account and domain, and WS-1.0 does not ship a full dynamic backend package or support a customer-operated server.
+D-041 confirms MO-managed runtime and controlled publishing as the only supported dynamic WS-1.0 Sites deployment mode. The Workspace retains its channel account, certified subject, AppID, merchant account and domain. A signed thin-client build may be handed off for channel submission and static exports remain available, but WS-1.0 does not ship a full dynamic backend package or support a customer-operated server.
 
 ### Service scope
 
@@ -255,7 +257,11 @@ WS-1.0 includes:
 - minimal Workspace private-Knowledge upload/management with Pack version, usable amount, quota and freshness visibility;
 - the bounded D-032 reference-output obligation for admitted launch services, resolved through admitted Brain Methods and the existing Core/Capability materialization path rather than unversioned constants or a second Brain-owned source store; this does not admit the I-032 catalog, a case-specific DecisionPath job or the B1.0–B3.0 proposal;
 - Data Pack identities and entitlements that can distinguish jurisdiction, dataset family and version for admitted launch packs;
-- an explicit trademark-for-sale area, evidence-backed listing readiness, explainable AI label candidates, Mini Program list/detail, inquiry, offer and purchase-intent flows.
+- an explicit trademark-for-sale area with observable sale-readiness preparation, seller-authority evidence gaps and blockers, explainable AI label candidates and exact-version Listing draft/review;
+- one reliable reviewed presentation path that separates canonical facts, seller declarations, reviewed evidence, `REAL ASSET`, AI inference and `POSSIBLE FUTURE`, without requiring complete Trading Studio Deep Build;
+- governed delivery to the Workspace's MO-managed Mini Program Basic with target-specific success, failure, unknown, pause and revocation evidence distinct from internal Listing admission;
+- three distinct durable buyer-intent flows—Inquiry, Offer and Purchase Intent—bound to the exact Listing version and connected to the shared Contact Library and Workspace Work. Fixed Price creates Purchase Intent, and accepted Offer means accepted commercial terms only;
+- sale metrics based on authorized-listing completion, qualified intent, time to first qualified intent, follow-up outcome, serious misstatement and total usable-output cost rather than generation volume, views or Favorites alone.
 - a D-039 Trademark Lifecycle projection for US, EUIPO, Singapore, the Philippines and China as five independently admitted WS-1.0 Rule Pack targets. Each declared scope requires source/evidence location, rule version and effective window, applicable basis/procedure, positive and negative fixtures, professional-review responsibility and explicit limited/manual/unavailable degradation. The Philippines remains outside the D-029 Data-linked set unless separately approved, and its rail must not imply Data Engine currentness.
 
 Purchase intent is not completed sale or trademark transfer. End-to-end settlement remains gated by the accepted ownership/KYC/contract/payment/transfer design.
@@ -281,6 +287,8 @@ Must support:
 - broad Lite GA;
 - full trademark marketplace, escrow or unproven transfer settlement;
 - full Trading Studio deep-build;
+- numerical AI valuation, automatic repricing, historical run/commission pricing or complete Trading Transaction Room;
+- collection of the trademark purchase price, automatic creation of an Order/Transfer Matter from accepted terms, or any claim that Payment completes a sale or changes ownership;
 - ordinary Workspace Web Site profile;
 - independent native Apps;
 - all-jurisdiction Data Engine integration or automatic/self-service service delivery;
@@ -327,6 +335,8 @@ Primary objectives:
 - eligible Workspace BYOK plus paid MO-managed-key consumption with usage, budget, revocation and fallback controls;
 - usage-based limits/cost controls;
 - customer-development flows proven with consent/governance.
+- bounded trading inventory batches, team review and versioned Offer/Counter/accepted-commercial-terms work, plus a Transaction Workspace projection over existing Agreement, Order, Payment, Matter, Provider and evidence owners;
+- trademark-sale Order/collection/refund/settlement/Transfer execution only after their contracting-party, authority, professional-review and dispute gates are separately admitted.
 
 Potential 2.0 candidates subject to validation:
 
@@ -355,6 +365,7 @@ Target capabilities:
 - large-scale cross-jurisdiction data/knowledge packs;
 - mature Growth automation with policy control;
 - trading/marketplace capability if ownership/KYC/contracts/payment/transfer fulfillment are proven;
+- opt-in cross-Workspace trademark supply/demand with duplicate-asset, authorization, revocation, relationship-owner, dispute and settlement governance; escrow, auction, portfolio sale and cross-border trading remain independent trials rather than bundled defaults;
 - advanced usage/billing models by Product/Pack/Capability/Channel;
 - APIs for selected external partners;
 - reusable industry packs derived from proven MarkReg/Lite operations.
@@ -372,11 +383,9 @@ B1.0–B3.0 are proposed M21 module-maturity labels, not a fourth product releas
 
 The proposal remains blocked from approval until the Product Owner selects the first job and scope and assigns case-specific professional-review responsibility. Exact sample sizes, quality thresholds, prices and cost figures in research material are experiment hypotheses, not release commitments.
 
-## Product Owner confirmation required
+## Current Product Owner confirmation status
 
-Only one current D-040 Product Owner choice remains:
-
-- M07: confirm MO-managed runtime and controlled publishing as the only supported dynamic WS-1.0 Sites mode. The Workspace retains its channel account, certified subject, AppID, merchant account and domain; WS-1.0 does not ship a full dynamic backend package or support a customer-operated server. Three-director recommendation: approve.
+D-041 resolves the former M07 hosting choice and records the M18 release route. No additional Product Owner product-direction choice is required to begin the TR-00 audit or the bounded WS-1.0 for-sale intent loop. M21 remains `CHANGE_REQUESTED / IN_REVIEW` until the Product Owner selects its first bounded Brain job, scope and professional-review responsibility.
 
 ## Research / unresolved product decisions
 
@@ -388,7 +397,8 @@ The following require bounded evidence or an explicit three-director decision be
 - exact feature, limit, price, upgrade, downgrade and grandfathering matrices for the locked Free/Go/Plus/Pro/Business public names and MarkReg Ultimate;
 - exact invoice type, tax rate and responsibility, issuing entity and provider/currency readiness for each payment channel; Invoice Request and versioned Tax Rule handling are already assigned to 1.0;
 - cross-Workspace Opportunity ownership, recipient operating rights, contact/consent basis, revocation and revenue-sharing economics;
-- the legal/commercial/fulfillment model for Buy Now, offer acceptance, settlement, refund and trademark transfer completion;
+- contracting-party/broker/service-provider roles, commission or service-fee model, collection authority, settlement, refund, dispute and transfer-completion policy for a true trademark sale; these are WS-2.0/external gates and do not return the WS-1.0 intent loop to pending;
+- seller-authority evidence and each admitted jurisdictional Transfer Rule Pack, including related-mark, multi-owner, licence, pledge/freeze, status/currentness and professional-review obligations;
 - Creator Video/Avatar Pack pricing, entitlement and unit-economics evidence required for promotion beyond MarkReg;
 - Data Pack catalog, entitlement and pricing taxonomy below jurisdiction level;
 - per-jurisdiction Lifecycle Rule Pack authority and licensing, procedure/status mapping, effective-date and time-zone treatment, deadline-review responsibility, negative-fact completeness, prediction calibration and professional-review admission for US, EUIPO, Singapore, the Philippines and China;

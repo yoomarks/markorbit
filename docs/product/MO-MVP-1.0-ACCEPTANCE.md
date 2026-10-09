@@ -168,12 +168,17 @@ The for-sale branch may start from a trademark listing and create an Inquiry, Of
 
 ### Site Mini Program Basic and transactions
 
-`OWNER_CONFIRMATION_REQUIRED`: freeze whether the accepted WS-1.0 dynamic deployment is MO-managed runtime plus controlled publishing, with the Workspace retaining its channel account, certified subject, AppID, merchant account and domain, and with no full dynamic self-hosted package or customer-operated server. Until resolved, the M07 hosting acceptance subsection is not frozen. The three-director recommendation is approval.
+D-041 freezes MO-managed runtime plus controlled publishing as the only supported dynamic WS-1.0 Sites mode. The Workspace retains its channel account, certified subject, AppID, merchant account and domain. Static exports and a signed thin-client build handoff may be supported, but no full dynamic self-hosted package or customer-operated server is offered in WS-1.0.
 
 - An ordinary Workspace can configure and publish its Sites Mini Program Basic without engineering intervention.
 - The Mini Program supports shareable for-sale trademark list and detail pages and direct customer entry into Buy, Inquiry and Offer actions.
+- A Listing cannot be made public until the exact Trademark Asset, Commerce Profile, seller-authority evidence assessment, public assets, price/method and review version are current. A source change, authority revocation or conflict fails closed and requires re-review.
+- The public detail distinguishes canonical trademark facts, seller declarations, reviewed authority evidence, actual included assets, AI commercial inference and AI concept visualizations. `REAL ASSET` and `POSSIBLE FUTURE` remain understandable without relying on colour alone; no unverified market-value, ownership or business-performance claim is shown.
+- Internal Listing admission and external channel delivery are separate. Each target records submitted, succeeded, failed, unknown, paused or revoked behavior with a durable receipt/reconciliation path; `UNKNOWN` never renders as published and does not trigger an uncontrolled duplicate submission.
 - Accepted Mini Program checkout uses WeChat Pay under the Workspace's approved merchant/collection configuration and shows amount, currency, payee, tax/invoice treatment and reconciliation state before and after payment. An admitted service-order checkout can satisfy the WS-1.0 channel payment gate; collecting money for a trademark sale additionally requires the approved seller-authority, contracting, refund and transfer policy.
-- The fixed-price Buy action creates a traceable Purchase Intent; Inquiry and Offer create traceable negotiation records. The Buy confirmation and receipt state the next step and never imply a completed sale or ownership transfer. Purchase Intent may convert to an Order only through a separate explicit policy/evidence gate. Any later Payment advances only its Payment and reconciliation state, and creating or advancing a transfer Matter is another explicit, evidence-gated transition.
+- The fixed-price Buy action creates a traceable Purchase Intent; Inquiry and Offer create distinct durable records. Each binds the exact Listing version, Workspace, actor/contact context and idempotency key and supports its applicable acknowledgement, assignment, withdrawal, rejection, counter, expiry and closure states without using BuyerBehavior as the business owner.
+- The Buy confirmation and receipt state the next step and never imply a completed sale or ownership transfer. Accepted Offer means accepted commercial terms only. Purchase Intent or accepted terms may convert to an Order only through a separate explicit policy/evidence gate. Any later Payment advances only its Payment and reconciliation state, and creating or advancing a transfer Matter is another explicit, evidence-gated transition.
+- A suspended or withdrawn Listing rejects new intents while retaining historical intent, receipt and audit records. A price change creates a new Listing version and never rewrites the amount or conditions captured by an existing Offer or Purchase Intent.
 - Listing, transaction and transfer states provide clear next action, responsible owner, evidence and recoverable failure paths. A public multi-Workspace marketplace, platform custody/escrow and automated title adjudication are not WS-1.0 gates.
 
 ### Pricing, fulfillment and communication
@@ -264,6 +269,9 @@ Key 1.0 operating metrics:
 - paid Matter count;
 - delivery completion;
 - for-sale listing → Inquiry/Offer/Purchase Intent conversion;
+- authorized for-sale asset → current reviewed Listing → successful channel delivery completion;
+- qualified-intent rate and time to first qualified intent, with views/Favorites reported separately from buyer intent;
+- serious fact/authority/content misstatement rate and total attributable cost per usable Listing and per qualified intent;
 - direct owner-backed handoff/conversion from an exact Creator result to Quote Confirmation, Inquiry, Offer or a qualified Opportunity; cross-channel, campaign and multi-touch attribution remain LC-2.0 work;
 - escape-to-manual-tool count.
 
@@ -275,6 +283,7 @@ The following do not block 1.0 unless a later accepted decision changes this fil
 - Lite Pro or Business, Sites Web Basic or Mini Program Plus;
 - Stripe;
 - full public multi-Workspace marketplace, custody/escrow, KYC or settlement;
+- full Trading Studio Deep Build, three-direction/six-proposal delivery, numerical AI valuation, automatic repricing, Transaction Room or trademark-sale collection/transfer execution;
 - automated official filing in every country or all-country Data Engine linkage;
 - complete Lifecycle Rule Packs for every jurisdiction; WS-1.0 gates only the separately declared scopes for the US, EUIPO, Singapore, the Philippines and China;
 - ordinary-Workspace Portfolio Timeline, 30/60/90-day Upcoming Actions or comparative Lifecycle Intelligence, which remain MR-1.5 dogfood and WS-2.0/WS-3.0 candidates;
@@ -299,7 +308,7 @@ A green CI suite or merged PR cannot mark 1.0 released.
 
 Final release requires:
 
-- resolution of the sole current D-040 Product Owner confirmation: the M07 dynamic hosting/deployment choice. External credentials, professional review and operating evidence are acceptance gates, not additional product-direction questions;
+- D-041 is recorded: M07 managed hosting and the staged M18 product route are approved. External credentials, seller-authority evidence, professional review, collection/settlement, transfer and operating evidence remain acceptance gates, not additional Product Owner questions for the bounded WS-1.0 intent loop;
 - acceptance evidence for the Shared 1.0 Core, MR-1.0 and WS-1.0 sections of this document;
 - three-director review;
 - Product Owner release decision;
