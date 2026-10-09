@@ -10,7 +10,7 @@ MO 1.0 passes only when the Shared 1.0 Core and both release profiles below pass
 1. MR-1.0 lets MarkReg operate the complete reference commercial loop on markreg.com and the MarkReg WeChat Mini Program; and
 2. WS-1.0 lets an ordinary non-MarkReg Workspace run the released Lite and Mini Program Basic product for real daily trademark business without engineering intervention.
 
-MarkReg must also be operating a meaningful forward Product Profile beyond WS-1.0. The ordinary Workspace release is a validated subset of daily operations, not an exposure of the full MarkReg Forward Track.
+MarkReg must also be operating a meaningful MarkReg Ultimate Product Profile version with an active Forward configuration beyond WS-1.0. The ordinary Workspace release is a validated subset of daily operations, not an exposure of the full MarkReg Forward Track.
 
 ## 2. Release-train acceptance
 
@@ -24,7 +24,7 @@ Before WS-1.0 release:
 - the ordinary Workspace UI must hide experimental/forward capabilities not included in its Product Profile;
 - rollback, entitlement and kill-switch behavior must preserve separation between MarkReg forward capabilities and WS-1.0.
 
-A nominal version label is not sufficient. The forward reserve must be visible in real dogfood use, for example an MR-1.5 or MR-2.0-candidate Product Profile while ordinary Workspaces receive WS-1.0.
+A nominal version label is not sufficient. The forward reserve must be visible in real dogfood use, for example an MR-1.5 or MR-2.0-candidate MarkReg Ultimate version with active Forward Entitlements while ordinary Workspaces receive WS-1.0.
 
 ## 3. Shared 1.0 Core
 
@@ -32,8 +32,9 @@ A nominal version label is not sufficient. The forward reserve must be visible i
 
 - Simplified Chinese is the default interface language and English is complete across the same released navigation, instructions, forms, validation, states, errors, confirmations, receipts, notifications and accessibility labels.
 - Language switching preserves user input, personal and organization names, trademark/source text, object identifiers, money, evidence, filters, route and workflow state.
-- Business initiation and guided work use a consistent conversation-plus-structured-workbench pattern. Conversation may explain, ask bounded questions and propose values; structured cards, fields, summaries and owner-backed objects expose editable facts, uncertainty, prices, evidence, approvals and current state.
+- Released journeys use the task-appropriate entry surface: Conversation Work Mode, object page, list, search, structured form or wizard, card or direct action. Where conversation is useful it shares the same structured workbench; it is not mandatory or the only entry. Structured cards, fields, summaries and owner-backed objects expose editable facts, uncertainty, prices, evidence, approvals and current state.
 - Conversation alone cannot authenticate a person, grant access, accept a Quote, authorize Payment, file, publish, complete a trademark transfer or perform another protected action. Each protected action has an explicit review/confirmation surface and a durable receipt.
+- Every started in-scope Lite or Site business conversation has one durable Conversation Work Session identity. Its structured checkpoint records workflow and object references, answered fields, missing items, attachment references, draft version and external-action state. Resume from Today, Work, the owning object or the session list preserves identity and uses concurrency and idempotency controls; it cannot duplicate Work, Order, Payment, charge or external action. Only explicitly defined cancellation, expiry or anonymous-security states may prevent resume. Session state is not Message, Customer Communication or formal owner truth. An anonymous draft must be securely claimed by an authenticated account before sensitive access or owner commands.
 - Released desktop, mobile Web and applicable Mini Program journeys define loading, empty, partial, stale, conflict, unauthorized, forbidden, recoverable error, blocking error, offline/retry where applicable and success states, plus task-specific states such as expired OTP, WeChat-binding conflict, Payment processing, reconciliation pending, ownership review, partial AI labelling and failed notification.
 - Desktop may use list/detail or multi-pane workbenches; mobile Web and Mini Program use touch-safe progressive disclosure rather than a compressed desktop layout. All channels preserve the same object identity and state, and back navigation does not silently discard a draft.
 - Shared primitives and the composed released journeys meet WCAG 2.2 AA, including keyboard operation, visible focus, semantic names, contrast, error association, status announcements, text/zoom resilience, non-color status communication and reduced-motion behavior.
@@ -46,17 +47,19 @@ A nominal version label is not sufficient. The forward reserve must be visible i
 - Staff login, Membership, account recovery, contact verification and basic abuse protection are production-capable. Workspace isolation is proven across UI, API, search, export, logs and audit paths.
 - Every released user type is covered by the approved 1.0 MFA policy. Contact verification, one-time-code login and MFA are presented as distinct concepts; if email or SMS OTP is selected as an MFA factor, it applies to every released user type. Approved factors, remembered-device, recovery and sensitive-action behavior are verified for staff and customers.
 - China Lite users and customer users can bind, sign in with, recover and unbind WeChat without creating duplicate accounts or silently merging business relationships.
-- WS-1.0 binds one organization name to one Workspace. Invitation is the default onboarding route, and the Workspace administrator can manage Lite users, bounded permissions and enabled functions.
+- WS-1.0 binds one legal-organization record/name to one Workspace. Invitation is the default onboarding route, the Workspace administrator can manage Lite users, bounded permissions and enabled functions, and ordinary onboarding does not require paid third-party organization certification.
 - A Workspace owns its team asset library, private Knowledge and approved personalization/configuration; every surface preserves Workspace scope and effective permission.
-- Where collection-account verification is required, the small-payment round trip records the exact account and evidence verified. It is not presented as broader legal-entity, beneficial-owner or applicant-ownership proof.
-- Released Product Profiles are versioned and visible: Lite Free, Lite Go, Lite Plus, Sites Mini Program Basic and MarkReg Full. Their included functions, limits and prices require an approved commercial matrix. Bundles may be included in priced profiles but are not independently priced runtime owners.
+- Account security, organization identity, collection-account control, channel-subject control, merchant control and any future deposit are displayed as separate claims with separate evidence. Enabling a Workspace Mini Program requires its current authoritative WeChat-certified legal-subject identifier to exactly match the Workspace organization regardless of any other verification path; that exact-match evidence may also satisfy organization verification. Name-only or screenshot matching does not. Electronic-business-license integration and a transaction deposit are not WS-1.0 gates, and a deposit is never identity evidence.
+- Released Product Profiles are versioned and visible. Free, Go, Plus, Pro and Business are the locked public Lite names; WS-1.0 exposes Free, Go and Plus, while Pro and Business belong to WS-2.0. MarkReg Ultimate is the non-public MarkReg-only profile, and Forward is a maturity/release track expressed through versions and Entitlements. Sites Mini Program Basic is the ordinary WS-1.0 Site profile. Included functions, limits and prices require an approved commercial matrix. Bundles may be included in priced profiles but are not independently priced runtime owners.
 
 ### Commercial and legal-state truth
 
 - Lead/Opportunity, Customer Relationship, Applicant, Trademark, Intake, Quote, Order, Matter, Payment, Filing, Delivery and Transfer are distinct durable objects with lineage where they compose.
+- Opportunity references Contact and Organization records in the shared Workspace Contact Library through explicit relationship, role, provenance, allowed-use and consent state. Closing an Opportunity does not delete Contact/Organization truth, and an Opportunity cannot own a competing contact copy.
 - Quote confirmation, Purchase Intent, Inquiry, Offer, Order creation and Payment each have distinct states and receipts.
 - Purchase Intent or successful Payment never displays or emits trademark ownership transfer, filing, professional acceptance, service completion or authority. A transfer completes only through its governed Matter, required documents, evidence and authorized completion decision.
-- Versioned price source, currency, taxes/invoice treatment, serviceability, delivery route and Data coverage remain separately visible. A price existing for a country does not imply automated filing or Data Engine linkage.
+- The exact admitted MGSN Supply Offer, versioned official-fee reference, MarkReg Price Book, Workspace Price Book and immutable Customer Quote snapshot lineage is inspectable where applicable. Upstream changes produce stale/diff/new-draft behavior and never rewrite an issued Quote. Currency, taxes/invoice treatment, serviceability, delivery route and Data coverage remain separately visible. A price existing for a country does not imply automated filing or Data Engine linkage.
+- Invoice Request and the applied versioned Tax Rule are distinct from Payment. A 1.0 manual fulfilment path may record request, responsible entity, status and evidence without presenting automatic invoice issuance or tax compliance as complete.
 - Every active Inquiry, Opportunity, Quote, Order and Matter has a durable source and owner, timeline, next action and SLA/due state where applicable. Material checklists, upload/reference paths, missing-item and waiting states, and the staff Work/Operations Queue allow normal progression without an engineering script.
 - Filed, delivered, transferred and completed states require their accepted evidence; the result/receipt/package is delivered through the authorized relationship and closure/follow-up is recorded.
 
@@ -99,7 +102,7 @@ The loop may contain human professional work. Automation is not an acceptance re
 MR-1.0 additionally requires:
 
 - markreg.com Web and the MarkReg WeChat Mini Program are production-capable, with channel-specific entry and customer guidance but the same owner-backed business state;
-- services begin in the common conversation-plus-structured-workbench rather than each service inventing an unrelated long form; service-specific schemas, validation, review and receipts remain structured and testable;
+- supported services may begin from Conversation, a structured service route, an object page, search, a card or a direct action according to the task. Conversation-assisted journeys reuse the common structured workbench rather than inventing unrelated chat-only state; service-specific schemas, validation, review and receipts remain structured and testable;
 - foundational content generation and SEO publishing are available with draft/review/publish boundaries;
 - a direct customer can manage multiple explicitly linked Applicants;
 - Web checkout supports PayPal in CNY and USD where merchant and settlement eligibility is proven, with invoice availability and separately calculated tax/fees shown before confirmation; the Mini Program supports WeChat Pay. Stripe is not an MR-1.0 gate;
@@ -126,9 +129,9 @@ The for-sale branch may start from a trademark listing and create an Inquiry, Of
 
 ### Lite information architecture
 
-- Lite exposes seven first-level destinations. The working labels are 今日 / Today, 客户 / Customers, 商标 / Trademarks, 工作 / Work, 创作 / Create, 案件 / Matters and 消息 / Messages; their final bilingual labels have UI/Experience Design Director approval without silently changing the underlying Product-owned meaning. Work is the actionable queue across business objects; Matters is the durable professional record, and the two must not be duplicate lists with indistinguishable lifecycle.
+- Lite exposes seven baseline first-level destinations. The working labels are 今日 / Today, 客户 / Customers, 商标 / Trademarks, 工作 / Work, 创作 / Create, 案件 / Matters and 消息 / Messages; their final bilingual labels have UI/Experience Design Director approval without silently changing the underlying Product-owned meaning. Work is the actionable queue across business objects; Matters is the durable professional record, and the two must not be duplicate lists with indistinguishable lifecycle.
 - Today is a reminder, recommendation and quick-entry surface, not the only route. The other six areas and durable business objects are directly addressable; deep links, browser back/forward and reload preserve authorized context.
-- Opportunity remains a first-class business concept with a durable direct route, its own contacts and authorized links to Workspace assets, Data Engine trademarks, Lite customers and Site direct customers. It need not create an eighth persistent navigation item. Cross-Workspace Opportunity sharing and ownership economics are not WS-1.0 gates.
+- Opportunity is a conditional first-level destination for Lite Plus and MarkReg Ultimate when Forward Entitlement is enabled; Pro and Business inherit it unless their approved matrix excludes it. Free and Go retain contextual and deep-link access to authorized records. Opportunity links to the shared Workspace Contact Library and does not own separate Contact/Organization candidates. Cross-Workspace Opportunity sharing and ownership economics are not WS-1.0 gates.
 
 ### Customers, trademarks and work
 
@@ -165,6 +168,8 @@ The for-sale branch may start from a trademark listing and create an Inquiry, Of
 
 ### Site Mini Program Basic and transactions
 
+`OWNER_CONFIRMATION_REQUIRED`: freeze whether the accepted WS-1.0 dynamic deployment is MO-managed runtime plus controlled publishing, with the Workspace retaining its channel account, certified subject, AppID, merchant account and domain, and with no full dynamic self-hosted package or customer-operated server. Until resolved, the M07 hosting acceptance subsection is not frozen. The three-director recommendation is approval.
+
 - An ordinary Workspace can configure and publish its Sites Mini Program Basic without engineering intervention.
 - The Mini Program supports shareable for-sale trademark list and detail pages and direct customer entry into Buy, Inquiry and Offer actions.
 - Accepted Mini Program checkout uses WeChat Pay under the Workspace's approved merchant/collection configuration and shows amount, currency, payee, tax/invoice treatment and reconciliation state before and after payment. An admitted service-order checkout can satisfy the WS-1.0 channel payment gate; collecting money for a trademark sale additionally requires the approved seller-authority, contracting, refund and transfer policy.
@@ -173,9 +178,11 @@ The for-sale branch may start from a trademark listing and create an Inquiry, Of
 
 ### Pricing, fulfillment and communication
 
-- A Workspace user can download the accepted price template and upload a completed price table through the conversation. Structured validation shows row-level errors, currency/tax treatment, version, activation status and rollback/audit history before prices become usable.
+- A WS-1.0 Workspace starts from the published MarkReg Price Book, can download the accepted price template and upload a completed price table through Conversation or a direct structured route. Structured validation shows row-level errors, currency/tax treatment, version, activation status and rollback/audit history before prices become usable.
+- The exact reviewed MGSN Supply Offer, official-fee reference, MarkReg Price Book, Workspace Price Book and immutable Quote snapshot lineage is retained. An upstream change marks affected drafts stale, shows a diff and creates a new version; it never mutates an issued Quote. A Provider supply price cannot become effective without authorized MarkReg/MO review and publication.
 - Pricing configuration can cover application, change, assignment/transfer and renewal for every country. An executable Quote requires a valid Workspace price and viable delivery route; otherwise the UI shows qualification/unsupported state rather than implying serviceability or Data linkage.
 - Ordinary WS-1.0 fulfillment offers only self-filing or delivery through MarkReg. Direct provider selection and a provider order/price back office belong to the MarkReg 1.5 gate.
+- Invoice Request and versioned Tax Rule handling are available for an admitted 1.0 transaction. Payment, invoice-request, invoice-fulfilment and tax-rule states remain separate; manual fulfilment records status, responsible entity and evidence.
 - The system can send Workspace-user and direct-customer notifications through in-product messages and email; Lite can configure an approved sender/outbox for system-originated direct-customer messages. Mini Program users can receive approved WeChat notifications.
 - Ordinary WS-1.0 communication is one-way: the recipient sees source object, delivery state and next action, but no non-functional reply affordance. SMS, WeCom and Lite-initiated free-form outbound messaging are not WS-1.0 gates. MarkReg's governed two-way external-counsel email is the explicit exception in MR-1.0.
 
@@ -208,13 +215,18 @@ Release is blocked by:
 
 - an open P0/P1 defect affecting either accepted loop;
 - cross-Workspace data leakage or implicit relationship merging;
+- organization verification inferred from account, merchant, Payment or deposit evidence without the admitted matching organization evidence;
+- an Opportunity that creates competing Contact/Organization truth or whose closure deletes a shared Contact;
 - customer objects with no durable owner/reference;
 - materially incomplete English parity or a language switch that corrupts user/business state;
 - a required flow reachable only through Today, or a deep link/reload that loses authorized context;
 - conversation content that hides or contradicts the structured owner state;
+- a resumable Conversation Work Session that loses its checkpoint or duplicates Work, Order, Payment, charge or external action;
 - quote amount/status without versioned source;
+- an unreviewed Provider supply price becoming effective, or an issued Quote changing after an upstream price update;
 - formal state progression without required evidence;
 - Payment or Purchase Intent conflated with confirmation, filing, service completion or trademark ownership transfer;
+- Payment displayed as invoice issued or tax compliance completed;
 - a one-way channel presenting a reply control that cannot complete its promise;
 - production path requiring fixture data or normal operations requiring direct database edits;
 - unavailable critical functionality that cannot be disabled or safely degraded;
@@ -287,9 +299,10 @@ A green CI suite or merged PR cannot mark 1.0 released.
 
 Final release requires:
 
+- resolution of the sole current D-040 Product Owner confirmation: the M07 dynamic hosting/deployment choice. External credentials, professional review and operating evidence are acceptance gates, not additional product-direction questions;
 - acceptance evidence for the Shared 1.0 Core, MR-1.0 and WS-1.0 sections of this document;
 - three-director review;
 - Product Owner release decision;
 - exact MR-1.0 and WS-1.0 Product Profile versions being released;
-- exact MarkReg Forward Product Profile/version currently in dogfood;
+- the exact MarkReg Ultimate Product Profile version and its active Forward configuration/Entitlements currently in dogfood;
 - evidence that the MarkReg Forward Track remains ahead rather than collapsing to the same release horizon.

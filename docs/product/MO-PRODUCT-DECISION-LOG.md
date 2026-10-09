@@ -52,6 +52,8 @@ Chat cannot directly authorize payment, filing, official status or protected act
 
 Disposition: 1.0
 
+Status note (2026-10-09): clarified and partially superseded by D-040. Conversation is an important work mode but is not the mandatory primary or only entry. Each journey uses the entry surface best suited to the user's task while preserving structured owner truth.
+
 ## D-007 — Platform capabilities are composable and provider-neutral
 
 Decision: MO controls reusable Modules, Capabilities, Implementations/Providers, Knowledge/Data Packs, Channels and Product Profiles.
@@ -213,14 +215,14 @@ Approval may be module-level or subsection-level. Only approved/frozen scope may
 
 Disposition: permanent governance rule
 
-The decisions below record only the explicit directions and version assignments established through Product Owner feedback. They do not approve M01-M25 as complete modules. Any subsection not explicitly decided remains CHANGE_REQUESTED or IN_REVIEW under D-025.
+Decisions below carry their own scope-specific disposition. D-025 still requires an approved detailed specification before runtime implementation, but an external integration, professional-review or operational evidence gate does not return an already approved product direction to CHANGE_REQUESTED. Only an item explicitly labelled `OWNER_CONFIRMATION_REQUIRED` requires another Product Owner choice.
 
-## D-026 — Released products are Chinese-first bilingual and conversation-first, structure-backed
+## D-026 — Released products are Chinese-first bilingual and conversation-enabled, structure-backed
 
 Decision:
 
 - all released MarkOrbit user and operator surfaces support Chinese and English, with Chinese as the primary/default language and complete English functional coverage;
-- a unified conversation/work surface is the primary interaction model for service workflows, while Today, object pages and other direct entries remain available;
+- a unified Conversation Work Mode is available for intent, clarification and multi-step collaboration where it improves the task, while Today, object pages, lists, search, structured forms or wizards, cards and direct actions remain first-class entries;
 - Customer, Applicant, Trademark, Opportunity, Quote, Order, Matter, Payment, Filing, Message and Delivery remain structured owner-backed state;
 - conversation may prepare and explain an action but cannot by itself establish payment, authority, acceptance, filing, transfer, completion or Official Truth.
 
@@ -241,6 +243,8 @@ Decision:
 This decision assigns product scope only. Provider, merchant, compliance and release-readiness gates remain mandatory.
 
 Disposition: WS-1.0 composition; 2.0 expansion
+
+Status note (2026-10-09): D-040 locks Free, Go, Plus, Pro and Business as the public Lite names and adds MarkReg Ultimate as the non-public MarkReg-only profile. Forward remains a maturity/release track rather than another plan.
 
 ## D-028 — Personal Customer Accounts, Applicants and Workspace authority remain distinct
 
@@ -389,3 +393,20 @@ Decision:
 - the per-asset rail belongs to M10/M22 WS-1.0. Portfolio Timeline and 30/60/90-day Upcoming Actions begin as MR-1.5 MarkReg dogfood and may reach WS-2.0 after evidence; comparative Lifecycle Intelligence is a WS-3.0 advisory candidate. D-034's portfolio/deadline Creator content play remains MR-1.5 and is not promoted by this decision.
 
 Disposition: D-039 product direction and WS-1.0 per-asset/list scope APPROVED; every Rule Pack and runtime implementation remains separately admission-gated; MR-1.5 portfolio dogfood, WS-2.0 promotion and WS-3.0 comparative intelligence
+
+## D-040 — Consolidate Product Owner directions across M03–M14
+
+Decision:
+
+- WS-1.0 ordinary Workspace onboarding remains invitation-led and does not require paid third-party institution certification. Account security, legal-entity identity, collection-account control, channel-subject control, merchant control and transaction deposits are separate claims. Enabling a Workspace Mini Program requires the current authoritative WeChat-certified legal-subject identifier to exactly match the Workspace organization, regardless of any other verification path; that exact-match evidence may also satisfy organization verification. Electronic-business-license integration and deposits remain separate Research / External Gates; a deposit is not identity verification.
+- Free, Go, Plus, Pro and Business are the locked public Lite names. MarkReg Ultimate is the non-public MarkReg-only Product Profile. Forward is a maturity/release track expressed through Ultimate versions and Entitlements, not another public plan.
+- Opportunity is a conditional first-level destination for Lite Plus and the MarkReg Ultimate Forward configuration. Pro and Business inherit it unless their approved commercial matrix states otherwise.
+- Opportunity links to Contact and Organization records in the Workspace Contact Library. It does not own a private contact copy; closing an Opportunity does not delete a Contact, and an audit snapshot does not grant contact or marketing permission.
+- MarkOrbit uses a conversation-enabled, structure-backed hybrid experience. Conversation is used where it improves intent discovery, clarification or multi-step collaboration, but it is not the mandatory primary or only entry.
+- Every started in-scope Lite or Site business conversation persists as a durable Conversation Work Session with structured checkpoints, resumable identity and idempotent recovery; only explicitly defined cancellation, expiry or anonymous-security states may prevent resume. A session is distinct from Messages, Customer Communication and formal business state.
+- The governed price lineage is admitted MGSN Provider Supply Offer plus versioned official-fee reference → MarkReg Price Book → Workspace Price Book → immutable Customer Quote snapshot. WS-1.0 Workspaces build from the published MarkReg Price Book; eligible WS-2.0 Workspaces may build directly from admitted MGSN offers.
+- Invoice Request and versioned Tax Rule handling are WS-1.0 scope. Complete automatic invoicing is not promised; manual fulfilment may record status and evidence. Payment state remains separate.
+- Provider-submitted MGSN service scope, SLA and Supply Price become effective only after authorized MarkReg/MO review, versioning and publication. Provider self-activation is prohibited. Workspace retail publication remains the responsibility of an authorized Workspace administrator.
+- M07 channel scope is approved. One Product Owner choice remains: whether MO-managed runtime and controlled publishing is the only supported dynamic WS-1.0 Sites deployment mode, with no downloadable full dynamic backend or customer-operated server in 1.0. The three-director recommendation is approval.
+
+Disposition: M03, M04, M05, M08, M09, M11, M12, M13 and M14 directions APPROVED; M07 channel scope APPROVED / hosting mode `OWNER_CONFIRMATION_REQUIRED`. External credentials, tax, payment, electronic-business-license and professional-review evidence remain admission gates rather than module-wide pending states. M21's previously recorded detailed roadmap remains IN_REVIEW and is not changed by this decision.

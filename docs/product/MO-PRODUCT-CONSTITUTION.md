@@ -53,6 +53,8 @@ Target first-level product vocabulary:
 
 These are working labels. The UI/Experience Design Director validates the final Chinese and English names before navigation lock; changing a label must not silently change the underlying Product-owned meaning.
 
+Opportunity / 商机 is a conditional first-level destination for Lite Plus and MarkReg Ultimate when its Forward Entitlement is enabled. Lite Pro and Business inherit the destination unless their approved commercial matrix expressly excludes it. Visibility is determined by Product Profile, Entitlement, Membership permission and feature availability; navigation order does not change merely because a Workspace currently has no Opportunities. Lite Free and Go do not promise the first-level destination, but authorized Opportunities remain reachable from Today, Customer, Trademark and durable deep links, and a plan downgrade must not delete existing records.
+
 Today is a reminder/recommendation and quick-entry surface, not the only way into the product. Customers, Trademarks, Work, Create, Matters and Messages remain directly addressable and preserve deep-link/reload context.
 
 Create is one directly addressable, business-object-bound workbench for preparing governed trademark-industry outcomes. Artifact, Render, Edit and Publish are internal stages, not independent user modules or truth owners. Creator results are an authorized read projection over exact owner-backed objects and versions; they do not own Quote, Document Package, Trading Listing, Media Artifact, PublishReceipt or publication truth and must not become a universal Artifact service or lifecycle.
@@ -83,21 +85,25 @@ Sites may vary by Product Profile:
 
 WS-1.0 includes a bounded WeChat Mini Program Basic profile for ordinary Workspaces. A reusable Workspace Web Basic profile and richer mini-program editions belong to later release decisions.
 
+`OWNER_CONFIRMATION_REQUIRED`: whether MO-managed runtime and controlled publishing is the only supported dynamic WS-1.0 Sites deployment mode, with the Workspace retaining its channel account, legal subject, AppID, merchant account and domain, and with no downloadable full dynamic backend or customer-operated server in 1.0. The three-director recommendation is to approve this model.
+
 ### markreg.com
 
 The reference Site of the MarkReg Workspace and the initial direct-customer commercial product.
 
 Initial focus is overseas direct customers and a narrow international-trademark service journey.
 
-The interaction model is Conversation-first, structure-backed.
+The interaction model is conversation-enabled and structure-backed.
 
-Conversation guides intent and clarification. Structured objects carry Customer, Intake, Quote, Order, Matter, Payment, Filing and Delivery truth.
+Conversation is used where intent interpretation, complex clarification or cross-step collaboration improves the task. Object pages, lists, search, structured forms or wizards, cards and direct actions remain first-class task-appropriate entry surfaces. Customer, Intake, Quote, Order, Matter, Payment, Filing and Delivery truth remains in structured owner-backed objects.
 
 ### Cross-product language and interaction
 
 All product surfaces are Chinese-first and fully bilingual. Simplified Chinese is the default authored interface; English must cover the same navigation, instructions, forms, states, errors, confirmations, receipts and accessibility labels. Switching language must not rewrite user input, names, trademarks, source text, object identifiers, money, evidence or workflow state.
 
-Business initiation and guided work use one consistent conversation-plus-structured-workbench pattern. Conversation explains, asks bounded questions and orchestrates work. Structured cards, fields, summaries and owner-backed objects retain editable facts, uncertainty, prices, evidence, approvals and state. A chat message cannot authenticate a person, grant access, accept a Quote, authorize Payment, complete a trademark transfer, file, publish or perform another protected action.
+Released workflows support a consistent conversation-plus-structured-workbench pattern where appropriate, without making conversation mandatory or the only entry. Conversation may explain, ask bounded questions and orchestrate work; structured cards, fields, summaries and owner-backed objects retain editable facts, uncertainty, prices, evidence, approvals and state. A chat message cannot authenticate a person, grant access, accept a Quote, authorize Payment, complete a trademark transfer, file, publish or perform another protected action.
+
+Every started in-scope Lite or Site business conversation forms a durable Conversation Work Session bound to an exact workflow or business object. An unfinished session preserves structured checkpoints and can resume from Today, Work, the owning object or the session list without recreating work, charging twice or repeating an external action. Only explicitly specified cancellation, expiry or anonymous-security states may prevent later resume. Conversation session state is not Customer Communication or formal business truth.
 
 ## 3. User and identity model
 
@@ -146,7 +152,9 @@ Workspace-owned/private concerns include:
 - Site configuration;
 - Workspace overlays for approved AI behavior.
 
-WS-1.0 binds one organization name to one Workspace. The Workspace administrator manages Lite users, invitations, bounded permissions and enabled product functions. Institution or collection-account verification, when required, records exactly what evidence was verified; a small-payment round trip must not be presented as broader legal identity proof than its accepted policy supports.
+A Workspace owns one shared Contact Library. An Opportunity links to Contact or Organization records through role-, provenance-, allowed-use- and consent-bearing relationships; it does not own a private contact copy. Closing an Opportunity does not delete a Contact, and an audit snapshot does not become a second contact truth or grant permission to contact.
+
+WS-1.0 binds one legal-organization record/name to one Workspace. Invitation-led ordinary onboarding does not require paid third-party institution certification. Account security, legal-entity identity, collection-account control, channel-subject control, merchant control and any future transaction deposit are separate claims supported by separate evidence. Enabling a Workspace Mini Program requires the current authoritative WeChat-certified legal-subject identifier to exactly match the Workspace organization, regardless of how the organization was otherwise verified. That exact-match evidence may also satisfy organization verification; name-only or screenshot matching is insufficient. Electronic-business-license access remains a Research / External Gate. A deposit is transaction-risk control, not identity verification.
 
 No Workspace may read or mutate another Workspace's business truth by default.
 
@@ -194,6 +202,10 @@ Provider failure must degrade the bounded Capability, not collapse unrelated pro
 
 For MGSN, a Provider price/quote is supply-side truth, not the customer Quote; Provider Supply Capability is not user Capability evidence; and a Provider Return is reviewable input/evidence, not Official Truth or automatic completion.
 
+A Provider-submitted service scope, SLA or MGSN Supply Price remains a versioned draft until an authorized MarkReg/MO reviewer approves and publishes it. A Provider cannot self-activate a supply price. This central review applies to MGSN/Provider supply-side prices; a Workspace administrator remains responsible for publishing that Workspace's customer-facing Price Book.
+
+The governed price lineage is: admitted MGSN Provider Supply Offer plus versioned official-fee reference → MarkReg Price Book → Workspace Price Book → immutable Customer Quote snapshot. Upstream fee, exchange-rate or supply-price changes create a stale indication, diff and new draft; they never rewrite an issued Quote.
+
 Ordinary Workspace users do not manage custom API keys in WS-1.0. MarkReg may bind approved email or external API credentials under its governed profile. Future products may support either approved bring-your-own-key use or paid use of MO-managed keys, but secrets remain provider bindings and never become front-end business truth.
 
 ### Knowledge/Data Pack
@@ -227,11 +239,16 @@ Examples:
 - Lite Free;
 - Lite Go;
 - Lite Plus;
+- Lite Pro;
+- Lite Business;
 - Sites Mini Program Basic;
-- Lite Pro / Business and Sites Web Basic / Mini Program Plus in later releases;
-- MarkReg Full.
+- Sites Web Basic;
+- Sites Mini Program Plus;
+- MarkReg Ultimate.
 
 A Product Profile references Modules/Capabilities/Packs/Channels and policy. It is not a copy of their underlying truth.
+
+Free, Go, Plus, Pro and Business are the locked public Lite names. MarkReg Ultimate is a non-public MarkReg-only Product Profile. Forward is a maturity and release track expressed through Ultimate versions and Entitlements, not a sixth public plan.
 
 ### Bundle
 
@@ -400,7 +417,7 @@ Product simplicity remains mandatory even when the architecture and MarkReg Forw
 - Product flow before module completeness.
 - User language before internal platform vocabulary.
 - Chinese by default and complete English across every released surface.
-- Conversation guides work; structured owner state carries business truth.
+- Conversation is an available work mode; task-appropriate entry surfaces and structured owner state carry the journey and business truth.
 - Preview != Production.
 - CI green != release readiness.
 - AI draft != protected action.
@@ -413,6 +430,11 @@ Product simplicity remains mandatory even when the architecture and MarkReg Forw
 - Lifecycle projection != Official Truth, certified deadline, formal-state mutation or execution authority.
 - Customer != Applicant.
 - Contact data != marketing consent.
+- Opportunity relationship != duplicated Contact truth.
+- Conversation Work Session != Customer Communication or formal owner state.
+- Invoice Request / Tax Rule != Payment state.
+- Provider-submitted supply price != effective MGSN price.
+- Upstream price change != mutation of an issued Quote.
 - Site != Customer/Order/Matter owner.
 - Capability != Provider.
 - Brain != autonomous authority.

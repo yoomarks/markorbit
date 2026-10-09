@@ -27,7 +27,7 @@ Naming convention: `MR-x.y`.
 
 MarkReg is the default Reference Workspace and should run ahead of the external Workspace release.
 
-At the time `WS-1.0` is released, MarkReg should normally be operating a meaningful forward profile such as `MR-1.5` or an `MR-2.0-candidate`, containing the next validated/dogfooded product wave.
+At the time `WS-1.0` is released, MarkReg Ultimate should normally be operating a meaningful forward configuration such as `MR-1.5` or an `MR-2.0-candidate`, expressed through versioned Forward Entitlements and containing the next validated/dogfooded product wave. Forward is a maturity/release track, not a public plan name.
 
 The exact numeric label is less important than the invariant:
 
@@ -95,7 +95,8 @@ MR-1.0 and WS-1.0 share a release foundation rather than building separate produ
 - Chinese-primary interfaces with complete English functional parity;
 - personal/customer identity, Workspace isolation, Membership and auditable permission boundaries;
 - versioned Product Profiles, Entitlements, channel/provider gates and bounded degradation;
-- structured owner objects behind the conversation/workbench interaction model;
+- task-appropriate entry surfaces and structured owner objects behind the conversation-enabled workbench interaction model;
+- durable Conversation Work Sessions with structured checkpoints, resumable identity and idempotent recovery for every started in-scope Lite and Site business conversation, except explicitly defined cancellation, expiry or anonymous-security states;
 - a versioned MO Control Center command inventory with all release-critical typed commands executable and verified;
 - protected-action prepare, authorize, execute, receipt, idempotency and review boundaries;
 - governed Data, Knowledge, Brain reference-asset and Capability admission with provenance/currentness;
@@ -112,7 +113,7 @@ MarkReg can take a qualified direct-customer trademark inquiry through Customer,
 MR-1.0 requires:
 
 - responsive markreg.com Web and a WeChat Mini Program, with channel-specific audience and service catalog inside a Chinese-primary, fully bilingual experience;
-- bilingual Chinese/English support, while preserving conversation-first, structure-backed Customer, Quote, Order, Matter, Payment, Filing and Delivery truth;
+- bilingual Chinese/English support through a conversation-enabled hybrid experience in which task-appropriate direct entries and structured Customer, Quote, Order, Matter, Payment, Filing and Delivery truth remain first-class;
 - basic public content generation and SEO;
 - production online payment: PayPal for Web in CNY/USD and WeChat Pay for the Mini Program, subject to merchant, tax, invoice and provider-readiness gates;
 - invoice requests and tax amounts represented separately from Payment state;
@@ -132,7 +133,7 @@ MR-1.5 is the next real-use wave ahead of ordinary Workspace release. It is not 
 
 Primary objectives:
 
-- let MarkReg select an eligible Provider through MGSN and give that Provider a bounded workspace for assigned orders, provider quotations/costs, acceptance and returns;
+- let MarkReg select an eligible Provider through MGSN and give that Provider a bounded workspace for assigned orders, provider quotations/costs, acceptance and returns; every Provider-submitted service scope, SLA or supply price remains draft until an authorized MarkReg/MO review publishes its exact version;
 - operate MarkReg Growth with Data Engine facts, Knowledge, MarkReg assets and service capacity feeding governed Opportunity Candidates, scoring/contact research and prepare/review/approve outreach;
 - keep unrestricted auto-send disabled until consent, complaint, conversion, cost and rollback evidence justify promotion;
 - dogfood the LC-1.5 video, talking-head and bounded digital-avatar lines with identity, consent, brand, provider, rights and unit-economics controls;
@@ -189,11 +190,12 @@ Required:
 - Create;
 - Matters as the durable professional record;
 - Messages;
+- Opportunity as a conditional first-level destination for Lite Plus and MarkReg Ultimate when Forward Entitlement is enabled; Pro/Business inherit it unless the commercial matrix excludes it, while Free/Go retain contextual and deep-link access to authorized records;
 - Quote and Filing workbenches;
 - materials/missing-information handling;
 - delivery/closure evidence.
 
-WS-1.0 launches controlled Lite Free, Go and Plus Product Profiles. The exact feature, limit and price matrix requires approved commercial specification. Bundles may be included by those Profiles but are not independently priced launch products.
+Free, Go, Plus, Pro and Business are the locked public Lite Product Profile names. WS-1.0 launches controlled Lite Free, Go and Plus; Pro and Business begin in WS-2.0. MarkReg Ultimate is the non-public MarkReg-only Product Profile and expresses the Forward Track through versions and Entitlements. The exact feature, limit and price matrix requires approved commercial specification. Bundles may be included by those Profiles but are not independently priced launch products.
 
 WS-1.0 ordinary Workspace release should begin with a controlled external cohort rather than unrestricted scale. Broad GA is a later promotion decision, but WS-1.0 must already be usable by real non-MarkReg Workspaces.
 
@@ -204,8 +206,11 @@ Required:
 - Sites Mini Program Basic as the only ordinary Workspace Site Profile in WS-1.0;
 - Chinese-primary presentation with complete English functional coverage;
 - WeChat customer sign-in/account binding, WeChat Pay and WeChat notifications;
+- exact matching between the current authoritative WeChat Mini Program certified legal-subject identifier and the Workspace legal organization as a hard gate for enabling the Workspace Mini Program, regardless of any other organization-verification path; the same exact-match evidence may also satisfy organization verification;
 - personal Customer Accounts with strictly Workspace/Site-scoped sessions and business relationships, with no Workspace switch or cross-Workspace discovery;
 - customer-facing service, trademark-for-sale and status projections backed by owner truth.
+
+`OWNER_CONFIRMATION_REQUIRED`: confirm whether MO-managed runtime and controlled publishing is the only supported dynamic WS-1.0 Sites deployment mode. Under the recommended model the Workspace retains its channel account, certified subject, AppID, merchant account and domain, and WS-1.0 does not ship a full dynamic backend package or support a customer-operated server.
 
 ### Service scope
 
@@ -213,7 +218,7 @@ Data-linked trademark coverage launches for China, the United States, Canada, th
 
 Users may bulk-import trademark assets from any jurisdiction. An imported asset outside the active Data-linked set remains usable with explicit manual/unlinked provenance and must not be presented as Data Engine-current.
 
-Workspace pricing supports a versioned template download, conversational upload, validation preview and explicit publish. Application, change, assignment and renewal quotes may cover any country when pricing and a viable delivery route are confirmed; automatic/self-service quotation and Data Engine integration remain limited to admitted service/jurisdiction combinations.
+The governed price lineage is admitted MGSN Provider Supply Offer plus versioned official-fee reference → MarkReg Price Book → Workspace Price Book → immutable Customer Quote snapshot. WS-1.0 Workspace pricing begins from the published MarkReg Price Book and supports a versioned template download, conversational or direct upload, validation preview, diff and explicit publish. Upstream changes mark a dependent draft stale and create a new reviewable version; they never rewrite an issued Quote. Application, change, assignment and renewal quotes may cover any country when pricing and a viable delivery route are confirmed; automatic/self-service quotation and Data Engine integration remain limited to admitted service/jurisdiction combinations.
 
 ### Fulfillment
 
@@ -232,15 +237,18 @@ Production online payment is required for the relevant launch channel: WeChat Pa
 
 Governed manual/off-platform reconciliation may remain a degradation path, but it does not satisfy the online-payment release gate. No ad-hoc paid=true state is permitted.
 
+Invoice Request and versioned Tax Rule handling are 1.0 scope and remain separate from Payment state. Complete automatic invoicing is not required; a governed manual fulfilment path may record request, applied rule, responsible entity, status and evidence.
+
 ### Customer, asset and communication scope
 
 WS-1.0 includes:
 
-- invite-only Workspace onboarding with one organization-name binding whose verification status is recorded separately;
+- invite-only Workspace onboarding with one legal-organization binding; paid third-party institution certification is not required for ordinary onboarding, and account, organization, collection-account, channel-subject, merchant and any future deposit claims remain separately evidenced;
 - Workspace Admin control of membership, roles and Product-Profile-bounded user access;
 - governed WeChat binding and sign-in for China-facing Lite staff and customer users, subject to production account-linking and recovery acceptance;
 - Customer Relationships that may link multiple Applicants and Trademark Assets without collapsing Customer Account, Customer or Applicant identity;
-- Workspace-internal Formal Opportunities with explicit source and contacts, while Candidate remains distinct from Formal Opportunity;
+- Workspace-internal Formal Opportunities with explicit source that link to shared Workspace Contact/Organization records through role, provenance, allowed-use and consent relationships; Opportunity does not own a duplicate contact copy, while Candidate remains distinct from Formal Opportunity;
+- durable Conversation Work Sessions for every started in-scope Lite and Site business conversation, with structured checkpoints and idempotent resume from Today, Work, the owning object or a session list without duplicating Work, Order, Payment, charge or external action; only explicitly defined cancellation, expiry or anonymous-security states may prevent resume;
 - system-to-user/customer in-product and email messages plus Mini Program WeChat notifications;
 - no ordinary-user proactive/two-way customer messaging beyond supported system flows;
 - LC-1.0 bounded static-outcome creation through one business-object-bound conversational workbench, with exact owner/source/version/currentness, structured review and owner-backed handoff;
@@ -306,7 +314,7 @@ Primary objectives:
 - broader jurisdiction/service packs;
 - Portfolio Timeline, 30/60/90-day Upcoming Actions and additional independently admitted Trademark Lifecycle Rule Packs promoted only after MR-1.5 missed-action, false-positive, correction, operator-load and cost evidence;
 - LC-2.0 Campaign, team review, richer Content production and owner-backed result management promoted from MarkReg evidence;
-- direct governed MGSN delivery from a Workspace to eligible local Providers;
+- direct governed MGSN delivery from a qualified Workspace to eligible local Providers, and separately admitted ability for that Workspace to build its Price Book directly from reviewed MGSN offers; pricing-source eligibility does not itself grant provider-routing authority;
 - narrower Support, Finance and Security control-plane roles after the 1.0 audited System Admin model;
 - Stripe for admitted Web Profiles, while preserving PayPal/WeChat Pay as channel policy permits;
 - broader two-way customer communication, SMS and WeCom where provider, consent and object-linking evidence are ready;
@@ -364,14 +372,21 @@ B1.0–B3.0 are proposed M21 module-maturity labels, not a fourth product releas
 
 The proposal remains blocked from approval until the Product Owner selects the first job and scope and assigns case-specific professional-review responsibility. Exact sample sizes, quality thresholds, prices and cost figures in research material are experiment hypotheses, not release commitments.
 
+## Product Owner confirmation required
+
+Only one current D-040 Product Owner choice remains:
+
+- M07: confirm MO-managed runtime and controlled publishing as the only supported dynamic WS-1.0 Sites mode. The Workspace retains its channel account, certified subject, AppID, merchant account and domain; WS-1.0 does not ship a full dynamic backend package or support a customer-operated server. Three-director recommendation: approve.
+
 ## Research / unresolved product decisions
 
 The following require bounded evidence or an explicit three-director decision before implementation admission:
 
 - exact MFA factors, step-up/remembered-device behavior, recovery and WeChat account-conflict handling; 1.0 policy coverage for every released user type is already assigned;
-- whether a small reciprocal payment should verify only payment-account control, and what separate organization/KYC evidence is required;
-- exact Free/Go/Plus and Pro/Business feature, limit, price and upgrade matrices;
-- invoice type, tax responsibility, merchant entity and provider/currency readiness for each payment channel;
+- external-method evaluation for any future payment-account-control check; it cannot serve as organization verification without separate authoritative evidence;
+- electronic-business-license platform eligibility, authorization flow, callback security, data minimization and evidence retention, plus production WeChat subject authorization and merchant capability;
+- exact feature, limit, price, upgrade, downgrade and grandfathering matrices for the locked Free/Go/Plus/Pro/Business public names and MarkReg Ultimate;
+- exact invoice type, tax rate and responsibility, issuing entity and provider/currency readiness for each payment channel; Invoice Request and versioned Tax Rule handling are already assigned to 1.0;
 - cross-Workspace Opportunity ownership, recipient operating rights, contact/consent basis, revocation and revenue-sharing economics;
 - the legal/commercial/fulfillment model for Buy Now, offer acceptance, settlement, refund and trademark transfer completion;
 - Creator Video/Avatar Pack pricing, entitlement and unit-economics evidence required for promotion beyond MarkReg;
