@@ -279,7 +279,7 @@ Must support:
 - basic Workspace Intelligence Profile bindings;
 - Brain/Capability/Knowledge/Data dependency visibility;
 - a bounded 1.0 Capability inventory derived from approved MarkReg/Lite jobs rather than technical inventory breadth;
-- the narrow read-only `TrademarkLifecycleRailProjectionV1` result contract and `PROJECT_TRADEMARK_LIFECYCLE` CapabilityRequirement. Drawing/rendering is a deterministic Skill/Action over the semantic projection; page rendering must not use a live LLM to invent milestones, dates, confidence or action eligibility;
+- the narrow read-only, renderer-agnostic `TrademarkLifecycleProjectionV1` product result contract. `PROJECT_TRADEMARK_LIFECYCLE` remains the planning name for a Stable Outcome candidate until Capability Canon and runtime admission; it is not yet an accepted Capability ID or version. Drawing/rendering is a deterministic Skill/Action over the semantic projection; page rendering must not use a live LLM to invent milestones, dates, confidence or action eligibility;
 - provider disablement/degradation;
 - audit.
 
