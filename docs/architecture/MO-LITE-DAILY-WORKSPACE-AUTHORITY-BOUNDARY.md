@@ -31,6 +31,10 @@ ContentOpportunity
 
 M9 adds bounded Daily/Content working projections around those objects. It does not create a second publication lifecycle.
 
+## Creator composition rule
+
+Creator is a product workbench over authorized business objects, not a universal result owner. Knowledge/content plays reuse the lifecycle above. Quote/Document, Trading, Media, Distribution and other plays retain their existing owner objects and transitions. A Creator result library may compose exact owner/id/version/fingerprint references for authorized reading and review, but it cannot advance those owners or expand ContentKit into a universal Artifact lifecycle.
+
 ## New M9 contract roles
 
 ### DailySignal

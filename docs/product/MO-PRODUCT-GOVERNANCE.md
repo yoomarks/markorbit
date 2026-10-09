@@ -1,7 +1,7 @@
 # MarkOrbit Product Governance
 
 Status: ACTIVE GOVERNANCE PROCESS
-Effective date: 2026-10-07
+Effective date: 2026-10-08
 
 ## 1. Goal
 
@@ -24,7 +24,9 @@ Discuss
 Every material product proposal is reviewed independently from three perspectives.
 
 ### Product Director
+
 Evaluates:
+
 - target user and job;
 - commercial value;
 - product scope;
@@ -34,7 +36,9 @@ Evaluates:
 - whether the product is becoming too broad.
 
 ### Design Director
+
 Evaluates:
+
 - user vocabulary;
 - information architecture;
 - journey continuity;
@@ -44,7 +48,9 @@ Evaluates:
 - whether internal implementation concepts are leaking into the product.
 
 ### Technical Director
+
 Evaluates:
+
 - owner boundaries;
 - identity/Workspace isolation;
 - data/knowledge authority;
@@ -59,14 +65,19 @@ The directors are required to disagree when appropriate. Product Owner preferenc
 
 ## 3. Decision classes
 
-Every material idea receives exactly one current disposition:
+Every indivisible material scope slice receives exactly one current horizon disposition:
 
-- 1.0 — necessary for the current commercial promise or release safety;
-- 2.0 — valuable after 1.0 validation and reuse;
-- 3.0 — long-term platform scale/composability;
+- Shared 1.0 / MR-1.0 / WS-1.0 — necessary for the named current commercial promise or release safety;
+- MR-1.5 / FORWARD — accepted only into the MarkReg Forward Track for governed real-use dogfood; it is not a WS-1.0 commitment, PILOT promotion or GA approval;
+- WS-2.0 — valuable after 1.0 validation and reuse;
+- WS-3.0 — long-term platform scale/composability;
 - PARKED — potentially valuable but insufficient evidence/timing;
 - REJECTED — conflicts with product strategy, safety, economics or architecture;
 - RESEARCH — needs bounded evidence before version assignment.
+
+A Forward disposition assigns a proof horizon, not ordinary-Workspace availability. The relevant module/subsection must still pass specification approval, dependency readiness, maturity promotion and release acceptance before broader exposure.
+
+The Idea Register may separately mark lineage as ACTIVE, PROMOTED or PARTIALLY_PROMOTED. Those labels are not horizon dispositions. A row may contain multiple explicitly separable slices only when each slice has one horizon; an unresolved slice remains RESEARCH rather than simultaneously receiving a candidate version.
 
 ## 4. Required durable updates
 
@@ -83,6 +94,7 @@ A chat answer alone is not an accepted product change.
 ## 5. Idea intake rule
 
 During future conversations, an idea is material when it changes one or more of:
+
 - target user;
 - product promise;
 - product surface/navigation;
@@ -97,6 +109,7 @@ During future conversations, an idea is material when it changes one or more of:
 - platform ownership boundary.
 
 For material ideas, the directors should:
+
 1. state independent product/design/technical judgment;
 2. record the disposition and rationale;
 3. update the durable plan at the next repository planning change;
@@ -107,6 +120,7 @@ Small wording, bug-fix and non-strategic questions do not require roadmap change
 ## 6. Version change rule
 
 Moving an item between 1.0, 2.0 and 3.0 requires:
+
 - explicit rationale;
 - impact on current commercial promise;
 - affected Golden Flow;
@@ -122,6 +136,7 @@ No item remains in 1.0 because work has already been spent on it.
 ## 7. Implementation admission rule
 
 An implementation task is admitted only if it maps to one of:
+
 - an active Workspace-release acceptance requirement;
 - a MarkReg Forward Track dogfood objective;
 - an explicitly approved Architecture Runway objective;
@@ -131,6 +146,7 @@ An implementation task is admitted only if it maps to one of:
 Architecture Runway admission is intentionally possible even when a capability is not yet customer-visible. However, it must be decoupled from current release-critical flows, have a clear future platform/safety/cost rationale, and may not force product exposure merely to justify the work.
 
 Every admitted task must name:
+
 - Track: Architecture Runway / MarkReg Forward / Workspace Release;
 - Product version or target horizon where applicable;
 - user/business outcome or explicit platform/safety rationale;
@@ -157,6 +173,7 @@ EXPERIMENTAL
 Promotion from MARKREG_DOGFOOD requires real-use evidence, not only synthetic tests or operator walkthroughs.
 
 Evidence should include as applicable:
+
 - number of real runs/cases;
 - user/operator friction;
 - error/fallback rate;
@@ -171,6 +188,7 @@ Evidence should include as applicable:
 If MarkReg is not a representative user for a capability, Product Governance may designate another Reference Workspace or bounded pilot.
 
 The exception must state:
+
 - why MarkReg is not representative;
 - which Workspace/user is representative;
 - equivalent evidence required before wider release.
@@ -182,6 +200,7 @@ The exception must state:
 Workspace releases intentionally lag the MarkReg Forward Track.
 
 At a Workspace release decision, three-director review must confirm:
+
 - every ordinary-user capability has reference-use evidence;
 - the released UI is simpler than the underlying platform;
 - MarkReg is already exercising the next meaningful improvement wave;
@@ -194,11 +213,48 @@ The purpose is continuous improvement and product defensibility, not artificial 
 Architecture may advance beyond current product needs, but product surfaces should expose only what users need for the current job.
 
 A stronger internal model must not create:
+
 - additional user navigation solely for internal objects;
 - mandatory configuration users cannot understand;
 - slower onboarding;
 - dependency on unfinished future modules;
 - release blockage without an explicit acceptance reason.
+
+## Product specification approval gate
+
+Material product development is specification-gated.
+
+Before runtime implementation begins for a product module or a material product change, the three directors must produce an owner-reviewable specification covering, at minimum:
+
+- module purpose and target users;
+- target release track/version;
+- entry points, pages and information architecture;
+- when a user-facing UI is in scope: Chinese-primary behavior with complete English functional parity; desktop, mobile and applicable Mini Program behavior; loading, empty, partial, stale, conflict, unauthorized, forbidden, recoverable error, blocking error, offline and success states plus task-specific states; composed-journey accessibility behavior; fixture-backed Storybook states; bilingual desktop/mobile and applicable Mini Program visual evidence; Playwright acceptance paths; and real-channel evidence where browser fixtures cannot prove identity, payment or notification behavior;
+- canonical business objects;
+- fields and visible information;
+- states/state transitions;
+- user/system actions;
+- permissions and Workspace isolation;
+- feature/profile/channel/provider controls;
+- dependencies and owner boundaries;
+- failure/degradation behavior;
+- audit/evidence requirements;
+- product/operating metrics;
+- acceptance criteria;
+- unresolved questions requiring Product Owner decision.
+
+Specification status is one of:
+DRAFT / IN_REVIEW / APPROVED / FROZEN / CHANGE_REQUESTED / SUPERSEDED.
+
+Only the Product Owner can move product scope to APPROVED/FROZEN for implementation. Approval may apply to a full module or explicitly identified subsections.
+
+Product Owner feedback that revises, redirects, expands, narrows or reassigns a draft defaults to CHANGE_REQUESTED for the affected module/subsection unless the Product Owner explicitly states APPROVED or FROZEN and identifies the approved scope. A direction or version decision may be recorded durably while the rest of the module remains unapproved.
+
+Implementation issues and PRs must cite the approved module/subsection, release track and acceptance criteria.
+
+If an approved product definition changes, affected implementation pauses until the Change Request is reviewed and the product specification is updated.
+
+Existing code, previous Issues, Preview maturity or green CI do not override this gate.
 
 ## 11. Capability maturity and product release
 
@@ -227,6 +283,7 @@ This classification must be used during MVP rebaseline and subsequent audits.
 ## 13. Review cadence
 
 At minimum:
+
 - continuous: record material product decisions;
 - weekly during active MVP work: review 1.0 acceptance gaps and escapes from MO to spreadsheets/email/manual scripts;
 - before any new Epic: verify roadmap admission;
@@ -236,6 +293,7 @@ At minimum:
 ## 14. Conflict resolution
 
 Priority order:
+
 1. security, legal/privacy and data integrity;
 2. explicit Product Constitution;
 3. active Version Roadmap;
@@ -248,6 +306,7 @@ Old Issues do not override a newer accepted product baseline.
 ## 15. Communication contract
 
 Future product discussions should end with one of:
+
 - no durable product change;
 - decision logged;
 - idea registered for research/parked;
