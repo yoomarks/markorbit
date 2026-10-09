@@ -429,6 +429,7 @@ Product simplicity remains mandatory even when the architecture and MarkReg Forw
 - Creator output count or engagement != verified business value.
 - Copy, export or user report != verified platform publication.
 - Source fact != legal conclusion.
+- Application-material preparation != legal opinion, professional approval, Filing Authorization or filing.
 - Lifecycle projection != Official Truth, certified deadline, formal-state mutation or execution authority.
 - Customer != Applicant.
 - Contact data != marketing consent.

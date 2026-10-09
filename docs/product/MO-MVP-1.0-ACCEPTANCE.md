@@ -71,7 +71,8 @@ A nominal version label is not sufficient. The forward reserve must be visible i
 - Ordinary Workspace users can upload and manage private Knowledge, and can see the system Knowledge Pack version and usable Knowledge/data volume without seeing another Workspace's content.
 - Data Engine links China, United States, Canada, United Kingdom, European Union, Australia, New Zealand and Singapore for the accepted 1.0 coverage. Trademark assets from any jurisdiction can be bulk-imported with a clear `not linked to Data Engine` state when linkage is unavailable.
 - Data Pack entitlement is enforceable by jurisdiction, data family, version and permitted use, including independently controlled refusal, opposition, review-decision and publication data where available. UI and APIs show actual coverage and limitations rather than inferring whole-country access or silently reusing retrieval rights for Capability execution, opportunity discovery or marketing.
-- The bounded D-032 reference-output slice is the only currently admitted Brain-backed WS-1.0 obligation: released consumers receive governed, versioned official-fee facts, indicative process-stage rulesets and timing estimates through an admitted Brain Method and the existing Core/Capability reference materialization path. Each output identifies jurisdiction, source, effective window, method/package version, currentness and limitations and is not presented as a Brain-owned source fact, timeless constant, Official Truth or professional advice. This gate does not admit the I-032 production catalog, a case-specific DecisionPath job or the proposed B1.0–B3.0 line.
+- The bounded D-032 reference-output slice remains the only Brain-backed ordinary WS-1.0 obligation: released consumers receive governed, versioned official-fee facts, indicative process-stage rulesets and timing estimates through an admitted Brain Method and the existing Core/Capability reference materialization path. Each output identifies jurisdiction, source, effective window, method/package version, currentness and limitations and is not presented as a Brain-owned source fact, timeless constant, Official Truth or professional advice.
+- D-042 separately approves the first B1.0 product direction for MarkReg Ultimate: **申请资料核对 / Application Materials Review** for the bounded US direct-application scope. Before any production run, BRN-A0 and D-025 must prove the real owner/currentness/Method/Capability/handler-review/receipt path. Every used value retains exact source/version/fingerprint; missing, unknown, conflicting, unverified, stale, not-applicable and review-required states remain explicit; source or Method change creates a new version and diff. Approved negative fixtures must produce zero false-ready outcomes and zero fabricated facts. The result may be prepared for handler review but cannot provide legal advice, become `APPROVED_FOR_FILING`, mutate Matter/Professional Review state, send questions, authorize filing or submit an application. This is not an ordinary WS-1.0 gate.
 - Ordinary Workspace users cannot add custom API keys in WS-1.0. MarkReg can bind approved email and external API credentials through governed secret storage, rotation, audit and disablement. Future BYOK and paid MO-managed-key modes are not implied by 1.0.
 - Real-channel evidence proves released WeChat login/binding, payment and subscription-notification behavior; fixtures, Storybook and browser-only mocks do not satisfy those external channel gates.
 - Production deployment, monitoring, alerting, backup/restore evidence, incident/support runbooks, export/deletion runbooks and rollback procedures are operational.
@@ -171,13 +172,14 @@ The for-sale branch may start from a trademark listing and create an Inquiry, Of
 D-041 freezes MO-managed runtime plus controlled publishing as the only supported dynamic WS-1.0 Sites mode. The Workspace retains its channel account, certified subject, AppID, merchant account and domain. Static exports and a signed thin-client build handoff may be supported, but no full dynamic self-hosted package or customer-operated server is offered in WS-1.0.
 
 - An ordinary Workspace can configure and publish its Sites Mini Program Basic without engineering intervention.
-- The Mini Program supports shareable for-sale trademark list and detail pages and direct customer entry into Buy, Inquiry and Offer actions.
+- The Mini Program supports shareable for-sale trademark list and detail pages and direct customer entry into **提交购买意向 / Submit Purchase Intent**, Inquiry and Offer actions.
 - A Listing cannot be made public until the exact Trademark Asset, Commerce Profile, seller-authority evidence assessment, public assets, price/method and review version are current. A source change, authority revocation or conflict fails closed and requires re-review.
 - The public detail distinguishes canonical trademark facts, seller declarations, reviewed authority evidence, actual included assets, AI commercial inference and AI concept visualizations. `REAL ASSET` and `POSSIBLE FUTURE` remain understandable without relying on colour alone; no unverified market-value, ownership or business-performance claim is shown.
 - Internal Listing admission and external channel delivery are separate. Each target records submitted, succeeded, failed, unknown, paused or revoked behavior with a durable receipt/reconciliation path; `UNKNOWN` never renders as published and does not trigger an uncontrolled duplicate submission.
 - Accepted Mini Program checkout uses WeChat Pay under the Workspace's approved merchant/collection configuration and shows amount, currency, payee, tax/invoice treatment and reconciliation state before and after payment. An admitted service-order checkout can satisfy the WS-1.0 channel payment gate; collecting money for a trademark sale additionally requires the approved seller-authority, contracting, refund and transfer policy.
-- The fixed-price Buy action creates a traceable Purchase Intent; Inquiry and Offer create distinct durable records. Each binds the exact Listing version, Workspace, actor/contact context and idempotency key and supports its applicable acknowledgement, assignment, withdrawal, rejection, counter, expiry and closure states without using BuyerBehavior as the business owner.
-- The Buy confirmation and receipt state the next step and never imply a completed sale or ownership transfer. Accepted Offer means accepted commercial terms only. Purchase Intent or accepted terms may convert to an Order only through a separate explicit policy/evidence gate. Any later Payment advances only its Payment and reconciliation state, and creating or advancing a transfer Matter is another explicit, evidence-gated transition.
+- The fixed-price **提交购买意向 / Submit Purchase Intent** action creates a traceable Purchase Intent; Inquiry and Offer create distinct durable records. Each binds the exact Listing version, Workspace, actor/contact context and idempotency key and supports its applicable acknowledgement, assignment, withdrawal, rejection, counter, expiry and closure states without using BuyerBehavior as the business owner.
+- The Purchase Intent confirmation and receipt state the next step and never imply a completed sale or ownership transfer. Accepted Offer means accepted commercial terms only. Purchase Intent or accepted terms may convert to an Order only through a separate explicit policy/evidence gate. Any later Payment advances only its Payment and reconciliation state, and creating or advancing a transfer Matter is another explicit, evidence-gated transition.
+- An Inquiry, Offer or Purchase Intent does not automatically create an Opportunity. Only after explicit staff or admitted-rule qualification may an authorized operator link it to an existing Formal Opportunity or create one, and that Opportunity references the shared Contact/Organization records instead of copying them.
 - A suspended or withdrawn Listing rejects new intents while retaining historical intent, receipt and audit records. A price change creates a new Listing version and never rewrites the amount or conditions captured by an existing Offer or Purchase Intent.
 - Listing, transaction and transfer states provide clear next action, responsible owner, evidence and recoverable failure paths. A public multi-Workspace marketplace, platform custody/escrow and automated title adjudication are not WS-1.0 gates.
 
@@ -211,6 +213,7 @@ Ordinary Workspace validation:
 - prove the Workspace can complete the intended daily workflow using only its entitled WS-1.0 profile;
 - record onboarding time, support requests, workflow abandonment and manual-tool escapes;
 - confirm no MarkReg-only or experimental capability leaks through navigation, API or entitlement.
+- for the Trading slice, prove one real, non-fixture Workspace asset can move through current seller-authority/readiness review, exact-version Listing, actual Mini Program delivery, an external buyer session and a durable Purchase Intent into assigned Work; Inquiry and Offer retain their own positive and negative acceptance paths. Reload/resume, stale blocking and cross-Workspace isolation must also pass.
 
 A repeated escape is a product defect or deliberate documented non-goal.
 
@@ -222,6 +225,7 @@ Release is blocked by:
 - cross-Workspace data leakage or implicit relationship merging;
 - organization verification inferred from account, merchant, Payment or deposit evidence without the admitted matching organization evidence;
 - an Opportunity that creates competing Contact/Organization truth or whose closure deletes a shared Contact;
+- a buyer intent that automatically creates an Opportunity without explicit qualification, or, if trading buyer/contact enrichment is enabled, paid enrichment that lacks budget/provenance/consent/suppression gates, converts provider failure into a negative fact or invents contact data;
 - customer objects with no durable owner/reference;
 - materially incomplete English parity or a language switch that corrupts user/business state;
 - a required flow reachable only through Today, or a deep link/reload that loses authorized context;
@@ -244,6 +248,7 @@ Release is blocked by:
 - a zero/negative lifecycle fact without complete-read evidence, or an unlinked/unsupported source presented as current official status;
 - jurisdiction rules hard-coded in the browser, a renderer or live model output that invents milestones, dates, confidence or CTA eligibility;
 - a lifecycle CTA that bypasses permission/currentness/entitlement checks, creates duplicate formal work or executes a protected action without explicit review and authorization.
+- a D-042 preparation result that loses exact provenance, turns unknown into no, produces a false-ready result despite blocking missing/conflicting/stale input, sends a question, changes formal state, grants authority or submits a filing automatically, or advances without an exact-version accountable handler/professional-review receipt.
 
 ## 8. Operational targets
 
@@ -291,6 +296,7 @@ The following do not block 1.0 unless a later accepted decision changes this fil
 - unrestricted automatic marketing;
 - advanced Brain authoring or a generic Capability Center;
 - any Brain case-analysis job, substantive OA method or private-Workspace method overlay not separately admitted through an approved M21 scope;
+- Candidate B price/service mapping, complex US application types, jurisdictions beyond the approved D-042 slice and substantive OA work;
 - multi-provider parity or ordinary Workspace provider selection;
 - MarkReg 1.5 provider order/price back office;
 - ordinary Lite two-way messaging, SMS or WeCom;
@@ -309,6 +315,7 @@ A green CI suite or merged PR cannot mark 1.0 released.
 Final release requires:
 
 - D-041 is recorded: M07 managed hosting and the staged M18 product route are approved. External credentials, seller-authority evidence, professional review, collection/settlement, transfer and operating evidence remain acceptance gates, not additional Product Owner questions for the bounded WS-1.0 intent loop;
+- D-042 is recorded: Candidate A is the approved first bounded Brain-job direction. BRN-A0 may begin without another Product Owner choice, while its exact US Method/Package, source/currentness, reviewer roster, evidence and runtime remain separately admission-gated;
 - acceptance evidence for the Shared 1.0 Core, MR-1.0 and WS-1.0 sections of this document;
 - three-director review;
 - Product Owner release decision;

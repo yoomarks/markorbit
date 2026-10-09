@@ -122,6 +122,7 @@ MR-1.0 requires:
 - human-reviewed MarkReg email marketing with contact source, consent where required, suppression/unsubscribe handling and audit; Growth-assisted candidate scoring, follow-up and higher automation remain MR-1.5;
 - allowlisted MarkReg connected accounts or provider keys through secure credential references, without exposing raw secrets or creating a provider-specific product fork;
 - governed manual/self-operated delivery, with external professional handoff allowed when authority, evidence and receipt remain durable.
+- after BRN-A0 and D-025 admission, MR-1.0 includes the first controlled MarkReg Ultimate runs of the D-042 B1.0 **申请资料核对 / Application Materials Review** slice for bounded US direct applications. It prepares source-backed fields, gaps, conflicts and unsent questions for handler/professional review; it never supplies legal advice, authorizes filing or submits an application.
 
 The public catalog focuses on China and selected advantageous jurisdictions. An assisted quote may be prepared for application, change, assignment and renewal in any country only when Workspace pricing and a viable delivery route are confirmed. This quote coverage does not imply self-service automation, Data Engine coverage or automatic official filing for every country.
 
@@ -138,7 +139,8 @@ Primary objectives:
 - keep unrestricted auto-send disabled until consent, complaint, conversion, cost and rollback evidence justify promotion;
 - dogfood the LC-1.5 video, talking-head and bounded digital-avatar lines with identity, consent, brand, provider, rights and unit-economics controls;
 - add multiple presentation templates and recommendation-video preparation for trademarks for sale;
-- dogfood the full Trading Commercial Value Map, three distinct commercial directions with six finished proposals, selected-direction application build, buyer brief and 2–4-item shortlist, private recommendation/light white label and evidence-labelled listing-price references;
+- dogfood the full Trading Commercial Value Map, three distinct commercial directions with six finished proposals, selected-direction application build, buyer brief and 2–4-item shortlist, private recommendation/light white label and evidence-labelled listing-price references. Matching uses explicit hard eligibility filters before explainable commercial ranking, records material inclusion/exclusion reasons and does not present uncalibrated percentages;
+- allow paid buyer/contact enrichment only for a high-value qualified target with admitted budget and lawful-use, consent and suppression controls; retain provider/source/as-of evidence, return `UNKNOWN` on failure and never invent contact data;
 - compare fact-only, commercial-explanation, reviewed-visual and optional-video variants against qualified buyer intent, handling time, serious misstatement and total usable-output cost rather than views or generated-asset count alone;
 - dogfood a 12-month Trademark Portfolio Timeline, 30/60/90-day Upcoming Actions and admitted maintenance coverage, recording missed actions, false positives, professional corrections, operator load, source freshness and per-asset cost before ordinary-Workspace promotion;
 
@@ -255,12 +257,13 @@ WS-1.0 includes:
 - no ordinary-user proactive/two-way customer messaging beyond supported system flows;
 - LC-1.0 bounded static-outcome creation through one business-object-bound conversational workbench, with exact owner/source/version/currentness, structured review and owner-backed handoff;
 - minimal Workspace private-Knowledge upload/management with Pack version, usable amount, quota and freshness visibility;
-- the bounded D-032 reference-output obligation for admitted launch services, resolved through admitted Brain Methods and the existing Core/Capability materialization path rather than unversioned constants or a second Brain-owned source store; this does not admit the I-032 catalog, a case-specific DecisionPath job or the B1.0–B3.0 proposal;
+- the bounded D-032 reference-output obligation for admitted launch services, resolved through admitted Brain Methods and the existing Core/Capability materialization path rather than unversioned constants or a second Brain-owned source store. D-042 separately approves one MarkReg-only B1.0 direction and does not make that case-specific job an ordinary WS-1.0 obligation;
 - Data Pack identities and entitlements that can distinguish jurisdiction, dataset family and version for admitted launch packs;
 - an explicit trademark-for-sale area with observable sale-readiness preparation, seller-authority evidence gaps and blockers, explainable AI label candidates and exact-version Listing draft/review;
 - one reliable reviewed presentation path that separates canonical facts, seller declarations, reviewed evidence, `REAL ASSET`, AI inference and `POSSIBLE FUTURE`, without requiring complete Trading Studio Deep Build;
 - governed delivery to the Workspace's MO-managed Mini Program Basic with target-specific success, failure, unknown, pause and revocation evidence distinct from internal Listing admission;
 - three distinct durable buyer-intent flows—Inquiry, Offer and Purchase Intent—bound to the exact Listing version and connected to the shared Contact Library and Workspace Work. Fixed Price creates Purchase Intent, and accepted Offer means accepted commercial terms only;
+- explicit qualification before an authorized operator links an Inquiry, Offer or Purchase Intent to an existing Formal Opportunity or creates one; no intent automatically creates an Opportunity, and the shared Contact Library remains the contact owner;
 - sale metrics based on authorized-listing completion, qualified intent, time to first qualified intent, follow-up outcome, serious misstatement and total usable-output cost rather than generation volume, views or Favorites alone.
 - a D-039 Trademark Lifecycle projection for US, EUIPO, Singapore, the Philippines and China as five independently admitted WS-1.0 Rule Pack targets. Each declared scope requires source/evidence location, rule version and effective window, applicable basis/procedure, positive and negative fixtures, professional-review responsibility and explicit limited/manual/unavailable degradation. The Philippines remains outside the D-029 Data-linked set unless separately approved, and its rail must not imply Data Engine currentness.
 
@@ -335,7 +338,7 @@ Primary objectives:
 - eligible Workspace BYOK plus paid MO-managed-key consumption with usage, budget, revocation and fallback controls;
 - usage-based limits/cost controls;
 - customer-development flows proven with consent/governance.
-- bounded trading inventory batches, team review and versioned Offer/Counter/accepted-commercial-terms work, plus a Transaction Workspace projection over existing Agreement, Order, Payment, Matter, Provider and evidence owners;
+- bounded trading inventory batches, team review and versioned Offer/Counter/accepted-commercial-terms work, plus closing-evidence reconciliation and Aftercare in a Transaction Workspace projection over existing Agreement, Order, Payment, Matter, Provider and evidence owners; no second transaction-truth object is created;
 - trademark-sale Order/collection/refund/settlement/Transfer execution only after their contracting-party, authority, professional-review and dispute gates are separately admitted.
 
 Potential 2.0 candidates subject to validation:
@@ -372,20 +375,20 @@ Target capabilities:
 - advisory Lifecycle Intelligence for comparable-cohort speed, abnormal delay and portfolio patterns, with explainable baselines and no official forecast or legal promise.
 - governed LC-3.0 evidence-driven content programs and bounded personalization without autonomous publication.
 
-## M21 Brain maturity proposal — CHANGE_REQUESTED / IN_REVIEW
+## M21 Brain maturity line — PARTIALLY APPROVED by D-042
 
-B1.0–B3.0 are proposed M21 module-maturity labels, not a fourth product release train and not implementation admission. Any admitted slice must still map to the Architecture Runway, MarkReg Forward or Workspace release that consumes it.
+B1.0–B3.0 are M21 module-maturity labels, not a fourth product release train and not blanket implementation admission. Any slice must still map to the Architecture Runway, MarkReg Forward or Workspace release that consumes it and pass D-025.
 
-- **B1.0 candidate:** one separately approved industry job with a source-backed DecisionPath, versioned references, bounded Context, explicit missing/conflicting/stale/not-applicable states, stop/review points and a traceable product receipt. Application-material preparation and price/service mapping are separate candidate admissions, not one automatic bundle. OA work is limited to source extraction, issue/field comparison, evidence gaps and question drafting until a substantive family is independently approved.
+- **B1.0 approved first-job direction:** D-042 locks `US_FILING_PREPARATION`, shown as **申请资料核对 / Application Materials Review**, for MarkReg Ultimate reference production after BRN-A0 and D-025 admission. The first slice covers one authorized US direct application with one applicant, a standard word/static device mark, an already-confirmed Section 1(a) or 1(b) basis, and confirmed class scope. It returns a versioned source-backed preparation DecisionPath with per-field present/missing/unknown/conflicting/unverified/stale/not-applicable/review-required states, unsent questions, review points and a product receipt. It is not a legal opinion, filing-readiness approval, formal-state mutation or filing action. Price/service mapping is a separate Research admission. Complex US bases/types, other jurisdictions and substantive OA analysis remain outside this slice.
 - **B1.5 candidate:** MarkReg Forward dogfood for one bounded cross-object change/impact job or one substantive OA family, plus governed ICP or Creator expression briefs where separately admitted. Brain may produce evidence-backed direction and rationale; Creator owns generated text/image/video and the product owner retains candidates and formal state.
 - **B2.0 candidate:** private Workspace SOP overlays, bounded method composition, cross-case validation and subject/relationship candidates. Workspace isolation, permission change, revocation, source update and method supersession must be proven; a private overlay cannot override official requirements or become shared Brain truth.
 - **B3.0 candidate:** governed method portfolio, champion/challenger evaluation, segment quality, drift and limited experimentation. Candidate improvement still follows reproducible research, evaluation, shadow/pilot, explicit activation and rollback and never auto-authorizes a legal conclusion, filing, payment, publication or outreach.
 
-The proposal remains blocked from approval until the Product Owner selects the first job and scope and assigns case-specific professional-review responsibility. Exact sample sizes, quality thresholds, prices and cost figures in research material are experiment hypotheses, not release commitments.
+The first-job product direction is no longer blocked on an Owner choice. Runtime remains blocked until BRN-A0 verifies the existing-owner reachability path, authoritative US Method/Package and currentness rules, handler and authorized-professional responsibility, versioned result/review receipts, negative fixtures, bounded failure and full cost. Exact sample sizes, quality thresholds, prices and cost figures in research material remain experiment hypotheses, not release commitments.
 
 ## Current Product Owner confirmation status
 
-D-041 resolves the former M07 hosting choice and records the M18 release route. No additional Product Owner product-direction choice is required to begin the TR-00 audit or the bounded WS-1.0 for-sale intent loop. M21 remains `CHANGE_REQUESTED / IN_REVIEW` until the Product Owner selects its first bounded Brain job, scope and professional-review responsibility.
+D-041 resolves M07 hosting and records the M18 release route. D-042 records the Product Owner's selection of Candidate A for the first bounded Brain job. No additional Product Owner product-direction choice is required to begin TR-00, the bounded WS-1.0 for-sale intent loop or BRN-A0. These audits do not themselves admit runtime implementation.
 
 ## Research / unresolved product decisions
 
@@ -402,7 +405,8 @@ The following require bounded evidence or an explicit three-director decision be
 - Creator Video/Avatar Pack pricing, entitlement and unit-economics evidence required for promotion beyond MarkReg;
 - Data Pack catalog, entitlement and pricing taxonomy below jurisdiction level;
 - per-jurisdiction Lifecycle Rule Pack authority and licensing, procedure/status mapping, effective-date and time-zone treatment, deadline-review responsibility, negative-fact completeness, prediction calibration and professional-review admission for US, EUIPO, Singapore, the Philippines and China;
-- the first production Brain reference-and-method catalog, including its real consumer, first job, jurisdiction/service scope, admitted method, reference dependencies, DecisionPath contract, currentness, professional-review responsibility and full-cost evidence;
+- the exact D-042 US preparation Method/Package authority, source/currentness rules, professional reviewer roster, DecisionPath/receipt schema, negative fixtures and full-cost evidence; BRN-A0 resolves these implementation/admission facts without reopening the selected first-job direction;
+- price/service mapping, complex US application types, other jurisdictions and any broader production Brain reference-and-method catalog;
 - the first substantive OA method family, if any, after extraction/comparison-only work;
 - the sharing license, permission, anonymization and revocation rules for private Workspace SOPs, cases and Creator feedback;
 - BYOK eligibility, secret/account binding, usage metering and the premium model for MO-managed keys.
