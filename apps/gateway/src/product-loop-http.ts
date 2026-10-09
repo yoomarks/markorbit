@@ -7,7 +7,8 @@ import {
 } from '@markorbit/contracts';
 import {
   normalizeApplicantDiscoveryRequestV1,
-  normalizeApplicantPortfolioRequestV1
+  normalizeApplicantPortfolioRequestV1,
+  type ApplicantDiscoveryRequestV1
 } from '@markorbit/contracts/data-engine-applicant-discovery';
 import { HttpError, json, type JsonRequest, type JsonRoute } from '@markorbit/service-kit';
 import {
@@ -18,6 +19,11 @@ import {
 } from './auth.js';
 import { createDataEngineClient } from './data-engine-http.js';
 import { createApplicantDiscoveryClientV1 } from './data-engine-applicant-discovery-http.js';
+import {
+  admitUSApplicantNameRead,
+  verifyAdmittedApplicantPage,
+  type USApplicantNameAdmissionOptions
+} from './data-engine-applicant-admission.js';
 import { dataEngineRequestContext, runDataEngineQuery } from './data-engine-route-support.js';
 import {
   mapDataEngineTrademarkAssetFacts,
@@ -34,6 +40,7 @@ export interface GatewayProductLoopOptions {
   dataEngineApiKey?: string;
   dataEngineTimeoutMs?: number;
   dataEngineFetchImpl?: typeof fetch;
+  usApplicantNameAdmission?: USApplicantNameAdmissionOptions;
 }
 
 const actorSpoofFields = [
@@ -294,8 +301,22 @@ export function createGatewayProductLoopRoutes(
       request,
       'ADVISORY_POST',
       ['workspace:read'],
-      ['requestContext']
+      [
+        'requestContext',
+        'entitlementKey',
+        'grant',
+        'subject',
+        'subjectScope',
+        'asOf',
+        'evaluatedAt',
+        'action',
+        'purpose',
+        'sourceVersion',
+        'admission'
+      ]
     );
+    if (Object.keys(request.query).length > 0)
+      throw new HttpError(400, 'INVALID_REQUEST', 'Applicant reads accept a request body only.');
     if (!dataEngineUrl || !dataEngineApiKey)
       throw new HttpError(
         503,
@@ -321,6 +342,19 @@ export function createGatewayProductLoopRoutes(
         error instanceof Error ? error.message : 'Applicant query is invalid.'
       );
     }
+    if (kind === 'DISCOVERY') {
+      const discovery = ownerRequest as ApplicantDiscoveryRequestV1;
+      if (discovery.jurisdiction !== 'US' || discovery.input.kind !== 'NAME')
+        throw new HttpError(
+          400,
+          'INVALID_REQUEST',
+          'Only US NAME Applicant discovery is available.'
+        );
+    }
+    const decision =
+      kind === 'DISCOVERY'
+        ? await admitUSApplicantNameRead(request, principal, options.usApplicantNameAdmission)
+        : undefined;
     return runDataEngineQuery(
       {
         dataEngineUrl,
@@ -329,11 +363,16 @@ export function createGatewayProductLoopRoutes(
         ...(options.dataEngineFetchImpl ? { fetchImpl: options.dataEngineFetchImpl } : {})
       },
       request,
-      (client) => {
+      async (client) => {
         const applicant = createApplicantDiscoveryClientV1(client);
-        return kind === 'DISCOVERY'
-          ? applicant.discoverApplicants(ownerRequest as never)
-          : applicant.readPortfolio(ownerRequest as never);
+        if (decision) {
+          const envelope = await applicant.discoverApplicants(
+            ownerRequest as ApplicantDiscoveryRequestV1
+          );
+          verifyAdmittedApplicantPage(envelope, decision);
+          return envelope;
+        }
+        return applicant.readPortfolio(ownerRequest as never);
       }
     );
   };

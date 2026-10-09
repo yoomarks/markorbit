@@ -85,36 +85,8 @@ afterEach(() => {
 });
 
 describe('Gateway Lite Product-loop transport boundary', () => {
-  it('serves Applicant discovery with server-owned Workspace request context', async () => {
-    const dataEngineFetch = vi.fn<typeof fetch>((input) => {
-      const url = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url;
-      expect(url).toContain('/api/v1/us/applicants/by-name?');
-      expect(url).toContain('requester_workspace_id=27272727-2727-4272-8272-272727272727');
-      return Promise.resolve(
-        new Response(
-          JSON.stringify({
-            contract_version: 'MARKORBIT_DATA_ENGINE_INTEGRATION_V1',
-            engine_version: 'M1.9-test',
-            source_owner: 'MARKORBIT_DATA_ENGINE',
-            jurisdiction: 'US',
-            resource_kind: 'APPLICANT_IDENTITY_DISCOVERY',
-            authority: 'DATA_ENGINE_FACT_READ_MODEL',
-            legal_conclusion: false,
-            fact_state: 'not_found',
-            payload: null
-          }),
-          {
-            status: 200,
-            headers: {
-              'x-request-id': 'applicant-read-1',
-              'x-correlation-id': 'applicant-read-1',
-              'x-markorbit-contract-version': 'MARKORBIT_DATA_ENGINE_INTEGRATION_V1',
-              'x-markorbit-source-owner': 'MARKORBIT_DATA_ENGINE'
-            }
-          }
-        )
-      );
-    });
+  it('keeps Applicant discovery unavailable without current data-use admission', async () => {
+    const dataEngineFetch = vi.fn<typeof fetch>();
     const value = createGatewayProductLoopRoutes({
       ...options,
       dataEngineUrl: 'https://data-engine.test',
@@ -125,23 +97,23 @@ describe('Gateway Lite Product-loop transport boundary', () => {
         candidate.method === 'POST' && candidate.path === '/api/data-engine/applicants/discover'
     )!;
 
-    const response = await value.handle({
-      method: 'POST',
-      path: '/api/data-engine/applicants/discover',
-      params: {},
-      query: {},
-      headers: {
-        cookie: 'mo_session=session_wp05_gateway',
-        origin: 'https://test.markorbit.local',
-        'x-markorbit-workspace-id': workspaceId,
-        'x-markorbit-csrf-token': csrfToken(principal.sessionId, options.csrfSecret),
-        'x-request-id': 'applicant-read-1'
-      },
-      body: { jurisdiction: 'US', input: { kind: 'NAME', value: 'Orbit LLC' }, pageSize: 10 }
-    });
-
-    expect(response.status).toBe(200);
-    expect(dataEngineFetch).toHaveBeenCalledTimes(1);
+    await expect(
+      value.handle({
+        method: 'POST',
+        path: '/api/data-engine/applicants/discover',
+        params: {},
+        query: {},
+        headers: {
+          cookie: 'mo_session=session_wp05_gateway',
+          origin: 'https://test.markorbit.local',
+          'x-markorbit-workspace-id': workspaceId,
+          'x-markorbit-csrf-token': csrfToken(principal.sessionId, options.csrfSecret),
+          'x-request-id': 'applicant-read-1'
+        },
+        body: { jurisdiction: 'US', input: { kind: 'NAME', value: 'Orbit LLC' }, pageSize: 10 }
+      })
+    ).rejects.toMatchObject({ status: 503, code: 'DATA_ENGINE_DATA_USE_UNAVAILABLE' });
+    expect(dataEngineFetch).not.toHaveBeenCalled();
   });
 
   it('rejects caller-supplied Applicant discovery authority context', async () => {
