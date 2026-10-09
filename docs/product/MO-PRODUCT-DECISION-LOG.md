@@ -447,3 +447,18 @@ Decision:
 - Runtime admission requires exact provenance on every used value, zero false-ready results in approved missing/conflict/stale fixtures, zero unsupported/fabricated facts, explicit handler/professional review evidence for every onward case, bounded dependency failure and demonstrated cost. Candidate B, complex US cases, other jurisdictions, private Workspace overlays and B1.5–B3.0 remain separate admissions.
 
 Disposition: M21 first-job direction PARTIALLY APPROVED; BRN-A0 audit/specification may begin; runtime remains D-025 and evidence gated; no further Product Owner choice is required for the first-job direction
+
+## D-043 — Freeze the Trademark Lifecycle LCR-A0 contract boundary
+
+Decision:
+
+- the Product Owner explicitly freezes `docs/planning/MO-TRADEMARK-LIFECYCLE-LCR-A0-SCOPE-LOCK.md` and confirms that its cited repository decisions are the current authoritative product projection for this module;
+- MarkReg owns the durable lifecycle projection and professional lifecycle semantics. Lite retains the Workspace asset anchor and renders the list cue/rail; Gateway composes Core and destination-owner decisions without becoming an authorization owner; Data, Knowledge, Brain/Capability, Work, Matter and Execution retain their existing authority;
+- the production boundary separates the privacy-safe `TrademarkLifecycleReadResultV1`, immutable MarkReg-owned `TrademarkLifecycleProjectionV1`, transient Capability computation input/output and actor-scoped interaction overlay. The current high-fidelity prototype remains non-canonical experience evidence until those contracts are admitted and integrated;
+- Lifecycle Rule Pack is a product term for one independently admitted jurisdiction + authority + procedure + basis scope backed by an exact ACTIVE temporal Method package and exact materialized reference/source dependencies. `DomainPackV1` is an upper-level manifest, not executable logic or admission proof. US, EUIPO, Singapore, the Philippines and China remain five independently gated targets rather than blanket runtime approvals;
+- the current repository has no admitted owner contract for certified legal deadlines. Reviewed timing remains non-certified, and deadline language is blocked until a separate owner/review-receipt/currentness path is admitted;
+- source facts, currentness, conflict, process position, time assertion, negative-fact read state, next-item evaluation, recommendation evaluation and actor interaction access remain separate. The UI does not select the current/next milestone, primary time, confidence or CTA eligibility;
+- selecting a milestone may inspect evidence or enter a bounded eligible preparation surface only. It does not create or mutate Work/Matter, certify completion, authorize filing or perform a protected action;
+- LCR-A1 may begin as a separately bootstrapped shared-contract task. This freeze does not admit A1 implementation, a Capability ID/version, MarkReg persistence, a jurisdiction Rule Pack, UI runtime integration, deployment or external action.
+
+Disposition: LCR-A0 exact scope FROZEN; cited repository decisions accepted as current module authority; LCR-A1 planning/implementation task may begin under its own admission; all runtime and Rule Pack gates remain in force
