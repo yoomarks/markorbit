@@ -276,19 +276,27 @@ Promotion requires explicit evidence and decision. Rollback must be possible.
 
 ## 8. Brain / Capability / Knowledge / Data / Execution separation
 
-Data Engine answers primarily: what structured facts are currently known?
+Data Engine answers primarily: what structured facts, history and reproducible datasets are currently known?
 
-Knowledge answers primarily: what information/evidence/rules do we know and why?
+Knowledge answers primarily: what documentary information, sources, evidence and rules do we know and why?
 
-Capability answers primarily: what bounded outcome can the system produce?
+Brain answers primarily: what reusable method should be researched, evaluated, compiled, versioned and governed for an admitted problem?
 
-Brain answers primarily: how should the system reason, select sources/capabilities and orchestrate work?
+For a Brain-backed flow, Capability answers primarily: what bounded outcome can an admitted method produce from the current authorized inputs? Capabilities that do not require reusable Brain intelligence remain governed by their own Stable Outcome Contracts.
+
+The consuming Product, Work, Matter, Quote, Customer, Opportunity or Creator owner answers primarily: what case-specific interpretation, candidate or business state should be retained?
 
 Execution answers primarily: what protected action is authorized to actually happen?
 
-These responsibilities may compose but must not collapse.
+These responsibilities may compose behind one user experience but must not collapse. Brain does not own Knowledge documents, Data Engine facts, customer or case populations, formal business state or external-action authority.
 
-Brain may also produce governed, versioned reference assets—facts, estimates and rulesets such as official-fee tables, expected process stages and indicative timing ranges—so product workflows do not repeatedly rediscover the same inputs. These are not timeless constants: they require source, version, jurisdiction, effective window, currentness and limitation evidence and remain distinct from Official Truth or a professional decision.
+Brain-backed production work uses the fast path: an ACTIVE executable method package, admitted reference materialization and current authorized inputs are executed through Capability. New or revised methods use the slower governed research, evaluation, compilation, shadow/pilot and explicit activation path. An ordinary request must not silently re-run Brain Research or auto-promote a candidate method.
+
+Stable references such as official fees, expected process stages and indicative timing ranges may be resolved by an admitted Brain Method and materialized/read through the existing Core/Capability reference path only where D-032 or a later Owner decision admits that slice. The materialized value does not become a long-term Brain-owned source fact. It requires source, version, jurisdiction, effective window, method/package version, currentness and limitations and remains distinct from Official Truth or a professional decision.
+
+A case-specific interpretation retained by a product owner pins the exact method/package, source or dataset, object and input versions. Re-evaluation creates a new result and an explainable difference rather than overwriting the historical result.
+
+A user-visible DecisionPath is a structured, reviewable outcome containing scope, source-backed knowns, condition states, applicable branches/options, missing or conflicting evidence, next step, stop/review points and re-evaluation conditions. It is not hidden model chain-of-thought and does not authorize execution.
 
 ## 9. Workspace Intelligence Profile
 

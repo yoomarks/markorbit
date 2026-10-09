@@ -243,7 +243,7 @@ WS-1.0 includes:
 - no ordinary-user proactive/two-way customer messaging beyond supported system flows;
 - LC-1.0 bounded static-outcome creation through one business-object-bound conversational workbench, with exact owner/source/version/currentness, structured review and owner-backed handoff;
 - minimal Workspace private-Knowledge upload/management with Pack version, usable amount, quota and freshness visibility;
-- versioned Brain resolved values/rules/estimates required by admitted launch services rather than unversioned constants;
+- the bounded D-032 reference-output obligation for admitted launch services, resolved through admitted Brain Methods and the existing Core/Capability materialization path rather than unversioned constants or a second Brain-owned source store; this does not admit the I-032 catalog, a case-specific DecisionPath job or the B1.0–B3.0 proposal;
 - Data Pack identities and entitlements that can distinguish jurisdiction, dataset family and version for admitted launch packs;
 - an explicit trademark-for-sale area, evidence-backed listing readiness, explainable AI label candidates, Mini Program list/detail, inquiry, offer and purchase-intent flows.
 
@@ -307,7 +307,7 @@ Primary objectives:
 - capability bundles such as International Filing Pack and Creator Pack;
 - richer Workspace private Knowledge management;
 - a broader commercially packaged Data Pack catalog built on the 1.0 jurisdiction/dataset/version entitlement foundation;
-- broader production Brain assets and admitted Workspace overlays;
+- broader production Brain Methods and admitted private Workspace overlays after bounded M21 approval and evidence;
 - provider routing/fallback policies exposed safely to MO operators;
 - eligible Workspace BYOK plus paid MO-managed-key consumption with usage, budget, revocation and fallback controls;
 - usage-based limits/cost controls;
@@ -335,7 +335,7 @@ Target capabilities:
 - multi-channel Site delivery;
 - richer provider marketplace/routing;
 - broader MGSN network automation;
-- advanced Brain orchestration with governed self-improvement evidence;
+- an advanced governed Brain Method portfolio with explicit evaluation, activation, rollback and improvement evidence;
 - Capability composition and validated Workspace-specific methods;
 - large-scale cross-jurisdiction data/knowledge packs;
 - mature Growth automation with policy control;
@@ -344,6 +344,17 @@ Target capabilities:
 - APIs for selected external partners;
 - reusable industry packs derived from proven MarkReg/Lite operations.
 - governed LC-3.0 evidence-driven content programs and bounded personalization without autonomous publication.
+
+## M21 Brain maturity proposal — CHANGE_REQUESTED / IN_REVIEW
+
+B1.0–B3.0 are proposed M21 module-maturity labels, not a fourth product release train and not implementation admission. Any admitted slice must still map to the Architecture Runway, MarkReg Forward or Workspace release that consumes it.
+
+- **B1.0 candidate:** one separately approved industry job with a source-backed DecisionPath, versioned references, bounded Context, explicit missing/conflicting/stale/not-applicable states, stop/review points and a traceable product receipt. Application-material preparation and price/service mapping are separate candidate admissions, not one automatic bundle. OA work is limited to source extraction, issue/field comparison, evidence gaps and question drafting until a substantive family is independently approved.
+- **B1.5 candidate:** MarkReg Forward dogfood for one bounded cross-object change/impact job or one substantive OA family, plus governed ICP or Creator expression briefs where separately admitted. Brain may produce evidence-backed direction and rationale; Creator owns generated text/image/video and the product owner retains candidates and formal state.
+- **B2.0 candidate:** private Workspace SOP overlays, bounded method composition, cross-case validation and subject/relationship candidates. Workspace isolation, permission change, revocation, source update and method supersession must be proven; a private overlay cannot override official requirements or become shared Brain truth.
+- **B3.0 candidate:** governed method portfolio, champion/challenger evaluation, segment quality, drift and limited experimentation. Candidate improvement still follows reproducible research, evaluation, shadow/pilot, explicit activation and rollback and never auto-authorizes a legal conclusion, filing, payment, publication or outreach.
+
+The proposal remains blocked from approval until the Product Owner selects the first job and scope and assigns case-specific professional-review responsibility. Exact sample sizes, quality thresholds, prices and cost figures in research material are experiment hypotheses, not release commitments.
 
 ## Research / unresolved product decisions
 
@@ -357,7 +368,9 @@ The following require bounded evidence or an explicit three-director decision be
 - the legal/commercial/fulfillment model for Buy Now, offer acceptance, settlement, refund and trademark transfer completion;
 - Creator Video/Avatar Pack pricing, entitlement and unit-economics evidence required for promotion beyond MarkReg;
 - Data Pack catalog, entitlement and pricing taxonomy below jurisdiction level;
-- the first production Brain Asset catalog and validation/currentness thresholds for fees, timelines and procedures;
+- the first production Brain reference-and-method catalog, including its real consumer, first job, jurisdiction/service scope, admitted method, reference dependencies, DecisionPath contract, currentness, professional-review responsibility and full-cost evidence;
+- the first substantive OA method family, if any, after extraction/comparison-only work;
+- the sharing license, permission, anonymization and revocation rules for private Workspace SOPs, cases and Creator feedback;
 - BYOK eligibility, secret/account binding, usage metering and the premium model for MO-managed keys.
 
 ## Parked until evidence

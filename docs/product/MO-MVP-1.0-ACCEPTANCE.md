@@ -68,7 +68,7 @@ A nominal version label is not sufficient. The forward reserve must be visible i
 - Ordinary Workspace users can upload and manage private Knowledge, and can see the system Knowledge Pack version and usable Knowledge/data volume without seeing another Workspace's content.
 - Data Engine links China, United States, Canada, United Kingdom, European Union, Australia, New Zealand and Singapore for the accepted 1.0 coverage. Trademark assets from any jurisdiction can be bulk-imported with a clear `not linked to Data Engine` state when linkage is unavailable.
 - Data Pack entitlement is enforceable by jurisdiction, data family, version and permitted use, including independently controlled refusal, opposition, review-decision and publication data where available. UI and APIs show actual coverage and limitations rather than inferring whole-country access or silently reusing retrieval rights for Capability execution, opportunity discovery or marketing.
-- Brain exposes governed, versioned reference assets needed by released flows, including official-fee facts, indicative process-stage rulesets and timing estimates. Each output identifies jurisdiction, source, effective window, version/currentness and limitations and is not presented as a timeless constant, Official Truth or professional advice.
+- The bounded D-032 reference-output slice is the only currently admitted Brain-backed WS-1.0 obligation: released consumers receive governed, versioned official-fee facts, indicative process-stage rulesets and timing estimates through an admitted Brain Method and the existing Core/Capability reference materialization path. Each output identifies jurisdiction, source, effective window, method/package version, currentness and limitations and is not presented as a Brain-owned source fact, timeless constant, Official Truth or professional advice. This gate does not admit the I-032 production catalog, a case-specific DecisionPath job or the proposed B1.0–B3.0 line.
 - Ordinary Workspace users cannot add custom API keys in WS-1.0. MarkReg can bind approved email and external API credentials through governed secret storage, rotation, audit and disablement. Future BYOK and paid MO-managed-key modes are not implied by 1.0.
 - Real-channel evidence proves released WeChat login/binding, payment and subscription-notification behavior; fixtures, Storybook and browser-only mocks do not satisfy those external channel gates.
 - Production deployment, monitoring, alerting, backup/restore evidence, incident/support runbooks, export/deletion runbooks and rollback procedures are operational.
@@ -253,6 +253,7 @@ The following do not block 1.0 unless a later accepted decision changes this fil
 - broad Lite general availability;
 - unrestricted automatic marketing;
 - advanced Brain authoring or a generic Capability Center;
+- any Brain case-analysis job, substantive OA method or private-Workspace method overlay not separately admitted through an approved M21 scope;
 - multi-provider parity or ordinary Workspace provider selection;
 - MarkReg 1.5 provider order/price back office;
 - ordinary Lite two-way messaging, SMS or WeCom;

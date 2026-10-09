@@ -360,3 +360,16 @@ Decision:
 - browser cookies, browser form completion and user-reported use are not canonical publication evidence.
 
 Disposition: WS-1.0 manual handoff; MR-1.5 official-API pilot; selected WS-2.0 promotion after evidence
+
+## D-038 — Brain is governed method intelligence, not a second truth or action owner
+
+Decision:
+
+- Knowledge retains documentary sources and evidence; Data Engine retains structured facts, history and reproducible datasets; Brain researches, evaluates, compiles and governs reusable Methods; Brain-backed Capabilities execute admitted Methods, while other Capabilities retain their own Stable Outcome Contracts; consuming product owners retain case-specific interpretations and formal business state; Execution retains protected-action authority;
+- within the bounded reference-output slice already admitted by D-032, stable references such as official fees are resolved by an admitted Brain Method and materialized/read through the existing Core/Capability reference path rather than a second Brain-owned source registry; broader catalog and job admission still require a later decision;
+- Brain-backed ordinary work uses ACTIVE executable packages and current authorized inputs. New method research, evaluation, shadow/pilot and activation remain a separate governed slow path, and no result or feedback may auto-promote a Method to ACTIVE;
+- a persisted case result pins method/package, source or dataset, object and input versions. Re-evaluation creates a new result and diff instead of rewriting history;
+- a user-visible DecisionPath records evidence, condition states, applicable branches, missing/conflicting inputs, stop/review points and re-evaluation conditions. It is not hidden model chain-of-thought and grants no action authority;
+- the attached Brain research archive and proposed B1.0–B3.0 line are selectively absorbed as research input. They do not approve a first job, jurisdiction/service scope, substantive OA family, professional-review responsibility, private-feedback license or runtime implementation.
+
+Disposition: permanent architecture guardrails for ownership, method lifecycle, history pinning and DecisionPath; D-032 reference-output admission unchanged; M21 detailed roadmap remains CHANGE_REQUESTED / IN_REVIEW
