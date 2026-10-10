@@ -6,26 +6,24 @@ import {
 } from '@markorbit/contracts/trademark-asset-composition';
 import {
   isTrademarkAssetSourceOwnerKindPair,
+  parseTrademarkAssetSourceScopeReadV1,
   trademarkAssetFreshnessStates,
   type TrademarkAssetId,
   type TrademarkAssetSourceOwner,
+  type TrademarkAssetSourceReadState,
+  type TrademarkAssetSourceScopeReadV1,
   type TrademarkAssetSourceReference
 } from '@markorbit/contracts/trademark-asset-workspace';
 import type { TrademarkAssetFactContribution } from './trademark-asset-view.js';
 
-export const trademarkAssetSourceReadStates = [
-  'OBSERVED',
-  'EMPTY',
-  'NOT_OBSERVED',
-  'NOT_COVERED',
-  'UNAVAILABLE'
-] as const;
-export type TrademarkAssetSourceReadState = (typeof trademarkAssetSourceReadStates)[number];
-
-export interface TrademarkAssetSourceScopeReadV1 {
-  owner: TrademarkAssetSourceOwner;
-  state: TrademarkAssetSourceReadState;
-}
+export {
+  isCompleteTrademarkAssetSourceReadState,
+  parseTrademarkAssetSourceReadState,
+  parseTrademarkAssetSourceScopeReadV1,
+  trademarkAssetSourceReadStates,
+  type TrademarkAssetSourceReadState,
+  type TrademarkAssetSourceScopeReadV1
+} from '@markorbit/contracts/trademark-asset-workspace';
 export const trademarkAssetAdmissionClaimClasses = [
   'COMMUNICATION_CLAIM',
   'WORKSPACE_USER_CONFIRMATION'
@@ -319,11 +317,10 @@ export function materializeTrademarkAssetSourceReadStatesV1(input: {
       .map((owner) => ({ owner, state: (counts.get(owner) ?? 0) > 0 ? 'OBSERVED' : 'EMPTY' }));
   }
   const byOwner = new Map<TrademarkAssetSourceOwner, TrademarkAssetSourceReadState>();
-  for (const entry of input.readStates) {
+  for (const rawEntry of input.readStates) {
+    const entry = parseTrademarkAssetSourceScopeReadV1(rawEntry);
     if (!input.scope.includes(entry.owner))
       throw new TypeError('Read-state owner must be in sourceOwnerScope.');
-    if (!trademarkAssetSourceReadStates.includes(entry.state))
-      throw new TypeError('Source read state is invalid.');
     if (byOwner.has(entry.owner))
       throw new TypeError(`Duplicate source read state for ${entry.owner}.`);
     byOwner.set(entry.owner, entry.state);
@@ -350,12 +347,6 @@ export function materializeTrademarkAssetSourceReadStatesV1(input: {
     }
   }
   return result;
-}
-
-export function isCompleteTrademarkAssetSourceReadState(
-  state: TrademarkAssetSourceReadState
-): boolean {
-  return state === 'OBSERVED' || state === 'EMPTY';
 }
 
 export function factContributionsFromAdmittedClaims(

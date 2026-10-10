@@ -1,8 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import {
   aiGuideSuggestionKinds,
+  isCompleteTrademarkAssetSourceReadState,
   isTrademarkAssetSourceOwnerKindPair,
   noAutomaticTrademarkAssetConsequences,
+  parseTrademarkAssetSourceReadState,
+  parseTrademarkAssetSourceReference,
+  parseTrademarkAssetSourceScopeReadV1,
   parseTrademarkAssetSourceOwnerKind,
   trademarkAssetAiGuideAuthority,
   trademarkAssetAttentionDimensions,
@@ -14,6 +18,7 @@ import {
   trademarkAssetSourceKinds,
   trademarkAssetSourceKindsByOwner,
   trademarkAssetSourceOwners,
+  trademarkAssetSourceReadStates,
   trademarkAssetWorkspaceRelationshipKinds,
   type AiGuideContext,
   type AiGuideSuggestion,
@@ -229,6 +234,70 @@ describe('M10 Trademark Asset Workspace contracts', () => {
     expect(() =>
       parseTrademarkAssetSourceOwnerKind('WORKSPACE_USER', 'MANAGED_COMMUNICATION_MESSAGE')
     ).toThrow(/owner\/kind/);
+  });
+
+  it('shares strict source-read states without treating uncertainty as a complete empty read', () => {
+    expect(trademarkAssetSourceReadStates).toEqual([
+      'OBSERVED',
+      'EMPTY',
+      'NOT_OBSERVED',
+      'NOT_COVERED',
+      'UNAVAILABLE'
+    ]);
+    for (const state of trademarkAssetSourceReadStates) {
+      expect(parseTrademarkAssetSourceReadState(state)).toBe(state);
+      expect(parseTrademarkAssetSourceScopeReadV1({ owner: 'DATA_ENGINE', state })).toEqual({
+        owner: 'DATA_ENGINE',
+        state
+      });
+    }
+    expect(isCompleteTrademarkAssetSourceReadState('OBSERVED')).toBe(true);
+    expect(isCompleteTrademarkAssetSourceReadState('EMPTY')).toBe(true);
+    expect(isCompleteTrademarkAssetSourceReadState('NOT_OBSERVED')).toBe(false);
+    expect(isCompleteTrademarkAssetSourceReadState('NOT_COVERED')).toBe(false);
+    expect(isCompleteTrademarkAssetSourceReadState('UNAVAILABLE')).toBe(false);
+    expect(() => parseTrademarkAssetSourceReadState('MISSING')).toThrow(/read state/);
+    expect(() =>
+      parseTrademarkAssetSourceScopeReadV1({ owner: 'UNKNOWN', state: 'EMPTY' })
+    ).toThrow(/owner/);
+    expect(() =>
+      parseTrademarkAssetSourceScopeReadV1({
+        owner: 'DATA_ENGINE',
+        state: 'EMPTY',
+        unexpected: true
+      })
+    ).toThrow(/exactly/);
+  });
+
+  it('strictly parses exact source references and rejects invalid authority or provenance', () => {
+    expect(parseTrademarkAssetSourceReference(markregLifecycleSource)).toEqual(
+      markregLifecycleSource
+    );
+    expect(parseTrademarkAssetSourceReference(dataSource)).toEqual(dataSource);
+    expect(() =>
+      parseTrademarkAssetSourceReference({
+        ...dataSource,
+        kind: 'MANAGED_COMMUNICATION_MESSAGE'
+      })
+    ).toThrow(/owner\/kind/);
+    expect(() => parseTrademarkAssetSourceReference({ ...dataSource, sourceVersion: ' ' })).toThrow(
+      /sourceVersion/
+    );
+    expect(() =>
+      parseTrademarkAssetSourceReference({
+        ...dataSource,
+        sourceFingerprintSha256: 'A'.repeat(64)
+      })
+    ).toThrow(/lowercase SHA-256/);
+    expect(() =>
+      parseTrademarkAssetSourceReference({ ...dataSource, observedAt: '2026-02-30T00:00:00Z' })
+    ).toThrow(/ISO timestamp/);
+    expect(() => parseTrademarkAssetSourceReference({ ...dataSource, freshness: 'FRESH' })).toThrow(
+      /freshness/
+    );
+    expect(() => parseTrademarkAssetSourceReference({ ...dataSource, unexpected: true })).toThrow(
+      /exactly/
+    );
   });
   it('keeps the durable Asset ID independent from mutable external identifiers', () => {
     expect(asset.trademarkAssetId).toBe('trademark-asset_m10-wp02');

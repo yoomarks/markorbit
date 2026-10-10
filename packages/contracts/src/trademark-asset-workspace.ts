@@ -74,6 +74,121 @@ export const trademarkAssetFreshnessStates = [
 ] as const;
 export type TrademarkAssetFreshnessState = (typeof trademarkAssetFreshnessStates)[number];
 
+export const trademarkAssetSourceReadStates = [
+  'OBSERVED',
+  'EMPTY',
+  'NOT_OBSERVED',
+  'NOT_COVERED',
+  'UNAVAILABLE'
+] as const;
+export type TrademarkAssetSourceReadState = (typeof trademarkAssetSourceReadStates)[number];
+
+export interface TrademarkAssetSourceScopeReadV1 {
+  owner: TrademarkAssetSourceOwner;
+  state: TrademarkAssetSourceReadState;
+}
+
+function trademarkAssetRecord(value: unknown, field: string): Record<string, unknown> {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    throw new TypeError(`${field} must be an object.`);
+  }
+  return value as Record<string, unknown>;
+}
+
+function assertTrademarkAssetExactKeys(
+  value: Record<string, unknown>,
+  expected: readonly string[],
+  field: string
+): void {
+  if (Object.keys(value).sort().join(',') !== [...expected].sort().join(',')) {
+    throw new TypeError(`${field} must contain exactly the V1 fields.`);
+  }
+}
+
+function trademarkAssetText(value: unknown, field: string, maximum: number): string {
+  if (typeof value !== 'string' || !value.trim() || value.trim().length > maximum) {
+    throw new TypeError(`${field} must be a non-empty string of at most ${maximum} characters.`);
+  }
+  return value.trim();
+}
+
+function trademarkAssetTimestamp(value: unknown, field: string): string {
+  const timestamp = trademarkAssetText(value, field, 100);
+  const match =
+    /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(?:\.\d{1,9})?(?:Z|([+-])(\d{2}):(\d{2}))$/u.exec(
+      timestamp
+    );
+  if (!match) {
+    throw new TypeError(`${field} must be an ISO timestamp.`);
+  }
+  const [
+    ,
+    yearText,
+    monthText,
+    dayText,
+    hourText,
+    minuteText,
+    secondText,
+    ,
+    offsetHour,
+    offsetMinute
+  ] = match;
+  const year = Number(yearText);
+  const month = Number(monthText);
+  const day = Number(dayText);
+  const daysInMonth =
+    month >= 1 && month <= 12 ? new Date(Date.UTC(year, month, 0)).getUTCDate() : 0;
+  if (
+    day < 1 ||
+    day > daysInMonth ||
+    Number(hourText) > 23 ||
+    Number(minuteText) > 59 ||
+    Number(secondText) > 59 ||
+    (offsetHour !== undefined && Number(offsetHour) > 23) ||
+    (offsetMinute !== undefined && Number(offsetMinute) > 59)
+  ) {
+    throw new TypeError(`${field} must be an ISO timestamp.`);
+  }
+  const parsed = new Date(timestamp);
+  if (Number.isNaN(parsed.getTime())) {
+    throw new TypeError(`${field} must be an ISO timestamp.`);
+  }
+  return parsed.toISOString();
+}
+
+export function parseTrademarkAssetSourceReadState(value: unknown): TrademarkAssetSourceReadState {
+  if (
+    typeof value !== 'string' ||
+    !trademarkAssetSourceReadStates.includes(value as TrademarkAssetSourceReadState)
+  ) {
+    throw new TypeError('Trademark Asset source read state is invalid.');
+  }
+  return value as TrademarkAssetSourceReadState;
+}
+
+export function isCompleteTrademarkAssetSourceReadState(
+  state: TrademarkAssetSourceReadState
+): boolean {
+  return state === 'OBSERVED' || state === 'EMPTY';
+}
+
+export function parseTrademarkAssetSourceScopeReadV1(
+  value: unknown
+): TrademarkAssetSourceScopeReadV1 {
+  const input = trademarkAssetRecord(value, 'TrademarkAssetSourceScopeReadV1');
+  assertTrademarkAssetExactKeys(input, ['owner', 'state'], 'TrademarkAssetSourceScopeReadV1');
+  if (
+    typeof input.owner !== 'string' ||
+    !trademarkAssetSourceOwners.includes(input.owner as TrademarkAssetSourceOwner)
+  ) {
+    throw new TypeError('TrademarkAssetSourceScopeReadV1.owner is invalid.');
+  }
+  return {
+    owner: input.owner as TrademarkAssetSourceOwner,
+    state: parseTrademarkAssetSourceReadState(input.state)
+  };
+}
+
 /**
  * Human-recognisable identity hints only. These fields help render and find an Asset,
  * but they are not used to derive the durable internal Asset ID.
@@ -117,6 +232,58 @@ export interface TrademarkAssetSourceReference {
   sourceFingerprintSha256?: string;
   observedAt: string;
   freshness: TrademarkAssetFreshnessState;
+}
+
+/** Strictly parses an exact owner-backed source reference without creating source authority. */
+export function parseTrademarkAssetSourceReference(value: unknown): TrademarkAssetSourceReference {
+  const input = trademarkAssetRecord(value, 'TrademarkAssetSourceReference');
+  assertTrademarkAssetExactKeys(
+    input,
+    [
+      'owner',
+      'kind',
+      'sourceId',
+      'sourceVersion',
+      ...(input.sourceFingerprintSha256 === undefined ? [] : ['sourceFingerprintSha256']),
+      'observedAt',
+      'freshness'
+    ],
+    'TrademarkAssetSourceReference'
+  );
+  const { owner, kind } = parseTrademarkAssetSourceOwnerKind(input.owner, input.kind);
+  const sourceFingerprintSha256 = input.sourceFingerprintSha256;
+  if (
+    sourceFingerprintSha256 !== undefined &&
+    (typeof sourceFingerprintSha256 !== 'string' ||
+      !/^[0-9a-f]{64}$/u.test(sourceFingerprintSha256))
+  ) {
+    throw new TypeError(
+      'TrademarkAssetSourceReference.sourceFingerprintSha256 must be lowercase SHA-256.'
+    );
+  }
+  const freshness =
+    typeof input.freshness === 'string'
+      ? trademarkAssetFreshnessStates.find((candidate) => candidate === input.freshness)
+      : undefined;
+  if (!freshness) {
+    throw new TypeError('TrademarkAssetSourceReference.freshness is invalid.');
+  }
+  return {
+    owner,
+    kind,
+    sourceId: trademarkAssetText(input.sourceId, 'TrademarkAssetSourceReference.sourceId', 500),
+    sourceVersion: trademarkAssetText(
+      input.sourceVersion,
+      'TrademarkAssetSourceReference.sourceVersion',
+      300
+    ),
+    ...(sourceFingerprintSha256 === undefined ? {} : { sourceFingerprintSha256 }),
+    observedAt: trademarkAssetTimestamp(
+      input.observedAt,
+      'TrademarkAssetSourceReference.observedAt'
+    ),
+    freshness
+  };
 }
 
 export const trademarkAssetWorkspaceRelationshipKinds = [
