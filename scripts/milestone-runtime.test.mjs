@@ -138,6 +138,55 @@ test('stop is idempotent and successful shutdown releases six ports', async () =
   await allAvailable(definitions);
 });
 test(
+  'stop bounds descendant-held output and still cleans every runtime',
+  { skip: process.platform === 'win32', timeout: 8_000 },
+  async () => {
+    const definitions = await fixtureDefinitions(2);
+    definitions[1].args = [
+      '-e',
+      `const { spawn } = require('node:child_process');
+const child = spawn(process.execPath, ['-e', 'setInterval(()=>{},1000)'], {
+  detached: true, stdio: ['ignore', 'inherit', 'inherit']
+});
+const server = require('node:http').createServer((q,r)=>r.end(JSON.stringify({pid:child.pid})));
+server.listen(Number(process.env.PORT), '127.0.0.1');
+process.on('SIGTERM', ()=>server.close(()=>process.exit(0)));`
+    ];
+    const runtime = await startMilestoneRuntime({
+      definitions,
+      timeoutMs: 2_000,
+      termTimeoutMs: 500,
+      killTimeoutMs: 500,
+      outputTimeoutMs: 100
+    });
+    const { pid } = await (await fetch(definitions[1].health)).json();
+    const stopping = runtime.stop();
+    let timer;
+    try {
+      await assert.rejects(
+        Promise.race([
+          stopping,
+          new Promise((_, reject) => {
+            timer = setTimeout(() => reject(new Error('cleanup remained pending')), 1_500);
+          })
+        ]),
+        (error) =>
+          error instanceof AggregateError &&
+          error.errors.some((cause) => /fixture-1 output did not drain/.test(cause.message))
+      );
+      await allAvailable(definitions);
+      for (const { child, log } of runtime.children) {
+        assert.ok(child.exitCode !== null || child.signalCode !== null);
+        assert.equal(log.writableFinished, true);
+      }
+    } finally {
+      clearTimeout(timer);
+      process.kill(pid, 'SIGKILL');
+      await stopping.catch(() => {});
+    }
+  }
+);
+test(
   'stop terminates a detached runtime group after the direct child exits',
   { skip: process.platform === 'win32', timeout: 8_000 },
   async () => {
@@ -234,6 +283,7 @@ test(
   { timeout: 240_000 },
   async (context) => {
     const runtime = await startMilestoneRuntime({ timeoutMs: 30_000, signal: context.signal });
+    context.after(() => runtime.stop());
     assert.equal(runtime.children.length, 6);
     for (const url of [
       runtime.urls.markreg,
@@ -241,15 +291,17 @@ test(
       runtime.urls.gateway,
       runtime.urls.markregWeb,
       runtime.urls.liteWeb
-    ])
-      assert.equal(
-        (
-          await fetch(
-            url.endsWith('05') || url.endsWith('04') || url.endsWith('00') ? `${url}/health` : url
-          )
-        ).status,
-        200
+    ]) {
+      const response = await fetch(
+        url.endsWith('05') || url.endsWith('04') || url.endsWith('00') ? `${url}/health` : url,
+        { signal: context.signal }
       );
+      try {
+        assert.equal(response.status, 200);
+      } finally {
+        await response.body?.cancel();
+      }
+    }
     await runtime.stop();
     for (const port of Object.values(milestonePorts)) await assertPortAvailable(port);
   }
