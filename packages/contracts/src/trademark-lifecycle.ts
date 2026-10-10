@@ -1,4 +1,5 @@
 import { createHash } from 'node:crypto';
+import { parseMethodApplicabilityV1, type MethodApplicabilityV1 } from './brain-method.js';
 import {
   parseTrademarkAssetSourceReference,
   parseTrademarkAssetSourceReadState,
@@ -366,6 +367,74 @@ export const noTrademarkLifecycleAuthorityConsequencesV1 = Object.freeze({
 });
 export type TrademarkLifecycleAuthorityConsequencesV1 =
   typeof noTrademarkLifecycleAuthorityConsequencesV1;
+
+export const trademarkLifecycleRulePackAdmissionGateCodesV1 = [
+  'APPLICABILITY',
+  'EXECUTABLE_METHOD',
+  'LEGAL_SOURCE_PROVENANCE',
+  'FACT_PATH',
+  'DETERMINISTIC_CONTRACT',
+  'PROFESSIONAL_RESPONSIBILITY',
+  'FIXTURE_MATRIX',
+  'CURRENT_PRODUCTION_ADMISSION',
+  'DEGRADATION',
+  'FULL_USABLE_OUTPUT_COST'
+] as const;
+export type TrademarkLifecycleRulePackAdmissionGateCodeV1 =
+  (typeof trademarkLifecycleRulePackAdmissionGateCodesV1)[number];
+
+export const trademarkLifecycleRulePackAdmissionEvidenceStatesV1 = [
+  'EVIDENCE_AVAILABLE',
+  'EVIDENCE_MISSING',
+  'EVIDENCE_REJECTED',
+  'DEPENDENCY_UNAVAILABLE'
+] as const;
+export type TrademarkLifecycleRulePackAdmissionEvidenceStateV1 =
+  (typeof trademarkLifecycleRulePackAdmissionEvidenceStatesV1)[number];
+
+export interface TrademarkLifecycleRulePackAdmissionGateV1 {
+  gateCode: TrademarkLifecycleRulePackAdmissionGateCodeV1;
+  state: TrademarkLifecycleRulePackAdmissionEvidenceStateV1;
+  evidenceReferences: readonly Readonly<ExactOwnerReferenceV1>[];
+  reasonCodes: readonly string[];
+}
+
+export const trademarkLifecycleRulePackAdmissionReadinessStatusesV1 = [
+  'INCOMPLETE',
+  'READY_FOR_INDEPENDENT_ADMISSION_REVIEW'
+] as const;
+export type TrademarkLifecycleRulePackAdmissionReadinessStatusV1 =
+  (typeof trademarkLifecycleRulePackAdmissionReadinessStatusesV1)[number];
+
+export const noTrademarkLifecycleRulePackAdmissionReadinessAuthorityV1 = Object.freeze({
+  rulePackAdmitted: false,
+  sourceUsePromoted: false,
+  methodActivated: false,
+  capabilityVerified: false,
+  projectionPersistenceAuthorized: false,
+  productBusinessStateCreated: false,
+  officialTruthCreated: false,
+  legalDeadlineCertified: false,
+  executionAuthorized: false
+});
+export type TrademarkLifecycleRulePackAdmissionReadinessAuthorityV1 =
+  typeof noTrademarkLifecycleRulePackAdmissionReadinessAuthorityV1;
+
+export interface TrademarkLifecycleRulePackAdmissionReadinessV1 {
+  schemaVersion: 1;
+  assessedAt: string;
+  applicability: Readonly<MethodApplicabilityV1>;
+  applicabilityFingerprintSha256: string;
+  gates: readonly Readonly<TrademarkLifecycleRulePackAdmissionGateV1>[];
+  status: TrademarkLifecycleRulePackAdmissionReadinessStatusV1;
+  assessmentFingerprintSha256: string;
+  authority: Readonly<TrademarkLifecycleRulePackAdmissionReadinessAuthorityV1>;
+}
+
+export type TrademarkLifecycleRulePackAdmissionReadinessFingerprintMaterialV1 = Omit<
+  TrademarkLifecycleRulePackAdmissionReadinessV1,
+  'assessmentFingerprintSha256'
+>;
 
 export interface TrademarkLifecycleProjectionV1 {
   schemaVersion: 1;
@@ -3607,4 +3676,234 @@ export function parseTrademarkLifecycleComputationOutputV1(
   }
   assertComputationOutputMatchesInput(material, input);
   return { ...material, outputFingerprintSha256: expected };
+}
+
+const trademarkLifecycleRulePackAdmissionReadinessAuthorityKeysV1 = [
+  'rulePackAdmitted',
+  'sourceUsePromoted',
+  'methodActivated',
+  'capabilityVerified',
+  'projectionPersistenceAuthorized',
+  'productBusinessStateCreated',
+  'officialTruthCreated',
+  'legalDeadlineCertified',
+  'executionAuthorized'
+] as const;
+
+const trademarkLifecycleRulePackAdmissionReadinessMaterialKeysV1 = [
+  'schemaVersion',
+  'assessedAt',
+  'applicability',
+  'applicabilityFingerprintSha256',
+  'gates',
+  'status',
+  'authority'
+] as const;
+
+const trademarkLifecycleRulePackExactBranchApplicabilityAxesV1 = [
+  'jurisdictions',
+  'authorities',
+  'procedures',
+  'filingBases'
+] as const;
+
+function parseTrademarkLifecycleRulePackAdmissionReadinessAuthorityV1(
+  value: unknown
+): TrademarkLifecycleRulePackAdmissionReadinessAuthorityV1 {
+  const authority = object(value, 'rulePackAdmissionReadiness.authority');
+  exactKeys(
+    authority,
+    trademarkLifecycleRulePackAdmissionReadinessAuthorityKeysV1,
+    'rulePackAdmissionReadiness.authority'
+  );
+  for (const field of trademarkLifecycleRulePackAdmissionReadinessAuthorityKeysV1) {
+    if (authority[field] !== false) {
+      throw new TrademarkLifecycleContractError(
+        `rulePackAdmissionReadiness.authority.${field} must remain false.`
+      );
+    }
+  }
+  return noTrademarkLifecycleRulePackAdmissionReadinessAuthorityV1;
+}
+
+function parseTrademarkLifecycleRulePackAdmissionGateV1(
+  value: unknown,
+  field: string
+): TrademarkLifecycleRulePackAdmissionGateV1 {
+  const gate = object(value, field);
+  exactKeys(gate, ['gateCode', 'state', 'evidenceReferences', 'reasonCodes'], field);
+  const state = oneOf(
+    gate.state,
+    trademarkLifecycleRulePackAdmissionEvidenceStatesV1,
+    `${field}.state`
+  );
+  const evidenceReferences = [
+    ...exactOwnerReferences(gate.evidenceReferences, `${field}.evidenceReferences`, {
+      maximum: 50
+    })
+  ].sort(compareStableSerialized);
+  const reasonCodes = [
+    ...uniqueCodes(gate.reasonCodes, `${field}.reasonCodes`, { maximum: 50 })
+  ].sort(compareCodeUnitStrings);
+  if (state === 'EVIDENCE_AVAILABLE') {
+    if (evidenceReferences.length === 0 || reasonCodes.length !== 0) {
+      throw new TrademarkLifecycleContractError(
+        `${field} EVIDENCE_AVAILABLE requires exact evidence and no blocking reason.`
+      );
+    }
+  } else if (reasonCodes.length === 0) {
+    throw new TrademarkLifecycleContractError(
+      `${field} ${state} requires at least one explicit blocking reason.`
+    );
+  }
+  return {
+    gateCode: oneOf(
+      gate.gateCode,
+      trademarkLifecycleRulePackAdmissionGateCodesV1,
+      `${field}.gateCode`
+    ),
+    state,
+    evidenceReferences,
+    reasonCodes
+  };
+}
+
+export function trademarkLifecycleRulePackApplicabilityFingerprintSha256V1(
+  value: Readonly<MethodApplicabilityV1>
+): string {
+  const applicability = parseTrademarkLifecycleRulePackExactBranchApplicabilityV1(value);
+  return createHash('sha256').update(stableSerialize(applicability)).digest('hex');
+}
+
+function parseTrademarkLifecycleRulePackExactBranchApplicabilityV1(
+  value: unknown
+): MethodApplicabilityV1 {
+  const applicability = parseMethodApplicabilityV1(value);
+  for (const axis of trademarkLifecycleRulePackExactBranchApplicabilityAxesV1) {
+    if (applicability[axis].length !== 1) {
+      throw new TrademarkLifecycleContractError(
+        `rulePackAdmissionReadiness.applicability.${axis} must identify exactly one Rule Pack branch value.`
+      );
+    }
+  }
+  return applicability;
+}
+
+function normalizeTrademarkLifecycleRulePackAdmissionReadinessMaterialV1(
+  value: unknown
+): TrademarkLifecycleRulePackAdmissionReadinessFingerprintMaterialV1 {
+  const readiness = object(value, 'rulePackAdmissionReadiness');
+  exactKeys(
+    readiness,
+    trademarkLifecycleRulePackAdmissionReadinessMaterialKeysV1,
+    'rulePackAdmissionReadiness'
+  );
+  if (readiness.schemaVersion !== 1) {
+    throw new TrademarkLifecycleContractError(
+      'rulePackAdmissionReadiness.schemaVersion must be 1.'
+    );
+  }
+  const assessedAt = timestamp(readiness.assessedAt, 'rulePackAdmissionReadiness.assessedAt');
+  const applicability = parseTrademarkLifecycleRulePackExactBranchApplicabilityV1(
+    readiness.applicability
+  );
+  const applicabilityFingerprintSha256 = sha256(
+    readiness.applicabilityFingerprintSha256,
+    'rulePackAdmissionReadiness.applicabilityFingerprintSha256'
+  );
+  const expectedApplicabilityFingerprint =
+    trademarkLifecycleRulePackApplicabilityFingerprintSha256V1(applicability);
+  if (applicabilityFingerprintSha256 !== expectedApplicabilityFingerprint) {
+    throw new TrademarkLifecycleContractError(
+      'Rule Pack readiness applicability fingerprint does not match its exact normalized scope.'
+    );
+  }
+  const parsedGates = array(
+    readiness.gates,
+    'rulePackAdmissionReadiness.gates',
+    trademarkLifecycleRulePackAdmissionGateCodesV1.length,
+    trademarkLifecycleRulePackAdmissionGateCodesV1.length
+  ).map((gate, index) =>
+    parseTrademarkLifecycleRulePackAdmissionGateV1(
+      gate,
+      `rulePackAdmissionReadiness.gates[${index}]`
+    )
+  );
+  const gateCodeSet = new Set(parsedGates.map((gate) => gate.gateCode));
+  if (
+    gateCodeSet.size !== trademarkLifecycleRulePackAdmissionGateCodesV1.length ||
+    trademarkLifecycleRulePackAdmissionGateCodesV1.some((gateCode) => !gateCodeSet.has(gateCode))
+  ) {
+    throw new TrademarkLifecycleContractError(
+      'Rule Pack readiness must evaluate every A0 admission gate exactly once.'
+    );
+  }
+  const gateOrder = new Map(
+    trademarkLifecycleRulePackAdmissionGateCodesV1.map((gateCode, index) => [gateCode, index])
+  );
+  const gates = [...parsedGates].sort(
+    (left, right) => gateOrder.get(left.gateCode)! - gateOrder.get(right.gateCode)!
+  );
+  const expectedStatus = gates.every((gate) => gate.state === 'EVIDENCE_AVAILABLE')
+    ? 'READY_FOR_INDEPENDENT_ADMISSION_REVIEW'
+    : 'INCOMPLETE';
+  const status = oneOf(
+    readiness.status,
+    trademarkLifecycleRulePackAdmissionReadinessStatusesV1,
+    'rulePackAdmissionReadiness.status'
+  );
+  if (status !== expectedStatus) {
+    throw new TrademarkLifecycleContractError(
+      `rulePackAdmissionReadiness.status must be ${expectedStatus} for the exact gate states.`
+    );
+  }
+  return {
+    schemaVersion: 1,
+    assessedAt,
+    applicability,
+    applicabilityFingerprintSha256,
+    gates,
+    status,
+    authority: parseTrademarkLifecycleRulePackAdmissionReadinessAuthorityV1(readiness.authority)
+  };
+}
+
+export function trademarkLifecycleRulePackAdmissionReadinessFingerprintSha256V1(
+  value: Readonly<TrademarkLifecycleRulePackAdmissionReadinessFingerprintMaterialV1>
+): string {
+  return createHash('sha256')
+    .update(stableSerialize(normalizeTrademarkLifecycleRulePackAdmissionReadinessMaterialV1(value)))
+    .digest('hex');
+}
+
+export function parseTrademarkLifecycleRulePackAdmissionReadinessV1(
+  value: unknown
+): TrademarkLifecycleRulePackAdmissionReadinessV1 {
+  const readiness = object(value, 'rulePackAdmissionReadiness');
+  exactKeys(
+    readiness,
+    [...trademarkLifecycleRulePackAdmissionReadinessMaterialKeysV1, 'assessmentFingerprintSha256'],
+    'rulePackAdmissionReadiness'
+  );
+  const material = normalizeTrademarkLifecycleRulePackAdmissionReadinessMaterialV1(
+    Object.fromEntries(
+      Object.entries(readiness).filter(([key]) => key !== 'assessmentFingerprintSha256')
+    )
+  );
+  const expectedFingerprint =
+    trademarkLifecycleRulePackAdmissionReadinessFingerprintSha256V1(material);
+  if (
+    sha256(
+      readiness.assessmentFingerprintSha256,
+      'rulePackAdmissionReadiness.assessmentFingerprintSha256'
+    ) !== expectedFingerprint
+  ) {
+    throw new TrademarkLifecycleContractError(
+      'Rule Pack readiness fingerprint does not match its normalized assessment.'
+    );
+  }
+  return {
+    ...material,
+    assessmentFingerprintSha256: expectedFingerprint
+  };
 }
