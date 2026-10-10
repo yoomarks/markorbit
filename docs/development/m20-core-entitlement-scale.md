@@ -75,12 +75,54 @@ means an explicitly skipped local integration suite.
 
 ## Production decision boundary
 
+### Authenticated HTTP fixture
+
+M20-C5 adds a separate isolated database named exactly
+`markorbit_m20_protected_http_test`. The same workflow runs the real Gateway and
+Core runtimes over loopback HTTP, with PostgreSQL-backed sessions, users,
+Workspaces, memberships, current authority and the commercial repository. It
+issues a session through Core HTTP and uses the normal Gateway session, Origin
+and CSRF path. No HTTP client or owner decision is mocked. The provider is an
+explicit local **synthetic empty-page fixture**, and its admission/credential
+are fixture-only. It does not run the Data Engine database or approve any source.
+
+```bash
+pnpm exec turbo run build --filter=@markorbit/core-service... --filter=@markorbit/gateway...
+M20_PROTECTED_HTTP_TEST_DATABASE_URL=postgresql://markorbit_test:markorbit-test-only@127.0.0.1:5432/markorbit_m20_protected_http_test \
+M20_PROTECTED_HTTP_POSTGRES_REQUIRED=1 \
+M20_PROTECTED_HTTP_EVIDENCE_PATH=/tmp/m20-protected-http-evidence.json \
+pnpm --filter @markorbit/gateway exec vitest run tests/data-engine-applicant-scale-postgres.test.ts
+```
+
+At each 1k/10k/100k grant-version size, the report separates the first request
+after fixture preparation from three warmups, 30 serial requests and five batches
+of eight concurrent requests. First request does **not** mean cold PostgreSQL,
+process or filesystem cache. Timing covers the client request through complete
+response-body consumption. Raw samples, p50/p95/max, batch duration and observed
+fixture throughput are retained. Every measured request must succeed, revalidate
+its session and entitlement, and reach the source-pinned provider exactly once.
+
+After the largest fixture, a real TCP Core endpoint that never responds proves
+the existing default 3s entitlement timeout returns retryable unavailable,
+aborts the connection and makes no provider request. Durable grant revocation,
+membership suspension and an invalid session deny subsequent real HTTP reads;
+the provider receives no denied request. Timing is evidence, not a latency gate.
+The report includes the tested commit, environment and existing budgets:
+Core authentication/entitlement 3s each, provider 5s, PostgreSQL statement 10s,
+pool maximum 10 and outer fixture guard 15s. This does not prove database work
+cancellation when HTTP times out or define a single end-to-end production budget.
+
+The workflow uploads `m20-protected-http-evidence.json` alongside the SQL report.
+Required mode fails without the exact isolated local database; ordinary local
+runs without its URL explicitly skip the five HTTP integration cases.
+
 The Gateway Core request has a default 3,000 ms timeout. Compare the baseline with
-that budget as a risk indicator only. This fixture does not measure protected
-HTTP transport, live user/Workspace/membership validation, concurrency, pool
-contention, cold-cache behavior, deployment hardware or production grant shape.
-It does not measure USER assignment resolution or large histories belonging to
-the same candidate grant. A below-budget serial sample is
+that budget as a risk indicator only. The resolver-only fixture does not measure
+HTTP or live authority; the separate HTTP fixture measures these and bounded
+concurrency against the specified synthetic shape. Neither establishes
+cold-cache behavior, deployment hardware, real provider/source capacity or
+production grant shape. They do not measure USER assignment resolution or large
+histories belonging to the same candidate grant. A below-budget serial sample is
 not production capacity or an availability guarantee.
 
 Before enabling production admission, retain owner-backed licence, physical
