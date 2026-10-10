@@ -177,7 +177,11 @@ export async function waitForHealth(name, url, child, timeoutMs = 30_000, signal
       const response = await fetch(url, {
         signal: signal ? AbortSignal.any([signal, probeSignal]) : probeSignal
       });
-      if (response.ok) return;
+      try {
+        if (response.ok) return;
+      } finally {
+        await response.body?.cancel();
+      }
     } catch (error) {
       if (signal?.aborted) throw signal.reason ?? error;
       /* the process is still starting */
@@ -260,8 +264,25 @@ export async function startMilestoneRuntime(options = {}) {
         } catch (error) {
           errors.push(error);
         } finally {
-          await outputFinished;
-          await new Promise((resolvePromise) => log.end(resolvePromise));
+          let outputTimer;
+          try {
+            await Promise.race([
+              outputFinished,
+              new Promise((_, reject) => {
+                outputTimer = setTimeout(
+                  () => reject(new Error(`${entry.name} output did not drain after termination.`)),
+                  options.outputTimeoutMs ?? 2_000
+                );
+              })
+            ]);
+          } catch (error) {
+            errors.push(error);
+          } finally {
+            clearTimeout(outputTimer);
+            child.stdout.destroy();
+            child.stderr.destroy();
+            await new Promise((resolvePromise) => log.end(resolvePromise));
+          }
         }
       }
       try {
