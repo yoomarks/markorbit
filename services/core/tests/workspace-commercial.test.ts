@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type {
   CommercialAgreementV1,
   CommercialOfferVersionV1,
+  EntitlementGrantV1,
   RatePolicyVersionV1
 } from '@markorbit/contracts/workspace-commercial';
 import {
@@ -93,6 +94,67 @@ function agreement(overrides: Partial<CommercialAgreementV1> = {}): CommercialAg
 }
 
 describe('Workspace commercial foundation', () => {
+  const grantChanges: readonly [string, Partial<EntitlementGrantV1>][] = [
+    ['revocation', { status: 'REVOKED' }],
+    ['Workspace movement', { subject: { scope: 'WORKSPACE', workspaceId: 'workspace_other' } }],
+    [
+      'key movement',
+      {
+        entitlement: {
+          key: 'fixture.new-key',
+          subjectScope: 'WORKSPACE',
+          value: { kind: 'BOOLEAN', enabled: true }
+        }
+      }
+    ],
+    [
+      'USER scope movement',
+      {
+        subject: { scope: 'USER', userId: 'user_a' },
+        entitlement: {
+          key: 'fixture.key',
+          subjectScope: 'USER',
+          value: { kind: 'BOOLEAN', enabled: true }
+        }
+      }
+    ]
+  ];
+  for (const [name, changes] of grantChanges)
+    it(`keeps all candidate versions visible after ${name}`, async () => {
+      const { repository, service } = setup();
+      const original: EntitlementGrantV1 = {
+        schemaVersion: 1,
+        grantId: 'fixture-history',
+        version: 1,
+        subject: { scope: 'WORKSPACE', workspaceId: 'workspace_team' },
+        entitlement: {
+          key: 'fixture.key',
+          subjectScope: 'WORKSPACE',
+          value: { kind: 'BOOLEAN', enabled: true }
+        },
+        status: 'ACTIVE',
+        sourceType: 'MANUAL',
+        sourceRef: 'synthetic:grant-history',
+        effectiveFrom: t0,
+        recordedAt: t0
+      };
+      await repository.appendGrant(original);
+      await repository.appendGrant({ ...original, ...changes, version: 2, recordedAt: t1 });
+      const subject = { scope: 'WORKSPACE' as const, workspaceId: 'workspace_team' };
+      expect((await service.resolveEntitlement(subject, 'fixture.key', t0)).value).toEqual({
+        kind: 'BOOLEAN',
+        enabled: true
+      });
+      await expect(service.resolveEntitlement(subject, 'fixture.key', t1)).rejects.toMatchObject({
+        code: 'NO_APPLICABLE_ENTITLEMENT'
+      });
+      expect(await repository.listGrants()).toHaveLength(2);
+      if (changes.subject?.scope === 'USER')
+        expect(
+          (await service.resolveEntitlement(changes.subject, 'fixture.key', t1)).value
+        ).toEqual({ kind: 'BOOLEAN', enabled: true });
+    });
+
   it('keeps two immutable catalog versions and agreement lineage', async () => {
     const { repository, service } = setup();
     await service.recordOffer(offer());

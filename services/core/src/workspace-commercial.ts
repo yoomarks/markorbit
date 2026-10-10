@@ -112,7 +112,7 @@ export interface WorkspaceCommercialRepositoryV1 {
   appendAgreement(value: CommercialAgreementV1): Promise<void>;
   listAgreementVersions(agreementId: string): Promise<readonly CommercialAgreementV1[]>;
   appendGrant(value: EntitlementGrantV1): Promise<void>;
-  listGrants(): Promise<readonly EntitlementGrantV1[]>;
+  listGrants(workspaceId?: string, entitlementKey?: string): Promise<readonly EntitlementGrantV1[]>;
   appendAssignableGrant(value: AssignableEntitlementGrantV1): Promise<void>;
   listAssignableGrantVersions(
     assignableGrantId: string
@@ -168,8 +168,27 @@ export class InMemoryWorkspaceCommercialRepositoryV1 implements WorkspaceCommerc
     this.append(this.grants, value.grantId, value.version, value);
     return Promise.resolve();
   }
-  listGrants(): Promise<readonly EntitlementGrantV1[]> {
-    return Promise.resolve([...this.grants.values()].map(clone));
+  listGrants(
+    workspaceId?: string,
+    entitlementKey?: string
+  ): Promise<readonly EntitlementGrantV1[]> {
+    const values = [...this.grants.values()];
+    const candidates =
+      workspaceId !== undefined && entitlementKey !== undefined
+        ? new Set(
+            values
+              .filter(
+                (v) =>
+                  v.subject.scope === 'WORKSPACE' &&
+                  v.subject.workspaceId === workspaceId &&
+                  v.entitlement.key === entitlementKey
+              )
+              .map((v) => v.grantId)
+          )
+        : undefined;
+    return Promise.resolve(
+      values.filter((v) => !candidates || candidates.has(v.grantId)).map(clone)
+    );
   }
   appendAssignableGrant(value: AssignableEntitlementGrantV1): Promise<void> {
     this.append(this.assignableGrants, value.assignableGrantId, value.version, value);
@@ -577,11 +596,11 @@ export class WorkspaceCommercialServiceV1 {
     asOf: string
   ): Promise<ResolvedEntitlementV1> {
     const at = instant(asOf, 'asOf');
-    const direct = latestVersionsAt(
-      await this.repository.listGrants(),
-      (value) => value.grantId,
-      at
-    ).filter(
+    const grantVersions =
+      subject.scope === 'WORKSPACE'
+        ? await this.repository.listGrants(subject.workspaceId, entitlementKey)
+        : await this.repository.listGrants();
+    const direct = latestVersionsAt(grantVersions, (value) => value.grantId, at).filter(
       (v) =>
         v.status === 'ACTIVE' &&
         sameSubject(v.subject, subject) &&
