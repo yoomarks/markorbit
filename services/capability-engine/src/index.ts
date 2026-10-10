@@ -79,6 +79,7 @@ export * from './capability-source-output-identity.js';
 export * from './cn-duration-analytical-pilot.js';
 export * from './cn-duration-band-classification-pilot.js';
 export * from './cn-preliminary-publication-discovery-pilot.js';
+export * from './cn-trademark-lifecycle-history-candidate.js';
 export * from './current-source-admission-evidence-v2.js';
 export * from './current-source-admission-evidence-v3.js';
 export * from './current-source-admission-evidence-v4.js';
