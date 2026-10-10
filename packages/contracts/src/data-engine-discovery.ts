@@ -1,5 +1,3 @@
-import { createHash } from 'node:crypto';
-
 import {
   DATA_ENGINE_FACT_AUTHORITY,
   DATA_ENGINE_INTEGRATION_CONTRACT_VERSION,
@@ -7,6 +5,11 @@ import {
   parseDataEngineFactEnvelope,
   type DataEngineFactEnvelope
 } from './data-engine.js';
+import { factCandidateSha256Utf8HexV1 } from './fact-candidate-v1.js';
+import {
+  trademarkAssetSourceReadStates,
+  type TrademarkAssetSourceReadState
+} from './trademark-asset-workspace.js';
 
 export const DATA_ENGINE_DISCOVERY_CONTRACT_VERSION = 'DATA_ENGINE_DISCOVERY_CONTRACT_V1' as const;
 export const CN_PRELIMINARY_PUBLICATION_DISCOVERY_STREAM_ID =
@@ -147,15 +150,8 @@ export const CN_PRELIMINARY_PUBLICATION_DATA_TRUST_VERSION =
   'MARKORBIT_DATA_TRUST_FRESHNESS_V1' as const;
 export const CN_PRELIMINARY_PUBLICATION_SOURCE_READ_DOMAIN = 'CN_PRELIMINARY_PUBLICATION' as const;
 
-export const cnPreliminaryPublicationSourceReadStatesV3 = [
-  'OBSERVED',
-  'EMPTY',
-  'NOT_OBSERVED',
-  'NOT_COVERED',
-  'UNAVAILABLE'
-] as const;
-export type CnPreliminaryPublicationSourceReadStateV3 =
-  (typeof cnPreliminaryPublicationSourceReadStatesV3)[number];
+export const cnPreliminaryPublicationSourceReadStatesV3 = trademarkAssetSourceReadStates;
+export type CnPreliminaryPublicationSourceReadStateV3 = TrademarkAssetSourceReadState;
 
 export const cnPreliminaryPublicationSourceReadReasonCodesV3 = [
   'NO_OBSERVATION_WITHOUT_TRUSTED_SILENCE',
@@ -290,6 +286,7 @@ export interface CnPreliminaryPublicationResultSetV3 {
   result_count: number;
   result_references: CnPreliminaryPublicationResultReferenceV3[];
   result_fingerprint_sha256: string;
+  source_corpus_fingerprint_sha256: string | null;
 }
 
 export interface CnPreliminaryPublicationSourceReadAuthorityV3 {
@@ -642,9 +639,9 @@ function canonicalizeSourceReadValue(value: unknown): unknown {
 }
 
 function canonicalSourceReadFingerprint(value: unknown): string {
-  return `sha256:${createHash('sha256')
-    .update(JSON.stringify(canonicalizeSourceReadValue(value)), 'utf8')
-    .digest('hex')}`;
+  return `sha256:${factCandidateSha256Utf8HexV1(
+    JSON.stringify(canonicalizeSourceReadValue(value))
+  )}`;
 }
 
 function canonicalText(value: unknown, maxLength = 2048): value is string {
@@ -1141,12 +1138,19 @@ function parseResultSetV3(
   const resultSet = record(value);
   if (
     !resultSet ||
-    !exactKeys(resultSet, ['result_count', 'result_references', 'result_fingerprint_sha256']) ||
+    !exactKeys(resultSet, [
+      'result_count',
+      'result_references',
+      'result_fingerprint_sha256',
+      'source_corpus_fingerprint_sha256'
+    ]) ||
     !nonNegativeSafeInteger(resultSet.result_count) ||
     !Array.isArray(resultSet.result_references) ||
     resultSet.result_count !== resultSet.result_references.length ||
     resultSet.result_count > query.limits.max_results ||
-    !queryHash(resultSet.result_fingerprint_sha256)
+    !queryHash(resultSet.result_fingerprint_sha256) ||
+    (resultSet.source_corpus_fingerprint_sha256 !== null &&
+      !queryHash(resultSet.source_corpus_fingerprint_sha256))
   ) {
     return null;
   }
@@ -1198,7 +1202,8 @@ function parseResultSetV3(
   return {
     result_count: resultSet.result_count,
     result_references: references,
-    result_fingerprint_sha256: resultSet.result_fingerprint_sha256
+    result_fingerprint_sha256: resultSet.result_fingerprint_sha256,
+    source_corpus_fingerprint_sha256: resultSet.source_corpus_fingerprint_sha256
   };
 }
 
@@ -1373,7 +1378,10 @@ export function parseCnPreliminaryPublicationSourceReadReceiptV3(
     cnPreliminaryPublicationSourceReadReasonCodesV3
   );
   if (!resultSet || !reasonCodes) return null;
-  if (scanResult !== null && scanResult.resultCount !== resultSet.result_count) {
+  if (
+    resultSet.source_corpus_fingerprint_sha256 !== boundCorpusFingerprint ||
+    (scanResult !== null && scanResult.resultCount !== resultSet.result_count)
+  ) {
     return null;
   }
 
@@ -1383,9 +1391,6 @@ export function parseCnPreliminaryPublicationSourceReadReceiptV3(
       resultSet.result_count > 0 &&
       snapshot !== null &&
       corpus !== null &&
-      resultSet.result_references.every(
-        (reference) => reference.source_package_id === corpus.package_id
-      ) &&
       scanResult !== null &&
       scanResult.scan.page_count > 0 &&
       coverage?.decision !== 'NOT_COVERED' &&
@@ -1414,6 +1419,7 @@ export function parseCnPreliminaryPublicationSourceReadReceiptV3(
       dataTrust.fresh.value === true &&
       dataTrust.accepted.value === true &&
       dataTrust.trusted_for_silence.value === true &&
+      dataTrust.acceptance_status === 'PASS' &&
       reasonCodes.length === 0 &&
       receipt.retryable === null &&
       receipt.silence_semantics === CN_PRELIMINARY_PUBLICATION_TRUSTED_SILENCE_SEMANTIC) ||

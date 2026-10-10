@@ -34,6 +34,8 @@ NOT_COVERED
 UNAVAILABLE
 ```
 
+These five values directly reuse the canonical Trademark Asset source-read vocabulary; this receipt does not declare a second state system.
+
 It binds the result to the complete normalized query, immutable snapshot when one was acquired, producer implementation package, source corpus and Data Trust evidence, state-applicable scan/continuation details, result identity and a deterministic receipt fingerprint. Only `EMPTY` requires a completed exact-scope scan and trusted-silence evidence. `NOT_COVERED` may stop before pagination, while `UNAVAILABLE` may record an interrupted attempt. A pure Capability-side adapter may validate such a receipt against an exact request, but it cannot issue the receipt or synthesize it from the existing V2 paginated response.
 
 There is no direct customer-facing change. The later user-visible protection is that an empty page, terminal cursor, successful HTTP response, missing key or transport failure can never be presented as “zero results”, “没有记录”, “无风险” or a current lifecycle conclusion without complete owner evidence.
@@ -86,9 +88,9 @@ The shared contract adds a closed, versioned receipt shape and strict parser for
 1. **Query identity:** the entire normalized query plus a SHA-256 fingerprint recomputed by the consumer from its canonical form.
 2. **Snapshot identity:** snapshot ID and kind, watermark and source version.
 3. **Producer implementation identity:** immutable producer package/build ID, version and fingerprint.
-4. **Source coverage identity:** exact source corpus/package plus coverage and Data Trust evidence issued by their responsible owner.
+4. **Source coverage identity:** exact source-corpus fingerprint plus coverage and Data Trust evidence issued by their responsible owner.
 
-The producer package identifies the implementation the receipt says ran. Identifying or validating that implementation package does not prove that the underlying source corpus is complete. Those identities must never be collapsed. The source corpus, coverage and Data Trust evidence must also bind the same receipt snapshot and corpus fingerprint; merely placing independent references beside each other is insufficient.
+The producer package identifies the implementation the receipt says ran. Identifying or validating that implementation package does not prove that the underlying source corpus is complete. Those identities must never be collapsed. The result set binds the source-corpus fingerprint directly; each observed row retains its own exact source-package provenance and need not reuse the corpus package ID. The source corpus, result set, coverage and Data Trust evidence must bind the same receipt snapshot and corpus fingerprint; merely placing independent references beside each other is insufficient.
 
 The receipt also binds:
 
@@ -162,7 +164,7 @@ accepted
 trusted_for_silence
 ```
 
-Each dimension must bind its own asserted state and exact owner-evidence reference. `EMPTY` requires the receipt to assert `PASS` for all five; later owner-boundary validation still authenticates and resolves those references. `coverageThrough`, `requiredCoverageThrough` and `evaluatedAt` must be internally consistent with the asserted time boundary; receipt issue time and read-completion time cannot substitute for source freshness.
+Each dimension must bind its own asserted state and exact owner-evidence reference. `EMPTY` requires all five dimension values to be true and the aggregate `acceptance_status` to be exactly `PASS`; `PASS_WITH_WARNINGS` and `ACCEPTED` are insufficient even if all five booleans are true. Later owner-boundary validation still authenticates and resolves those references. `coverageThrough`, `requiredCoverageThrough` and `evaluatedAt` must be internally consistent with the asserted time boundary; receipt issue time and read-completion time cannot substitute for source freshness.
 
 `accepted` means only Data Engine domain/data acceptance for this source corpus and scope. It is not source-use promotion, current production admission, Rule Pack admission or Capability verification.
 
@@ -237,15 +239,15 @@ The parser and adapter are pure. They emit no domain, outbox, audit, integration
 
 1. The V2 Discovery page and envelope remain backward compatible.
 2. The V3 parser accepts one exact canonical fixture for each of `OBSERVED`, `EMPTY`, `NOT_OBSERVED`, `NOT_COVERED` and `UNAVAILABLE`.
-3. `OBSERVED` requires one or more exact source fact references, a matching positive count and canonical result fingerprint.
-4. `EMPTY` requires zero results and references, a complete exact-scope continuation chain, null terminal cursor, no truncation or overflow, and asserted `PASS` states bound to exact owner references for all five Data Trust dimensions.
+3. `OBSERVED` requires one or more exact source fact references, a matching positive count and canonical result fingerprint. The result set binds the source-corpus fingerprint while each row retains its own exact source-package provenance, which may differ from the corpus package ID.
+4. `EMPTY` requires zero results and references, a complete exact-scope continuation chain, null terminal cursor, no truncation or overflow, all five Data Trust values true, and aggregate `acceptance_status = PASS`; `PASS_WITH_WARNINGS` and `ACCEPTED` fail closed.
 5. `EMPTY` carries exactly `NO_SOURCE_OBSERVATION_WITHIN_VERIFIED_COVERAGE_NOT_LEGAL_NONEXISTENCE`; it cannot express legal nonexistence.
 6. `NOT_OBSERVED`, `NOT_COVERED` and `UNAVAILABLE` carry controlled reasons; they never parse as `EMPTY`.
 7. `NOT_COVERED` requires an explicit owner coverage decision; a consumer cannot infer it from an empty V2 response or transport status.
 8. `UNAVAILABLE` records retryability and cannot carry positive fact references.
 9. The V3 parser canonicalizes the complete normalized query and recomputes its fingerprint; a format-valid but caller-invented V2 query hash is insufficient.
 10. Query, range, page size, schema, projection, ordering, limits, snapshot, watermark, source version, producer package, source corpus, coverage evidence, Data Trust state, receipt state, reason, count, result digest, time or receipt-fingerprint mutation fails closed.
-11. Source corpus, coverage and Data Trust evidence bind the same exact snapshot ID and source-corpus fingerprint, and the producer implementation tuple cannot be reused as the source-corpus tuple.
+11. Source corpus, result set, coverage and Data Trust evidence bind the same exact snapshot ID and source-corpus fingerprint, and the producer implementation tuple cannot be reused as the source-corpus tuple.
 12. Skipped, repeated, reordered or cross-snapshot pages; repeated non-null cursors or page fingerprints; non-contiguous emitted counts; dangling cursors; truncation; overflow; and page/result-limit exhaustion cannot assert complete scan.
 13. V2 empty results, terminal page, HTTP 200/404, `not_found`, tombstone, timeout, authentication failure, rate limit, 5xx or invalid JSON cannot be adapted into V3 `EMPTY`.
 14. The Capability adapter rejects inputs with a cursor and receipts whose exact range or page size differs from the normalized request.
@@ -266,6 +268,7 @@ pnpm --filter @markorbit/contracts lint
 pnpm --filter @markorbit/contracts typecheck
 pnpm --filter @markorbit/contracts test
 pnpm --filter @markorbit/contracts build
+pnpm --filter @markorbit/lite-web build
 pnpm --filter @markorbit/capability-engine lint
 pnpm --filter @markorbit/capability-engine typecheck
 pnpm --filter @markorbit/capability-engine test

@@ -14,6 +14,7 @@ import {
   CN_PRELIMINARY_PUBLICATION_SOURCE_READ_RECEIPT_KIND,
   CN_PRELIMINARY_PUBLICATION_TRUSTED_SILENCE_SEMANTIC,
   DATA_ENGINE_DISCOVERY_CONTRACT_VERSION,
+  cnPreliminaryPublicationSourceReadStatesV3,
   parseCnPreliminaryPublicationDiscoveryEnvelopeV2,
   parseCnPreliminaryPublicationDiscoveryPageV2,
   parseCnPreliminaryPublicationSourceReadReceiptV3,
@@ -24,6 +25,10 @@ import {
   DATA_ENGINE_INTEGRATION_CONTRACT_VERSION,
   DATA_ENGINE_SOURCE_OWNER
 } from '../src/data-engine.js';
+import {
+  trademarkAssetSourceReadStates,
+  type TrademarkAssetSourceReadState
+} from '../src/trademark-asset-workspace.js';
 
 const QUERY_HASH = `sha256:${'a'.repeat(64)}`;
 
@@ -176,7 +181,7 @@ describe('CN preliminary-publication Discovery V2 contract', () => {
   });
 });
 
-type SourceReadStateV3 = 'OBSERVED' | 'EMPTY' | 'NOT_OBSERVED' | 'NOT_COVERED' | 'UNAVAILABLE';
+type SourceReadStateV3 = TrademarkAssetSourceReadState;
 
 function testCanonicalize(value: unknown): unknown {
   if (Array.isArray(value)) return value.map(testCanonicalize);
@@ -321,7 +326,7 @@ function sourceReadReceipt(state: SourceReadStateV3 = 'OBSERVED'): Record<string
     candidate_type: CN_PRELIMINARY_PUBLICATION_DISCOVERY_CANDIDATE_TYPE,
     case_id: 'case-中文-1',
     application_number: '10000001',
-    source_package_id: 'cn-preliminary-publication-corpus',
+    source_package_id: 'cn-preliminary-publication-package-2026-10-09',
     source_row_fingerprint_sha256: testFingerprint({ row: 1 }),
     record_fingerprint_sha256: testFingerprint({ record: 1 }),
     observed_at: '2026-10-10T08:01:30.000Z'
@@ -358,8 +363,9 @@ function sourceReadReceipt(state: SourceReadStateV3 = 'OBSERVED'): Record<string
         ? trustedDataTrust(false)
         : null;
   const coverageDecision = state === 'NOT_COVERED' ? 'NOT_COVERED' : 'COVERED';
-  const evidenceSnapshotId = state === 'NOT_COVERED' ? null : snapshot.snapshot_id;
-  const evidenceCorpusFingerprint = state === 'NOT_COVERED' ? null : SOURCE_CORPUS_FINGERPRINT;
+  const hasSourceIdentity = state !== 'NOT_COVERED' && state !== 'UNAVAILABLE';
+  const evidenceSnapshotId = hasSourceIdentity ? snapshot.snapshot_id : null;
+  const evidenceCorpusFingerprint = hasSourceIdentity ? SOURCE_CORPUS_FINGERPRINT : null;
   const coverageEvidence =
     state === 'UNAVAILABLE'
       ? null
@@ -412,7 +418,7 @@ function sourceReadReceipt(state: SourceReadStateV3 = 'OBSERVED'): Record<string
       state === 'NOT_COVERED' || state === 'UNAVAILABLE'
         ? null
         : {
-            package_id: 'cn-preliminary-publication-corpus',
+            package_id: 'cn-preliminary-publication-corpus-manifest',
             package_version: '2026-10-09',
             package_fingerprint_sha256: SOURCE_CORPUS_FINGERPRINT,
             snapshot_id: snapshot.snapshot_id,
@@ -424,7 +430,8 @@ function sourceReadReceipt(state: SourceReadStateV3 = 'OBSERVED'): Record<string
     result_set: {
       result_count: resultReferences.length,
       result_references: resultReferences,
-      result_fingerprint_sha256: testFingerprint(resultReferences)
+      result_fingerprint_sha256: testFingerprint(resultReferences),
+      source_corpus_fingerprint_sha256: evidenceCorpusFingerprint
     },
     reason_codes: reasonCodes,
     retryable: state === 'UNAVAILABLE' ? true : null,
@@ -449,6 +456,10 @@ function sourceReadReceipt(state: SourceReadStateV3 = 'OBSERVED'): Record<string
 }
 
 describe('CN preliminary-publication source-read receipt V3 contract', () => {
+  it('reuses the canonical Trademark Asset five-state vocabulary', () => {
+    expect(cnPreliminaryPublicationSourceReadStatesV3).toBe(trademarkAssetSourceReadStates);
+  });
+
   it.each<SourceReadStateV3>(['OBSERVED', 'EMPTY', 'NOT_OBSERVED', 'NOT_COVERED', 'UNAVAILABLE'])(
     'accepts the owner-issued %s state without collapsing its meaning',
     (state) => {
@@ -493,6 +504,13 @@ describe('CN preliminary-publication source-read receipt V3 contract', () => {
     missingTrust.data_trust = null;
     resealSourceReadReceipt(missingTrust);
     expect(parseCnPreliminaryPublicationSourceReadReceiptV3(missingTrust)).toBeNull();
+
+    for (const acceptanceStatus of ['PASS_WITH_WARNINGS', 'ACCEPTED']) {
+      const nonPassingTrust = sourceReadReceipt('EMPTY');
+      asObject(nonPassingTrust.data_trust).acceptance_status = acceptanceStatus;
+      resealSourceReadReceipt(nonPassingTrust);
+      expect(parseCnPreliminaryPublicationSourceReadReceiptV3(nonPassingTrust)).toBeNull();
+    }
 
     const staleTrust = sourceReadReceipt('EMPTY');
     staleTrust.data_trust = trustedDataTrust(false);
@@ -574,6 +592,7 @@ describe('CN preliminary-publication source-read receipt V3 contract', () => {
     interrupted.snapshot = structuredClone(partialObserved.snapshot);
     interrupted.source_corpus = structuredClone(partialObserved.source_corpus);
     interrupted.scan = structuredClone(partialObserved.scan);
+    asObject(interrupted.result_set).source_corpus_fingerprint_sha256 = SOURCE_CORPUS_FINGERPRINT;
     const interruptedPage = asList(asObject(interrupted.scan).continuation_chain)[0]!;
     interruptedPage.result_count = 0;
     interruptedPage.cumulative_result_count = 0;
@@ -779,12 +798,36 @@ describe('CN preliminary-publication source-read receipt V3 contract', () => {
     expect(parseCnPreliminaryPublicationSourceReadReceiptV3(futureCoverage)).toBeNull();
   });
 
-  it('binds OBSERVED row references to the declared source corpus', () => {
-    const receipt = sourceReadReceipt('OBSERVED');
-    const resultReference = asList(asObject(receipt.result_set).result_references)[0]!;
-    resultReference.source_package_id = 'different-corpus';
-    rebindResultSet(receipt);
-    expect(parseCnPreliminaryPublicationSourceReadReceiptV3(receipt)).toBeNull();
+  it('binds the result set to its source corpus while retaining exact per-row package provenance', () => {
+    const valid = sourceReadReceipt('OBSERVED');
+    const validReference = asList(asObject(valid.result_set).result_references)[0]!;
+    expect(validReference.source_package_id).not.toBe(asObject(valid.source_corpus).package_id);
+    const secondReference = {
+      ...validReference,
+      case_id: 'case-中文-2',
+      application_number: '10000002',
+      source_package_id: 'independent-row-package-2026-10-08',
+      source_row_fingerprint_sha256: testFingerprint({ row: 2 }),
+      record_fingerprint_sha256: testFingerprint({ record: 2 })
+    };
+    asObject(valid.result_set).result_references = [validReference, secondReference];
+    const validScanPage = asList(asObject(valid.scan).continuation_chain)[0]!;
+    validScanPage.result_count = 2;
+    validScanPage.cumulative_result_count = 2;
+    rebindResultSet(valid);
+    expect(parseCnPreliminaryPublicationSourceReadReceiptV3(valid)).not.toBeNull();
+
+    const corpusDrift = sourceReadReceipt('OBSERVED');
+    asObject(corpusDrift.result_set).source_corpus_fingerprint_sha256 = testFingerprint({
+      corpus: 'other'
+    });
+    resealSourceReadReceipt(corpusDrift);
+    expect(parseCnPreliminaryPublicationSourceReadReceiptV3(corpusDrift)).toBeNull();
+
+    const missingCorpusBinding = sourceReadReceipt('OBSERVED');
+    asObject(missingCorpusBinding.result_set).source_corpus_fingerprint_sha256 = null;
+    resealSourceReadReceipt(missingCorpusBinding);
+    expect(parseCnPreliminaryPublicationSourceReadReceiptV3(missingCorpusBinding)).toBeNull();
   });
 
   const integrityMutations: Array<[string, (receipt: Record<string, unknown>) => void]> = [
@@ -867,7 +910,7 @@ describe('CN preliminary-publication source-read receipt V3 contract', () => {
       'sha256:c13877ee6665da674e5401977b0c84c2e9f48377f71505fe0dfc36a22b7e32fe'
     );
     expect(receipt.receipt_fingerprint_sha256).toBe(
-      'sha256:fd4465c1cde30eb36c005c110be7bcc426c06c760f5cd918823430071c64a39b'
+      'sha256:8384137febf28cee79d49ebe45c1e17ecc188fadb41c4867d3a08f11b2ba670d'
     );
   });
 });

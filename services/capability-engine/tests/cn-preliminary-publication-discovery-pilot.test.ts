@@ -109,7 +109,8 @@ function unavailableSourceReadReceipt() {
     result_set: {
       result_count: 0,
       result_references: [],
-      result_fingerprint_sha256: fingerprint([])
+      result_fingerprint_sha256: fingerprint([]),
+      source_corpus_fingerprint_sha256: null
     },
     reason_codes: ['SOURCE_READ_TIMEOUT'],
     retryable: true,
