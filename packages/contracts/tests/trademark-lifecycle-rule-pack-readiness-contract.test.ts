@@ -45,7 +45,7 @@ function applicability(): MethodApplicabilityV1 {
   };
 }
 
-function evidenceReference(index: number, suffix = ''): ExactOwnerReferenceV1 {
+function shapeOnlyEvidenceReference(index: number, suffix = ''): ExactOwnerReferenceV1 {
   return {
     owner: index % 2 === 0 ? 'BRAIN' : 'MARKREG',
     kind: 'RULE_PACK_ADMISSION_EVIDENCE',
@@ -55,17 +55,20 @@ function evidenceReference(index: number, suffix = ''): ExactOwnerReferenceV1 {
   };
 }
 
-function availableGates(): TrademarkLifecycleRulePackAdmissionGateV1[] {
+function shapeOnlyAllAvailableGates(): TrademarkLifecycleRulePackAdmissionGateV1[] {
   return trademarkLifecycleRulePackAdmissionGateCodesV1.map((gateCode, index) => ({
     gateCode,
     state: 'EVIDENCE_AVAILABLE',
-    evidenceReferences: [evidenceReference(index, '-b'), evidenceReference(index, '-a')],
+    evidenceReferences: [
+      shapeOnlyEvidenceReference(index, '-b'),
+      shapeOnlyEvidenceReference(index, '-a')
+    ],
     reasonCodes: []
   }));
 }
 
 function material(
-  gates: readonly Readonly<TrademarkLifecycleRulePackAdmissionGateV1>[] = availableGates(),
+  gates: readonly Readonly<TrademarkLifecycleRulePackAdmissionGateV1>[] = shapeOnlyAllAvailableGates(),
   status: TrademarkLifecycleRulePackAdmissionReadinessStatusV1 = 'READY_FOR_INDEPENDENT_ADMISSION_REVIEW',
   applicabilityValue: MethodApplicabilityV1 = applicability()
 ): TrademarkLifecycleRulePackAdmissionReadinessFingerprintMaterialV1 {
@@ -82,7 +85,7 @@ function material(
 }
 
 function signed(
-  gates: readonly Readonly<TrademarkLifecycleRulePackAdmissionGateV1>[] = availableGates(),
+  gates: readonly Readonly<TrademarkLifecycleRulePackAdmissionGateV1>[] = shapeOnlyAllAvailableGates(),
   status: TrademarkLifecycleRulePackAdmissionReadinessStatusV1 = 'READY_FOR_INDEPENDENT_ADMISSION_REVIEW',
   applicabilityValue: MethodApplicabilityV1 = applicability()
 ): TrademarkLifecycleRulePackAdmissionReadinessV1 {
@@ -127,13 +130,17 @@ describe('TrademarkLifecycleRulePackAdmissionReadinessV1', () => {
     multipleBranches[field] = [...multipleBranches[field], value];
     expect(() =>
       trademarkLifecycleRulePackAdmissionReadinessFingerprintSha256V1(
-        material(availableGates(), 'READY_FOR_INDEPENDENT_ADMISSION_REVIEW', multipleBranches)
+        material(
+          shapeOnlyAllAvailableGates(),
+          'READY_FOR_INDEPENDENT_ADMISSION_REVIEW',
+          multipleBranches
+        )
       )
     ).toThrow();
   });
 
   it('normalizes applicability, gates, references and reasons before deterministic fingerprinting', () => {
-    const canonicalGates = availableGates();
+    const canonicalGates = shapeOnlyAllAvailableGates();
     canonicalGates[0] = blockedGate(canonicalGates[0]!, 'EVIDENCE_MISSING', [
       'A_REASON',
       'Z_REASON'
@@ -178,7 +185,7 @@ describe('TrademarkLifecycleRulePackAdmissionReadinessV1', () => {
       'READY_FOR_INDEPENDENT_ADMISSION_REVIEW'
     );
 
-    const gates = availableGates();
+    const gates = shapeOnlyAllAvailableGates();
     gates[4] = blockedGate(gates[4]!, 'DEPENDENCY_UNAVAILABLE', ['RUNNER_UNAVAILABLE']);
     expect(
       parseTrademarkLifecycleRulePackAdmissionReadinessV1(signed(gates, 'INCOMPLETE')).status
@@ -190,19 +197,44 @@ describe('TrademarkLifecycleRulePackAdmissionReadinessV1', () => {
     ).toThrow();
     expect(() =>
       trademarkLifecycleRulePackAdmissionReadinessFingerprintSha256V1(
-        material(availableGates(), 'INCOMPLETE')
+        material(shapeOnlyAllAvailableGates(), 'INCOMPLETE')
       )
     ).toThrow();
   });
 
+  it('treats shape-valid evidence references as structural readiness only and grants no authority', () => {
+    const gates = shapeOnlyAllAvailableGates();
+    gates[0] = {
+      ...gates[0]!,
+      evidenceReferences: [
+        {
+          owner: 'UNVERIFIED_TEST_OWNER',
+          kind: 'SHAPE_ONLY_TEST_EVIDENCE',
+          id: 'shape-only-evidence_not-an-owner-admission',
+          version: 'not-owner-verified',
+          fingerprintSha256: sha('a')
+        }
+      ]
+    };
+
+    const parsed = parseTrademarkLifecycleRulePackAdmissionReadinessV1(signed(gates));
+    expect(parsed.status).toBe('READY_FOR_INDEPENDENT_ADMISSION_REVIEW');
+    expect(parsed.gates[0]?.evidenceReferences[0]).toMatchObject({
+      owner: 'UNVERIFIED_TEST_OWNER',
+      kind: 'SHAPE_ONLY_TEST_EVIDENCE'
+    });
+    expect(parsed.authority).toEqual(noTrademarkLifecycleRulePackAdmissionReadinessAuthorityV1);
+    expect(Object.values(parsed.authority).every((value) => value === false)).toBe(true);
+  });
+
   it('requires exact evidence references for EVIDENCE_AVAILABLE gates', () => {
-    const noEvidence = availableGates();
+    const noEvidence = shapeOnlyAllAvailableGates();
     noEvidence[0] = { ...noEvidence[0]!, evidenceReferences: [] };
     expect(() =>
       trademarkLifecycleRulePackAdmissionReadinessFingerprintSha256V1(material(noEvidence))
     ).toThrow();
 
-    const withReason = availableGates();
+    const withReason = shapeOnlyAllAvailableGates();
     withReason[0] = { ...withReason[0]!, reasonCodes: ['NOT_A_PASSING_REASON'] };
     expect(() =>
       trademarkLifecycleRulePackAdmissionReadinessFingerprintSha256V1(material(withReason))
@@ -217,7 +249,7 @@ describe('TrademarkLifecycleRulePackAdmissionReadinessV1', () => {
       parseTrademarkLifecycleRulePackAdmissionReadinessV1(incompleteReference)
     ).toThrow();
 
-    const duplicateReferences = availableGates();
+    const duplicateReferences = shapeOnlyAllAvailableGates();
     const duplicatedIdentity = duplicateReferences[0]!.evidenceReferences[0]!;
     duplicateReferences[0] = {
       ...duplicateReferences[0]!,
@@ -234,7 +266,7 @@ describe('TrademarkLifecycleRulePackAdmissionReadinessV1', () => {
   it.each(['EVIDENCE_MISSING', 'EVIDENCE_REJECTED', 'DEPENDENCY_UNAVAILABLE'] as const)(
     'requires a reason code for %s',
     (state) => {
-      const gates = availableGates();
+      const gates = shapeOnlyAllAvailableGates();
       gates[0] = blockedGate(gates[0]!, state, []);
       expect(() =>
         trademarkLifecycleRulePackAdmissionReadinessFingerprintSha256V1(
@@ -245,10 +277,12 @@ describe('TrademarkLifecycleRulePackAdmissionReadinessV1', () => {
   );
 
   it('rejects duplicate, missing and unknown admission gates', () => {
-    const duplicate = availableGates();
+    const duplicate = shapeOnlyAllAvailableGates();
     duplicate[9] = duplicate[0]!;
-    const missing = availableGates().slice(0, -1);
-    const unknown = structuredClone(availableGates()) as unknown as Array<Record<string, unknown>>;
+    const missing = shapeOnlyAllAvailableGates().slice(0, -1);
+    const unknown = structuredClone(shapeOnlyAllAvailableGates()) as unknown as Array<
+      Record<string, unknown>
+    >;
     unknown[0]!.gateCode = 'SOURCE_USE_ADMISSION';
 
     for (const gates of [duplicate, missing, unknown]) {
@@ -292,6 +326,54 @@ describe('TrademarkLifecycleRulePackAdmissionReadinessV1', () => {
     ).toThrow();
   });
 
+  it('binds assessed content, gate states, reasons and evidence identities into the assessment fingerprint', () => {
+    const gates = shapeOnlyAllAvailableGates();
+    gates[0] = blockedGate(gates[0]!, 'EVIDENCE_MISSING', ['BASELINE_REASON']);
+    const baseline = signed(gates, 'INCOMPLETE');
+    const firstAvailableGate = baseline.gates[1]!;
+    const firstReference = firstAvailableGate.evidenceReferences[0]!;
+    const withGate = (
+      gateIndex: number,
+      patch: Partial<TrademarkLifecycleRulePackAdmissionGateV1>
+    ): TrademarkLifecycleRulePackAdmissionReadinessV1 => ({
+      ...baseline,
+      gates: baseline.gates.map((gate, index) =>
+        index === gateIndex ? { ...gate, ...patch } : gate
+      )
+    });
+    const withEvidenceReference = (
+      patch: Partial<ExactOwnerReferenceV1>
+    ): TrademarkLifecycleRulePackAdmissionReadinessV1 =>
+      withGate(1, {
+        evidenceReferences: [
+          { ...firstReference, ...patch },
+          ...firstAvailableGate.evidenceReferences.slice(1)
+        ]
+      });
+
+    const staleSignatureVariants: readonly unknown[] = [
+      { ...baseline, assessedAt: '2026-10-10T02:00:01.000Z' },
+      {
+        ...baseline,
+        applicability: {
+          ...baseline.applicability,
+          effectiveFrom: '2026-10-10T00:00:01.000Z'
+        }
+      },
+      withGate(0, { state: 'EVIDENCE_REJECTED' }),
+      withGate(0, { reasonCodes: ['CHANGED_REASON'] }),
+      withEvidenceReference({ owner: 'CHANGED_OWNER' }),
+      withEvidenceReference({ kind: 'CHANGED_KIND' }),
+      withEvidenceReference({ id: 'changed-evidence_identity' }),
+      withEvidenceReference({ version: 2 }),
+      withEvidenceReference({ fingerprintSha256: sha('f') })
+    ];
+
+    for (const value of staleSignatureVariants) {
+      expect(() => parseTrademarkLifecycleRulePackAdmissionReadinessV1(value)).toThrow();
+    }
+  });
+
   it('keeps every authority consequence false even when independently review-ready', () => {
     const parsed = parseTrademarkLifecycleRulePackAdmissionReadinessV1(signed());
     expect(parsed.authority).toEqual(noTrademarkLifecycleRulePackAdmissionReadinessAuthorityV1);
@@ -318,8 +400,8 @@ describe('TrademarkLifecycleRulePackAdmissionReadinessV1', () => {
     ).toThrow();
   });
 
-  it('keeps the current CN candidate INCOMPLETE with every known blocker explicit', () => {
-    const gates = availableGates();
+  it('keeps the current CN candidate INCOMPLETE with all ten owner-evidence gaps explicit', () => {
+    const gates = shapeOnlyAllAvailableGates();
     const block = (
       gateCode: TrademarkLifecycleRulePackAdmissionGateV1['gateCode'],
       reasonCodes: readonly string[]
@@ -327,13 +409,31 @@ describe('TrademarkLifecycleRulePackAdmissionReadinessV1', () => {
       const gateIndex = gates.findIndex((gate) => gate.gateCode === gateCode);
       gates[gateIndex] = blockedGate(gates[gateIndex]!, 'EVIDENCE_MISSING', reasonCodes);
     };
+    block('APPLICABILITY', ['EXACT_APPLICABILITY_OWNER_EVIDENCE_MISSING']);
     block('EXECUTABLE_METHOD', ['ACTIVE_METHOD_NOT_FOUND', 'SUPPORTED_RUNNER_NOT_FOUND']);
+    block('LEGAL_SOURCE_PROVENANCE', ['EXACT_LEGAL_SOURCE_PROVENANCE_MISSING']);
+    block('FACT_PATH', ['EXACT_SCOPE_COMPLETENESS_RECEIPT_MISSING']);
+    block('DETERMINISTIC_CONTRACT', ['EXACT_BRANCH_DETERMINISTIC_EVIDENCE_MISSING']);
     block('PROFESSIONAL_RESPONSIBILITY', [
       'CURRENT_REVIEW_RECEIPT_NOT_FOUND',
       'REVOCATION_EVIDENCE_NOT_FOUND'
     ]);
     block('FIXTURE_MATRIX', ['BRANCH_FIXTURE_MATRIX_INCOMPLETE']);
+    block('DEGRADATION', ['EXACT_BRANCH_DEGRADATION_EVIDENCE_MISSING']);
     block('FULL_USABLE_OUTPUT_COST', ['PRODUCTION_COST_EVIDENCE_MISSING']);
+
+    const factPathIndex = gates.findIndex((gate) => gate.gateCode === 'FACT_PATH');
+    gates[factPathIndex] = {
+      ...gates[factPathIndex]!,
+      evidenceReferences: [
+        {
+          owner: 'DATA_ENGINE',
+          kind: 'SOURCE_CONTRACT',
+          id: 'CN_CASE_CURRENT_PRELIMINARY_PUBLICATION_DISCOVERY_V2',
+          version: 2
+        }
+      ]
+    };
 
     const productionAdmissionIndex = gates.findIndex(
       (gate) => gate.gateCode === 'CURRENT_PRODUCTION_ADMISSION'
@@ -346,8 +446,7 @@ describe('TrademarkLifecycleRulePackAdmissionReadinessV1', () => {
           owner: 'CAPABILITY_ENGINE',
           kind: 'SOURCE_USE_POLICY',
           id: 'source-admission-policy.cn-preliminary-publication-discovery.v1',
-          version: 1,
-          fingerprintSha256: sha('c')
+          version: 1
         }
       ],
       reasonCodes: ['SOURCE_POLICY_PILOT']
@@ -359,28 +458,56 @@ describe('TrademarkLifecycleRulePackAdmissionReadinessV1', () => {
         .filter((gate) => gate.state !== 'EVIDENCE_AVAILABLE')
         .map((gate) => [gate.gateCode, gate] as const)
     );
+    const expectedMissingReasons = [
+      ['APPLICABILITY', ['EXACT_APPLICABILITY_OWNER_EVIDENCE_MISSING']],
+      ['EXECUTABLE_METHOD', ['ACTIVE_METHOD_NOT_FOUND', 'SUPPORTED_RUNNER_NOT_FOUND']],
+      ['LEGAL_SOURCE_PROVENANCE', ['EXACT_LEGAL_SOURCE_PROVENANCE_MISSING']],
+      ['FACT_PATH', ['EXACT_SCOPE_COMPLETENESS_RECEIPT_MISSING']],
+      ['DETERMINISTIC_CONTRACT', ['EXACT_BRANCH_DETERMINISTIC_EVIDENCE_MISSING']],
+      [
+        'PROFESSIONAL_RESPONSIBILITY',
+        ['CURRENT_REVIEW_RECEIPT_NOT_FOUND', 'REVOCATION_EVIDENCE_NOT_FOUND']
+      ],
+      ['FIXTURE_MATRIX', ['BRANCH_FIXTURE_MATRIX_INCOMPLETE']],
+      ['DEGRADATION', ['EXACT_BRANCH_DEGRADATION_EVIDENCE_MISSING']],
+      ['FULL_USABLE_OUTPUT_COST', ['PRODUCTION_COST_EVIDENCE_MISSING']]
+    ] as const;
+
     expect(parsed.status).toBe('INCOMPLETE');
-    expect(blockers.get('EXECUTABLE_METHOD')).toMatchObject({
-      state: 'EVIDENCE_MISSING',
-      reasonCodes: ['ACTIVE_METHOD_NOT_FOUND', 'SUPPORTED_RUNNER_NOT_FOUND']
-    });
-    expect(blockers.get('PROFESSIONAL_RESPONSIBILITY')).toMatchObject({
-      state: 'EVIDENCE_MISSING',
-      reasonCodes: ['CURRENT_REVIEW_RECEIPT_NOT_FOUND', 'REVOCATION_EVIDENCE_NOT_FOUND']
-    });
-    expect(blockers.get('FIXTURE_MATRIX')).toMatchObject({
-      state: 'EVIDENCE_MISSING',
-      reasonCodes: ['BRANCH_FIXTURE_MATRIX_INCOMPLETE']
-    });
-    expect(blockers.get('FULL_USABLE_OUTPUT_COST')).toMatchObject({
-      state: 'EVIDENCE_MISSING',
-      reasonCodes: ['PRODUCTION_COST_EVIDENCE_MISSING']
-    });
-    expect(blockers.get('CURRENT_PRODUCTION_ADMISSION')).toMatchObject({
+    expect([...blockers.keys()]).toEqual(expectedGateCodes);
+    for (const [gateCode, reasonCodes] of expectedMissingReasons) {
+      expect(blockers.get(gateCode)).toMatchObject({
+        state: 'EVIDENCE_MISSING',
+        reasonCodes
+      });
+    }
+    for (const [gateCode] of expectedMissingReasons) {
+      if (gateCode !== 'FACT_PATH') {
+        expect(blockers.get(gateCode)?.evidenceReferences).toEqual([]);
+      }
+    }
+    expect(blockers.get('FACT_PATH')?.evidenceReferences).toEqual([
+      {
+        owner: 'DATA_ENGINE',
+        kind: 'SOURCE_CONTRACT',
+        id: 'CN_CASE_CURRENT_PRELIMINARY_PUBLICATION_DISCOVERY_V2',
+        version: 2
+      }
+    ]);
+    expect(blockers.get('CURRENT_PRODUCTION_ADMISSION')).toEqual({
+      gateCode: 'CURRENT_PRODUCTION_ADMISSION',
       state: 'EVIDENCE_REJECTED',
+      evidenceReferences: [
+        {
+          owner: 'CAPABILITY_ENGINE',
+          kind: 'SOURCE_USE_POLICY',
+          id: 'source-admission-policy.cn-preliminary-publication-discovery.v1',
+          version: 1
+        }
+      ],
       reasonCodes: ['SOURCE_POLICY_PILOT']
     });
-    expect(blockers.size).toBe(5);
+    expect(blockers.size).toBe(10);
     expect(parsed.authority.sourceUsePromoted).toBe(false);
     expect(parsed.authority.rulePackAdmitted).toBe(false);
   });
