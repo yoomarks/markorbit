@@ -149,9 +149,8 @@ export class HttpCoreAuthenticationClient implements CoreAuthenticationClient {
     body: unknown,
     correlationId?: string
   ): Promise<T> {
-    let response: Response;
     try {
-      response = await fetch(`${this.baseUrl}${path}`, {
+      const response = await fetch(`${this.baseUrl}${path}`, {
         method,
         headers: {
           'content-type': 'application/json',
@@ -161,25 +160,26 @@ export class HttpCoreAuthenticationClient implements CoreAuthenticationClient {
         ...(method === 'POST' ? { body: JSON.stringify(body) } : {}),
         signal: AbortSignal.timeout(this.timeoutMs)
       });
-    } catch {
+      if (response.status >= 500)
+        throw new AuthenticationError(
+          'AUTHENTICATION_SERVICE_UNAVAILABLE',
+          'Authentication service is unavailable.'
+        );
+      if (!response.ok) {
+        const error = (await response.json()) as { code?: string };
+        throw new AuthenticationError(
+          (error.code ?? 'INVALID_SESSION') as never,
+          'Authentication failed.'
+        );
+      }
+      return (await response.json()) as T;
+    } catch (error) {
+      if (error instanceof AuthenticationError) throw error;
       throw new AuthenticationError(
         'AUTHENTICATION_SERVICE_UNAVAILABLE',
         'Authentication service is unavailable.'
       );
     }
-    if (response.status >= 500)
-      throw new AuthenticationError(
-        'AUTHENTICATION_SERVICE_UNAVAILABLE',
-        'Authentication service is unavailable.'
-      );
-    if (!response.ok) {
-      const error = (await response.json()) as { code?: string };
-      throw new AuthenticationError(
-        (error.code ?? 'INVALID_SESSION') as never,
-        'Authentication failed.'
-      );
-    }
-    return response.json() as Promise<T>;
   }
   private call<T>(path: string, body: unknown, correlationId?: string) {
     return this.request<T>('POST', path, body, correlationId);
@@ -231,40 +231,47 @@ export class HttpCoreAuthenticationClient implements CoreAuthenticationClient {
     input: GovernedHumanActionReceiptMaterializationV1,
     correlationId?: string
   ): Promise<GovernedHumanActionReceiptV1> {
-    let response: Response;
     try {
-      response = await fetch(`${this.baseUrl}/internal/auth/governed-human-actions/receipts`, {
-        method: 'POST',
-        headers: {
-          'content-type': 'application/json',
-          'x-markorbit-internal-authorization': this.serviceSecret,
-          ...(correlationId ? { 'x-correlation-id': correlationId } : {})
-        },
-        body: JSON.stringify(input),
-        signal: AbortSignal.timeout(this.timeoutMs)
-      });
-    } catch {
+      const response = await fetch(
+        `${this.baseUrl}/internal/auth/governed-human-actions/receipts`,
+        {
+          method: 'POST',
+          headers: {
+            'content-type': 'application/json',
+            'x-markorbit-internal-authorization': this.serviceSecret,
+            ...(correlationId ? { 'x-correlation-id': correlationId } : {})
+          },
+          body: JSON.stringify(input),
+          signal: AbortSignal.timeout(this.timeoutMs)
+        }
+      );
+      if (response.status === 409) {
+        const error = (await response.json()) as { code?: string };
+        const code =
+          error.code === 'GOVERNED_HUMAN_ACTION_RECEIPT_STALE'
+            ? 'GOVERNED_HUMAN_ACTION_RECEIPT_STALE'
+            : 'GOVERNED_HUMAN_ACTION_REPLAY_CONFLICT';
+        throw new GovernedHumanActionReceiptClientError(
+          409,
+          code,
+          'Governed human action is stale.'
+        );
+      }
+      if (!response.ok)
+        throw new GovernedHumanActionReceiptClientError(
+          503,
+          'GOVERNED_HUMAN_ACTION_SOURCE_UNAVAILABLE',
+          'Governed human-action receipt authority is unavailable.'
+        );
+      return (await response.json()) as GovernedHumanActionReceiptV1;
+    } catch (error) {
+      if (error instanceof GovernedHumanActionReceiptClientError) throw error;
       throw new GovernedHumanActionReceiptClientError(
         503,
         'GOVERNED_HUMAN_ACTION_SOURCE_UNAVAILABLE',
         'Governed human-action receipt authority is unavailable.'
       );
     }
-    if (response.status === 409) {
-      const error = (await response.json()) as { code?: string };
-      const code =
-        error.code === 'GOVERNED_HUMAN_ACTION_RECEIPT_STALE'
-          ? 'GOVERNED_HUMAN_ACTION_RECEIPT_STALE'
-          : 'GOVERNED_HUMAN_ACTION_REPLAY_CONFLICT';
-      throw new GovernedHumanActionReceiptClientError(409, code, 'Governed human action is stale.');
-    }
-    if (!response.ok)
-      throw new GovernedHumanActionReceiptClientError(
-        503,
-        'GOVERNED_HUMAN_ACTION_SOURCE_UNAVAILABLE',
-        'Governed human-action receipt authority is unavailable.'
-      );
-    return response.json() as Promise<GovernedHumanActionReceiptV1>;
   }
   resolveInternalOperator(token: string, correlationId?: string) {
     return this.call<InternalOperatorPrincipal>(
