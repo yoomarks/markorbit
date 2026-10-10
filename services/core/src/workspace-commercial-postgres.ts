@@ -153,8 +153,19 @@ export class PostgresWorkspaceCommercialRepositoryV1 implements WorkspaceCommerc
       effectiveFrom: value.effectiveFrom
     });
   }
-  async listGrants() {
-    return this.list<EntitlementGrantV1>('ENTITLEMENT_GRANT');
+  async listGrants(workspaceId?: string, entitlementKey?: string) {
+    if (workspaceId === undefined || entitlementKey === undefined)
+      return this.list<EntitlementGrantV1>('ENTITLEMENT_GRANT');
+    // Candidate matching uses any version; later revocation or subject/key movement
+    // must remain visible to the resolver's latest-version selection.
+    return this.list<EntitlementGrantV1>(
+      'ENTITLEMENT_GRANT',
+      `AND aggregate_id IN (
+         SELECT aggregate_id FROM core_workspace_commercial_records
+         WHERE record_type=$1 AND workspace_id=$2 AND commercial_kind=$3
+       )`,
+      [workspaceId, entitlementKey]
+    );
   }
   async appendAssignableGrant(value: AssignableEntitlementGrantV1) {
     await this.append('ASSIGNABLE_GRANT', value.assignableGrantId, value.version, value, {

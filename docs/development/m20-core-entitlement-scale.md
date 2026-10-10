@@ -1,14 +1,23 @@
 # Core entitlement resolver scale evidence
 
 M20-C1 uses the protected Core Workspace entitlement resolver on each US NAME page.
-The existing `PostgresWorkspaceCommercialRepositoryV1.listGrants()` reads all grant
-versions before the service selects the latest recorded version at `asOf`, then
-checks subject, key, status and effective interval. Its cost therefore depends on
-the whole grant history, including other Workspaces and revoked versions.
+M20-C3 ([PR #1506](https://github.com/yoomarks/markorbit/pull/1506)) established the
+original whole-history baseline: at 100,000 grant versions each resolver call
+returned 41,527,782 logical JSON bytes. Its PR fixture p95 was 1,045.56 ms; the
+main fixture p95 was 577.68 ms. These are separate warm serial runs, not a
+production capacity estimate.
 
-The M20-C3 suite measures this unchanged implementation against PostgreSQL 16 in
-an isolated fixture database. It does not authorize source admission or change
-the resolver, grants, migrations, permissions or production configuration.
+PostgreSQL Workspace reads now use the existing Workspace/key index to identify grant IDs
+with a matching **historical** version and return **all** versions for those IDs.
+The service still selects the latest recorded version at `asOf` before checking
+subject, key, status and effective interval. A later revocation or subject/key
+move therefore cannot resurrect an older grant. Unscoped agreement reads and
+USER/assignment resolution retain their existing behavior. No authority cache
+or new index is involved.
+
+The scale suite measures the actual implementation against PostgreSQL 16 in
+an isolated synthetic fixture database. Production admission, grants, permissions
+and configuration remain subject to their existing owner evidence.
 
 ## Run the baseline
 
@@ -41,9 +50,11 @@ customer volume or a production dataset. Each scale uses three warmups and 30
 serial calls to the real repository and resolver. The report retains every
 elapsed sample plus nearest-rank p50, p95 and maximum.
 
-The suite captures the SQL from the actual repository call and runs
+The suite checks the total seeded row count, captures SQL and returned rows from
+the actual resolver call (one direct-grant query), and runs
 `EXPLAIN (ANALYZE, BUFFERS, FORMAT JSON)` against it. The actual returned row count
-and logical JSON byte count make the whole-history amplification explicit.
+and logical JSON byte count measure read amplification. Each initial scale must
+return just the one target grant version despite unrelated Workspace history.
 Logical JSON bytes exclude PostgreSQL protocol, formatting and HTTP overhead;
 they are not a network billing measurement. The query plan includes server
 execution time and buffer information. Resolver samples include PostgreSQL
@@ -54,10 +65,10 @@ At the largest scale, semantic checks also prove that a newer revocation denies
 the current read, a prior `asOf` still sees its historical grant, Boolean false
 remains false, unrelated subjects/keys cannot authorize the target, and a future
 recorded version does not affect an earlier read. Moving a grant to another
-subject/key cannot resurrect its previous version. Effective windows include
+subject/key or USER scope cannot resurrect its previous Workspace version. Effective windows include
 their start and exclude their end.
 
-The deterministic gates are row-count and authorization assertions. Host latency
+The deterministic gates are fixture/candidate row-count and authorization assertions. Host latency
 is recorded as evidence; it is not converted into a brittle timing pass/fail gate.
 The required CI mode fails if the fixture URL is missing. No database fixture
 means an explicitly skipped local integration suite.
@@ -68,7 +79,8 @@ The Gateway Core request has a default 3,000 ms timeout. Compare the baseline wi
 that budget as a risk indicator only. This fixture does not measure protected
 HTTP transport, live user/Workspace/membership validation, concurrency, pool
 contention, cold-cache behavior, deployment hardware or production grant shape.
-It does not cover USER assignment resolution. A below-budget serial sample is
+It does not measure USER assignment resolution or large histories belonging to
+the same candidate grant. A below-budget serial sample is
 not production capacity or an availability guarantee.
 
 Before enabling production admission, retain owner-backed licence, physical

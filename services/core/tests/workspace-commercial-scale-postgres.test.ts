@@ -11,7 +11,7 @@ import {
   migrate,
   parseDatabaseConfig
 } from '@markorbit/persistence';
-import { PostgresWorkspaceRepository } from '../src/identity.js';
+import { PostgresUserRepository, PostgresWorkspaceRepository } from '../src/identity.js';
 import { PostgresWorkspaceCommercialRepositoryV1 } from '../src/workspace-commercial-postgres.js';
 import { WorkspaceCommercialServiceV1 } from '../src/workspace-commercial.js';
 
@@ -37,6 +37,7 @@ let repository: PostgresWorkspaceCommercialRepositoryV1;
 let service: WorkspaceCommercialServiceV1;
 const targetWorkspace = randomUUID();
 const otherWorkspace = randomUUID();
+const movedUser = randomUUID();
 const measurements: unknown[] = [];
 
 function grant(overrides: Partial<EntitlementGrantV1> = {}): EntitlementGrantV1 {
@@ -86,6 +87,11 @@ integration('PostgreSQL Core entitlement resolver scale evidence', () => {
     const workspaces = new PostgresWorkspaceRepository(database.getPool());
     for (const workspaceId of [targetWorkspace, otherWorkspace])
       await workspaces.create({ workspaceId, name: 'Scale fixture', slug: `scale-${workspaceId}` });
+    await new PostgresUserRepository(database.getPool()).create({
+      userId: movedUser,
+      email: `scale-${movedUser}@example.test`,
+      displayName: 'Scope move fixture'
+    });
     repository = new PostgresWorkspaceCommercialRepositoryV1(database);
     service = new WorkspaceCommercialServiceV1(repository, () => Promise.resolve(undefined));
   }, 60_000);
@@ -145,19 +151,33 @@ integration('PostgreSQL Core entitlement resolver scale evidence', () => {
         ]
       );
       await database.getPool().query('ANALYZE core_workspace_commercial_records');
+      const seeded = await database
+        .getPool()
+        .query<{ count: string }>(
+          "SELECT count(*) FROM core_workspace_commercial_records WHERE record_type='ENTITLEMENT_GRANT'"
+        );
+      expect(Number(seeded.rows[0]!.count)).toBe(recordCount);
       const querySpy = vi.spyOn(database.getPool(), 'query');
       let actualQuery: readonly [string, readonly unknown[]];
       let logicalJsonBytes: number;
+      let returnedRows: number;
       try {
-        const rows = await repository.listGrants();
-        expect(rows).toHaveLength(recordCount);
-        logicalJsonBytes = rows.reduce(
-          (sum, row) => sum + Buffer.byteLength(JSON.stringify(row)),
+        expect((await resolve()).contributingGrantRefs).toEqual([
+          { grantId: 'fixture-target', version: 1 }
+        ]);
+        expect(querySpy.mock.calls).toHaveLength(1);
+        const result = await (querySpy.mock.results[0]!.value as Promise<{
+          rows: readonly { record_json: EntitlementGrantV1 }[];
+        }>);
+        returnedRows = result.rows.length;
+        expect(returnedRows).toBe(1);
+        logicalJsonBytes = result.rows.reduce(
+          (sum, row) => sum + Buffer.byteLength(JSON.stringify(row.record_json)),
           0
         );
         actualQuery = querySpy.mock.calls.at(-1) as unknown as typeof actualQuery;
         expect(typeof actualQuery[0]).toBe('string');
-        expect(actualQuery[1]).toEqual(['ENTITLEMENT_GRANT']);
+        expect(actualQuery[1]).toEqual(['ENTITLEMENT_GRANT', targetWorkspace, entitlementKey]);
       } finally {
         // Do not retain query results during timing or replace the real query implementation.
         querySpy.mockRestore();
@@ -169,7 +189,7 @@ integration('PostgreSQL Core entitlement resolver scale evidence', () => {
           [...actualQuery[1]]
         );
       const queryPlan = plan.rows[0]!['QUERY PLAN'] as { Plan: Record<string, unknown> }[];
-      expect(queryPlan[0]!.Plan['Actual Rows']).toBe(recordCount);
+      expect(queryPlan[0]!.Plan['Actual Rows']).toBe(returnedRows);
       for (let i = 0; i < 3; i++) await resolve();
       const elapsedMs: number[] = [];
       for (let i = 0; i < samples; i++) {
@@ -182,7 +202,7 @@ integration('PostgreSQL Core entitlement resolver scale evidence', () => {
       const sorted = [...elapsedMs].sort((a, b) => a - b);
       measurements.push({
         grantVersionRows: recordCount,
-        returnedRowsPerRead: recordCount,
+        returnedRowsPerRead: returnedRows,
         logicalJsonBytesPerRead: logicalJsonBytes,
         samples,
         warmups: 3,
@@ -266,5 +286,27 @@ integration('PostgreSQL Core entitlement resolver scale evidence', () => {
     await expect(resolve(t2, 'fixture.window')).rejects.toMatchObject({
       code: 'NO_APPLICABLE_ENTITLEMENT'
     });
+    const movedScope = grant({
+      grantId: 'fixture-scope',
+      entitlement: { ...moving.entitlement, key: 'fixture.scope' }
+    });
+    await repository.appendGrant(movedScope);
+    await repository.appendGrant({
+      ...movedScope,
+      version: 2,
+      subject: { scope: 'USER', userId: movedUser },
+      entitlement: { ...movedScope.entitlement, subjectScope: 'USER' },
+      recordedAt: t1
+    });
+    await expect(resolve(t2, 'fixture.scope')).rejects.toMatchObject({
+      code: 'NO_APPLICABLE_ENTITLEMENT'
+    });
+    expect((await resolve(t0, 'fixture.scope')).contributingGrantRefs).toEqual([
+      { grantId: 'fixture-scope', version: 1 }
+    ]);
+    expect(
+      (await service.resolveEntitlement({ scope: 'USER', userId: movedUser }, 'fixture.scope', t2))
+        .contributingGrantRefs
+    ).toEqual([{ grantId: 'fixture-scope', version: 2 }]);
   }, 30_000);
 });
