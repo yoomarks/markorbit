@@ -9,12 +9,18 @@ import {
   CN_PRELIMINARY_PUBLICATION_DISCOVERY_RESOURCE_KIND,
   CN_PRELIMINARY_PUBLICATION_DISCOVERY_STREAM_ID,
   DATA_ENGINE_DISCOVERY_CONTRACT_VERSION,
+  parseCnPreliminaryPublicationSourceReadReceiptV3,
   normalizeCnPreliminaryPublicationDiscoveryRequestV2,
   parseCnPreliminaryPublicationDiscoveryEnvelopeV2,
   parseCnPreliminaryPublicationDiscoveryPageV2,
+  toCnPreliminaryPublicationSourceReadReceiptReferenceV3,
   type CnPreliminaryPublicationDiscoveryEnvelopeV2,
   type CnPreliminaryPublicationDiscoveryPageV2,
-  type CnPreliminaryPublicationDiscoveryRequestV2
+  type CnPreliminaryPublicationDiscoveryRequestV2,
+  type CnPreliminaryPublicationSourceReadAuthorityV3,
+  type CnPreliminaryPublicationSourceReadReceiptReferenceV3,
+  type CnPreliminaryPublicationSourceReadReceiptV3,
+  type CnPreliminaryPublicationSourceReadStateV3
 } from '@markorbit/contracts/data-engine-discovery';
 import { DATA_ENGINE_INTEGRATION_CONTRACT_VERSION } from '@markorbit/contracts/data-engine';
 
@@ -65,6 +71,13 @@ export interface CnPreliminaryPublicationDiscoveryCapabilityOutputV2 {
   brainResearchHotPathUsed: false;
   candidateLifecycleStateCreated: false;
   productBusinessStateMutated: false;
+}
+
+export interface CnPreliminaryPublicationSourceReadReceiptAdaptationV3 {
+  state: CnPreliminaryPublicationSourceReadStateV3;
+  receipt: CnPreliminaryPublicationSourceReadReceiptV3;
+  receiptReference: CnPreliminaryPublicationSourceReadReceiptReferenceV3;
+  authorityConsequences: CnPreliminaryPublicationSourceReadAuthorityV3;
 }
 
 export interface CnPreliminaryPublicationDiscoveryClientV2 {
@@ -186,6 +199,48 @@ export function validateCnPreliminaryPublicationDiscoveryCapabilityInputV2(
   } catch {
     return false;
   }
+}
+
+/**
+ * Binds an already owner-issued V3 source-read receipt to one exact Capability request.
+ * This structural adapter cannot authenticate owner identity/currentness, issue a receipt,
+ * infer one from V2, or grant lifecycle authority.
+ */
+export function adaptCnPreliminaryPublicationSourceReadReceiptV3(
+  receiptValue: unknown,
+  capabilityInputValue: unknown
+): CnPreliminaryPublicationSourceReadReceiptAdaptationV3 {
+  const input = parseCnPreliminaryPublicationDiscoveryCapabilityInputV2(capabilityInputValue);
+  if (input.cursor !== undefined) {
+    throw new TypeError(
+      'CN preliminary-publication source-read receipt V3 requires a whole exact-scope request without a caller cursor.'
+    );
+  }
+
+  const receipt = parseCnPreliminaryPublicationSourceReadReceiptV3(receiptValue);
+  if (!receipt) {
+    throw new TypeError(
+      'CN preliminary-publication source-read receipt V3 is not a valid owner-issued receipt shape.'
+    );
+  }
+
+  const applicationNumber = receipt.query.scope.application_number;
+  if (
+    applicationNumber.start_inclusive !== input.applicationNumberStart ||
+    applicationNumber.end_exclusive !== input.applicationNumberEnd ||
+    receipt.query.limits.page_size !== input.pageSize
+  ) {
+    throw new TypeError(
+      'CN preliminary-publication source-read receipt V3 does not match the requested exact range and page size.'
+    );
+  }
+
+  return {
+    state: receipt.state,
+    receipt,
+    receiptReference: toCnPreliminaryPublicationSourceReadReceiptReferenceV3(receipt),
+    authorityConsequences: receipt.authority_consequences
+  };
 }
 
 export function validateCnPreliminaryPublicationDiscoveryCapabilityOutputV2(
