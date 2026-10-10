@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { describe, expect, it, vi } from 'vitest';
 
 import type { CapabilityRequestV2Command } from '@markorbit/contracts/capability-runtime';
@@ -8,6 +9,8 @@ import {
   CN_PRELIMINARY_PUBLICATION_DISCOVERY_RESOURCE_KIND,
   CN_PRELIMINARY_PUBLICATION_DISCOVERY_SOURCE_SCHEMA_ID,
   CN_PRELIMINARY_PUBLICATION_DISCOVERY_STREAM_ID,
+  CN_PRELIMINARY_PUBLICATION_SOURCE_READ_RECEIPT_CONTRACT_VERSION,
+  CN_PRELIMINARY_PUBLICATION_SOURCE_READ_RECEIPT_KIND,
   DATA_ENGINE_DISCOVERY_CONTRACT_VERSION,
   type CnPreliminaryPublicationDiscoveryEnvelopeV2
 } from '@markorbit/contracts/data-engine-discovery';
@@ -25,12 +28,110 @@ import {
   CN_PRELIMINARY_PUBLICATION_DISCOVERY_INPUT_SCHEMA,
   CN_PRELIMINARY_PUBLICATION_DISCOVERY_OUTPUT_SCHEMA,
   CnPreliminaryPublicationDiscoveryCapabilityExecutorV2,
+  adaptCnPreliminaryPublicationSourceReadReceiptV3,
   validateCnPreliminaryPublicationDiscoveryCapabilityInputV2,
   validateCnPreliminaryPublicationDiscoveryCapabilityOutputV2
 } from '../src/cn-preliminary-publication-discovery-pilot.js';
 import { GovernedCapabilityRuntime } from '../src/capability-runtime.js';
 
 const QUERY_HASH = `sha256:${'a'.repeat(64)}`;
+
+function canonicalize(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(canonicalize);
+  if (value && typeof value === 'object') {
+    return Object.fromEntries(
+      Object.entries(value as Record<string, unknown>)
+        .filter(([, entry]) => entry !== undefined)
+        .sort(([left], [right]) => (left < right ? -1 : left > right ? 1 : 0))
+        .map(([key, entry]) => [key, canonicalize(entry)])
+    );
+  }
+  return value;
+}
+
+function fingerprint(value: unknown): string {
+  return `sha256:${createHash('sha256')
+    .update(JSON.stringify(canonicalize(value)), 'utf8')
+    .digest('hex')}`;
+}
+
+function unavailableSourceReadReceipt() {
+  const query = {
+    contract_version: DATA_ENGINE_DISCOVERY_CONTRACT_VERSION,
+    stream_id: CN_PRELIMINARY_PUBLICATION_DISCOVERY_STREAM_ID,
+    source_schema_id: CN_PRELIMINARY_PUBLICATION_DISCOVERY_SOURCE_SCHEMA_ID,
+    candidate_type: CN_PRELIMINARY_PUBLICATION_DISCOVERY_CANDIDATE_TYPE,
+    projection_fields: [...CN_PRELIMINARY_PUBLICATION_DISCOVERY_PROJECTION_FIELDS],
+    scope: {
+      jurisdiction: 'CN',
+      application_number: { start_inclusive: '10000000', end_exclusive: '10001000' },
+      is_deleted: 0,
+      prelim_pub_date_not_null: true,
+      ordering: [...CN_PRELIMINARY_PUBLICATION_DISCOVERY_ORDERING],
+      ranking: 'NONE',
+      joins: 'NONE',
+      read_budget: {
+        max_rows_to_read: 250000,
+        max_bytes_to_read: 268435456,
+        overflow_mode: 'throw'
+      }
+    },
+    limits: { page_size: 25, max_pages: 10, max_results: 1000 }
+  };
+  const queryFingerprint = fingerprint(query);
+  const material = {
+    contract_version: CN_PRELIMINARY_PUBLICATION_SOURCE_READ_RECEIPT_CONTRACT_VERSION,
+    receipt_kind: CN_PRELIMINARY_PUBLICATION_SOURCE_READ_RECEIPT_KIND,
+    receipt_id: 'source-read:unavailable:test',
+    source_owner: DATA_ENGINE_SOURCE_OWNER,
+    authority: DATA_ENGINE_FACT_AUTHORITY,
+    jurisdiction: 'CN',
+    resource_kind: CN_PRELIMINARY_PUBLICATION_DISCOVERY_RESOURCE_KIND,
+    state: 'UNAVAILABLE',
+    scope_id: `${CN_PRELIMINARY_PUBLICATION_SOURCE_READ_RECEIPT_KIND}:${queryFingerprint}`,
+    issued_at: '2026-10-10T08:03:00.000Z',
+    read_started_at: '2026-10-10T08:00:00.000Z',
+    read_ended_at: '2026-10-10T08:02:00.000Z',
+    read_completed_at: null,
+    query,
+    query_fingerprint_sha256: queryFingerprint,
+    snapshot: null,
+    producer_implementation: {
+      package_id: 'markorbit-data-engine',
+      package_version: '3.0.0-test',
+      package_fingerprint_sha256: fingerprint({ implementation: 3 }),
+      build_id: 'git:0123456789abcdef'
+    },
+    source_corpus: null,
+    coverage_evidence: null,
+    data_trust: null,
+    scan: null,
+    result_set: {
+      result_count: 0,
+      result_references: [],
+      result_fingerprint_sha256: fingerprint([]),
+      source_corpus_fingerprint_sha256: null
+    },
+    reason_codes: ['SOURCE_READ_TIMEOUT'],
+    retryable: true,
+    silence_semantics: null,
+    legal_conclusion: false,
+    authority_consequences: {
+      rulePackAdmitted: false,
+      sourceUsePromoted: false,
+      methodActivated: false,
+      capabilityVerified: false,
+      projectionPersistenceAuthorized: false,
+      productBusinessStateCreated: false,
+      officialTruthCreated: false,
+      legalDeadlineCertified: false,
+      executionAuthorized: false,
+      lifecyclePositionInferred: false,
+      recommendationAuthorized: false
+    }
+  };
+  return { ...material, receipt_fingerprint_sha256: fingerprint(material) };
+}
 
 function envelope(
   options: {
@@ -318,5 +419,59 @@ describe('Phase 4 CN preliminary-publication Discovery Capability', () => {
       )
     ).rejects.toMatchObject({ code: 'INPUT_CONTRACT_INVALID' });
     expect(discover).not.toHaveBeenCalled();
+  });
+});
+
+describe('CN preliminary-publication source-read receipt V3 Capability adapter', () => {
+  it('binds one typed owner receipt to the exact request without granting authority', () => {
+    const receipt = unavailableSourceReadReceipt();
+    const adapted = adaptCnPreliminaryPublicationSourceReadReceiptV3(receipt, capabilityInput());
+
+    expect(adapted.state).toBe('UNAVAILABLE');
+    expect(adapted.receiptReference).toMatchObject({
+      receipt_id: 'source-read:unavailable:test',
+      state: 'UNAVAILABLE',
+      snapshot_id: null,
+      source_version: null,
+      receipt_fingerprint_sha256: receipt.receipt_fingerprint_sha256
+    });
+    expect(Object.values(adapted.authorityConsequences)).toEqual(Array(11).fill(false));
+  });
+
+  it('fails closed on exact range, page-size or caller-cursor drift', () => {
+    const receipt = unavailableSourceReadReceipt();
+
+    expect(() =>
+      adaptCnPreliminaryPublicationSourceReadReceiptV3(
+        receipt,
+        capabilityInput({ applicationNumberEnd: '10002000' })
+      )
+    ).toThrow('does not match the requested exact range and page size');
+    expect(() =>
+      adaptCnPreliminaryPublicationSourceReadReceiptV3(receipt, capabilityInput({ pageSize: 50 }))
+    ).toThrow('does not match the requested exact range and page size');
+    expect(() =>
+      adaptCnPreliminaryPublicationSourceReadReceiptV3(
+        receipt,
+        capabilityInput({ cursor: 'opaque-page-2' })
+      )
+    ).toThrow('requires a whole exact-scope request without a caller cursor');
+  });
+
+  it('cannot synthesize a V3 receipt from a V2 page or transport diagnostic', () => {
+    const emptyV2 = envelope();
+    emptyV2.payload.results = [];
+    emptyV2.payload.provenance.result_count = 0;
+    emptyV2.payload.provenance.emitted_count = 0;
+
+    expect(() =>
+      adaptCnPreliminaryPublicationSourceReadReceiptV3(emptyV2, capabilityInput())
+    ).toThrow('not a valid owner-issued receipt shape');
+    expect(() =>
+      adaptCnPreliminaryPublicationSourceReadReceiptV3(
+        { code: 'NETWORK_TIMEOUT', retryable: true },
+        capabilityInput()
+      )
+    ).toThrow('not a valid owner-issued receipt shape');
   });
 });
