@@ -1,4 +1,6 @@
-import { describe, expect, it } from 'vitest';
+import { once } from 'node:events';
+import { createServer, type RequestListener } from 'node:http';
+import { describe, expect, it, onTestFinished } from 'vitest';
 import {
   DATA_ENGINE_FACT_AUTHORITY,
   DATA_ENGINE_INTEGRATION_CONTRACT_VERSION,
@@ -163,6 +165,107 @@ function requestUrl(input: Parameters<typeof fetch>[0]): string {
   if (input instanceof URL) return input.toString();
   return input.url;
 }
+
+async function localProvider(handler: RequestListener) {
+  const server = createServer(handler);
+  onTestFinished(async () => {
+    const closed = once(server, 'close');
+    server.close();
+    server.closeAllConnections();
+    await closed;
+  });
+  server.listen(0, '127.0.0.1');
+  await once(server, 'listening');
+  const address = server.address();
+  if (!address || typeof address === 'string') throw new Error('Expected a local TCP provider.');
+  return `http://127.0.0.1:${address.port}`;
+}
+
+describe('Gateway Data Engine response body budget over real HTTP', () => {
+  it.each([200, 503])(
+    'aborts an incomplete %i response within the provider budget',
+    async (status) => {
+      let received = false;
+      let resolveClosed!: (aborted: boolean) => void;
+      const closed = new Promise<boolean>((resolve) => {
+        resolveClosed = resolve;
+      });
+      const dataEngineUrl = await localProvider((request, response) => {
+        received = true;
+        response.writeHead(
+          status,
+          Object.fromEntries(
+            providerHeaders(
+              request.headers['x-request-id'] as string,
+              request.headers['x-correlation-id'] as string
+            )
+          )
+        );
+        response.write('{');
+        // Bound the failing baseline too: EOF would be a contract/provider error, not a timeout.
+        const watchdog = setTimeout(() => response.end(), 1_000);
+        response.on('close', () => {
+          clearTimeout(watchdog);
+          resolveClosed(!response.writableEnded);
+        });
+      });
+      const client = createDataEngineClient({
+        dataEngineUrl,
+        apiKey: acceptanceKey,
+        timeoutMs: 250
+      });
+      await expect(
+        client.contract({ requestId: 'req-1', correlationId: 'corr-1' })
+      ).rejects.toMatchObject({
+        code: 'DATA_ENGINE_UNAVAILABLE',
+        message: 'Data Engine request timed out.',
+        retryable: true,
+        factState: 'service_unavailable',
+        options: { requestId: 'req-1', correlationId: 'corr-1' }
+      });
+      expect(received).toBe(true);
+      expect(await closed).toBe(true);
+    }
+  );
+
+  it('aborts an unread body when transport metadata is rejected', async () => {
+    let resolveClosed!: (aborted: boolean) => void;
+    const closed = new Promise<boolean>((resolve) => {
+      resolveClosed = resolve;
+    });
+    const dataEngineUrl = await localProvider((_request, response) => {
+      response.writeHead(200, Object.fromEntries(providerHeaders('wrong-request', 'corr-1')));
+      response.write('{');
+      const watchdog = setTimeout(() => response.end(), 1_000);
+      response.on('close', () => {
+        clearTimeout(watchdog);
+        resolveClosed(!response.writableEnded);
+      });
+    });
+    const client = createDataEngineClient({ dataEngineUrl, apiKey: acceptanceKey });
+    await expect(
+      client.contract({ requestId: 'req-1', correlationId: 'corr-1' })
+    ).rejects.toMatchObject({
+      code: 'DATA_ENGINE_CONTRACT_MISMATCH'
+    });
+    expect(await closed).toBe(true);
+  });
+
+  it('keeps completed non-JSON responses distinct from transport timeouts', async () => {
+    const dataEngineUrl = await localProvider((_request, response) => {
+      response.writeHead(200, Object.fromEntries(providerHeaders('req-1', 'corr-1')));
+      response.end('{');
+    });
+    const client = createDataEngineClient({ dataEngineUrl, apiKey: acceptanceKey });
+    await expect(
+      client.contract({ requestId: 'req-1', correlationId: 'corr-1' })
+    ).rejects.toMatchObject({
+      code: 'DATA_ENGINE_CONTRACT_MISMATCH',
+      message: 'Data Engine returned a non-JSON response.',
+      retryable: false
+    });
+  });
+});
 
 describe('Gateway Data Engine G1 client', () => {
   it('injects Bearer auth, preserves correlation, and validates provider transport metadata', async () => {
