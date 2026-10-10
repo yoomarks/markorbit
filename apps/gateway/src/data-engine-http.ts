@@ -192,23 +192,12 @@ export function createDataEngineClient(options: GatewayDataEngineClientOptions) 
     const correlationId = normalizeIdentifier(context.correlationId, () => requestId);
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), timeoutMs);
-    let response: Response;
-    try {
-      response = await fetchImpl(`${origin}${path}`, {
-        method: 'GET',
-        headers: {
-          accept: 'application/json',
-          'X-Request-ID': requestId,
-          'x-correlation-id': correlationId,
-          ...(apiKey ? { authorization: `Bearer ${apiKey}` } : {})
-        },
-        signal: controller.signal
-      });
-    } catch {
-      const timedOut = controller.signal.aborted;
-      throw new DataEngineClientError(
+    const transportUnavailable = () =>
+      new DataEngineClientError(
         'DATA_ENGINE_UNAVAILABLE',
-        timedOut ? 'Data Engine request timed out.' : 'Data Engine service is unavailable.',
+        controller.signal.aborted
+          ? 'Data Engine request timed out.'
+          : 'Data Engine service is unavailable.',
         undefined,
         {
           retryable: true,
@@ -217,49 +206,68 @@ export function createDataEngineClient(options: GatewayDataEngineClientOptions) 
           correlationId
         }
       );
+    let response: Response | undefined;
+    try {
+      try {
+        response = await fetchImpl(`${origin}${path}`, {
+          method: 'GET',
+          headers: {
+            accept: 'application/json',
+            'X-Request-ID': requestId,
+            'x-correlation-id': correlationId,
+            ...(apiKey ? { authorization: `Bearer ${apiKey}` } : {})
+          },
+          signal: controller.signal
+        });
+      } catch {
+        throw transportUnavailable();
+      }
+
+      const providerRequestId = response.headers.get('x-request-id') ?? '';
+      const providerCorrelationId = response.headers.get('x-correlation-id') ?? '';
+      const contractVersion = response.headers.get('x-markorbit-contract-version') ?? '';
+      const sourceOwner = response.headers.get('x-markorbit-source-owner') ?? '';
+      if (
+        providerRequestId !== requestId ||
+        providerCorrelationId !== correlationId ||
+        contractVersion !== expectedContractVersion ||
+        sourceOwner !== DATA_ENGINE_SOURCE_OWNER
+      ) {
+        throw new DataEngineClientError(
+          'DATA_ENGINE_CONTRACT_MISMATCH',
+          'Data Engine response transport metadata does not match the frozen G0 contract.',
+          response.status,
+          { requestId, correlationId }
+        );
+      }
+
+      options.onTrace?.({
+        path,
+        status: response.status,
+        requestId,
+        correlationId,
+        providerRequestId,
+        providerCorrelationId,
+        contractVersion,
+        sourceOwner
+      });
+
+      const body: unknown = await response.json().catch(() => undefined);
+      if (controller.signal.aborted) throw transportUnavailable();
+      if (!response.ok) throw mapProviderError(response, body, requestId, correlationId);
+      if (body === undefined)
+        throw new DataEngineClientError(
+          'DATA_ENGINE_CONTRACT_MISMATCH',
+          'Data Engine returned a non-JSON response.',
+          response.status,
+          { requestId, correlationId }
+        );
+      return body;
     } finally {
+      // The provider budget includes body consumption; early rejection must release unread HTTP.
       clearTimeout(timer);
+      if (response && !response.bodyUsed) controller.abort();
     }
-
-    const providerRequestId = response.headers.get('x-request-id') ?? '';
-    const providerCorrelationId = response.headers.get('x-correlation-id') ?? '';
-    const contractVersion = response.headers.get('x-markorbit-contract-version') ?? '';
-    const sourceOwner = response.headers.get('x-markorbit-source-owner') ?? '';
-    if (
-      providerRequestId !== requestId ||
-      providerCorrelationId !== correlationId ||
-      contractVersion !== expectedContractVersion ||
-      sourceOwner !== DATA_ENGINE_SOURCE_OWNER
-    ) {
-      throw new DataEngineClientError(
-        'DATA_ENGINE_CONTRACT_MISMATCH',
-        'Data Engine response transport metadata does not match the frozen G0 contract.',
-        response.status,
-        { requestId, correlationId }
-      );
-    }
-
-    options.onTrace?.({
-      path,
-      status: response.status,
-      requestId,
-      correlationId,
-      providerRequestId,
-      providerCorrelationId,
-      contractVersion,
-      sourceOwner
-    });
-
-    const body: unknown = await response.json().catch(() => undefined);
-    if (!response.ok) throw mapProviderError(response, body, requestId, correlationId);
-    if (body === undefined)
-      throw new DataEngineClientError(
-        'DATA_ENGINE_CONTRACT_MISMATCH',
-        'Data Engine returned a non-JSON response.',
-        response.status,
-        { requestId, correlationId }
-      );
-    return body;
   };
 
   const fact = async (

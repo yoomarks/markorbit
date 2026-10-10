@@ -131,3 +131,22 @@ from Data Engine issue #883, plus an accepted full-path load/timeout budget.
 Any subsequent query optimization must preserve latest-version selection before
 status/subject/key filtering and historical `asOf` behavior; permission caches
 must not substitute for live authority.
+
+## Provider response-body timeout regression
+
+M20-C6 fixes the shared Gateway Data Engine HTTP client: its existing provider
+budget (default 5s) now covers response headers **and JSON body consumption**.
+Previously the timer was cleared at headers, so an incomplete body could stall
+past the budget and later appear as a contract error. An aborted body now uses
+the existing retryable `DATA_ENGINE_UNAVAILABLE` / `service_unavailable` mapping.
+Early transport-metadata rejection also aborts an unread response connection.
+Complete malformed JSON and complete provider errors retain their existing
+contract/error classifications.
+
+`apps/gateway/tests/data-engine-http.test.ts` verifies this with actual local TCP
+HTTP: incomplete 200 and 503 bodies, mismatched transport metadata, and completed
+malformed JSON. A test-only provider watchdog bounds the failing baseline; the
+assertions require the client to abort before provider EOF. The smaller 250ms
+test budget does not change the production default. These are transport
+regressions, not a production SLO, a single end-to-end request budget or source
+admission evidence. Data Engine issue #883 remains the production evidence gate.
