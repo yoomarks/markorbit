@@ -2,11 +2,17 @@ import { describe, expect, it, vi } from 'vitest';
 
 import {
   noTrademarkLifecycleAuthorityConsequencesV1,
+  parseTrademarkLifecycleComputationAdverseResultV1,
   parseTrademarkLifecycleComputationInputV1,
   parseTrademarkLifecycleComputationOutputV1,
+  parseTrademarkLifecycleComputationResultV1,
+  trademarkLifecycleComputationAdverseResultFingerprintSha256V1,
   trademarkLifecycleComputationInputFingerprintSha256V1,
   trademarkLifecycleComputationOutputFingerprintSha256V1,
   type ExactOwnerReferenceV1,
+  type TrademarkLifecycleComputationAdverseResultFingerprintMaterialV1,
+  type TrademarkLifecycleComputationAdverseResultV1,
+  type TrademarkLifecycleComputationAdverseStateV1,
   type TrademarkLifecycleComputationInputFingerprintMaterialV1,
   type TrademarkLifecycleComputationInputV1,
   type TrademarkLifecycleComputationOutputFingerprintMaterialV1,
@@ -126,6 +132,118 @@ function signedInput(): TrademarkLifecycleComputationInputV1 {
     ...material,
     normalizedInputFingerprintSha256:
       trademarkLifecycleComputationInputFingerprintSha256V1(material)
+  };
+}
+
+function adverseInputMaterial(
+  state: TrademarkLifecycleComputationAdverseStateV1
+): TrademarkLifecycleComputationInputFingerprintMaterialV1 {
+  return {
+    ...inputMaterial(),
+    sourceReads: [
+      {
+        scopeId: 'cn-case-current_application-12345678',
+        owner: 'DATA_ENGINE',
+        state,
+        asOf,
+        sourceReferences: []
+      }
+    ],
+    sourceDateObservations: [
+      {
+        factCode: 'FILING_DATE',
+        valueState: 'UNKNOWN',
+        candidate: null,
+        sourceReferences: [],
+        reasonCodes: [`SOURCE_READ_${state}`]
+      },
+      {
+        factCode: 'PRELIMINARY_PUBLICATION_DATE',
+        valueState: 'UNKNOWN',
+        candidate: null,
+        sourceReferences: [],
+        reasonCodes: [`SOURCE_READ_${state}`]
+      }
+    ]
+  };
+}
+
+function signedAdverseInput(
+  state: TrademarkLifecycleComputationAdverseStateV1
+): TrademarkLifecycleComputationInputV1 {
+  const material = adverseInputMaterial(state);
+  return {
+    ...material,
+    normalizedInputFingerprintSha256:
+      trademarkLifecycleComputationInputFingerprintSha256V1(material)
+  };
+}
+
+function adverseResultMaterial(
+  state: TrademarkLifecycleComputationAdverseStateV1,
+  inputValue: TrademarkLifecycleComputationInputV1 = signedAdverseInput(state)
+): TrademarkLifecycleComputationAdverseResultFingerprintMaterialV1 {
+  const input = parseTrademarkLifecycleComputationInputV1(inputValue);
+  const semantics = {
+    NOT_OBSERVED: {
+      coverageState: 'PARTIAL',
+      dependencyState: 'AVAILABLE',
+      reasonCodes: ['SOURCE_FACT_NOT_OBSERVED_WITHOUT_COMPLETE_SCOPE_EVIDENCE'],
+      dependencyReasonCodes: []
+    },
+    NOT_COVERED: {
+      coverageState: 'NOT_COVERED',
+      dependencyState: 'AVAILABLE',
+      reasonCodes: ['SOURCE_SCOPE_NOT_COVERED'],
+      dependencyReasonCodes: []
+    },
+    UNAVAILABLE: {
+      coverageState: 'PARTIAL',
+      dependencyState: 'UNAVAILABLE',
+      reasonCodes: ['SOURCE_READ_UNAVAILABLE'],
+      dependencyReasonCodes: ['SOURCE_DEPENDENCY_UNAVAILABLE']
+    }
+  } as const;
+  const expected = semantics[state];
+  return {
+    schemaVersion: 1,
+    status: 'NOT_COMPUTED',
+    sourceReadState: state,
+    workspaceId: input.workspaceId,
+    asset: input.asset,
+    normalizedInputFingerprintSha256: input.normalizedInputFingerprintSha256,
+    evaluatedAt: computedAt,
+    asOf: input.asOf,
+    track: input.track,
+    sourceReads: input.sourceReads,
+    coverageState: expected.coverageState,
+    currentnessState: 'UNKNOWN',
+    dependencyState: expected.dependencyState,
+    reasonCodes: expected.reasonCodes,
+    dependencyReasonCodes: expected.dependencyReasonCodes,
+    limitationCodes: ['NOT_COMPUTED_DOES_NOT_ESTABLISH_NO_EVENT_DEADLINE_RISK_OR_ACTION'],
+    methodPackageReference: input.methodPackageReference,
+    materializedReferenceDependencies: input.materializedReferenceDependencies,
+    professionalReviewReceiptReference: input.professionalReviewReceiptReference,
+    authority: noTrademarkLifecycleAuthorityConsequencesV1
+  };
+}
+
+function signedAdverseResult(
+  state: TrademarkLifecycleComputationAdverseStateV1,
+  inputValue: TrademarkLifecycleComputationInputV1 = signedAdverseInput(state)
+): TrademarkLifecycleComputationAdverseResultV1 {
+  const material = adverseResultMaterial(state, inputValue);
+  return signedAdverseResultFromMaterial(material);
+}
+
+function signedAdverseResultFromMaterial(
+  material: TrademarkLifecycleComputationAdverseResultFingerprintMaterialV1
+): TrademarkLifecycleComputationAdverseResultV1 {
+  return {
+    ...material,
+    adverseResultFingerprintSha256:
+      trademarkLifecycleComputationAdverseResultFingerprintSha256V1(material)
   };
 }
 
@@ -508,6 +626,316 @@ describe('Trademark Lifecycle transient computation contracts', () => {
     );
   });
 
+  it.each([
+    ['NOT_OBSERVED', 'PARTIAL', 'AVAILABLE'],
+    ['NOT_COVERED', 'NOT_COVERED', 'AVAILABLE'],
+    ['UNAVAILABLE', 'PARTIAL', 'UNAVAILABLE']
+  ] as const)(
+    'represents a pure %s read as a strict non-projecting adverse result',
+    (state, coverageState, dependencyState) => {
+      const input = signedAdverseInput(state);
+      const signed = signedAdverseResult(state, input);
+      const parsed = parseTrademarkLifecycleComputationAdverseResultV1(signed, input);
+      const unionParsed = parseTrademarkLifecycleComputationResultV1(signed, input);
+
+      expect(parsed.status).toBe('NOT_COMPUTED');
+      expect(parsed.sourceReadState).toBe(state);
+      expect(parsed.coverageState).toBe(coverageState);
+      expect(parsed.currentnessState).toBe('UNKNOWN');
+      expect(parsed.dependencyState).toBe(dependencyState);
+      expect(parsed.limitationCodes).toEqual([
+        'NOT_COMPUTED_DOES_NOT_ESTABLISH_NO_EVENT_DEADLINE_RISK_OR_ACTION'
+      ]);
+      expect(parsed.sourceReads).toHaveLength(1);
+      expect(parsed.sourceReads[0]?.sourceReferences).toEqual([]);
+      expect(parsed.authority).toEqual(noTrademarkLifecycleAuthorityConsequencesV1);
+      expect(parsed.adverseResultFingerprintSha256).toBe(
+        trademarkLifecycleComputationAdverseResultFingerprintSha256V1(parsed)
+      );
+      expect(unionParsed.status).toBe('NOT_COMPUTED');
+      expect(parsed).not.toHaveProperty('stages');
+      expect(parsed).not.toHaveProperty('currentPosition');
+      expect(parsed).not.toHaveProperty('lastUndisputedPosition');
+      expect(parsed).not.toHaveProperty('conflicts');
+      expect(parsed).not.toHaveProperty('nextItemEvaluation');
+      expect(parsed).not.toHaveProperty('recommendationEvaluation');
+      expect(parsed).not.toHaveProperty('primaryTimeEvaluation');
+    }
+  );
+
+  it('rejects mixed adverse states and repeated adverse scopes in the paired input', () => {
+    const mixedMaterial = structuredClone(
+      adverseInputMaterial('NOT_OBSERVED')
+    ) as unknown as Mutable<TrademarkLifecycleComputationInputFingerprintMaterialV1>;
+    mixedMaterial.sourceReads.push({
+      scopeId: 'cn-case-current_application-12345678-secondary',
+      owner: 'DATA_ENGINE',
+      state: 'NOT_COVERED',
+      asOf,
+      sourceReferences: []
+    });
+    const mixedInput: TrademarkLifecycleComputationInputV1 = {
+      ...mixedMaterial,
+      normalizedInputFingerprintSha256:
+        trademarkLifecycleComputationInputFingerprintSha256V1(mixedMaterial)
+    };
+    expect(() =>
+      parseTrademarkLifecycleComputationAdverseResultV1(
+        signedAdverseResult('NOT_OBSERVED'),
+        mixedInput
+      )
+    ).toThrow(/one adverse state, no OBSERVED read/i);
+
+    const repeatedMaterial = structuredClone(
+      adverseInputMaterial('NOT_OBSERVED')
+    ) as unknown as Mutable<TrademarkLifecycleComputationInputFingerprintMaterialV1>;
+    repeatedMaterial.sourceReads.push({
+      scopeId: 'cn-case-current_application-12345678-secondary',
+      owner: 'DATA_ENGINE',
+      state: 'NOT_OBSERVED',
+      asOf,
+      sourceReferences: []
+    });
+    const repeatedInput: TrademarkLifecycleComputationInputV1 = {
+      ...repeatedMaterial,
+      normalizedInputFingerprintSha256:
+        trademarkLifecycleComputationInputFingerprintSha256V1(repeatedMaterial)
+    };
+    expect(() =>
+      parseTrademarkLifecycleComputationAdverseResultV1(
+        signedAdverseResult('NOT_OBSERVED'),
+        repeatedInput
+      )
+    ).toThrow(/one adverse state, no OBSERVED read/i);
+  });
+
+  it('rejects OBSERVED, EMPTY and positive-reference inputs for an adverse result', () => {
+    expect(() =>
+      parseTrademarkLifecycleComputationAdverseResultV1(
+        signedAdverseResult('NOT_OBSERVED'),
+        signedInput()
+      )
+    ).toThrow(/one adverse state, no OBSERVED read/i);
+
+    const emptyInput = structuredClone(
+      signedAdverseInput('NOT_OBSERVED')
+    ) as Mutable<TrademarkLifecycleComputationInputV1>;
+    emptyInput.sourceReads[0]!.state = 'EMPTY';
+    expect(() =>
+      parseTrademarkLifecycleComputationAdverseResultV1(
+        signedAdverseResult('NOT_OBSERVED'),
+        emptyInput
+      )
+    ).toThrow(/EMPTY is not admitted/i);
+
+    const referencedInput = structuredClone(
+      signedAdverseInput('NOT_OBSERVED')
+    ) as Mutable<TrademarkLifecycleComputationInputV1>;
+    referencedInput.sourceReads[0]!.sourceReferences = [structuredClone(sourceReference)];
+    expect(() =>
+      parseTrademarkLifecycleComputationAdverseResultV1(
+        signedAdverseResult('NOT_OBSERVED'),
+        referencedInput
+      )
+    ).toThrow(/cannot carry positive source references/i);
+  });
+
+  it('rejects adverse-result tampering and a wrong fingerprint', () => {
+    const input = signedAdverseInput('NOT_OBSERVED');
+    const tampered = structuredClone(
+      signedAdverseResult('NOT_OBSERVED', input)
+    ) as Mutable<TrademarkLifecycleComputationAdverseResultV1>;
+    tampered.reasonCodes = ['SOURCE_SCOPE_NOT_COVERED'];
+    expect(() => parseTrademarkLifecycleComputationAdverseResultV1(tampered, input)).toThrow(
+      /closed coverage, currentness, dependency, and reason-code mapping/i
+    );
+
+    const wrongFingerprint = {
+      ...signedAdverseResult('NOT_OBSERVED', input),
+      adverseResultFingerprintSha256: sha('a')
+    };
+    expect(() =>
+      parseTrademarkLifecycleComputationAdverseResultV1(wrongFingerprint, input)
+    ).toThrow(/fingerprint does not match/i);
+  });
+
+  it.each<
+    [
+      string,
+      string,
+      (material: Mutable<TrademarkLifecycleComputationAdverseResultFingerprintMaterialV1>) => void
+    ]
+  >([
+    [
+      'workspace while retaining the asset',
+      'workspaceId',
+      (material) => {
+        material.workspaceId = '018f0000-0000-7000-8000-000000000099';
+      }
+    ],
+    [
+      'asset while retaining the workspace',
+      'asset',
+      (material) => {
+        material.asset.id = 'trademark-asset_cn-87654321';
+      }
+    ],
+    [
+      'asset version',
+      'asset',
+      (material) => {
+        material.asset.version = 8;
+      }
+    ],
+    [
+      'as-of anchor',
+      'asOf',
+      (material) => {
+        material.asOf = '2026-10-10T00:00:00.500Z';
+      }
+    ],
+    [
+      'track',
+      'track',
+      (material) => {
+        material.track.procedure = 'FILING_TO_REGISTRATION';
+      }
+    ],
+    [
+      'track fingerprint',
+      'track',
+      (material) => {
+        material.track.trackFingerprintSha256 = sha('c');
+      }
+    ],
+    [
+      'normalized input fingerprint',
+      'normalizedInputFingerprintSha256',
+      (material) => {
+        material.normalizedInputFingerprintSha256 = sha('b');
+      }
+    ],
+    [
+      'source-read lineage',
+      'sourceReads',
+      (material) => {
+        material.sourceReads[0]!.scopeId = 'cn-case-current_application-87654321';
+      }
+    ],
+    [
+      'source-read as-of anchor',
+      'sourceReads',
+      (material) => {
+        material.sourceReads[0]!.asOf = '2026-10-09T23:59:59.000Z';
+      }
+    ],
+    [
+      'method package',
+      'methodPackageReference',
+      (material) => {
+        material.methodPackageReference.id =
+          'executable-method-package_cn-lifecycle-observed-history-other-v1';
+      }
+    ],
+    [
+      'materialized dependencies',
+      'materializedReferenceDependencies',
+      (material) => {
+        const dependency = material.materializedReferenceDependencies.find(
+          (entry) => entry.id === sourceContractReference.id
+        );
+        if (!dependency) throw new Error('fixture drift');
+        dependency.id = 'CN_CASE_CURRENT_PRELIMINARY_PUBLICATION_DISCOVERY_OTHER_V2';
+      }
+    ],
+    [
+      'professional-review receipt',
+      'professionalReviewReceiptReference',
+      (material) => {
+        material.professionalReviewReceiptReference = structuredClone(sourceContractReference);
+      }
+    ]
+  ])('rejects a re-fingerprinted adverse result with detached %s', (_label, binding, mutate) => {
+    const input = signedAdverseInput('NOT_OBSERVED');
+    const material = structuredClone(
+      adverseResultMaterial('NOT_OBSERVED', input)
+    ) as unknown as Mutable<TrademarkLifecycleComputationAdverseResultFingerprintMaterialV1>;
+    mutate(material);
+    const detached = signedAdverseResultFromMaterial(material);
+
+    expect(() => parseTrademarkLifecycleComputationAdverseResultV1(detached, input)).toThrow(
+      new RegExp(`paired normalized input snapshot:.*${binding}`, 'i')
+    );
+  });
+
+  it.each([
+    ['sourceReadState', 'NOT_COVERED'],
+    ['coverageState', 'FULL'],
+    ['currentnessState', 'CURRENT'],
+    ['currentnessState', 'STALE'],
+    ['dependencyState', 'DEGRADED'],
+    ['dependencyReasonCodes', ['UNEXPECTED_DEPENDENCY_REASON']],
+    ['limitationCodes', ['UNEXPECTED_LIMITATION']]
+  ] as const)('rejects a closed adverse semantic mismatch in %s', (field, value) => {
+    const input = signedAdverseInput('NOT_OBSERVED');
+    const changed = structuredClone(
+      signedAdverseResult('NOT_OBSERVED', input)
+    ) as unknown as Record<string, unknown>;
+    changed[field] = value;
+
+    expect(() => parseTrademarkLifecycleComputationAdverseResultV1(changed, input)).toThrow(
+      /one adverse source-read state|closed coverage, currentness, dependency, and reason-code mapping/i
+    );
+  });
+
+  it('rejects an unknown adverse source-read state', () => {
+    const input = signedAdverseInput('NOT_OBSERVED');
+    const changed = {
+      ...signedAdverseResult('NOT_OBSERVED', input),
+      sourceReadState: 'UNKNOWN_ADVERSE_STATE'
+    };
+
+    expect(() => parseTrademarkLifecycleComputationAdverseResultV1(changed, input)).toThrow(
+      /sourceReadState is invalid/i
+    );
+  });
+
+  it('rejects authority claims, projection fields and positive result references', () => {
+    const input = signedAdverseInput('UNAVAILABLE');
+    const authorityClaim = structuredClone(
+      signedAdverseResult('UNAVAILABLE', input)
+    ) as unknown as {
+      authority: { executionAuthorized: boolean };
+    };
+    authorityClaim.authority.executionAuthorized = true;
+    expect(() => parseTrademarkLifecycleComputationAdverseResultV1(authorityClaim, input)).toThrow(
+      /executionAuthorized must remain false/i
+    );
+
+    for (const [field, value] of [
+      ['projectionId', 'trademark-lifecycle-projection_forbidden'],
+      ['stages', []],
+      ['nextItemEvaluation', null],
+      ['destinationReference', null]
+    ] as const) {
+      const projectionOrActionField = {
+        ...signedAdverseResult('UNAVAILABLE', input),
+        [field]: value
+      };
+      expect(() =>
+        parseTrademarkLifecycleComputationAdverseResultV1(projectionOrActionField, input)
+      ).toThrow(/must contain exactly the bounded V1 fields/i);
+    }
+
+    const referencedResult = structuredClone(
+      signedAdverseResult('UNAVAILABLE', input)
+    ) as Mutable<TrademarkLifecycleComputationAdverseResultV1>;
+    referencedResult.sourceReads[0]!.sourceReferences = [structuredClone(sourceReference)];
+    expect(() =>
+      parseTrademarkLifecycleComputationAdverseResultV1(referencedResult, input)
+    ).toThrow(/cannot carry positive source references/i);
+  });
+
   it('verifies a computed result without granting Product retention identity or authority', () => {
     const parsed = parseTrademarkLifecycleComputationOutputV1(signedOutput(), signedInput());
 
@@ -519,6 +947,9 @@ describe('Trademark Lifecycle transient computation contracts', () => {
     expect(parsed).not.toHaveProperty('projectionId');
     expect(parsed).not.toHaveProperty('version');
     expect(parsed).not.toHaveProperty('capabilityExecution');
+    expect(parseTrademarkLifecycleComputationResultV1(signedOutput(), signedInput()).status).toBe(
+      'COMPUTED'
+    );
   });
 
   it('rejects Product projection identity and head fields on transient output', () => {
