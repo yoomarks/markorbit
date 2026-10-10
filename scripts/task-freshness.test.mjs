@@ -137,6 +137,32 @@ test('fresh bootstrap creates an exact remote-main worktree and manifest', async
   assert.equal(prepush.status, 'PASS');
 });
 
+test('prepush recognizes the configured upstream when the remote PR head differs from the local branch', async (t) => {
+  const fixture = createFixture(t);
+  const options = bootstrapOptions(fixture, 'upstream-alias');
+  await bootstrapTask(options, { inspectConcurrentWork: fixture.inspectConcurrentWork });
+  write(options.worktree, 'services/lite/src/task.ts', 'export const task = true;\n');
+  commit(options.worktree, 'task change');
+  git(options.worktree, ['push', '-u', 'origin', 'HEAD:upstream-alias']);
+
+  const inspectConcurrentWork = async () => ({
+    repository: 'fixture/markorbit',
+    pulls: [
+      {
+        number: 42,
+        title: 'Current task under its remote alias',
+        url: 'https://example.test/pull/42',
+        headRef: 'upstream-alias',
+        headRepository: 'fixture/markorbit',
+        files: ['services/lite/src/task.ts']
+      }
+    ]
+  });
+
+  const prepush = await prepushTask({ cwd: options.worktree }, { inspectConcurrentWork });
+  assert.equal(prepush.status, 'PASS');
+});
+
 test('stale local main never becomes the task base', async (t) => {
   const fixture = createFixture(t);
   const remoteMain = fixture.advance();
