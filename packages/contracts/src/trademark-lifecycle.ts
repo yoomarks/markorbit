@@ -760,6 +760,17 @@ function lifecycleDestination(value: unknown, field: string): TrademarkLifecycle
   };
 }
 
+function trademarkAssetSourceVersionIdentity(
+  reference: Readonly<TrademarkAssetSourceReference>
+): string {
+  return stableSerialize({
+    owner: reference.owner,
+    kind: reference.kind,
+    sourceId: reference.sourceId,
+    sourceVersion: reference.sourceVersion
+  });
+}
+
 function trademarkAssetSourceReferences(
   value: unknown,
   field: string,
@@ -783,9 +794,7 @@ function trademarkAssetSourceReferences(
       );
     }
   });
-  const identities = parsed.map(
-    (entry) => `${entry.owner}:${entry.kind}:${entry.sourceId}:${entry.sourceVersion}`
-  );
+  const identities = parsed.map(trademarkAssetSourceVersionIdentity);
   if (new Set(identities).size !== identities.length) {
     throw new TrademarkLifecycleContractError(
       `${field} contains duplicate exact source references.`
@@ -2294,13 +2303,19 @@ function validateProjectionTemporalBounds(
   }
 }
 
+function compareCodeUnitStrings(left: string, right: string): number {
+  if (left < right) return -1;
+  if (left > right) return 1;
+  return 0;
+}
+
 function canonicalize(value: unknown): unknown {
   if (Array.isArray(value)) return value.map(canonicalize);
   if (value && typeof value === 'object') {
     return Object.fromEntries(
       Object.entries(value as JsonRecord)
         .filter(([, entry]) => entry !== undefined)
-        .sort(([left], [right]) => left.localeCompare(right))
+        .sort(([left], [right]) => compareCodeUnitStrings(left, right))
         .map(([key, entry]) => [key, canonicalize(entry)])
     );
   }
@@ -3017,4 +3032,579 @@ export function parseTrademarkLifecycleExternalReadResponseV1(
   return item.status === 'AUTHORIZED_FOUND'
     ? parseTrademarkLifecycleReadResultV1(item)
     : parsePrivateFailure(item);
+}
+
+export type TrademarkLifecycleSourceDateObservationV1 =
+  | Readonly<{
+      factCode: string;
+      valueState: 'AVAILABLE';
+      candidate: Readonly<TrademarkLifecycleSourceDateCandidateV1>;
+      reasonCodes: readonly string[];
+    }>
+  | Readonly<{
+      factCode: string;
+      valueState: 'UNKNOWN';
+      candidate: null;
+      sourceReferences: readonly Readonly<TrademarkAssetSourceReference>[];
+      reasonCodes: readonly string[];
+    }>
+  | Readonly<{
+      factCode: string;
+      valueState: 'CONFLICTING';
+      candidates: readonly Readonly<TrademarkLifecycleSourceDateCandidateV1>[];
+      conflictId: string;
+      reasonCodes: readonly string[];
+    }>;
+
+export interface TrademarkLifecycleSourceDateCandidateV1 {
+  value: string;
+  precision: TrademarkLifecycleTimePrecision;
+  jurisdictionTimeZone: string;
+  sourceReferences: readonly Readonly<TrademarkAssetSourceReference>[];
+}
+
+export interface TrademarkLifecycleComputationInputV1 {
+  schemaVersion: 1;
+  workspaceId: string;
+  asset: Readonly<AssetReferenceV1>;
+  asOf: string;
+  track: Readonly<TrackIdentityV1>;
+  sourceReads: readonly Readonly<SourceReadV1>[];
+  sourceDateObservations: readonly Readonly<TrademarkLifecycleSourceDateObservationV1>[];
+  methodPackageReference: Readonly<ExactOwnerReferenceV1>;
+  materializedReferenceDependencies: readonly Readonly<ExactOwnerReferenceV1>[];
+  professionalReviewReceiptReference: Readonly<ExactOwnerReferenceV1>;
+  normalizedInputFingerprintSha256: string;
+}
+
+export type TrademarkLifecycleComputationInputFingerprintMaterialV1 = Omit<
+  TrademarkLifecycleComputationInputV1,
+  'normalizedInputFingerprintSha256'
+>;
+
+export type TrademarkLifecycleComputationOutputV1 = Omit<
+  TrademarkLifecycleProjectionV1,
+  'projectionId' | 'version' | 'projectionFingerprintSha256' | 'generatedAt' | 'capabilityExecution'
+> & {
+  status: 'COMPUTED';
+  computedAt: string;
+  professionalReviewReceiptReference: Readonly<ExactOwnerReferenceV1>;
+  outputFingerprintSha256: string;
+};
+
+export type TrademarkLifecycleComputationOutputFingerprintMaterialV1 = Omit<
+  TrademarkLifecycleComputationOutputV1,
+  'outputFingerprintSha256'
+>;
+
+const COMPUTATION_INPUT_MATERIAL_KEYS = [
+  'schemaVersion',
+  'workspaceId',
+  'asset',
+  'asOf',
+  'track',
+  'sourceReads',
+  'sourceDateObservations',
+  'methodPackageReference',
+  'materializedReferenceDependencies',
+  'professionalReviewReceiptReference'
+] as const;
+
+const COMPUTATION_OUTPUT_MATERIAL_KEYS = [
+  'schemaVersion',
+  'status',
+  'workspaceId',
+  'asset',
+  'normalizedInputFingerprintSha256',
+  'computedAt',
+  'asOf',
+  'track',
+  'coverage',
+  'currentness',
+  'conflictState',
+  'currentPosition',
+  'lastUndisputedPosition',
+  'stages',
+  'sourceReads',
+  'conflicts',
+  'missingInputCodes',
+  'limitationCodes',
+  'semanticGlossary',
+  'methodPackageReference',
+  'materializedReferenceDependencies',
+  'professionalReviewReceiptReference',
+  'nextItemEvaluation',
+  'recommendationEvaluation',
+  'primaryTimeEvaluation',
+  'authority'
+] as const;
+
+function compareStableSerialized(left: unknown, right: unknown): number {
+  return compareCodeUnitStrings(stableSerialize(left), stableSerialize(right));
+}
+
+function sortOwnerReferences(
+  references: readonly Readonly<ExactOwnerReferenceV1>[]
+): readonly ExactOwnerReferenceV1[] {
+  return [...references].sort(compareStableSerialized);
+}
+
+function sortSourceReferences(
+  references: readonly Readonly<TrademarkAssetSourceReference>[]
+): readonly TrademarkAssetSourceReference[] {
+  return [...references].sort(compareStableSerialized);
+}
+
+function sourceDateCandidate(
+  value: unknown,
+  field: string
+): TrademarkLifecycleSourceDateCandidateV1 {
+  const item = object(value, field);
+  exactKeys(item, ['value', 'precision', 'jurisdictionTimeZone', 'sourceReferences'], field);
+  const precision = oneOf(item.precision, trademarkLifecycleTimePrecisions, `${field}.precision`);
+  return {
+    value: temporalValue(item.value, precision, `${field}.value`),
+    precision,
+    jurisdictionTimeZone: timeZone(item.jurisdictionTimeZone, `${field}.jurisdictionTimeZone`),
+    sourceReferences: sortSourceReferences(
+      trademarkAssetSourceReferences(item.sourceReferences, `${field}.sourceReferences`, {
+        minimum: 1,
+        maximum: 30
+      })
+    )
+  };
+}
+
+function sourceDateObservation(
+  value: unknown,
+  field: string
+): TrademarkLifecycleSourceDateObservationV1 {
+  const item = object(value, field);
+  const valueState = oneOf(
+    item.valueState,
+    trademarkLifecycleTimeValueStates,
+    `${field}.valueState`
+  );
+  const factCode = code(item.factCode, `${field}.factCode`);
+  const reasonCodes = [...uniqueCodes(item.reasonCodes, `${field}.reasonCodes`)].sort();
+  if (valueState === 'AVAILABLE') {
+    exactKeys(item, ['factCode', 'valueState', 'candidate', 'reasonCodes'], field);
+    return {
+      factCode,
+      valueState,
+      candidate: sourceDateCandidate(item.candidate, `${field}.candidate`),
+      reasonCodes
+    };
+  }
+  if (valueState === 'UNKNOWN') {
+    exactKeys(
+      item,
+      ['factCode', 'valueState', 'candidate', 'sourceReferences', 'reasonCodes'],
+      field
+    );
+    if (item.candidate !== null || reasonCodes.length === 0) {
+      throw new TrademarkLifecycleContractError(
+        `${field} UNKNOWN requires a null candidate and at least one reason.`
+      );
+    }
+    return {
+      factCode,
+      valueState,
+      candidate: null,
+      sourceReferences: sortSourceReferences(
+        trademarkAssetSourceReferences(item.sourceReferences, `${field}.sourceReferences`, {
+          maximum: 30
+        })
+      ),
+      reasonCodes
+    };
+  }
+  exactKeys(item, ['factCode', 'valueState', 'candidates', 'conflictId', 'reasonCodes'], field);
+  const candidates = array(item.candidates, `${field}.candidates`, 2, 10)
+    .map((candidateValue, index) =>
+      sourceDateCandidate(candidateValue, `${field}.candidates[${index}]`)
+    )
+    .sort(compareStableSerialized);
+  if (
+    new Set(
+      candidates.map((candidateValue) =>
+        stableSerialize({
+          value: candidateValue.value,
+          precision: candidateValue.precision,
+          jurisdictionTimeZone: candidateValue.jurisdictionTimeZone
+        })
+      )
+    ).size !== candidates.length ||
+    reasonCodes.length === 0
+  ) {
+    throw new TrademarkLifecycleContractError(
+      `${field} CONFLICTING requires distinct temporal candidates and at least one reason.`
+    );
+  }
+  const competingSourceReferences = candidates.flatMap(
+    (candidateValue) => candidateValue.sourceReferences
+  );
+  if (new Set(competingSourceReferences.map(trademarkAssetSourceVersionIdentity)).size < 2) {
+    throw new TrademarkLifecycleContractError(
+      `${field} CONFLICTING requires at least two distinct exact source references.`
+    );
+  }
+  return {
+    factCode,
+    valueState,
+    candidates,
+    conflictId: text(item.conflictId, `${field}.conflictId`, 240),
+    reasonCodes
+  };
+}
+
+function observationSourceReferences(
+  observation: Readonly<TrademarkLifecycleSourceDateObservationV1>
+): readonly Readonly<TrademarkAssetSourceReference>[] {
+  if (observation.valueState === 'AVAILABLE') return observation.candidate.sourceReferences;
+  if (observation.valueState === 'UNKNOWN') return observation.sourceReferences;
+  return observation.candidates.flatMap((candidate) => candidate.sourceReferences);
+}
+
+function parseComputationInputMaterial(
+  value: unknown
+): TrademarkLifecycleComputationInputFingerprintMaterialV1 {
+  const item = object(value, 'trademarkLifecycleComputationInput');
+  exactKeys(item, COMPUTATION_INPUT_MATERIAL_KEYS, 'trademarkLifecycleComputationInput');
+  if (item.schemaVersion !== 1) {
+    throw new TrademarkLifecycleContractError('Computation input schemaVersion must be 1.');
+  }
+  const workspaceId = text(item.workspaceId, 'computationInput.workspaceId', 80).toLowerCase();
+  if (!UUID.test(workspaceId)) {
+    throw new TrademarkLifecycleContractError(
+      'computationInput.workspaceId must be a Core Workspace UUID.'
+    );
+  }
+  const asOf = timestamp(item.asOf, 'computationInput.asOf');
+  const sourceReads = array(item.sourceReads, 'computationInput.sourceReads', 1, 50)
+    .map((entry, index) => {
+      const parsed = sourceRead(entry, `computationInput.sourceReads[${index}]`);
+      return { ...parsed, sourceReferences: sortSourceReferences(parsed.sourceReferences) };
+    })
+    .sort((left, right) =>
+      compareCodeUnitStrings(`${left.owner}:${left.scopeId}`, `${right.owner}:${right.scopeId}`)
+    );
+  const sourceScopeKeys = sourceReads.map((entry) => `${entry.owner}:${entry.scopeId}`);
+  if (new Set(sourceScopeKeys).size !== sourceScopeKeys.length) {
+    throw new TrademarkLifecycleContractError(
+      'computationInput.sourceReads must contain unique exact owner/scope reads.'
+    );
+  }
+  if (sourceReads.some((entry) => entry.asOf > asOf)) {
+    throw new TrademarkLifecycleContractError(
+      'Computation input source reads cannot occur after computationInput.asOf.'
+    );
+  }
+  const admittedSourceReferences = new Set(
+    sourceReads.flatMap((entry) => entry.sourceReferences).map(stableSerialize)
+  );
+  const sourceDateObservations = array(
+    item.sourceDateObservations,
+    'computationInput.sourceDateObservations',
+    0,
+    100
+  )
+    .map((entry, index) =>
+      sourceDateObservation(entry, `computationInput.sourceDateObservations[${index}]`)
+    )
+    .sort((left, right) => compareCodeUnitStrings(left.factCode, right.factCode));
+  if (
+    new Set(sourceDateObservations.map((entry) => entry.factCode)).size !==
+    sourceDateObservations.length
+  ) {
+    throw new TrademarkLifecycleContractError(
+      'computationInput.sourceDateObservations must contain unique factCode values.'
+    );
+  }
+  const observationReferences = sourceDateObservations.flatMap(observationSourceReferences);
+  if (
+    observationReferences.some(
+      (sourceReference) => !admittedSourceReferences.has(stableSerialize(sourceReference))
+    )
+  ) {
+    throw new TrademarkLifecycleContractError(
+      'Every source-date observation reference must be admitted by an exact computation input source read.'
+    );
+  }
+  if (observationReferences.some((sourceReference) => sourceReference.observedAt > asOf)) {
+    throw new TrademarkLifecycleContractError(
+      'Computation input source-date observations cannot occur after computationInput.asOf.'
+    );
+  }
+  const materializedReferenceDependencies = sortOwnerReferences(
+    exactOwnerReferences(
+      item.materializedReferenceDependencies,
+      'computationInput.materializedReferenceDependencies',
+      { minimum: 1, maximum: 50 }
+    )
+  );
+  const professionalReviewReceiptReference = exactOwnerReference(
+    item.professionalReviewReceiptReference,
+    'computationInput.professionalReviewReceiptReference'
+  );
+  if (
+    !materializedReferenceDependencies.some((entry) =>
+      sameOwnerReference(entry, professionalReviewReceiptReference)
+    )
+  ) {
+    throw new TrademarkLifecycleContractError(
+      'Computation input professional-review receipt must be an exact materialized dependency.'
+    );
+  }
+  const parsedTrack = trackIdentity(item.track, 'computationInput.track');
+  return {
+    schemaVersion: 1,
+    workspaceId,
+    asset: assetReference(item.asset, 'computationInput.asset'),
+    asOf,
+    track: {
+      ...parsedTrack,
+      relatedOwnerReferences: sortOwnerReferences(parsedTrack.relatedOwnerReferences)
+    },
+    sourceReads,
+    sourceDateObservations,
+    methodPackageReference: exactOwnerReference(
+      item.methodPackageReference,
+      'computationInput.methodPackageReference'
+    ),
+    materializedReferenceDependencies,
+    professionalReviewReceiptReference
+  };
+}
+
+export function trademarkLifecycleComputationInputFingerprintMaterialV1(
+  value:
+    TrademarkLifecycleComputationInputFingerprintMaterialV1 | TrademarkLifecycleComputationInputV1
+): TrademarkLifecycleComputationInputFingerprintMaterialV1 {
+  const item = object(value, 'trademarkLifecycleComputationInput');
+  const material =
+    item.normalizedInputFingerprintSha256 === undefined
+      ? item
+      : Object.fromEntries(
+          Object.entries(item).filter(([key]) => key !== 'normalizedInputFingerprintSha256')
+        );
+  return parseComputationInputMaterial(material);
+}
+
+export function trademarkLifecycleComputationInputFingerprintSha256V1(
+  value:
+    TrademarkLifecycleComputationInputFingerprintMaterialV1 | TrademarkLifecycleComputationInputV1
+): string {
+  return createHash('sha256')
+    .update(stableSerialize(trademarkLifecycleComputationInputFingerprintMaterialV1(value)))
+    .digest('hex');
+}
+
+export function parseTrademarkLifecycleComputationInputV1(
+  value: unknown
+): TrademarkLifecycleComputationInputV1 {
+  const item = object(value, 'trademarkLifecycleComputationInput');
+  exactKeys(
+    item,
+    [...COMPUTATION_INPUT_MATERIAL_KEYS, 'normalizedInputFingerprintSha256'],
+    'trademarkLifecycleComputationInput'
+  );
+  const material = parseComputationInputMaterial(
+    Object.fromEntries(
+      Object.entries(item).filter(([key]) => key !== 'normalizedInputFingerprintSha256')
+    )
+  );
+  const expected = trademarkLifecycleComputationInputFingerprintSha256V1(material);
+  if (
+    sha256(
+      item.normalizedInputFingerprintSha256,
+      'computationInput.normalizedInputFingerprintSha256'
+    ) !== expected
+  ) {
+    throw new TrademarkLifecycleContractError(
+      'Computation input fingerprint does not match its normalized exact snapshot.'
+    );
+  }
+  return { ...material, normalizedInputFingerprintSha256: expected };
+}
+
+function parseComputationOutputMaterial(
+  value: unknown
+): TrademarkLifecycleComputationOutputFingerprintMaterialV1 {
+  const item = object(value, 'trademarkLifecycleComputationOutput');
+  exactKeys(item, COMPUTATION_OUTPUT_MATERIAL_KEYS, 'trademarkLifecycleComputationOutput');
+  if (item.schemaVersion !== 1 || item.status !== 'COMPUTED') {
+    throw new TrademarkLifecycleContractError(
+      'Computation output must be the strict COMPUTED V1 branch.'
+    );
+  }
+  const computedAt = timestamp(item.computedAt, 'computationOutput.computedAt');
+  const professionalReviewReceiptReference = exactOwnerReference(
+    item.professionalReviewReceiptReference,
+    'computationOutput.professionalReviewReceiptReference'
+  );
+  const surrogateMaterial: TrademarkLifecycleProjectionFingerprintMaterialV1 = {
+    schemaVersion: 1,
+    projectionId: 'trademark-lifecycle-projection_transient-computation-validation',
+    version: 1,
+    workspaceId: item.workspaceId as string,
+    asset: item.asset as AssetReferenceV1,
+    normalizedInputFingerprintSha256: item.normalizedInputFingerprintSha256 as string,
+    generatedAt: computedAt,
+    asOf: item.asOf as string,
+    track: item.track as TrackIdentityV1,
+    coverage: item.coverage as TrademarkLifecycleCoverage,
+    currentness: item.currentness as TrademarkLifecycleCurrentness,
+    conflictState: item.conflictState as TrademarkLifecycleConflictState,
+    currentPosition: item.currentPosition as CurrentPositionV1,
+    lastUndisputedPosition:
+      item.lastUndisputedPosition as TrademarkLifecycleHistoricalPositionV1 | null,
+    stages: item.stages as readonly StageV1[],
+    sourceReads: item.sourceReads as readonly SourceReadV1[],
+    conflicts: item.conflicts as readonly ConflictV1[],
+    missingInputCodes: item.missingInputCodes as readonly string[],
+    limitationCodes: item.limitationCodes as readonly string[],
+    semanticGlossary: item.semanticGlossary as readonly TrademarkLifecycleSemanticGlossaryEntryV1[],
+    methodPackageReference: item.methodPackageReference as ExactOwnerReferenceV1,
+    materializedReferenceDependencies:
+      item.materializedReferenceDependencies as readonly ExactOwnerReferenceV1[],
+    nextItemEvaluation: item.nextItemEvaluation as EvaluationV1<TrademarkLifecycleNodeReferenceV1>,
+    recommendationEvaluation: item.recommendationEvaluation as EvaluationV1<ExactOwnerReferenceV1>,
+    primaryTimeEvaluation:
+      item.primaryTimeEvaluation as EvaluationV1<TrademarkLifecycleTimeAssertionReferenceV1>,
+    authority: item.authority as TrademarkLifecycleAuthorityConsequencesV1
+  };
+  const parsedProjection = parseTrademarkLifecycleProjectionV1({
+    ...surrogateMaterial,
+    projectionFingerprintSha256: trademarkLifecycleProjectionFingerprintSha256V1(surrogateMaterial)
+  });
+  if (
+    !parsedProjection.materializedReferenceDependencies.some((entry) =>
+      sameOwnerReference(entry, professionalReviewReceiptReference)
+    )
+  ) {
+    throw new TrademarkLifecycleContractError(
+      'Computation output professional-review receipt must be an exact materialized dependency.'
+    );
+  }
+  return {
+    schemaVersion: 1,
+    status: 'COMPUTED',
+    workspaceId: parsedProjection.workspaceId,
+    asset: parsedProjection.asset,
+    normalizedInputFingerprintSha256: parsedProjection.normalizedInputFingerprintSha256,
+    computedAt,
+    asOf: parsedProjection.asOf,
+    track: parsedProjection.track,
+    coverage: parsedProjection.coverage,
+    currentness: parsedProjection.currentness,
+    conflictState: parsedProjection.conflictState,
+    currentPosition: parsedProjection.currentPosition,
+    lastUndisputedPosition: parsedProjection.lastUndisputedPosition,
+    stages: parsedProjection.stages,
+    sourceReads: parsedProjection.sourceReads,
+    conflicts: parsedProjection.conflicts,
+    missingInputCodes: parsedProjection.missingInputCodes,
+    limitationCodes: parsedProjection.limitationCodes,
+    semanticGlossary: parsedProjection.semanticGlossary,
+    methodPackageReference: parsedProjection.methodPackageReference,
+    materializedReferenceDependencies: parsedProjection.materializedReferenceDependencies,
+    professionalReviewReceiptReference,
+    nextItemEvaluation: parsedProjection.nextItemEvaluation,
+    recommendationEvaluation: parsedProjection.recommendationEvaluation,
+    primaryTimeEvaluation: parsedProjection.primaryTimeEvaluation,
+    authority: parsedProjection.authority
+  };
+}
+
+export function trademarkLifecycleComputationOutputFingerprintMaterialV1(
+  value:
+    TrademarkLifecycleComputationOutputFingerprintMaterialV1 | TrademarkLifecycleComputationOutputV1
+): TrademarkLifecycleComputationOutputFingerprintMaterialV1 {
+  const item = object(value, 'trademarkLifecycleComputationOutput');
+  const material =
+    item.outputFingerprintSha256 === undefined
+      ? item
+      : Object.fromEntries(
+          Object.entries(item).filter(([key]) => key !== 'outputFingerprintSha256')
+        );
+  return parseComputationOutputMaterial(material);
+}
+
+export function trademarkLifecycleComputationOutputFingerprintSha256V1(
+  value:
+    TrademarkLifecycleComputationOutputFingerprintMaterialV1 | TrademarkLifecycleComputationOutputV1
+): string {
+  return createHash('sha256')
+    .update(stableSerialize(trademarkLifecycleComputationOutputFingerprintMaterialV1(value)))
+    .digest('hex');
+}
+
+function assertComputationOutputMatchesInput(
+  output: Readonly<TrademarkLifecycleComputationOutputFingerprintMaterialV1>,
+  input: Readonly<TrademarkLifecycleComputationInputV1>
+): void {
+  const mismatchedBindings: string[] = [];
+  if (output.workspaceId !== input.workspaceId) mismatchedBindings.push('workspaceId');
+  if (stableSerialize(output.asset) !== stableSerialize(input.asset)) {
+    mismatchedBindings.push('asset');
+  }
+  if (output.normalizedInputFingerprintSha256 !== input.normalizedInputFingerprintSha256) {
+    mismatchedBindings.push('normalizedInputFingerprintSha256');
+  }
+  if (output.asOf !== input.asOf) mismatchedBindings.push('asOf');
+  if (stableSerialize(output.track) !== stableSerialize(input.track)) {
+    mismatchedBindings.push('track');
+  }
+  if (stableSerialize(output.sourceReads) !== stableSerialize(input.sourceReads)) {
+    mismatchedBindings.push('sourceReads');
+  }
+  if (!sameOwnerReference(output.methodPackageReference, input.methodPackageReference)) {
+    mismatchedBindings.push('methodPackageReference');
+  }
+  if (
+    stableSerialize(output.materializedReferenceDependencies) !==
+    stableSerialize(input.materializedReferenceDependencies)
+  ) {
+    mismatchedBindings.push('materializedReferenceDependencies');
+  }
+  if (
+    !sameOwnerReference(
+      output.professionalReviewReceiptReference,
+      input.professionalReviewReceiptReference
+    )
+  ) {
+    mismatchedBindings.push('professionalReviewReceiptReference');
+  }
+  if (mismatchedBindings.length > 0) {
+    throw new TrademarkLifecycleContractError(
+      `Computation output does not match its paired normalized input snapshot: ${mismatchedBindings.join(', ')}.`
+    );
+  }
+}
+
+export function parseTrademarkLifecycleComputationOutputV1(
+  value: unknown,
+  inputValue: unknown
+): TrademarkLifecycleComputationOutputV1 {
+  const input = parseTrademarkLifecycleComputationInputV1(inputValue);
+  const item = object(value, 'trademarkLifecycleComputationOutput');
+  exactKeys(
+    item,
+    [...COMPUTATION_OUTPUT_MATERIAL_KEYS, 'outputFingerprintSha256'],
+    'trademarkLifecycleComputationOutput'
+  );
+  const material = parseComputationOutputMaterial(
+    Object.fromEntries(Object.entries(item).filter(([key]) => key !== 'outputFingerprintSha256'))
+  );
+  const expected = trademarkLifecycleComputationOutputFingerprintSha256V1(material);
+  if (
+    sha256(item.outputFingerprintSha256, 'computationOutput.outputFingerprintSha256') !== expected
+  ) {
+    throw new TrademarkLifecycleContractError(
+      'Computation output fingerprint does not match its exact transient result.'
+    );
+  }
+  assertComputationOutputMatchesInput(material, input);
+  return { ...material, outputFingerprintSha256: expected };
 }
