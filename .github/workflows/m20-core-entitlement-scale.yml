@@ -6,8 +6,22 @@ on:
     paths:
       - '.github/workflows/m20-core-entitlement-scale.yml'
       - 'services/core/src/workspace-commercial*.ts'
+      - 'services/core/src/auth.ts'
+      - 'services/core/src/identity.ts'
+      - 'services/core/src/current-workspace-authority.ts'
+      - 'services/core/src/index.ts'
       - 'services/core/tests/workspace-commercial*.test.ts'
+      - 'apps/gateway/src/auth.ts'
+      - 'apps/gateway/src/index.ts'
+      - 'apps/gateway/src/product-loop-http.ts'
+      - 'apps/gateway/src/workspace-commercial-http.ts'
+      - 'apps/gateway/src/data-engine*.ts'
+      - 'apps/gateway/tests/data-engine-applicant-scale-postgres.test.ts'
       - 'packages/contracts/src/workspace-commercial.ts'
+      - 'packages/contracts/src/auth.ts'
+      - 'packages/contracts/src/identity.ts'
+      - 'packages/contracts/src/data-engine*.ts'
+      - 'packages/service-kit/**'
       - 'packages/persistence/**'
       - 'infrastructure/persistence/migrations/**'
       - 'docs/development/m20-core-entitlement-scale.md'
@@ -16,8 +30,22 @@ on:
     paths:
       - '.github/workflows/m20-core-entitlement-scale.yml'
       - 'services/core/src/workspace-commercial*.ts'
+      - 'services/core/src/auth.ts'
+      - 'services/core/src/identity.ts'
+      - 'services/core/src/current-workspace-authority.ts'
+      - 'services/core/src/index.ts'
       - 'services/core/tests/workspace-commercial*.test.ts'
+      - 'apps/gateway/src/auth.ts'
+      - 'apps/gateway/src/index.ts'
+      - 'apps/gateway/src/product-loop-http.ts'
+      - 'apps/gateway/src/workspace-commercial-http.ts'
+      - 'apps/gateway/src/data-engine*.ts'
+      - 'apps/gateway/tests/data-engine-applicant-scale-postgres.test.ts'
       - 'packages/contracts/src/workspace-commercial.ts'
+      - 'packages/contracts/src/auth.ts'
+      - 'packages/contracts/src/identity.ts'
+      - 'packages/contracts/src/data-engine*.ts'
+      - 'packages/service-kit/**'
       - 'packages/persistence/**'
       - 'infrastructure/persistence/migrations/**'
       - 'docs/development/m20-core-entitlement-scale.md'
@@ -45,6 +73,10 @@ jobs:
       CORE_COMMERCIAL_SCALE_POSTGRES_REQUIRED: '1'
       CORE_COMMERCIAL_SCALE_EVIDENCE_PATH: ${{ github.workspace }}/core-entitlement-scale-evidence.json
       CORE_COMMERCIAL_SCALE_COMMIT_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+      M20_PROTECTED_HTTP_TEST_DATABASE_URL: postgresql://markorbit_test:markorbit-test-only@127.0.0.1:5432/markorbit_m20_protected_http_test
+      M20_PROTECTED_HTTP_POSTGRES_REQUIRED: '1'
+      M20_PROTECTED_HTTP_EVIDENCE_PATH: ${{ github.workspace }}/m20-protected-http-evidence.json
+      M20_PROTECTED_HTTP_COMMIT_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -54,12 +86,18 @@ jobs:
       - uses: actions/setup-node@v4
         with: { node-version: 22, cache: pnpm }
       - run: pnpm install --frozen-lockfile
-      - run: pnpm exec turbo run build --filter=@markorbit/core-service...
+      - run: pnpm exec turbo run build --filter=@markorbit/core-service... --filter=@markorbit/gateway...
+      - name: Create separate protected HTTP fixture database
+        run: psql "$CORE_COMMERCIAL_SCALE_TEST_DATABASE_URL" -v ON_ERROR_STOP=1 -c 'CREATE DATABASE markorbit_m20_protected_http_test'
       - name: Measure real PostgreSQL reads and preserve resolver semantics
         run: pnpm --filter @markorbit/core-service exec vitest run tests/workspace-commercial-scale-postgres.test.ts
+      - name: Measure authenticated protected HTTP and prove timeout/revocation behavior
+        run: pnpm --filter @markorbit/gateway exec vitest run tests/data-engine-applicant-scale-postgres.test.ts
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: core-entitlement-scale-evidence-${{ github.event.pull_request.head.sha || github.sha }}
-          path: core-entitlement-scale-evidence.json
+          path: |
+            core-entitlement-scale-evidence.json
+            m20-protected-http-evidence.json
           if-no-files-found: error
