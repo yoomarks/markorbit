@@ -760,6 +760,17 @@ function lifecycleDestination(value: unknown, field: string): TrademarkLifecycle
   };
 }
 
+function trademarkAssetSourceVersionIdentity(
+  reference: Readonly<TrademarkAssetSourceReference>
+): string {
+  return stableSerialize({
+    owner: reference.owner,
+    kind: reference.kind,
+    sourceId: reference.sourceId,
+    sourceVersion: reference.sourceVersion
+  });
+}
+
 function trademarkAssetSourceReferences(
   value: unknown,
   field: string,
@@ -783,9 +794,7 @@ function trademarkAssetSourceReferences(
       );
     }
   });
-  const identities = parsed.map(
-    (entry) => `${entry.owner}:${entry.kind}:${entry.sourceId}:${entry.sourceVersion}`
-  );
+  const identities = parsed.map(trademarkAssetSourceVersionIdentity);
   if (new Set(identities).size !== identities.length) {
     throw new TrademarkLifecycleContractError(
       `${field} contains duplicate exact source references.`
@@ -2294,13 +2303,19 @@ function validateProjectionTemporalBounds(
   }
 }
 
+function compareCodeUnitStrings(left: string, right: string): number {
+  if (left < right) return -1;
+  if (left > right) return 1;
+  return 0;
+}
+
 function canonicalize(value: unknown): unknown {
   if (Array.isArray(value)) return value.map(canonicalize);
   if (value && typeof value === 'object') {
     return Object.fromEntries(
       Object.entries(value as JsonRecord)
         .filter(([, entry]) => entry !== undefined)
-        .sort(([left], [right]) => left.localeCompare(right))
+        .sort(([left], [right]) => compareCodeUnitStrings(left, right))
         .map(([key, entry]) => [key, canonicalize(entry)])
     );
   }
@@ -3124,20 +3139,20 @@ const COMPUTATION_OUTPUT_MATERIAL_KEYS = [
   'authority'
 ] as const;
 
+function compareStableSerialized(left: unknown, right: unknown): number {
+  return compareCodeUnitStrings(stableSerialize(left), stableSerialize(right));
+}
+
 function sortOwnerReferences(
   references: readonly Readonly<ExactOwnerReferenceV1>[]
 ): readonly ExactOwnerReferenceV1[] {
-  return [...references].sort((left, right) =>
-    stableSerialize(left).localeCompare(stableSerialize(right))
-  );
+  return [...references].sort(compareStableSerialized);
 }
 
 function sortSourceReferences(
   references: readonly Readonly<TrademarkAssetSourceReference>[]
 ): readonly TrademarkAssetSourceReference[] {
-  return [...references].sort((left, right) =>
-    stableSerialize(left).localeCompare(stableSerialize(right))
-  );
+  return [...references].sort(compareStableSerialized);
 }
 
 function sourceDateCandidate(
@@ -3209,7 +3224,7 @@ function sourceDateObservation(
     .map((candidateValue, index) =>
       sourceDateCandidate(candidateValue, `${field}.candidates[${index}]`)
     )
-    .sort((left, right) => stableSerialize(left).localeCompare(stableSerialize(right)));
+    .sort(compareStableSerialized);
   if (
     new Set(
       candidates.map((candidateValue) =>
@@ -3229,7 +3244,7 @@ function sourceDateObservation(
   const competingSourceReferences = candidates.flatMap(
     (candidateValue) => candidateValue.sourceReferences
   );
-  if (new Set(competingSourceReferences.map(stableSerialize)).size < 2) {
+  if (new Set(competingSourceReferences.map(trademarkAssetSourceVersionIdentity)).size < 2) {
     throw new TrademarkLifecycleContractError(
       `${field} CONFLICTING requires at least two distinct exact source references.`
     );
@@ -3272,7 +3287,7 @@ function parseComputationInputMaterial(
       return { ...parsed, sourceReferences: sortSourceReferences(parsed.sourceReferences) };
     })
     .sort((left, right) =>
-      `${left.owner}:${left.scopeId}`.localeCompare(`${right.owner}:${right.scopeId}`)
+      compareCodeUnitStrings(`${left.owner}:${left.scopeId}`, `${right.owner}:${right.scopeId}`)
     );
   const sourceScopeKeys = sourceReads.map((entry) => `${entry.owner}:${entry.scopeId}`);
   if (new Set(sourceScopeKeys).size !== sourceScopeKeys.length) {
@@ -3297,7 +3312,7 @@ function parseComputationInputMaterial(
     .map((entry, index) =>
       sourceDateObservation(entry, `computationInput.sourceDateObservations[${index}]`)
     )
-    .sort((left, right) => left.factCode.localeCompare(right.factCode));
+    .sort((left, right) => compareCodeUnitStrings(left.factCode, right.factCode));
   if (
     new Set(sourceDateObservations.map((entry) => entry.factCode)).size !==
     sourceDateObservations.length
@@ -3525,9 +3540,54 @@ export function trademarkLifecycleComputationOutputFingerprintSha256V1(
     .digest('hex');
 }
 
+function assertComputationOutputMatchesInput(
+  output: Readonly<TrademarkLifecycleComputationOutputFingerprintMaterialV1>,
+  input: Readonly<TrademarkLifecycleComputationInputV1>
+): void {
+  const mismatchedBindings: string[] = [];
+  if (output.workspaceId !== input.workspaceId) mismatchedBindings.push('workspaceId');
+  if (stableSerialize(output.asset) !== stableSerialize(input.asset)) {
+    mismatchedBindings.push('asset');
+  }
+  if (output.normalizedInputFingerprintSha256 !== input.normalizedInputFingerprintSha256) {
+    mismatchedBindings.push('normalizedInputFingerprintSha256');
+  }
+  if (output.asOf !== input.asOf) mismatchedBindings.push('asOf');
+  if (stableSerialize(output.track) !== stableSerialize(input.track)) {
+    mismatchedBindings.push('track');
+  }
+  if (stableSerialize(output.sourceReads) !== stableSerialize(input.sourceReads)) {
+    mismatchedBindings.push('sourceReads');
+  }
+  if (!sameOwnerReference(output.methodPackageReference, input.methodPackageReference)) {
+    mismatchedBindings.push('methodPackageReference');
+  }
+  if (
+    stableSerialize(output.materializedReferenceDependencies) !==
+    stableSerialize(input.materializedReferenceDependencies)
+  ) {
+    mismatchedBindings.push('materializedReferenceDependencies');
+  }
+  if (
+    !sameOwnerReference(
+      output.professionalReviewReceiptReference,
+      input.professionalReviewReceiptReference
+    )
+  ) {
+    mismatchedBindings.push('professionalReviewReceiptReference');
+  }
+  if (mismatchedBindings.length > 0) {
+    throw new TrademarkLifecycleContractError(
+      `Computation output does not match its paired normalized input snapshot: ${mismatchedBindings.join(', ')}.`
+    );
+  }
+}
+
 export function parseTrademarkLifecycleComputationOutputV1(
-  value: unknown
+  value: unknown,
+  inputValue: unknown
 ): TrademarkLifecycleComputationOutputV1 {
+  const input = parseTrademarkLifecycleComputationInputV1(inputValue);
   const item = object(value, 'trademarkLifecycleComputationOutput');
   exactKeys(
     item,
@@ -3545,5 +3605,6 @@ export function parseTrademarkLifecycleComputationOutputV1(
       'Computation output fingerprint does not match its exact transient result.'
     );
   }
+  assertComputationOutputMatchesInput(material, input);
   return { ...material, outputFingerprintSha256: expected };
 }

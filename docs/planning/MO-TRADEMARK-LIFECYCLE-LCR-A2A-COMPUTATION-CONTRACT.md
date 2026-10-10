@@ -52,6 +52,7 @@ It reuses, without redefining, the A1 track, source-read, source-reference, stag
 ### Output
 
 - carries a `COMPUTED` transient result, the exact input fingerprint, typed lifecycle semantics, Method/dependency lineage, professional-review receipt reference and its own fingerprint;
+- can be parsed only together with the signed normalized input whose Workspace, Asset, as-of time, track, source reads, Method, dependencies and professional-review receipt it exactly repeats;
 - is checked through every A1 projection semantic invariant;
 - cannot contain projection ID, projection version, current-head state, Capability execution receipt or persistence authority;
 - retains the A1 prohibition on `REVIEWED_TIMING`, certified legal deadlines, Official Truth creation and execution authorization;
@@ -97,9 +98,11 @@ Promoting the existing pilot by renaming it, treating test latency as production
 1. A complete normalized input parses and its fingerprint reproduces.
 2. Any fact or dependency change invalidates the input fingerprint.
 3. Unadmitted source references, duplicate/conflicting invalid candidates and detached review receipts fail closed.
-4. A complete output parses, reproduces its fingerprint and contains no Product projection identity/head fields.
-5. Output tampering, detached review lineage, `REVIEWED_TIMING` and certified-deadline claims fail closed.
-6. Existing A1 contract tests remain green.
+4. A complete output parses only with its exact signed input, reproduces its fingerprint and contains no Product projection identity/head fields.
+5. A self-signed output from another tenant, Asset or source lineage is rejected even if both standalone fingerprints are valid.
+6. Input normalization uses locale-independent binary ordering, and one source version cannot impersonate two competing sources by changing observation metadata.
+7. Output tampering, detached review lineage, `REVIEWED_TIMING` and certified-deadline claims fail closed.
+8. Existing A1 contract tests remain green.
 
 ## 11. Validation commands
 

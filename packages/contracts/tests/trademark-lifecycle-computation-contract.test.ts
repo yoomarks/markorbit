@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import {
   noTrademarkLifecycleAuthorityConsequencesV1,
@@ -140,7 +140,7 @@ function semanticGlossaryForCodes(codes: readonly string[]) {
 }
 
 function outputMaterial(): TrademarkLifecycleComputationOutputFingerprintMaterialV1 {
-  const input = signedInput();
+  const input = parseTrademarkLifecycleComputationInputV1(signedInput());
   const material: TrademarkLifecycleComputationOutputFingerprintMaterialV1 = {
     schemaVersion: 1,
     status: 'COMPUTED',
@@ -238,10 +238,7 @@ function outputMaterial(): TrademarkLifecycleComputationOutputFingerprintMateria
     limitationCodes: ['HISTORICAL_FACTS_DO_NOT_ESTABLISH_CURRENT_POSITION'],
     semanticGlossary: [],
     methodPackageReference,
-    materializedReferenceDependencies: [
-      professionalReviewReceiptReference,
-      sourceContractReference
-    ],
+    materializedReferenceDependencies: input.materializedReferenceDependencies,
     professionalReviewReceiptReference,
     nextItemEvaluation: {
       state: 'COMPLETE_NONE',
@@ -309,6 +306,12 @@ function outputMaterial(): TrademarkLifecycleComputationOutputFingerprintMateria
 
 function signedOutput(): TrademarkLifecycleComputationOutputV1 {
   const material = outputMaterial();
+  return signedOutputFromMaterial(material);
+}
+
+function signedOutputFromMaterial(
+  material: TrademarkLifecycleComputationOutputFingerprintMaterialV1
+): TrademarkLifecycleComputationOutputV1 {
   return {
     ...material,
     outputFingerprintSha256: trademarkLifecycleComputationOutputFingerprintSha256V1(material)
@@ -364,6 +367,18 @@ describe('Trademark Lifecycle transient computation contracts', () => {
     expect(trademarkLifecycleComputationInputFingerprintSha256V1(right)).toBe(
       trademarkLifecycleComputationInputFingerprintSha256V1(left)
     );
+  });
+
+  it('uses locale-independent binary ordering for the normalized input fingerprint', () => {
+    const baseline = trademarkLifecycleComputationInputFingerprintSha256V1(inputMaterial());
+    const localeCompare = vi.spyOn(String.prototype, 'localeCompare').mockImplementation(() => 0);
+
+    try {
+      expect(trademarkLifecycleComputationInputFingerprintSha256V1(inputMaterial())).toBe(baseline);
+      expect(localeCompare).not.toHaveBeenCalled();
+    } finally {
+      localeCompare.mockRestore();
+    }
   });
 
   it('rejects observation evidence that is not admitted by the exact source read', () => {
@@ -451,8 +466,50 @@ describe('Trademark Lifecycle transient computation contracts', () => {
     );
   });
 
+  it('does not treat changed observation metadata as a second exact source version', () => {
+    const changed = structuredClone(signedInput()) as Mutable<TrademarkLifecycleComputationInputV1>;
+    const repeatedSourceVersion = {
+      ...structuredClone(sourceReference),
+      observedAt: '2026-10-09T00:00:00.000Z',
+      freshness: 'STALE'
+    } as const;
+    changed.sourceReads.push({
+      scopeId: 'cn-case-current_application-12345678-repeat',
+      owner: 'DATA_ENGINE',
+      state: 'OBSERVED',
+      asOf,
+      sourceReferences: [repeatedSourceVersion]
+    });
+    changed.sourceDateObservations = [
+      {
+        factCode: 'FILING_DATE',
+        valueState: 'CONFLICTING',
+        candidates: [
+          {
+            value: '2025-01-02',
+            precision: 'DAY',
+            jurisdictionTimeZone: 'Asia/Shanghai',
+            sourceReferences: [structuredClone(sourceReference)]
+          },
+          {
+            value: '2025-01-03',
+            precision: 'DAY',
+            jurisdictionTimeZone: 'Asia/Shanghai',
+            sourceReferences: [repeatedSourceVersion]
+          }
+        ],
+        conflictId: 'conflict_filing-date-repeated-source-version',
+        reasonCodes: ['SOURCE_DATES_CONFLICT']
+      }
+    ];
+
+    expect(() => parseTrademarkLifecycleComputationInputV1(changed)).toThrow(
+      /at least two distinct exact source references/i
+    );
+  });
+
   it('verifies a computed result without granting Product retention identity or authority', () => {
-    const parsed = parseTrademarkLifecycleComputationOutputV1(signedOutput());
+    const parsed = parseTrademarkLifecycleComputationOutputV1(signedOutput(), signedInput());
 
     expect(parsed.status).toBe('COMPUTED');
     expect(parsed.authority).toEqual(noTrademarkLifecycleAuthorityConsequencesV1);
@@ -467,9 +524,42 @@ describe('Trademark Lifecycle transient computation contracts', () => {
   it('rejects Product projection identity and head fields on transient output', () => {
     const changed = { ...signedOutput(), projectionId: 'trademark-lifecycle-projection_forbidden' };
 
-    expect(() => parseTrademarkLifecycleComputationOutputV1(changed)).toThrow(
+    expect(() => parseTrademarkLifecycleComputationOutputV1(changed, signedInput())).toThrow(
       /must contain exactly the bounded V1 fields/i
     );
+  });
+
+  it('rejects a self-signed output detached from its paired tenant and asset input', () => {
+    const changed = structuredClone(
+      outputMaterial()
+    ) as unknown as Mutable<TrademarkLifecycleComputationOutputFingerprintMaterialV1>;
+    changed.workspaceId = '018f0000-0000-7000-8000-000000000099';
+    changed.asset = { id: 'trademark-asset_cn-87654321', version: 1 };
+
+    expect(() =>
+      parseTrademarkLifecycleComputationOutputV1(
+        signedOutputFromMaterial(
+          changed as unknown as TrademarkLifecycleComputationOutputFingerprintMaterialV1
+        ),
+        signedInput()
+      )
+    ).toThrow(/paired normalized input snapshot: workspaceId, asset/i);
+  });
+
+  it('rejects a self-signed output detached from its paired source-read lineage', () => {
+    const changed = structuredClone(
+      outputMaterial()
+    ) as unknown as Mutable<TrademarkLifecycleComputationOutputFingerprintMaterialV1>;
+    changed.sourceReads[0]!.scopeId = 'cn-case-current_application-87654321';
+
+    expect(() =>
+      parseTrademarkLifecycleComputationOutputV1(
+        signedOutputFromMaterial(
+          changed as unknown as TrademarkLifecycleComputationOutputFingerprintMaterialV1
+        ),
+        signedInput()
+      )
+    ).toThrow(/paired normalized input snapshot: sourceReads/i);
   });
 
   it('inherits the A1 ban on reviewed timing and certified legal deadlines', () => {
@@ -480,7 +570,7 @@ describe('Trademark Lifecycle transient computation contracts', () => {
     assertion.timeClass = 'REVIEWED_TIMING';
     assertion.presentationMeaning = 'REVIEWED_NON_CERTIFIED_TIME';
 
-    expect(() => parseTrademarkLifecycleComputationOutputV1(reviewed)).toThrow(
+    expect(() => parseTrademarkLifecycleComputationOutputV1(reviewed, signedInput())).toThrow(
       /REVIEWED_TIMING is not admitted/i
     );
 
@@ -490,7 +580,7 @@ describe('Trademark Lifecycle transient computation contracts', () => {
       }>;
     };
     deadline.stages[0]!.milestones[0]!.timeAssertions[0]!.legalDeadlineCertified = true;
-    expect(() => parseTrademarkLifecycleComputationOutputV1(deadline)).toThrow(
+    expect(() => parseTrademarkLifecycleComputationOutputV1(deadline, signedInput())).toThrow(
       /legalDeadlineCertified must remain false/i
     );
   });
@@ -500,7 +590,7 @@ describe('Trademark Lifecycle transient computation contracts', () => {
       signedOutput()
     ) as unknown as Mutable<TrademarkLifecycleComputationOutputV1>;
     tampered.stages[0]!.name.zhCN = '被篡改';
-    expect(() => parseTrademarkLifecycleComputationOutputV1(tampered)).toThrow(
+    expect(() => parseTrademarkLifecycleComputationOutputV1(tampered, signedInput())).toThrow(
       /output fingerprint does not match/i
     );
 
@@ -510,7 +600,7 @@ describe('Trademark Lifecycle transient computation contracts', () => {
     detached.materializedReferenceDependencies = [
       structuredClone(sourceContractReference)
     ] as Mutable<ExactOwnerReferenceV1>[];
-    expect(() => parseTrademarkLifecycleComputationOutputV1(detached)).toThrow(
+    expect(() => parseTrademarkLifecycleComputationOutputV1(detached, signedInput())).toThrow(
       /professional-review receipt must be an exact materialized dependency/i
     );
   });
